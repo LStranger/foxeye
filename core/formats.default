@@ -1,0 +1,30 @@
+/*
+ * Copyright (C) 2002  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ *
+ *     This program is free software; you can redistribute it and/or modify
+ *     it under the terms of the GNU General Public License as published by
+ *     the Free Software Foundation; either version 2 of the License, or
+ *     (at your option) any later version.
+ *
+ *     This program is distributed in the hope that it will be useful,
+ *     but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *     GNU General Public License for more details.
+ *
+ *     You should have received a copy of the GNU General Public License
+ *     along with this program; if not, write to the Free Software
+ *     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ */
+
+Format (log_notice,	"-%N%?#/%#??- %*")
+Format (log_msg,	"<%N%?#/%#??> %*")
+Format (log_ctcp,	"%N requested CTCP %* from %#")
+Format (log_action,	"* %N%?#/%#?? %*")
+Format (dcc_lost,	N_("DCC connection to %L lost."))
+Format (dcc_closed,	N_("DCC chat to %L closed: %*."))
+Format (dcc_startget,	N_("DCC get \"%*\" with %N established."))
+Format (dcc_gotfile,	N_("Get file \"%*\" from %N completed."))
+Format (dcc_input_connection, N_("Input connection from %@:%P, ident %*."))
+Format (dcc_request,	"DCC connection request for \"%*\" from %N(%@) to %I:%P")
+Format (w_head,		" NAME            FROM       LOGIN@ IDLE    WHAT")
+Format (w,		"%16L %10@ %N %#%*")
