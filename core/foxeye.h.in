@@ -1,0 +1,341 @@
+/*
+ * Copyright (C) 1999-2002  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * 
+ *     This program is free software; you can redistribute it and/or modify
+ *     it under the terms of the GNU General Public License as published by
+ *     the Free Software Foundation; either version 2 of the License, or
+ *     (at your option) any later version.
+ * 
+ *     This program is distributed in the hope that it will be useful,
+ *     but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *     GNU General Public License for more details.
+ * 
+ *     You should have received a copy of the GNU General Public License
+ *     along with this program; if not, write to the Free Software
+ *     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ */ 
+
+/* strict POSIX.2 */
+#define _POSIX2_SOURCE 1
+
+#ifdef HAVE_CONFIG_H
+# include "../config.h"
+#endif
+
+#ifdef HAVE_STDINT_H
+# include <stdint.h>
+#endif
+
+/* this is need for recursive thread under Linux */
+#define __USE_UNIX98 1
+
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <stdarg.h>
+
+#ifdef _POSIX_SOURCE
+# include <time.h>
+#endif
+
+#if defined STDC_HEADERS || defined _LIBC
+# include <stdlib.h>
+#else
+# ifdef HAVE_MALLOC_H
+#  include <malloc.h>
+# else
+void free ();
+# endif
+#endif
+
+#if defined HAVE_STRING_H || defined _LIBC
+# include <string.h>
+#else
+# include <strings.h>
+# ifndef memcpy
+#  define memcpy(Dst, Src, Num) bcopy (Src, Dst, Num)
+# endif
+#endif
+
+#if defined HAVE_UNISTD_H || defined _LIBC
+# include <unistd.h>
+#endif
+
+#if TIME_WITH_SYS_TIME
+# include <sys/time.h>
+# include <time.h>
+#else
+# if HAVE_SYS_TIME_H
+#  include <sys/time.h>
+# else
+#  include <time.h>
+# endif
+#endif
+
+#if HAVE_SYS_WAIT_H
+# include <sys/wait.h>
+#endif
+
+#ifndef WEXITSTATUS
+# define WEXITSTATUS(stat_val) ((unsigned)(stat_val) >> 8)
+#endif
+#ifndef WIFEXITED
+# define WIFEXITED(stat_val) (((stat_val) & 255) == 0)
+#endif
+
+#ifdef HAVE_LIMITS_H
+# include <limits.h>
+#endif
+
+#if !defined(_POSIX_PATH_MAX) && defined(HAVE_POSIX1_LIM_H)
+# include <posix1_lim.h>
+#endif
+
+#ifndef _POSIX_PATH_MAX
+# define _POSIX_PATH_MAX 255
+#endif
+
+/* Don't include sys/param.h if it already has been.  */
+#if defined HAVE_SYS_PARAM_H && !defined PATH_MAX && !defined MAXPATHLEN
+# include <sys/param.h>
+#endif
+
+#if !defined PATH_MAX && defined MAXPATHLEN
+# define PATH_MAX MAXPATHLEN
+#endif
+
+#ifndef PATH_MAX
+# define PATH_MAX _POSIX_PATH_MAX
+#endif
+
+/* set maximal filename length */
+#ifdef HAVE_LONG_FILE_NAMES
+# define FILENAME_LENGTH 255
+#else
+# define FILENAME_LENGTH 14
+#endif
+
+/* nifty trick I stole from ELM 2.5alpha. */
+#ifdef MAIN_C
+# define WHERE 
+# define INITVAL(x) = x
+#else
+# define WHERE extern
+# define INITVAL(x) 
+#endif
+
+#define TRUE 1
+#define FALSE 0
+
+#define HUGE_STRING	5120
+#define LONG_STRING	1024
+#define STRING		256
+#define SHORT_STRING	128
+
+#ifdef ENABLE_NLS
+# include <libintl.h>
+# define _(a) (gettext (a))
+# ifdef gettext_noop
+#  define N_(a) gettext_noop (a)
+# else
+#  define N_(a) (a)
+# endif
+#else
+# define _(a) (a)
+# define N_(a) a
+#endif
+
+/*
+ * IRC restrictions
+ */
+
+#define LNAMELEN	9	/* valid values 9->NICKMAX */
+#define NICKMAX		32	/* valid values LNAMELEN->32 */
+#define IFNAMEMAX	2*NICKMAX+1 /* interface name length */
+//#define CHANNAMEMAX	50	/* channel name length */
+#define CHANNFIRSTCHAR	"&#+!"	/* channel name first char */
+#define SPECIALCHARS	CHANNFIRSTCHAR "@:" /* first char of special names */
+#define RESTRICTEDCHARS	SPECIALCHARS " ,\007\r\n" /* cannot be in names */
+#define MESSAGEMAX	512	/* including CR-LF at end */
+//#define BLOCKMAX	2*MESSAGEMAX /* must be 2 MESSAGEMAX */
+//#define SAVEMSGMAX	450	/* max size of privmsg for save */
+#define FORMATMAX	120	/* max size of formats */
+
+/* common Tcl/internal function prototype */
+typedef int (*Function)();
+
+/* interface flags */
+typedef enum
+{
+  I_INIT	= (1<<0),	/* the config maker */		/* 0x000001 */
+  I_MODULE	= (1<<1),	/* module at all */
+  I_FILE	= (1<<2),	/* userfile, channelfile, etc. */
+  I_BOT		= (1<<3),	/* linked bot */
+  I_LISTEN	= (1<<4),	/* listening port */		/* 0x000010 */
+  I_CHAT	= (1<<5),	/* DCC chat or remote user interface */
+  I_SERVER	= (1<<6),	/* irc server */
+  I_CHANNEL	= (1<<7),	/* irc channel */
+  I_CONSOLE	= (1<<8),	/* console if not detached */	/* 0x000100 */
+  I_DCC		= (1<<9),	/* DCC but no chat (filetransfer for example) */
+  I_SCRIPT	= (1<<10),	/* interface to script interpreter */
+  I_SHEDULE	= (1<<11),	/* sheduler request */
+  I_ENCRYPT	= (1<<12),	/* an encryption module */	/* 0x001000 */
+  I_TEMP	= (1<<13),	/* temporary interface */
+  I_LOG		= (1<<14),	/* logfile or chat console log */
+  I_DCCALIAS	= (1<<15),	/* DCC chat alias for TCL requests */
+  I_QUERY	= (1<<16),	/* private query */		/* 0x010000 */
+  I_SERVMSG	= (1<<17),	/* this message going to server */
+  I_TELNET	= (1<<18),	/* this DCC chat is answer on listening port */
+  I_LOCKED	= (1<<19),	/* this interface temporary unavailable */
+  I_DIED	= (1<<20)	/* this interface now died */	/* 0x100000 */
+} iface_t;
+
+typedef short idx_t;
+
+/* request flags */
+typedef enum
+{
+  F_QUICK	= (1<<0),	/*     high priority of request */
+  F_NOTICE	= (1<<1),	/*     this is notice not privmsg */
+  F_PUBLIC	= (1<<2),	/* p   public msg/notice/ctcp */
+  F_MSGS	= (1<<3),	/* m   unhandled msg/notice/ctcp from/to bot */
+  F_CTCP	= (1<<4),	/*     public/private ctcp */
+  F_ACTION	= (1<<5),	/*     public/private action ctcp */
+  F_CMDS	= (1<<6),	/* c   user dcc or msg command */
+  F_CONN	= (1<<7),	/* b   bot/user connections/shares */
+  F_BOTNET	= (1<<8),	/*     partyline msg/notice/ctcp */
+  F_SERV	= (1<<9),	/* s   server information */
+  F_JOIN	= (1<<10),	/* j   channel join/part/etc */
+  F_MODES	= (1<<11),	/* k   mode change/kick/ban */
+  F_WALL	= (1<<12),	/* w   wallops message */
+  F_USERS	= (1<<13),	/* u   user changes information */
+  F_CRAP	= (1<<14),	/* o   different bot state notice */
+  F_DEBUG	= (1<<15),	/* d   debug info - test purposes only */
+  F_BOOT	= (1<<16),	/* i   boot time messages */
+  F_REPORT	= (1<<17),	/*     this is a report */
+  F_SHARE	= (1<<18),	/*     message to shared bot */
+  F_SHAREINFO	= (1<<19),	/*     the same but info/greeting */
+  F_ASK		= (1<<20),	/*     required answer to that message */
+  F_SIGNAL	= (1<<21),	/*     generate signal instead of request */
+  F_RELAYED	= (1<<22),	/*     this request just relayed */
+  F_REJECTED	= (1<<23),	/*     request was rejected */
+  F_TIME	= (1<<24),	/*     dcc only: timestamp on */
+  F_ECHO	= (1<<25),	/*     dcc only: echo on */
+  F_COLOR	= (1<<26),	/*     dcc only: enable color */
+  F_COLORCONV	= (1<<27)	/*     dcc only: convert color to ansi/mono */
+} flag_t;
+
+#define FLAG_T	"  pm  cb sjkwuodi"
+
+/*
+ * Note: All fields here are read only until you are sure it is only for you...
+ * Note2: (in) - have a value when argument, (out) - when output of IFRequest()
+ */
+typedef struct req_t
+{
+  flag_t flag;			/* (in/out) subflag for requested iface */
+  struct _if_t *from;		/* (in) what interface is from */
+  iface_t mask_if;		/* (in/out) type interface request is to */
+  char mask[IFNAMEMAX+1];	/* (out) mask for request filtering */
+  char string[MESSAGEMAX];	/* (in/out) text of request or signal */
+} REQUEST;
+
+typedef struct queue_t
+{
+  struct req_t *request;
+  struct queue_t *next;
+} QUEUE;
+
+typedef enum
+{
+  S_REPORT = 1,			/* generate report to loggers */
+  S_FLUSH,			/* flush the interface */
+  S_TIMEOUT,			/* for flood and idle detect purposes */
+  S_LOCAL,			/* local purposes */
+  S_REG,			/* re-register all variables */
+  S_STOP,			/* pause job on interface */
+  S_CONTINUE,			/* continue stopped job */
+  S_SHUTDOWN,			/* flush and terminate interface (quick) */
+  S_TERMINATE			/* terminate interface and release resources */
+} ifsig_t __attribute__ ((packed));
+
+typedef struct _if_t
+{
+	/* these can be safe readed when IFSignal or IFRequest started */
+	/* members prev & data are writable that time, rest are read only */
+  iface_t iface;		/* flagged type of interface */
+  char *name;			/* registered name of that type interface */
+  iface_t (*IFSignal) (struct _if_t *, ifsig_t); /* entry for signals */
+  REQUEST * (*IFRequest) (struct _if_t *, REQUEST *); /* entry for requests */
+  struct _if_t *prev;		/* for nested interface - pointer to upper */
+  void *data;			/* extra data - free by Delete_Iface() */
+	/* these below are for dispatcher only, don't touch it! */
+  struct queue_t *queue;	/* first FIFO element */
+} INTERFACE;
+
+typedef enum
+{
+  /* common access levels */
+  U_FSA		= (1<<0),	/* x   user has file area access */
+  U_CHAT	= (1<<1),	/* p   user has party line access */
+  U_FRIEND	= (1<<2),	/* f   user is friend **/
+  U_VOICE	= (1<<3),	/* v   user can ask me to voice him **/
+  U_HALFOP	= (1<<4),	/* l   user is halfop **/
+  U_OP		= (1<<5),	/* o   user is botnet/channel operator */
+  U_SPEAK	= (1<<6),	/* s   user can tell me to say anything */
+  U_MASTER	= (1<<7),	/* m   user has full bot/channel access **/
+  U_OWNER	= (1<<8),	/* n   user is the bot/channel owner **/
+  /* channel specific levels */
+  U_KILL	= (1<<9),	/* k   user must be kicked and banned **/
+  U_DEOP	= (1<<10),	/* d   user must be de-opped **/
+  U_QUIET	= (1<<11),	/* q   never let 'em get a voice **/
+  U_AUTOINVITE	= (1<<12),	/* i   set autoinvite on invite-only channel */
+  U_AUTOVOICE	= (1<<13),	/* g   auto-voice on join **/
+  U_AUTOOP	= (1<<14),	/* a   auto-op on join **/
+  U_UNBAN	= (1<<15),	/* e   user must be unbanned (ban exception) **/
+  /* record attributes */
+  U_BOT		= (1<<16),	/* b   user is a bot */
+  U_COMMON	= (1<<17),	/* c   user is actually a public irc site */
+  A_SHARE	= (1<<17),	/*	channel botflag - shared userflags */
+  U_HIGHLITE	= (1<<18),	/* h   set this if you want highlighting */
+  A_SHAREGREET	= (1<<18),	/*	channel botflag - shared greetings */
+  U_UNSHARED	= (1<<19),	/* u   private, not shared with sharebots */
+  U_ALIAS	= (1<<20),	/*     (pseudo-user) alias */
+  U_SPECIAL	= (1<<21),	/*     (pseudo-user) service/channel */
+  U_ANY		= (1<<22)	/*     set 1 for any regular user */
+} userflag;
+
+#define USERFLAG "xpfvlosmnkdqigaebchu"
+
+typedef struct binding_t
+{
+  userflag gl_uf;		/* need global userflag for user */
+  userflag ch_uf;		/* need channel userflag for user */
+  const char *key;		/* is matched to... */
+  const char *name;		/* keyword for using by external script */
+/*  unsigned int internal : 1;	       if internal binding, name == NULL */
+  Function func;		/* called subprogram */
+  struct binding_t *nbind;	/* next nested binding */
+  struct binding_t *next;
+} BINDING;
+
+typedef enum
+{
+  B_MATCHCASE,			/* case-sensitive key */
+  B_KEYWORD,			/* for keyword */
+  B_MASK,			/* for wildcards matching */
+  B_UNIQ,			/* unique binding for keyword, expandable */
+  B_UNIQMASK			/* unique binding with wildcards */
+} bindtable_t;
+
+typedef struct BINDTABLE
+{
+  bindtable_t type;
+  const char *name;
+  BINDING *bind;
+  BINDING *lr;			/* last resort - for B_UNIQ unly */
+  struct BINDTABLE *next;
+} BINDTABLE;
+
+#include "protos.h"
