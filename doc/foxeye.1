@@ -1,0 +1,115 @@
+.if n .ds Q \&"
+.if t .ds Q ``
+.if n .ds U \&"
+.if t .ds U ''
+.TH "FoxEye" 1 "" "" "FoxEye manual" 
+.tr \&
+.nr bi 0
+.nr ll 0
+.nr el 0
+.de DS
+..
+.de DE
+..
+.de Pp
+.ie \\n(ll>0 \{\
+.ie \\n(bi=1 \{\
+.nr bi 0
+.if \\n(t\\n(ll=0 \{.IP \\(bu\}
+.if \\n(t\\n(ll=1 \{.IP \\n+(e\\n(el.\}
+.\}
+.el .sp 
+.\}
+.el \{\
+.ie \\nh=1 \{\
+.LP
+.nr h 0
+.\}
+.el .PP 
+.\}
+..
+.SH NAME
+.PD 0
+FoxEye - the universal network client.
+
+.SH SYNOPSIS
+.PD 1
+
+.Pp
+.nr bi 1
+.Pp
+\fBfoxeye\fP
+[-n \fInick\fP] [-cdmt] \fIfile\fP
+.nr bi 1
+.Pp
+\fBfoxeye\fP -cr [-n \fInick\fP] [-dm] [-g \fIfile\fP]
+.nr bi 1
+.Pp
+\fBfoxeye\fP -[h|v]
+.SH DESCRIPTION
+.PD 0
+FoxEye was created first as a IRC (Internet Relay Chat) network bot - the
+network daemon which controls functionality and protection of IRC channels.
+It enters to IRC network as user, joins the channel and tries don't leave
+it until crash or terminate.  But now it is multipurpose modularised client
+for networks: IRC, ICQ, etc.
+
+.SH OPTIONS
+.PD 1
+Runs the bot with config file \fIfile\fP until \fB-r\fP option present.
+.TP 10
+\fB-c\fP
+Don't detach console (chat simulation mode).
+.TP
+\fB-d\fP
+Increase a debug log level by one (maximum debug level is 5).
+.TP
+\fB-g\fP \fIfile\fP
+Generate new config file \fIfile\fP
+.TP
+\fB-h\fP
+Display help message and exit.
+.TP
+\fB-m\fP
+Make an empty listfile.
+.TP
+\fB-n\fP \fInick\fP
+Set default nick to \fInick\fP
+.TP
+\fB-r\fP
+Reset parameters (don't use the config file statements).
+.TP
+\fB-t\fP
+Test the configuration and exit.
+.TP
+\fB-v\fP
+Display version information and exit.
+.PD 0
+
+.SH FILES
+
+.SH NO WARRANTIES
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+.SH SEE ALSO
+.PD 1
+
+.Pp
+.nr bi 1
+.Pp
+\fBircd\fP(8)
+.nr bi 1
+.Pp
+RFC2810, RFC2811, RFC2812, RFC2813.
+.nr bi 1
+.Pp
+The GNU General Public License.
+.SH AUTHORS
+.PD 0
+Andriy Gritsenko.
+
+.SH BUGS
+
