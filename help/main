@@ -1,0 +1,30 @@
+# base dcc/msg commands of FoxEye
+
+help
+:%* [topic]
+:Get help message for topic.
+:Prints out help message for topic.  First line is usage template. \
+ Second (and more) line is description.
+
+quit
+:%* [message]
+:
+:Ends your current telnet/dcc session.  If message is specified then\
+ prints out it as reason, else prints "no reason."
+
+w
+:%* [channel]
+:
+:Prints out list of people on your botnet channel or other channel if it\
+ was specified.  This command shows a login name (preceded with "*" for\
+ owner, "+" for anyone with master permissions, "@" for any operator or\
+ "%%" for anyone with half-op status), from here he/she connected (bot\
+ name or "-" for local connections), date or time of connection, idle\
+ time, and some info if available.
+
+su
+:%* name
+:
+:Changes your session to name (nested logging in).  You cannot log in as\
+ bot or service name, and login name you specified have to have\
+ permissions for telnet/dcc.
