@@ -1,0 +1,10 @@
+# first section is usage
+# second section is that config maker will put into config
+# third section is full help
+
+set logrotate-path
+:%* <template>
+:Template for logs was daily rotated
+:This is template for daily rotated logs. Substitutions:%.
+ %%$ - filename of rotated log (current log before rotation)
+ %%d, %%b, %%y, etc - date fields as in strftime(3)
