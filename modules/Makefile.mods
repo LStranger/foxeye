@@ -1,0 +1,81 @@
+# Generated automatically from Makefile.mods.in by configure.
+#
+# Makefile for module compilation.
+#
+# This file is part of FoxEye distribution.
+# Copiright (C) 1999-2001 Andrej Gritsenko <andrej@rep.kiev.ua>
+
+SHELL = /bin/sh
+FILENAME = $(shell /usr/bin/basename `pwd`)
+CFILES = $(wildcard *.c)
+HFILES = $(wildcard *.h)
+HELPFILES = $(wildcard *.help)
+OBJS = $(patsubst %.c,%.o,$(CFILES))
+DISTFILES = $(CFILES) $(HFILES) $(HELPFILES)
+
+srcdir = .
+top_srcdir = ../..
+top_builddir = ../..
+subdir = mods/$(FILENAME)
+override distdir = ${top_builddir}/foxeye-0.10/$(subdir)
+
+prefix = /home/andrej/foxeye
+exec_prefix = ${prefix}
+pkglibdir = ${exec_prefix}/lib/foxeye
+helpdir = $(pkglibdir)/help
+
+INCLUDES = -I${top_srcdir}/intl -I${top_srcdir}/core
+INSTALL = /usr/bin/install -c -m 644
+mkinstalldirs = $(SHELL) ${top_srcdir}/mkinstalldirs
+CFLAGS = -c -pipe -Wall -pthread -pedantic -g -O2 -DHAVE_CONFIG_H $(INCLUDES) -fpic -D_REENTRANT -I/home/andrej/include
+
+all static: $(OBJS)
+
+modules: $(FILENAME).so
+
+clean:
+	rm -f *.o *.so core *~
+
+$(FILENAME).so: $(OBJS)
+	gcc -shared -rdynamic -L/home/andrej/lib -lcrypt -lm  -o $@ $^
+       
+%.o: %.c $(HFILES) ${top_srcdir}/core/modules.h ${top_srcdir}/core/foxeye.h ${top_srcdir}/core/protos.h
+	gcc -o $@ $(CFLAGS) -DMAKING_MODS -D_STATIC_INIT=modinit_`echo $(FILENAME)|sed 's/-/_/'` $<
+
+install-help:
+	$(mkinstalldirs) $(DESTDIR)$(helpdir)
+	@list='$(HELPFILES)'; for p in $$list; do \
+	    if test -f $$p; then \
+		hp=`echo $$p|sed s/.help$$//`; \
+		echo "   $(DESTDIR)$(helpdir)/$$hp"; \
+		$(INSTALL) $$p $(DESTDIR)$(helpdir)/$$hp; \
+	    else :; fi \
+	done
+
+install install-strip: modules install-help
+	$(mkinstalldirs) $(DESTDIR)$(pkglibdir)
+	@if test -f $(FILENAME).so; then \
+	    echo "   $(DESTDIR)$(pkglibdir)/$(FILENAME).so"; \
+	    $(INSTALL) $(FILENAME).so $(DESTDIR)$(pkglibdir)/$(FILENAME).so; \
+	else :; fi
+
+uninstall-help:
+	@list='$(HELPFILES)'; for p in $$list; do \
+	    hp=`echo $$p|sed s/.help$$//`; \
+	    echo "  rm -f $(DESTDIR)$(helpdir)/$$hp"; \
+	    rm -f $(DESTDIR)$(helpdir)/$$hp; \
+	done
+
+uninstall: uninstall-help
+	@if test -f $(DESTDIR)$(pkglibdir)/$(FILENAME).so; then \
+	    echo "  rm -f $(DESTDIR)$(pkglibdir)/$(FILENAME).so"; \
+	    rm -f $(DESTDIR)$(pkglibdir)/$(FILENAME).so; \
+	else :; fi
+
+dist distdir:
+	$(mkinstalldirs) $(distdir)
+	@dists="$(DISTFILES)"; \
+	for file in $$dists; do \
+	    ln $(srcdir)/$$file $(distdir) 2> /dev/null \
+	    || cp -dp $(srcdir)/$$file $(distdir); \
+	done

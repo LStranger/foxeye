@@ -1,0 +1,682 @@
+This file contains any messages produced by compilers while
+running configure, to aid debugging if configure makes a mistake.
+
+configure:598: checking for non-GNU ld
+configure:633: checking if the linker (/usr/bin/ld) is GNU ld
+GNU ld version 2.11.2 20010719 [FreeBSD] (with BFD 2.11.2 20010719 [FreeBSD])
+configure:684: checking for a BSD compatible install
+configure:737: checking whether build environment is sane
+configure:794: checking whether make sets ${MAKE}
+configure:840: checking for working aclocal
+configure:853: checking for working autoconf
+configure:866: checking for working automake
+configure:879: checking for working autoheader
+configure:892: checking for working makeinfo
+configure:915: checking host system type
+configure:939: checking for gcc
+configure:1052: checking whether the C compiler (gcc  -L/home/andrej/lib) works
+configure:1068: gcc -o conftest  -I/home/andrej/include -L/home/andrej/lib conftest.c  1>&5
+configure:1094: checking whether the C compiler (gcc  -L/home/andrej/lib) is a cross-compiler
+configure:1099: checking whether we are using GNU C
+configure:1108: gcc -E conftest.c
+configure:1127: checking whether gcc accepts -g
+configure:1159: checking how to run the C preprocessor
+configure:1180: gcc -E -I/home/andrej/include conftest.c >/dev/null 2>conftest.out
+configure:1240: checking whether gcc needs -traditional
+configure:1265: termio.h: No such file or directory
+configure:1290: checking for c++
+configure:1322: checking whether the C++ compiler (c++  -L/home/andrej/lib) works
+configure:1338: c++ -o conftest  -I/home/andrej/include -L/home/andrej/lib conftest.C  1>&5
+configure:1364: checking whether the C++ compiler (c++  -L/home/andrej/lib) is a cross-compiler
+configure:1369: checking whether we are using GNU C++
+configure:1378: c++ -E conftest.C
+configure:1397: checking whether c++ accepts -g
+configure:1429: checking whether make sets ${MAKE}
+configure:1467: checking for a BSD compatible install
+configure:1522: checking for ranlib
+configure:1550: checking whether ln -s works
+configure:1573: checking for basename
+configure:1608: checking for sgml2txt
+configure:1643: checking for AIX
+configure:1668: checking for strerror in -lcposix
+configure:1687: gcc -o conftest -g -O2 -I/home/andrej/include -L/home/andrej/lib conftest.c -lcposix   1>&5
+/usr/libexec/elf/ld: cannot find -lcposix
+configure: failed program was:
+#line 1676 "configure"
+#include "confdefs.h"
+/* Override any gcc2 internal prototype to avoid an error.  */
+/* We use char because int might match the return type of a gcc2
+    builtin and then its argument prototype would still apply.  */
+char strerror();
+
+int main() {
+strerror()
+; return 0; }
+configure:1711: checking for minix/config.h
+configure:1721: gcc -E -I/home/andrej/include conftest.c >/dev/null 2>conftest.out
+configure:1717: minix/config.h: No such file or directory
+configure: failed program was:
+#line 1716 "configure"
+#include "confdefs.h"
+#include <minix/config.h>
+configure:1760: checking for working const
+configure:1814: gcc -c -g -O2 -I/home/andrej/include conftest.c 1>&5
+configure:1835: checking for working volatile
+configure:1850: gcc -c -g -O2 -I/home/andrej/include conftest.c 1>&5
+configure:1871: checking for inline
+configure:1885: gcc -c -g -O2 -I/home/andrej/include conftest.c 1>&5
+configure:1949: checking whether you need static compiling
+configure:2108: checking for socket in -lsocket
+configure:2127: gcc -o conftest -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -L/home/andrej/lib conftest.c -lsocket   1>&5
+/usr/libexec/elf/ld: cannot find -lsocket
+configure: failed program was:
+#line 2116 "configure"
+#include "confdefs.h"
+/* Override any gcc2 internal prototype to avoid an error.  */
+/* We use char because int might match the return type of a gcc2
+    builtin and then its argument prototype would still apply.  */
+char socket();
+
+int main() {
+socket()
+; return 0; }
+configure:2155: checking for connect in -lnsl
+configure:2174: gcc -o conftest -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -L/home/andrej/lib conftest.c -lnsl   1>&5
+/usr/libexec/elf/ld: cannot find -lnsl
+configure: failed program was:
+#line 2163 "configure"
+#include "confdefs.h"
+/* Override any gcc2 internal prototype to avoid an error.  */
+/* We use char because int might match the return type of a gcc2
+    builtin and then its argument prototype would still apply.  */
+char connect();
+
+int main() {
+connect()
+; return 0; }
+configure:2202: checking for gethostbyname in -ldns
+configure:2221: gcc -o conftest -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -L/home/andrej/lib conftest.c -ldns   1>&5
+/usr/libexec/elf/ld: cannot find -ldns
+configure: failed program was:
+#line 2210 "configure"
+#include "confdefs.h"
+/* Override any gcc2 internal prototype to avoid an error.  */
+/* We use char because int might match the return type of a gcc2
+    builtin and then its argument prototype would still apply.  */
+char gethostbyname();
+
+int main() {
+gethostbyname()
+; return 0; }
+configure:2249: checking for log in -lm
+configure:2268: gcc -o conftest -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -L/home/andrej/lib conftest.c -lm   1>&5
+configure:2299: checking for library containing dlopen
+configure:2317: gcc -o conftest -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -L/home/andrej/lib conftest.c -lm  1>&5
+configure:2367: checking for '-pthread' option
+configure:2389: checking for library containing pthread_cancel
+configure:2407: gcc -o conftest -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -L/home/andrej/lib conftest.c -lm  1>&5
+configure:2457: checking for dirent.h that defines DIR
+configure:2470: gcc -c -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include conftest.c 1>&5
+configure:2495: checking for opendir in -ldir
+configure:2514: gcc -o conftest -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -L/home/andrej/lib conftest.c -ldir  -lm  1>&5
+/usr/libexec/elf/ld: cannot find -ldir
+configure: failed program was:
+#line 2503 "configure"
+#include "confdefs.h"
+/* Override any gcc2 internal prototype to avoid an error.  */
+/* We use char because int might match the return type of a gcc2
+    builtin and then its argument prototype would still apply.  */
+char opendir();
+
+int main() {
+opendir()
+; return 0; }
+configure:2578: checking for sys/wait.h that is POSIX.1 compatible
+configure:2599: gcc -c -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include conftest.c 1>&5
+configure:2623: checking for unistd.h
+configure:2633: gcc -E -fpic -D_REENTRANT -I/home/andrej/include conftest.c >/dev/null 2>conftest.out
+configure:2623: checking for dlfcn.h
+configure:2633: gcc -E -fpic -D_REENTRANT -I/home/andrej/include conftest.c >/dev/null 2>conftest.out
+configure:2623: checking for crypt.h
+configure:2633: gcc -E -fpic -D_REENTRANT -I/home/andrej/include conftest.c >/dev/null 2>conftest.out
+configure:2629: crypt.h: No such file or directory
+configure: failed program was:
+#line 2628 "configure"
+#include "confdefs.h"
+#include <crypt.h>
+configure:2623: checking for getopt.h
+configure:2633: gcc -E -fpic -D_REENTRANT -I/home/andrej/include conftest.c >/dev/null 2>conftest.out
+configure:2629: getopt.h: No such file or directory
+configure: failed program was:
+#line 2628 "configure"
+#include "confdefs.h"
+#include <getopt.h>
+configure:2623: checking for limits.h
+configure:2633: gcc -E -fpic -D_REENTRANT -I/home/andrej/include conftest.c >/dev/null 2>conftest.out
+configure:2623: checking for posix1_lim.h
+configure:2633: gcc -E -fpic -D_REENTRANT -I/home/andrej/include conftest.c >/dev/null 2>conftest.out
+configure:2629: posix1_lim.h: No such file or directory
+configure: failed program was:
+#line 2628 "configure"
+#include "confdefs.h"
+#include <posix1_lim.h>
+configure:2663: checking for fcntl.h
+configure:2673: gcc -E -fpic -D_REENTRANT -I/home/andrej/include conftest.c >/dev/null 2>conftest.out
+configure:2663: checking for strings.h
+configure:2673: gcc -E -fpic -D_REENTRANT -I/home/andrej/include conftest.c >/dev/null 2>conftest.out
+configure:2663: checking for stdint.h
+configure:2673: gcc -E -fpic -D_REENTRANT -I/home/andrej/include conftest.c >/dev/null 2>conftest.out
+configure:2669: stdint.h: No such file or directory
+configure: failed program was:
+#line 2668 "configure"
+#include "confdefs.h"
+#include <stdint.h>
+configure:2701: checking for ANSI C header files
+configure:2714: gcc -E -fpic -D_REENTRANT -I/home/andrej/include conftest.c >/dev/null 2>conftest.out
+configure:2781: gcc -o conftest -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -L/home/andrej/lib conftest.c -lm  1>&5
+configure:2805: checking for pid_t
+configure:2838: checking for uid_t in sys/types.h
+configure:2872: checking for st_rdev in struct stat
+configure:2885: gcc -c -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include conftest.c 1>&5
+configure:2906: checking whether time.h and sys/time.h may both be included
+configure:2920: gcc -c -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include conftest.c 1>&5
+configure:2948: checking for '-rdynamic' linker option
+configure:2970: checking for '-Wall' option
+configure:2991: checking for '-pipe' option
+configure:3014: checking for rename
+configure:3042: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lm  1>&5
+configure:3014: checking for getrusage
+configure:3042: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lm  1>&5
+configure:3014: checking for getdtablesize
+configure:3042: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lm  1>&5
+configure:3014: checking for clock
+configure:3042: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lm  1>&5
+configure:3014: checking for srand48
+configure:3042: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lm  1>&5
+configure:3014: checking for bzero
+configure:3042: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lm  1>&5
+configure:3014: checking for sigaction
+configure:3042: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lm  1>&5
+configure:3069: checking for sigemptyset
+configure:3097: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lm  1>&5
+configure:3069: checking for strncasecmp
+configure:3097: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lm  1>&5
+configure:3069: checking for setpgid
+configure:3097: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lm  1>&5
+configure:3069: checking for uname
+configure:3097: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lm  1>&5
+configure:3069: checking for snprintf
+configure:3097: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lm  1>&5
+configure:3069: checking for vsnprintf
+configure:3097: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lm  1>&5
+configure:3124: checking for gethostname
+configure:3152: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lm  1>&5
+configure:3124: checking for getwd
+configure:3152: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lm  1>&5
+configure:3124: checking for strtol
+configure:3152: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lm  1>&5
+configure:3124: checking for pthread_kill_other_threads_np
+configure:3152: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lm  1>&5
+/tmp/ccdOksvv.o: In function `main':
+/home/andrej/src/foxeye/configure(.text+0x14): undefined reference to `pthread_kill_other_threads_np'
+configure: failed program was:
+#line 3129 "configure"
+#include "confdefs.h"
+/* System header to define __stub macros and hopefully few prototypes,
+    which can conflict with char pthread_kill_other_threads_np(); below.  */
+#include <assert.h>
+/* Override any gcc2 internal prototype to avoid an error.  */
+/* We use char because int might match the return type of a gcc2
+    builtin and then its argument prototype would still apply.  */
+char pthread_kill_other_threads_np();
+
+int main() {
+
+/* The GNU C library defines this for functions which it implements
+    to always fail with ENOSYS.  Some functions are actually named
+    something starting with __ and the normal name is an alias.  */
+#if defined (__stub_pthread_kill_other_threads_np) || defined (__stub___pthread_kill_other_threads_np)
+choke me
+#else
+pthread_kill_other_threads_np();
+#endif
+
+; return 0; }
+configure:3213: checking whether you need libcrypt
+configure:3230: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lm  1>&5
+configure: In function `main':
+configure:3225: warning: implicit declaration of function `crypt'
+configure:3225: warning: assignment makes pointer from integer without a cast
+/tmp/ccswAFoD.o: In function `main':
+/home/andrej/src/foxeye/configure(.text+0x25): undefined reference to `crypt'
+configure: failed program was:
+#line 3220 "configure"
+#include "confdefs.h"
+
+int main() {
+char *s;
+
+s = crypt ("passwd", "+key+salt");
+
+; return 0; }
+configure:3250: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+configure: In function `main':
+configure:3245: warning: implicit declaration of function `crypt'
+configure:3245: warning: assignment makes pointer from integer without a cast
+configure:3280: checking for strcasecmp
+configure:3308: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+configure:3342: checking for inttypes.h
+configure:3355: gcc -c -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include conftest.c 1>&5
+configure: In function `main':
+configure:3351: syntax error before `i'
+configure: failed program was:
+#line 3347 "configure"
+#include "confdefs.h"
+#include <sys/types.h>
+#include <inttypes.h>
+int main() {
+uintmax_t i = (uintmax_t) -1;
+; return 0; }
+configure:3377: checking for stdint.h
+configure:3390: gcc -c -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include conftest.c 1>&5
+configure:3384: stdint.h: No such file or directory
+configure: In function `main':
+configure:3386: syntax error before `i'
+configure: failed program was:
+#line 3382 "configure"
+#include "confdefs.h"
+#include <sys/types.h>
+#include <stdint.h>
+int main() {
+uintmax_t i = (uintmax_t) -1;
+; return 0; }
+configure:3412: checking for unsigned long long
+configure:3425: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+configure:3418: warning: ANSI C does not support `long long'
+configure: In function `main':
+configure:3420: warning: ANSI C does not support `long long'
+configure:3420: warning: ANSI C does not support `long long'
+configure:3463: checking for shared library run path origin
+configure:3506: checking for off_t
+configure:3539: checking for size_t
+configure:3574: checking for working alloca.h
+configure:3586: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+configure:3580: alloca.h: No such file or directory
+configure: In function `main':
+configure:3582: warning: unused variable `p'
+configure: failed program was:
+#line 3579 "configure"
+#include "confdefs.h"
+#include <alloca.h>
+int main() {
+char *p = alloca(2 * sizeof(int));
+; return 0; }
+configure:3607: checking for alloca
+configure:3640: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+configure: In function `main':
+configure:3636: warning: unused variable `p'
+configure:3809: checking for unistd.h
+configure:3848: checking for getpagesize
+configure:3876: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+configure:3901: checking for working mmap
+configure:4049: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+configure: In function `main':
+configure:3990: warning: implicit declaration of function `getpagesize'
+configure:3999: warning: implicit declaration of function `rand'
+configure:4000: warning: implicit declaration of function `umask'
+configure:4004: warning: implicit declaration of function `write'
+configure:4006: warning: implicit declaration of function `close'
+configure:4037: warning: implicit declaration of function `read'
+configure:4043: warning: implicit declaration of function `unlink'
+configure:4073: checking whether we are using the GNU C Library 2.1 or newer
+configure:4080: features.h: No such file or directory
+configure:4111: checking whether integer division by zero raises SIGFPE
+configure:4168: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+configure:4209: checking for inttypes.h
+configure:4223: gcc -c -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include conftest.c 1>&5
+configure:4248: checking whether the inttypes.h PRIxNN macros are broken
+configure:4265: gcc -c -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include conftest.c 1>&5
+configure:4676: checking for msgfmt
+configure:4711: checking for gmsgfmt
+configure:4748: checking for xgettext
+configure:4785: checking for msgmerge
+configure:4848: checking for argz.h
+configure:4858: gcc -E -fpic -D_REENTRANT -I/home/andrej/include conftest.c >/dev/null 2>conftest.out
+configure:4854: argz.h: No such file or directory
+configure: failed program was:
+#line 4853 "configure"
+#include "confdefs.h"
+#include <argz.h>
+configure:4848: checking for limits.h
+configure:4848: checking for locale.h
+configure:4858: gcc -E -fpic -D_REENTRANT -I/home/andrej/include conftest.c >/dev/null 2>conftest.out
+configure:4848: checking for nl_types.h
+configure:4858: gcc -E -fpic -D_REENTRANT -I/home/andrej/include conftest.c >/dev/null 2>conftest.out
+configure:4848: checking for malloc.h
+configure:4858: gcc -E -fpic -D_REENTRANT -I/home/andrej/include conftest.c >/dev/null 2>conftest.out
+In file included from configure:4854:
+/usr/include/malloc.h:2: warning: #warning "this file includes <malloc.h> which is deprecated, use <stdlib.h> instead"
+configure: failed program was:
+#line 4853 "configure"
+#include "confdefs.h"
+#include <malloc.h>
+configure:4848: checking for stddef.h
+configure:4858: gcc -E -fpic -D_REENTRANT -I/home/andrej/include conftest.c >/dev/null 2>conftest.out
+configure:4848: checking for stdlib.h
+configure:4858: gcc -E -fpic -D_REENTRANT -I/home/andrej/include conftest.c >/dev/null 2>conftest.out
+configure:4848: checking for string.h
+configure:4858: gcc -E -fpic -D_REENTRANT -I/home/andrej/include conftest.c >/dev/null 2>conftest.out
+configure:4848: checking for unistd.h
+configure:4848: checking for sys/param.h
+configure:4858: gcc -E -fpic -D_REENTRANT -I/home/andrej/include conftest.c >/dev/null 2>conftest.out
+configure:4889: checking for feof_unlocked
+configure:4917: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+/tmp/cc2iJFW8.o: In function `main':
+/home/andrej/src/foxeye/configure(.text+0x14): undefined reference to `feof_unlocked'
+configure: failed program was:
+#line 4894 "configure"
+#include "confdefs.h"
+/* System header to define __stub macros and hopefully few prototypes,
+    which can conflict with char feof_unlocked(); below.  */
+#include <assert.h>
+/* Override any gcc2 internal prototype to avoid an error.  */
+/* We use char because int might match the return type of a gcc2
+    builtin and then its argument prototype would still apply.  */
+char feof_unlocked();
+
+int main() {
+
+/* The GNU C library defines this for functions which it implements
+    to always fail with ENOSYS.  Some functions are actually named
+    something starting with __ and the normal name is an alias.  */
+#if defined (__stub_feof_unlocked) || defined (__stub___feof_unlocked)
+choke me
+#else
+feof_unlocked();
+#endif
+
+; return 0; }
+configure:4889: checking for fgets_unlocked
+configure:4917: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+/tmp/ccIoSg5M.o: In function `main':
+/home/andrej/src/foxeye/configure(.text+0x14): undefined reference to `fgets_unlocked'
+configure: failed program was:
+#line 4894 "configure"
+#include "confdefs.h"
+/* System header to define __stub macros and hopefully few prototypes,
+    which can conflict with char fgets_unlocked(); below.  */
+#include <assert.h>
+/* Override any gcc2 internal prototype to avoid an error.  */
+/* We use char because int might match the return type of a gcc2
+    builtin and then its argument prototype would still apply.  */
+char fgets_unlocked();
+
+int main() {
+
+/* The GNU C library defines this for functions which it implements
+    to always fail with ENOSYS.  Some functions are actually named
+    something starting with __ and the normal name is an alias.  */
+#if defined (__stub_fgets_unlocked) || defined (__stub___fgets_unlocked)
+choke me
+#else
+fgets_unlocked();
+#endif
+
+; return 0; }
+configure:4889: checking for getc_unlocked
+configure:4917: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+/tmp/ccxPKiOI.o: In function `main':
+/home/andrej/src/foxeye/configure(.text+0x14): undefined reference to `getc_unlocked'
+configure: failed program was:
+#line 4894 "configure"
+#include "confdefs.h"
+/* System header to define __stub macros and hopefully few prototypes,
+    which can conflict with char getc_unlocked(); below.  */
+#include <assert.h>
+/* Override any gcc2 internal prototype to avoid an error.  */
+/* We use char because int might match the return type of a gcc2
+    builtin and then its argument prototype would still apply.  */
+char getc_unlocked();
+
+int main() {
+
+/* The GNU C library defines this for functions which it implements
+    to always fail with ENOSYS.  Some functions are actually named
+    something starting with __ and the normal name is an alias.  */
+#if defined (__stub_getc_unlocked) || defined (__stub___getc_unlocked)
+choke me
+#else
+getc_unlocked();
+#endif
+
+; return 0; }
+configure:4889: checking for getcwd
+configure:4917: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+configure:4889: checking for getegid
+configure:4917: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+configure:4889: checking for geteuid
+configure:4917: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+configure:4889: checking for getgid
+configure:4917: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+configure:4889: checking for getuid
+configure:4917: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+configure:4889: checking for mempcpy
+configure:4917: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+/tmp/ccDBOUmd.o: In function `main':
+/home/andrej/src/foxeye/configure(.text+0x14): undefined reference to `mempcpy'
+configure: failed program was:
+#line 4894 "configure"
+#include "confdefs.h"
+/* System header to define __stub macros and hopefully few prototypes,
+    which can conflict with char mempcpy(); below.  */
+#include <assert.h>
+/* Override any gcc2 internal prototype to avoid an error.  */
+/* We use char because int might match the return type of a gcc2
+    builtin and then its argument prototype would still apply.  */
+char mempcpy();
+
+int main() {
+
+/* The GNU C library defines this for functions which it implements
+    to always fail with ENOSYS.  Some functions are actually named
+    something starting with __ and the normal name is an alias.  */
+#if defined (__stub_mempcpy) || defined (__stub___mempcpy)
+choke me
+#else
+mempcpy();
+#endif
+
+; return 0; }
+configure:4889: checking for munmap
+configure:4917: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+configure:4889: checking for putenv
+configure:4917: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+configure:4889: checking for setenv
+configure:4917: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+configure:4889: checking for setlocale
+configure:4917: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+configure:4889: checking for stpcpy
+configure:4917: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+/tmp/ccqZAyGi.o: In function `main':
+/home/andrej/src/foxeye/configure(.text+0x14): undefined reference to `stpcpy'
+configure: failed program was:
+#line 4894 "configure"
+#include "confdefs.h"
+/* System header to define __stub macros and hopefully few prototypes,
+    which can conflict with char stpcpy(); below.  */
+#include <assert.h>
+/* Override any gcc2 internal prototype to avoid an error.  */
+/* We use char because int might match the return type of a gcc2
+    builtin and then its argument prototype would still apply.  */
+char stpcpy();
+
+int main() {
+
+/* The GNU C library defines this for functions which it implements
+    to always fail with ENOSYS.  Some functions are actually named
+    something starting with __ and the normal name is an alias.  */
+#if defined (__stub_stpcpy) || defined (__stub___stpcpy)
+choke me
+#else
+stpcpy();
+#endif
+
+; return 0; }
+configure:4889: checking for strcasecmp
+configure:4889: checking for strdup
+configure:4917: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+configure:4889: checking for strtoul
+configure:4917: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+configure:4889: checking for tsearch
+configure:4917: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+configure:4889: checking for __argz_count
+configure:4917: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+/tmp/ccNsfXTC.o: In function `main':
+/home/andrej/src/foxeye/configure(.text+0x14): undefined reference to `__argz_count'
+configure: failed program was:
+#line 4894 "configure"
+#include "confdefs.h"
+/* System header to define __stub macros and hopefully few prototypes,
+    which can conflict with char __argz_count(); below.  */
+#include <assert.h>
+/* Override any gcc2 internal prototype to avoid an error.  */
+/* We use char because int might match the return type of a gcc2
+    builtin and then its argument prototype would still apply.  */
+char __argz_count();
+
+int main() {
+
+/* The GNU C library defines this for functions which it implements
+    to always fail with ENOSYS.  Some functions are actually named
+    something starting with __ and the normal name is an alias.  */
+#if defined (__stub___argz_count) || defined (__stub_____argz_count)
+choke me
+#else
+__argz_count();
+#endif
+
+; return 0; }
+configure:4889: checking for __argz_stringify
+configure:4917: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+/tmp/cc649e1c.o: In function `main':
+/home/andrej/src/foxeye/configure(.text+0x14): undefined reference to `__argz_stringify'
+configure: failed program was:
+#line 4894 "configure"
+#include "confdefs.h"
+/* System header to define __stub macros and hopefully few prototypes,
+    which can conflict with char __argz_stringify(); below.  */
+#include <assert.h>
+/* Override any gcc2 internal prototype to avoid an error.  */
+/* We use char because int might match the return type of a gcc2
+    builtin and then its argument prototype would still apply.  */
+char __argz_stringify();
+
+int main() {
+
+/* The GNU C library defines this for functions which it implements
+    to always fail with ENOSYS.  Some functions are actually named
+    something starting with __ and the normal name is an alias.  */
+#if defined (__stub___argz_stringify) || defined (__stub_____argz_stringify)
+choke me
+#else
+__argz_stringify();
+#endif
+
+; return 0; }
+configure:4889: checking for __argz_next
+configure:4917: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+/tmp/ccKXUe68.o: In function `main':
+/home/andrej/src/foxeye/configure(.text+0x14): undefined reference to `__argz_next'
+configure: failed program was:
+#line 4894 "configure"
+#include "confdefs.h"
+/* System header to define __stub macros and hopefully few prototypes,
+    which can conflict with char __argz_next(); below.  */
+#include <assert.h>
+/* Override any gcc2 internal prototype to avoid an error.  */
+/* We use char because int might match the return type of a gcc2
+    builtin and then its argument prototype would still apply.  */
+char __argz_next();
+
+int main() {
+
+/* The GNU C library defines this for functions which it implements
+    to always fail with ENOSYS.  Some functions are actually named
+    something starting with __ and the normal name is an alias.  */
+#if defined (__stub___argz_next) || defined (__stub_____argz_next)
+choke me
+#else
+__argz_next();
+#endif
+
+; return 0; }
+configure:4973: checking for iconv
+configure:4991: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+configure:4983: iconv.h: No such file or directory
+configure: In function `main':
+configure:4985: syntax error before `cd'
+configure:4986: warning: implicit declaration of function `iconv'
+configure:4986: `cd' undeclared (first use in this function)
+configure:4986: (Each undeclared identifier is reported only once
+configure:4986: for each function it appears in.)
+configure:4987: warning: implicit declaration of function `iconv_close'
+configure: failed program was:
+#line 4981 "configure"
+#include "confdefs.h"
+#include <stdlib.h>
+#include <iconv.h>
+int main() {
+iconv_t cd = iconv_open("","");
+       iconv(cd,NULL,NULL,NULL,NULL);
+       iconv_close(cd);
+; return 0; }
+configure:5013: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  -liconv 1>&5
+configure:5005: iconv.h: No such file or directory
+configure: In function `main':
+configure:5007: syntax error before `cd'
+configure:5008: warning: implicit declaration of function `iconv'
+configure:5008: `cd' undeclared (first use in this function)
+configure:5008: (Each undeclared identifier is reported only once
+configure:5008: for each function it appears in.)
+configure:5009: warning: implicit declaration of function `iconv_close'
+configure: failed program was:
+#line 5003 "configure"
+#include "confdefs.h"
+#include <stdlib.h>
+#include <iconv.h>
+int main() {
+iconv_t cd = iconv_open("","");
+         iconv(cd,NULL,NULL,NULL,NULL);
+         iconv_close(cd);
+; return 0; }
+configure:5097: checking for nl_langinfo and CODESET
+configure:5109: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+configure: In function `main':
+configure:5105: warning: unused variable `cs'
+configure:5133: checking for LC_MESSAGES
+configure:5145: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+configure:5172: checking for bison
+configure:5205: checking version of bison
+configure:5234: checking whether NLS is requested
+configure:5258: checking whether included gettext is requested
+configure:5278: checking for GNU gettext in libc
+configure:5293: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  1>&5
+/tmp/ccqEUzbd.o: In function `main':
+/home/andrej/src/foxeye/configure(.text+0x20): undefined reference to `bindtextdomain'
+/home/andrej/src/foxeye/configure(.text+0x29): undefined reference to `gettext'
+/home/andrej/src/foxeye/configure(.text+0x31): undefined reference to `_nl_msg_cat_cntr'
+/home/andrej/src/foxeye/configure(.text+0x39): undefined reference to `_nl_domain_bindings'
+configure: failed program was:
+#line 5283 "configure"
+#include "confdefs.h"
+#include <libintl.h>
+extern int _nl_msg_cat_cntr;
+extern int *_nl_domain_bindings;
+int main() {
+bindtextdomain ("", "");
+return (int) gettext ("") + _nl_msg_cat_cntr + *_nl_domain_bindings
+; return 0; }
+configure:5688: checking for GNU gettext in libintl
+configure:5711: gcc -o conftest -pipe -Wall -pthread -pedantic -g -O2 -fpic -D_REENTRANT -I/home/andrej/include  -rdynamic -L/home/andrej/lib conftest.c -lcrypt -lm  -lintl 1>&5
+configure:5804: checking how to link with libintl
+configure:5878: checking for long file names
