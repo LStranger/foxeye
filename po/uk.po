@@ -1,0 +1,586 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR Free Software Foundation, Inc.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"POT-Creation-Date: 2002-08-16 01:05+0300\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: ENCODING\n"
+
+#. notify the botnet!
+#: core/dcc.c:108
+msgid "joined this botnet channel."
+msgstr ""
+
+#: core/dcc.c:151
+#, c-format
+msgid "quit botnet: %s"
+msgstr ""
+
+#: core/dcc.c:152
+msgid "no reason."
+msgstr ""
+
+#: core/dcc.c:154
+msgid "left this botnet channel."
+msgstr ""
+
+#: core/dcc.c:386 core/dcc.c:607
+msgid "connection lost"
+msgstr ""
+
+#: core/dcc.c:393
+msgid "OOPS! No such user"
+msgstr ""
+
+#: core/dcc.c:397
+msgid "user has no password yet"
+msgstr ""
+
+#: core/dcc.c:403
+msgid "authentication failed"
+msgstr ""
+
+#: core/dcc.c:437 core/dcc.c:1132
+#, c-format
+msgid "Logged in: %s."
+msgstr ""
+
+#: core/dcc.c:443
+msgid "no filesystem"
+msgstr ""
+
+#: core/dcc.c:529
+msgid "Connected bots:\n"
+msgstr ""
+
+#: core/dcc.c:540
+msgid "Other people on the bot or on the botnet:\n"
+msgstr ""
+
+#: core/dcc.c:821
+#, c-format
+msgid "Nothing appropriated to: %s"
+msgstr ""
+
+#: core/dcc.c:830 core/dcc.c:2269
+msgid "Usage: "
+msgstr ""
+
+#: core/dcc.c:1033
+#, c-format
+msgid "Listening socket on port %s terminated."
+msgstr ""
+
+#: core/dcc.c:1035
+#, c-format
+msgid "DCC GET %s from %s terminated."
+msgstr ""
+
+#: core/dcc.c:1116
+msgid "cannot create socket"
+msgstr ""
+
+#. print error message
+#: core/dcc.c:1162
+msgid "Listening socket died."
+msgstr ""
+
+#: core/dcc.c:1211
+msgid "((unknown))"
+msgstr ""
+
+#: core/dcc.c:1220 core/dcc.c:1257
+#, c-format
+msgid "Connection from %s dropped: not allowed."
+msgstr ""
+
+#: core/dcc.c:1236
+#, c-format
+msgid "Connection from %s lost while logging in."
+msgstr ""
+
+#. test if we can download
+#: core/dcc.c:1315
+#, c-format
+msgid "Get file \"%s\" from %s"
+msgstr ""
+
+#: core/dcc.c:1375
+#, c-format
+msgid "Resume file \"%s\""
+msgstr ""
+
+#: core/dcc.c:1381
+#, c-format
+msgid "Overwrite existing file \"%s\""
+msgstr ""
+
+#: core/dcc.c:1435
+#, c-format
+msgid "DCC GET aborted: couldn't open \"%s\"."
+msgstr ""
+
+#: core/dcc.c:1438
+#, c-format
+msgid "DCC GET aborted: couldn't create connection to %s:%hu."
+msgstr ""
+
+#. check if error has happened
+#. file is more long than declared
+#: core/dcc.c:1522
+#, c-format
+msgid "Got file \"%s\" from %s: %lu bytes instead of %lu."
+msgstr ""
+
+#. incomplete file!
+#: core/dcc.c:1525
+#, c-format
+msgid "Got incomplete file \"%s\" from %s: %lu/%lu bytes."
+msgstr ""
+
+#: core/dcc.c:1627
+#, c-format
+msgid "DCC send connection granted to %s on port %hu."
+msgstr ""
+
+#: core/dcc.c:1699
+#, c-format
+msgid "DCC send connection to %s on port %hu closed."
+msgstr ""
+
+#. send notice to current server
+#: core/dcc.c:1802
+msgid "Sorry, my limit of DCC is exhausted. Try later, please."
+msgstr ""
+
+#: core/dcc.c:1814
+msgid "I'm sorry, no duplicate connections allowed."
+msgstr ""
+
+#: core/dcc.c:1815
+msgid "DCC CHAT: Duplicate connection attempt."
+msgstr ""
+
+#. TODO: have to do anything if chat request and UI exist?
+#: core/dcc.c:1823
+msgid "DCC CHAT: Don't permitted."
+msgstr ""
+
+#: core/dcc.c:1829
+msgid "DCC: Cannot create thread!"
+msgstr ""
+
+#: core/dcc.c:1875
+#, c-format
+msgid "Now: %s"
+msgstr ""
+
+#: core/dcc.c:1890
+#, c-format
+msgid "now away: %s"
+msgstr ""
+
+#: core/dcc.c:1927
+msgid "returned to life."
+msgstr ""
+
+#: core/dcc.c:1947
+msgid "No such person at the botnet!"
+msgstr ""
+
+#: core/dcc.c:1949
+msgid "Cannot boot the bot owner!"
+msgstr ""
+
+#: core/dcc.c:1951
+msgid "You not permitted to boot a bot master!"
+msgstr ""
+
+#: core/dcc.c:1953
+msgid "I don't know how to boot it!"
+msgstr ""
+
+#: core/dcc.c:1959
+#, c-format
+msgid "%s booted by %s@%s."
+msgstr ""
+
+#: core/dcc.c:2153
+msgid "messages"
+msgstr ""
+
+#: core/dcc.c:2156
+msgid "commands"
+msgstr ""
+
+#: core/dcc.c:2159
+msgid "connections/shares"
+msgstr ""
+
+#: core/dcc.c:2162
+msgid "server messages"
+msgstr ""
+
+#: core/dcc.c:2165
+msgid "wallops"
+msgstr ""
+
+#: core/dcc.c:2168
+msgid "transfer"
+msgstr ""
+
+#: core/dcc.c:2171
+msgid "userfile changes"
+msgstr ""
+
+#: core/dcc.c:2174
+msgid "debug"
+msgstr ""
+
+#: core/dcc.c:2177
+msgid "other crap"
+msgstr ""
+
+#: core/dcc.c:2180
+msgid "public"
+msgstr ""
+
+#: core/dcc.c:2183
+msgid "joins/parts"
+msgstr ""
+
+#: core/dcc.c:2186
+msgid "mode changes"
+msgstr ""
+
+#: core/dcc.c:2203 core/dcc.c:2207
+msgid "Your console logs"
+msgstr ""
+
+#: core/dcc.c:2204
+msgid ", and "
+msgstr ""
+
+#: core/dcc.c:2205
+msgid "on the channel"
+msgstr ""
+
+#: core/dcc.c:2325
+msgid "No such user on DCC now"
+msgstr ""
+
+#: core/dcc.c:2355
+#, c-format
+msgid "%s has no password yet"
+msgstr ""
+
+#: core/dcc.c:2393
+msgid "Users on this channel:"
+msgstr ""
+
+#: core/dcc.c:2740
+#, c-format
+msgid "Cannot open listening port on %hu%s!"
+msgstr ""
+
+#: core/dcc.c:2741 core/dcc.c:2748
+msgid " for bots"
+msgstr ""
+
+#: core/dcc.c:2747
+#, c-format
+msgid "Listening on port %s%s."
+msgstr ""
+
+#: core/dcc.c:2760
+msgid "Cannot get hostname!"
+msgstr ""
+
+#: core/dcc.c:2764
+msgid "Cannot resolve own IP!"
+msgstr ""
+
+#: core/dispatcher.c:786
+msgid "kill PID file"
+msgstr ""
+
+#: core/dispatcher.c:791
+msgid "The bot already running!\n"
+msgstr ""
+
+#: core/dispatcher.c:802
+msgid "init dispatcher"
+msgstr ""
+
+#: core/dispatcher.c:881
+msgid "Cannot run without a nick!"
+msgstr ""
+
+#: core/dispatcher.c:889
+msgid "Cannot write a PID file!"
+msgstr ""
+
+#: core/formats.default:23
+msgid "DCC connection to %L lost."
+msgstr ""
+
+#: core/formats.default:24
+msgid "DCC chat to %L closed: %*."
+msgstr ""
+
+#: core/formats.default:25
+msgid "DCC get \"%*\" with %N established."
+msgstr ""
+
+#: core/formats.default:26
+msgid "Get file \"%*\" from %N completed."
+msgstr ""
+
+#: core/formats.default:27
+msgid "Input connection from %@:%P, ident %*."
+msgstr ""
+
+#: core/help.c:263
+msgid "No help on this."
+msgstr ""
+
+#. mode dependent message?
+#: core/help.c:341
+#, c-format
+msgid "Available topics for \"help%s%s\":"
+msgstr ""
+
+#: core/init.c:397
+#, c-format
+msgid "%s (y/n)?[%c] "
+msgstr ""
+
+#: core/init.c:1144
+#, c-format
+msgid "Current value of %s: %ld"
+msgstr ""
+
+#: core/init.c:1147
+#, c-format
+msgid "Current value of %s: %s%s"
+msgstr ""
+
+#: core/init.c:1151
+#, c-format
+msgid "Current value of %s: %s"
+msgstr ""
+
+#: core/init.c:1163
+msgid "List of variables:"
+msgstr ""
+
+#: core/init.c:1209
+#, c-format
+msgid "Current format %s: %s"
+msgstr ""
+
+#: core/init.c:1220
+msgid "List of formats:"
+msgstr ""
+
+#: core/init.c:1257
+msgid ""
+"Universal network client %V.\n"
+"Operating system %s, hostname %@, started %*."
+msgstr ""
+
+#: core/init.c:1294
+msgid "case-sensitive "
+msgstr ""
+
+#: core/init.c:1297
+msgid "full match     "
+msgstr ""
+
+#: core/init.c:1300
+msgid "mask match     "
+msgstr ""
+
+#: core/init.c:1303
+msgid "first key only "
+msgstr ""
+
+#: core/init.c:1306
+msgid "first mask only"
+msgstr ""
+
+#: core/init.c:1350
+#, c-format
+msgid "  Bindtable %s:"
+msgstr ""
+
+#: core/init.c:1375
+msgid "Success"
+msgstr ""
+
+#: core/init.c:1377
+msgid "Fail"
+msgstr ""
+
+#: core/init.c:1410
+#, c-format
+msgid "Killed by %s%c %s"
+msgstr ""
+
+#: core/init.c:1533
+msgid "Invalid configuration file!"
+msgstr ""
+
+#: core/init.c:1548
+msgid "Cannot create configuration file."
+msgstr ""
+
+#: core/lib.c:31
+msgid "Out of memory!"
+msgstr ""
+
+#: core/main.c:362
+msgid ""
+"Usage:\tfoxeye [-n nick] [-cdmt] <file>\t\t- normal run\n"
+"\tfoxeye -cr [-n nick] [-dm] [-g <file>]\t- run with defaults\n"
+"\tfoxeye -[h|v]\t\t\t\t- print info and return\n"
+"\n"
+"options:\n"
+"  -c\t\tdon't detach console (chat simulation mode)\n"
+"  -d\t\tincrease a debug level by one\n"
+"  -g <file>\tgenerate a config file\n"
+"  -h\t\tthis help message\n"
+"  -m\t\tmake an empty user and channel files\n"
+"  -n <nick>\tset default nick\n"
+"  -r\t\treset parameters (don't use the config file statements)\n"
+"  -t\t\ttest the configuration and exit\n"
+"  -v\t\tversion information\n"
+"   <file>\tconfig file name\n"
+msgstr ""
+
+#: core/main.c:387
+#, c-format
+msgid ""
+"Copiright (C) 1999-2002 Andriy Gritsenko.\n"
+"\n"
+"System: %s %s on %s.\n"
+msgstr ""
+
+#: core/main.c:472
+msgid "Incorrect options. Type 'foxeye -h' for more help.\n"
+msgstr ""
+
+#: core/users.c:181
+#, c-format
+msgid "Added hostmask %s for name %s."
+msgstr ""
+
+#: core/users.c:206
+#, c-format
+msgid "Deleted hostmask %s from name %s."
+msgstr ""
+
+#: core/users.c:467
+#, c-format
+msgid "Added name %s with flag(s) %s."
+msgstr ""
+
+#: core/users.c:470
+#, c-format
+msgid "Added name %s."
+msgstr ""
+
+#: core/users.c:491
+#, c-format
+msgid "Added alias %s for %s."
+msgstr ""
+
+#: core/users.c:510 core/users.c:1741
+#, c-format
+msgid "Deleted name %s."
+msgstr ""
+
+#: core/users.c:1387
+#, c-format
+msgid "No user with login name %s found."
+msgstr ""
+
+#: core/users.c:1517 core/users.c:1530 core/users.c:1619 core/users.c:1633
+msgid "owner"
+msgstr ""
+
+#: core/users.c:1519 core/users.c:1532 core/users.c:1621 core/users.c:1635
+msgid "master"
+msgstr ""
+
+#: core/users.c:1521 core/users.c:1534 core/users.c:1623 core/users.c:1637
+msgid "botnet master"
+msgstr ""
+
+#: core/users.c:1523 core/users.c:1536 core/users.c:1625 core/users.c:1639
+msgid "operator"
+msgstr ""
+
+#: core/users.c:1528
+#, c-format
+msgid "OOPS, you are not %s anymore..."
+msgstr ""
+
+#: core/users.c:1541
+#, c-format
+msgid "WOW, you are %s now..."
+msgstr ""
+
+#: core/users.c:1544
+#, c-format
+msgid "Global attributes for %s are now: %s."
+msgstr ""
+
+#: core/users.c:1564
+#, c-format
+msgid "No such channel '%s'."
+msgstr ""
+
+#: core/users.c:1572
+msgid "You set no default channel yet."
+msgstr ""
+
+#: core/users.c:1630
+#, c-format
+msgid "OOPS, you are not %s on %s anymore..."
+msgstr ""
+
+#: core/users.c:1644
+#, c-format
+msgid "WOW, you are %s on %s now..."
+msgstr ""
+
+#: core/users.c:1647
+#, c-format
+msgid "Channel attributes for %s on %s are now: %s."
+msgstr ""
+
+#: core/users.c:1725
+msgid "Cannot add user, one may be already exists."
+msgstr ""
+
+#: core/users.c:1821
+#, c-format
+msgid "Password for %s erased."
+msgstr ""
+
+#: core/users.c:1859 core/users.c:1882
+msgid "Cannot load userfile!"
+msgstr ""
+
+#: core/users.c:1866
+msgid "Cannot save userfile!"
+msgstr ""
