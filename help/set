@@ -1,0 +1,56 @@
+# main variables of FoxEye
+
+# first section is usage
+# second section is that config maker will put into config
+# third section is full help
+
+set nick
+:%* <string>
+:Name of bot to use on the botnet.
+:This is a name of bot to use on the botnet.  Also it is default nickname\
+ for connection to servers.
+
+set locale
+:%* <locale name>
+:Locale name for messages and case conversions
+:This variable changes your preferred language for messages, help files\
+ and case (upper<->lower) conversions.  Affects only [re]boot.
+
+set charset
+:%* <charset>
+:Charset name for current %ilocale%i
+:This variable changes character set name for any character conversions:\
+ server, dcc recodings, scripting languages (such as Tcl), etc.
+
+set listfile
+:%* <path>
+:Filename for main bot Listfile
+:Listfile has all info about users, passwords, servers, channels, etc.  This\
+ variable points to the file which has such info.
+
+set wtmpfile
+:%* <path>
+:Filename for bot statistics
+:Wtmpfile has info about all events - logins, joins, parts, requests, any\
+ statistics.  This variable points to the file which collects such data.
+
+set wtmps
+:%* <number>
+:Number of Wtmp files to keep.
+:This variable defines number of Wtmp files to keep when rotating.  Each\
+ Wtmp file can contain data for one month so this defines how much\
+ statistics you want to have.  Set that to 0 says keep only current\
+ month data.
+
+set my-hostname
+:%* <string>
+:Network DNS name used to identify itself on servers
+:If your machine has multiple hostnames and you would like the bot to use\
+ a particular one, set this variable to identify itself on servers, etc.
+
+set incoming-path
+:%* <path>
+:Path for uploading files
+:This variable specifies the directory where uploaded files will be put.  It\
+ used also by users sharing for temporary files.  If unset then you cannot\
+ download any files.
