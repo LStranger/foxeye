@@ -1,0 +1,90 @@
+#
+# Makefile for base modules directory for recursive compilation.
+#
+# This file is part of FoxEye distribution.
+# Copiright (C) 1999-2001 Andrej Gritsenko <andrej@rep.kiev.ua>
+
+SHELL = @SHELL@
+
+LD_MODS = @LD_MODS@
+
+srcdir = @srcdir@
+top_srcdir = @top_srcdir@
+top_builddir = ..
+
+DISTFILES = Makefile.in Makefile.mods.in
+
+AUTOMAKE = @AUTOMAKE@
+
+all: static
+
+clean:
+	@for x in */; do $(MAKE) -C $$x -f ../Makefile.mods clean ;done
+	rm -f *.o core *~ ${top_srcdir}/core/static.h
+
+distclean: clean
+	rm -f Makefile Makefile.mods
+
+modules install install-strip uninstall:
+	@if test "x$(LD_MODS)" = "x"; then \
+	set fnord $(MAKEFLAGS); amf=$$2; \
+	for subdir in */; do \
+	    test "$$subdir" = "CVS/" && continue; \
+	    target='$@'; \
+	    echo "Making $$target in $$subdir"; \
+	    $(MAKE) -C $$subdir -f ../Makefile.mods $$target \
+		|| case "$$amf" in *=*) exit 1;; *k*) fail=yes;; *) exit 1;; esac; \
+	done && test -z "$$fail"; fi
+
+static: @EXTRA_HDR@
+	@set fnord $(MAKEFLAGS); amf=$$2; \
+	for subdir in */; do \
+	    test "$$subdir" = "CVS/" && continue; \
+	    echo "Making all in $$subdir"; \
+	    $(MAKE) -C $$subdir -f ../Makefile.mods all \
+		|| case "$$amf" in *=*) exit 1;; *k*) fail=yes;; *) exit 1;; esac; \
+	done && test -z "$$fail"
+
+Makefile: $(srcdir)/Makefile.in  $(top_builddir)/config.status $(BUILT_SOURCES)
+	cd $(top_builddir) \
+	    && CONFIG_FILES=$(subdir)/$@ CONFIG_HEADERS= $(SHELL) ./config.status
+
+Makefile.mods: $(srcdir)/Makefile.mods.in  $(top_builddir)/config.status $(BUILT_SOURCES)
+	cd $(top_builddir) \
+	    && CONFIG_FILES=$(subdir)/$@ CONFIG_HEADERS= $(SHELL) ./config.status
+
+subdir = modules
+
+dist distdir: Makefile Makefile.mods
+	@for subdir in */; do \
+	    test "$$subdir" = "CVS/" \
+	    || $(MAKE) -C $$subdir -f ../Makefile.mods distdir; \
+	done
+	@dists="$(DISTFILES)"; \
+	for file in $$dists; do \
+	    ln $(srcdir)/$$file $(distdir) 2> /dev/null \
+	    || cp -p $(srcdir)/$$file $(distdir); \
+	done
+
+${top_srcdir}/core/static.h:
+	@(echo "/* Generated file. Do not edit! */"; \
+	    echo ""; \
+	    echo "#ifndef _MODULES_C"; \
+	    echo "#define ModuleInitFunc(a) Function modinit_ ## a (char *);"; \
+	    echo "#else"; \
+	    echo "#undef ModuleInitFunc"; \
+	    echo "#define ModuleInitFunc(a) { #a, modinit_ ## a },"; \
+	    echo "struct modtable {"; \
+	    echo " char *name;"; \
+	    echo " Function (*func) (char *);"; \
+	    echo "};"; \
+	    echo "struct modtable ModulesTable[] = {"; \
+	    echo "#endif") >$@
+	@for subdir in */; do \
+	    test "$$subdir" = "CVS/" \
+	    || echo "ModuleInitFunc (`echo $$subdir | sed 's/\///' | sed 's/-/_/'`)" >>$@; \
+	done
+	@(echo "#ifdef _MODULES_C"; \
+	    echo "{ NULL }"; \
+	    echo "};"; \
+	    echo "#endif") >>$@
