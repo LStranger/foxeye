@@ -1,0 +1,9 @@
+# List of source files containing translatable strings.
+core/dcc.c
+core/dispatcher.c
+core/formats.default
+core/help.c
+core/init.c
+core/lib.c
+core/main.c
+core/users.c
