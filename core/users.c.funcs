@@ -1,0 +1,54 @@
+// internals
+static char *userflagtostr		-
+static userflag strtouserflag		-
+static int _addhost			-
+static void _delhost			-
+static USERRECORD *_findbylname		-
+static USERRECORD *_findthebest		-
+static int _add_usermask		-
+static int _del_usermask		-
+static lid_t __addlid			-
+static void __dellid			-
+static void _del_lid			ChangeUid()
+static int usernick_valid		-
+static int channame_valid		-
+static USERRECORD *_add_userrecord	FLock,ChangeUid()
+static void _delete_userrecord		FLock,-UserFileLock,ChangeUid()
+static void _add_aliases		FLock,ChangeUid()
+static void _del_aliases		FLock,ChangeUid()
+static USERRECORD *_findbymask		-
+lid_t _get_index			FLock
+static user_chr *_add_channel		-
+static char *_next_field		-
+static int _load_userfile		UserFileLock[FLock,ChangeUid(),user]
+static int _write_userfile		-
+static int _save_userfile		UserFileLock[user]
+static iface_t userfile_signal		(UserFileLock[user])
+static int dc_chattr			UserFileLock[+user,me],-user
+static int dc__phost			UserFileLock
+static int dc__mhost			UserFileLock
+static int dc__puser			UserFileLock[FLock,ChangeUid()]
+static int dc__muser			UserFileLock[FLock],ChangeUid()
+static int user_chpass			-
+static int dc_passwd			UserFileLock[+user],-user
+static int dc_chpass			UserFileLock[+user],-user
+static int dc_nick			UserFileLock[FLock]
+static int dc_chnick			UserFileLock[FLock]
+static int dc_reload			UserFileLock[FLock,ChangeUid(),user]
+static int dc_save			UserFileLock[user]
+// public
+int Add_Userrecord			UserFileLock[FLock,ChangeUid()]
+int Add_Alias				UserFileLock[FLock,ChangeUid()]
+void Delete_Userrecord			UserFileLock[FLock],ChangeUid()
+int Add_Usermask			UserFileLock
+void Delete_Usermask			UserFileLock
+int Change_Lname			UserFileLock[FLock]
+lid_t GetLID				FLock
+void *Find_User				-user;UserFileLock[+user]
+void *Lock_User				UserFileLock[FLock,+user]
+void Unlock_User			-user
+char *Get_Userfield			-
+int Set_Userfield			FLock
+userflag Match_User			UserFileLock[user]
+userflag Get_ChanFlags			UserFileLock[+user],-user
+char *IFInit_Users			UserFileLock[user],FLock,ChangeUid(),UserFileLock[FLock,ChangeUid(),user]
