@@ -1,0 +1,62 @@
+Each help and motd file contains number of strings, describes help topics.
+
+Each line identified by its first character (not for motd file!):
+"#"	this line is comment.
+" "	this line just continues previous.
+":"	this line is help - first line after topic is usage,
+		second line is short help (for generated config and msg help)
+		third line is full help (for dcc help)
+<any>	this line is help topic (one or two words)
+
+Helps can contain the macros prepends with % (percent):
+"*"	arguments (help topic)
+"X"	start color foreground, where X:
+	k   black
+	b   blue
+	g   green
+	c   cyan
+	r   red
+	m   magenta
+	y   brown
+	w   white
+	K   grey
+	B   bright blue
+	G   bright green
+	C   bright cyan
+	R   bright red
+	M   bright magenta
+	Y   yellow
+	W   bright white
+"n"	start normal color
+"^"	start/stop bold
+"_"	start/stop understriking
+"v"	start/stop inverse
+"f"	start/stop flashing (blinking)
+"t"	the current time
+"="	the bot nickname (or botnetnick)
+"s"	operating system name
+"%"	percent as is
+"N"	the user nickname (help only)
+"L"	the user login name (motd only)
+"@"	the user hostname (motd only)
+
+these macros are present in printl() but aren't used by help/motd:
+"#"	channel (or comma separated channels list)
+"I"	the user's IP
+"P"	the port of connection
+
+conditional macro:
+"%?C<if>?<else>?
+
+	if C isn't empty then print <if> sequence else print <else> sequence.
+	C may be:
+		H	user's nickname
+		@	user's hostname
+		L	user's login name
+		#	channel(s)
+		I	user's IP
+		P	port
+		*	extra arguments
+
+"\" at end of line joins current line with next one with a space char, extra
+spaces (and tabs) will be removed.
