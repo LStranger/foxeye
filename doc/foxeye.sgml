@@ -1,0 +1,70 @@
+<!doctype linuxdoc system>
+
+<manpage title="FoxEye" sectnum="1 &#34;&#34; &#34;&#34; &#34;FoxEye manual&#34;">
+<sect1>NAME
+.PD 0
+FoxEye - the universal network client.
+<sect1>SYNOPSIS
+.PD 1
+<p><list>
+<item><bf/foxeye/
+ &#91;-n <it/nick/&#93; &#91;-cdmt&#93; <it/file/
+<item><bf/foxeye/ -cr &#91;-n <it/nick/&#93; &#91;-dm&#93; &#91;-g <it/file/&#93;
+<item><bf/foxeye/ -&#91;h&#124;v&#93;
+</list>
+<sect1>DESCRIPTION
+.PD 0
+FoxEye was created first as a IRC (Internet Relay Chat) network bot - the
+network daemon which controls functionality and protection of IRC channels.
+It enters to IRC network as user, joins the channel and tries don't leave
+it until crash or terminate.  But now it is multipurpose modularised client
+for networks: IRC, ICQ, etc.
+<sect1>OPTIONS
+.PD 1
+Runs the bot with config file <it/file/ until <bf/-r/ option present.
+.TP 10
+<bf/-c/
+Don't detach console (chat simulation mode).
+.TP
+<bf/-d/
+Increase a debug log level by one (maximum debug level is 5).
+.TP
+<bf/-g/ <it/file/
+Generate new config file <it/file/
+.TP
+<bf/-h/
+Display help message and exit.
+.TP
+<bf/-m/
+Make an empty listfile.
+.TP
+<bf/-n/ <it/nick/
+Set default nick to <it/nick/
+.TP
+<bf/-r/
+Reset parameters (don't use the config file statements).
+.TP
+<bf/-t/
+Test the configuration and exit.
+.TP
+<bf/-v/
+Display version information and exit.
+.PD 0
+<sect1>FILES
+<sect1>NO WARRANTIES
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+<sect1>SEE ALSO
+.PD 1
+<p><list>
+<item><bf/ircd/(8)
+<item>RFC2810, RFC2811, RFC2812, RFC2813.
+<item>The GNU General Public License.
+</list>
+<sect1>AUTHORS
+.PD 0
+Andriy Gritsenko.
+<sect1>BUGS
+</manpage>
