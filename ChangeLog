@@ -1,0 +1,66 @@
+Sat Oct 19 2002 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/socket.c: fixed raw socket mode.
+	* core/dcc.*: cleaned up chat/telnet handlers.
+
+Tue Oct 15 2002 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/dcc.*, core/foxeye.h, core/users.c:
+	  revised file service mentions in core and access levels.
+
+Fri Aug 16 2002 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/dcc.c, core/dispatcher.c, core/help.c, core/init.c, core/modules.c, core/users.c, core/wtmp.c:
+	  checked logging.
+	* doc/help.format, core/dcc.c, core/init.h.in:
+	  removed "botnetnick" variable (for multiserver capability).
+
+Sat May 25 2002 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/dcc.c, core/init.*, core/dispatcher.c, core/wtmp.c, core/lib.c:
+	  improved functionality and fixed some holes.
+	* core/users.c, core/Makefile*: hashes replaced by tree-hashes.
+	* core/modules.c: made modules control.
+
+Fri Apr  5 2002 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/sheduler.*: made sheduler interface.
+
+Wed Apr  3 2002 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/tcl, core/init.h.in: corrected charsets support.
+
+Mon Mar 11 2002 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/lib.c, core/formats.default, core/init.*, core/protos.h, core/help.c, core/dcc.c:
+	  implemented formats support.
+	* core/init.*, core/foxeye.h: added last resort for B_UNIQ.
+	* core/*: killed by bad automake, will be redone later... :(((
+
+Sat Mar  2 2002 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* tree/tree.c, tree/tree.h: simple Tree-Hash library has finished.
+	* modules/*: revised modules list.
+
+Sat Sep 15 2001 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* tree, core/Makefile: moved Tree-Hash library into separated
+	  directory.
+
+Sat Apr 28 2001 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* configure*, Makefile.cvs, ...: updated CVS.
+
+Tue Apr 24 2001 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/users.c: added user aliases support.
+
+Mon Apr 16 2001 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/dcc.c, core/init.h, core/users.*, core/wtmp.*: redesigned
+	  dinamic configuration file.
+
+Fri Apr  6 2001 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/dcc.c, core/init.*, mods/tcl/*: completely removed Tcl support
+	  code from core to separated module.
+
+Sun Jan 14 2001 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/lib.c, core/protos.h, core/users.h, core/foxeye.h: changes
+	  made from rfc1459 to rfc2812.
+
+Fri Aug 25 2000 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/*: Debugging of core started. :)
+
+Wed Feb  2 2000 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* doc/*: Documentation started.
+
+Tue Apr 19 1999 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* all: Project started by LoSt.
