@@ -1,0 +1,80 @@
+#
+# Makefile for module compilation.
+#
+# This file is part of FoxEye distribution.
+# Copiright (C) 1999-2001 Andrej Gritsenko <andrej@rep.kiev.ua>
+
+SHELL = /bin/sh
+FILENAME = $(shell @BASENAME@ `pwd`)
+CFILES = $(wildcard *.c)
+HFILES = $(wildcard *.h)
+HELPFILES = $(wildcard *.help)
+OBJS = $(patsubst %.c,%.o,$(CFILES))
+DISTFILES = $(CFILES) $(HFILES) $(HELPFILES)
+
+srcdir = @srcdir@
+top_srcdir = ../..
+top_builddir = ../..
+subdir = mods/$(FILENAME)
+override distdir = ${top_builddir}/@PACKAGE@-@VERSION@/$(subdir)
+
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+pkglibdir = @libdir@/@PACKAGE@
+helpdir = $(pkglibdir)/help
+
+INCLUDES = -I${top_srcdir}/intl -I${top_srcdir}/core
+INSTALL = @INSTALL@ -m 644
+mkinstalldirs = $(SHELL) ${top_srcdir}/mkinstalldirs
+CFLAGS = -c @CFLAGS@ @DEFS@ $(INCLUDES) @CPPFLAGS@
+
+all static: $(OBJS)
+
+modules: $(FILENAME).so
+
+clean:
+	rm -f *.o *.so core *~
+
+$(FILENAME).so: $(OBJS)
+	@LD@ @LDFLAGS@ @LIBS@ -o $@ $^
+       
+%.o: %.c $(HFILES) ${top_srcdir}/core/modules.h ${top_srcdir}/core/foxeye.h ${top_srcdir}/core/protos.h
+	@CC@ -o $@ $(CFLAGS) -DMAKING_MODS -D_STATIC_INIT=modinit_`echo $(FILENAME)|sed 's/-/_/'` $<
+
+install-help:
+	$(mkinstalldirs) $(DESTDIR)$(helpdir)
+	@list='$(HELPFILES)'; for p in $$list; do \
+	    if test -f $$p; then \
+		hp=`echo $$p|sed s/.help$$//`; \
+		echo "   $(DESTDIR)$(helpdir)/$$hp"; \
+		$(INSTALL) $$p $(DESTDIR)$(helpdir)/$$hp; \
+	    else :; fi \
+	done
+
+install install-strip: modules install-help
+	$(mkinstalldirs) $(DESTDIR)$(pkglibdir)
+	@if test -f $(FILENAME).so; then \
+	    echo "   $(DESTDIR)$(pkglibdir)/$(FILENAME).so"; \
+	    $(INSTALL) $(FILENAME).so $(DESTDIR)$(pkglibdir)/$(FILENAME).so; \
+	else :; fi
+
+uninstall-help:
+	@list='$(HELPFILES)'; for p in $$list; do \
+	    hp=`echo $$p|sed s/.help$$//`; \
+	    echo "  rm -f $(DESTDIR)$(helpdir)/$$hp"; \
+	    rm -f $(DESTDIR)$(helpdir)/$$hp; \
+	done
+
+uninstall: uninstall-help
+	@if test -f $(DESTDIR)$(pkglibdir)/$(FILENAME).so; then \
+	    echo "  rm -f $(DESTDIR)$(pkglibdir)/$(FILENAME).so"; \
+	    rm -f $(DESTDIR)$(pkglibdir)/$(FILENAME).so; \
+	else :; fi
+
+dist distdir:
+	$(mkinstalldirs) $(distdir)
+	@dists="$(DISTFILES)"; \
+	for file in $$dists; do \
+	    ln $(srcdir)/$$file $(distdir) 2> /dev/null \
+	    || cp -dp $(srcdir)/$$file $(distdir); \
+	done
