@@ -1,0 +1,31 @@
+constants:
+A_xxx	bot attributes
+B_xxx	bindings types
+C_xxx	IRC/channels ...
+D_xxx	DCC states
+E_xxx	socket errors
+F_xxx	requests/logging flags
+I_xxx	interfaces types
+M_xxx	socket modes
+N_xxx	botnet ...
+O_xxx	runtime options
+R_xxx	types of fields (in users.c only)
+S_xxx	signal types
+T_xxx	Tree and Tcl types
+U_xxx	users types/states
+W_xxx	wtmp events and listfile IDs
+X_xxx	filesystem ...
+
+debug:
+1	unrecoverable (non-fatal) errors
+2	recoverable errors (search, etc.)
+3	data changes
+4	search results
+5	any other functions calls
+6	any transfers but debug itself
+
+listfile:
+record	lname:passwd:uid:flags:charset:info:dccdir:login:logout:createtime
+host	+nick!ident@host
+special	 speciallname:flags:expiretime greeting
+other	 name value
