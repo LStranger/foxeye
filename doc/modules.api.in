@@ -1,0 +1,679 @@
+    * * *  Modules for FoxEye: principles  * * *
+
+Preamble.
+---------
+  All modules have the same interface - initialisation via ModuleInit()
+    function, destroying via bot signal S_TERMINATE.  When module going
+    to unload, all binds made on init must be deleted.  Files in the
+    module source: *.c, *.h - for compile, not installed; *.help - just
+    will be installed and loaded without extention ".help"; accvs.h.in
+    and accvs.m4 - additions to main acconfig.h and configure.in, CVS
+    only, not distributable.
+  Module have to have one or more of: interface, bind table, binding, or
+    script interface.  See descriptions below for ones.
+
+What is a bot interface.
+----------------------
+  The bot interface is part of code what communicate with some resource.
+    This may be: log file, DCC session, channel, another bot, etc.  Each
+    bot interface have two functions, one for bot request (data message
+    for interface), and one for bot signal (simple command for interface
+    to shutdown, flush buffers, user programmed function, stop, etc.).
+
+What is a bind table.
+-------------------
+  The bind table is check table contains one or more binding what can be
+    checked for matching input string.  Each bind table can be checked
+    with only bot interface and must contain bindings one type and one
+    purpose.
+
+What is a binding.
+----------------
+  The binding is string. When input is matched to it, bound function is
+    called.
+
+Interpreters.
+------------
+  Basic interpreter is a config interpreter.  No outside scripts can be
+    run by it.  Any other interpreter's interface may be loaded as module
+    then config command "script" will run appropriate interpreter for that
+    script file.
+
+Async-unsafe functions.
+---------------------
+  These are functions that cannot be used in threads or interface signal
+    handlers in part of S_SHUTDOWN.
+
+Signals to interfaces.
+--------------------
+  SS__RREEPPOORRTT:
+    Generate report and send it current interface (see the Set_Iface()
+    API).  Format of report: <code>text_\_0_0_1 where text is plain text
+    report and code is char one of:
+      _\_0_2_7  (reserved);
+      _\_0_3_0  ident@host or host:port;
+      _\_0_3_1  flags of interface;
+      _\_0_3_2  idle time in form: "%ed:%Hh" or "%kh:%Mm" or "%Mm:%Ss" (see
+            man strftime);
+      _\_0_3_3  connect time in form: "%e %b %H:%M";
+      _\_0_3_4  (reserved);
+      _\_0_3_5  version of that code;
+      _\_0_3_6  more info.
+  SS__FFLLUUSSHH:
+    Update infos, flush all streams.
+  SS__TTIIMMEEOOUUTT:
+    For interface internal use.
+  SS__SSTTOOPP:
+    Pause the interface job.  If interface flags I_LOCKED set, requests
+    for that interface will be not received as interface is not exist.
+  SS__CCOONNTTIINNUUEE:
+    Continue the interface job after stop.
+  SS__SSHHUUTTDDOOWWNN:
+    "Quiet" termination of interface.  Don't release any memory and
+    other resources, don't call any async-unsafe function, only common
+    or socket API's, don't lock any mutexes, just close the files and
+    connections.  If there is message in queue, it may be used as
+    shutdown reason.
+  SS__TTEERRMMIINNAATTEE:
+    Terminate (unload) the interface.  You must release all resources
+    (allocated memory, bindings, etc.) here.  If that interface is
+    nested, stopped previous interface must be continued.  The signal
+    receiver function must set interface flag I_DIED.
+  SS__RREEGG:
+    Reregister all module variables.  If interface have to have line in
+    config file then put that line as request to interface I_CONFIG with
+    F_REPORT flag.
+
+Common API:
+-----------
+  INTERFACE *AAdddd__IIffaaccee (const char *_n_a_m_e, iface_t _t_y_p_e,
+                        iface_t (*_s_i_g___f_u_n_c) (INTERFACE *, ifsig_t),
+			REQUEST * (*_r_e_q___f_u_n_c) (INTERFACE *, REQUEST *),
+			void *_d_a_t_a);
+    Adds bot interface to end of dispatcher queue.  Returns pointer to
+    new created bot interface with name _n_a_m_e and flags _t_y_p_e.  Interface
+    may have optional data _d_a_t_a associated with it.  Each interface must
+    have function _r_e_q___f_u_n_c() for bot requests or _s_i_g___f_u_n_c() for bot
+    signals.  Note: you always have to set interface flag I_DIED when
+    module terminating for each interface added on module init.
+
+  int RReennaammee__IIffaaccee (iface_t _i_f_t, const char *_o_l_d_n_a_m_e,
+		    const char *_n_e_w_n_a_m_e);
+    Renames the bot interface with name _o_l_d_n_a_m_e that have any flag of
+    mask _i_f_t to name _n_e_w_n_a_m_e.  Changes mask of all requests without
+    destination wildcards with new name, too.
+
+  INTERFACE *SSeett__IIffaaccee (INTERFACE *_i_f_a_c_e);
+    Sets the bot interface _i_f_a_c_e as current for Add_Request(),
+    New_Request(), or Get_Request() call.  Returns previous pointer to
+    such interface and locks dispatcher state.
+
+  INTERFACE *FFiinndd__IIffaaccee (iface_t _i_f_t, const char *_n_a_m_e);
+    Finds bot interface with name _n_a_m_e and flags _i_f_t.  Returns pointer
+    to found interface and locks dispatcher state or returns NULL if no
+    matched interface found.
+
+  int UUnnsseett__IIffaaccee (void);
+    Unlocks dispatcher state that was locked by previous call of
+    Set_Iface() or Find_Iface() and restore current interface.
+    Returns 0;
+
+  void AAdddd__RReeqquueesstt (iface_t _t_y_p_e, char *_t_o, flag_t _f_l, char *_t_e_x_t, _._._.);
+    Adds request for interfaces matched mask _t_o and flags _t_y_p_e.  Request
+    has mode flags _f_l.  Data of request (from _t_e_x_t) is formated string.
+    Returns nothing.
+
+  void NNeeww__RReeqquueesstt (INTERFACE _i_f_a_c_e, flag_t _f_l, char *_t_e_x_t, _._._.);
+    Adds request for interface _i_f_a_c_e.  Request has mode flags _f_l.  Data
+    of request (from _t_e_x_t) is formated string.  Returns nothing.
+
+  int GGeett__RReeqquueesstt (void);
+    Sends first request to current interface from its queue.  Returns
+    number of requests those was sent and deleted from queue.
+
+  int AAdddd__HHeellpp (const char *_n_a_m_e);
+    Adds help file to bot help system.  If current language isn't "_C"
+    and file _n_a_m_e.$LANG exist load that instead of _n_a_m_e.  Returns 0 if
+    file not found, nozero value otherwise.  Note: this function is
+    async-unsafe.
+
+  void DDeelleettee__HHeellpp (const char *_n_a_m_e);
+    Deletes help file _n_a_m_e from bot help system.  Returns nothing.  You
+    always have to call this function when module terminating for each
+    help file added on module init.  Note: this function is
+    async-unsafe.
+
+  int GGeett__HHeellpp (const char *_f_s_t, const char *_s_e_c, INTERFACE *_i_f_a_c_e,
+		userflag _g_u_f, userflag _c_u_f, BINDTABLE *_t_a_b_l_e,
+		char *_p_r_e_f_i_x, int _m_o_d_e);
+    Finds help matches first keyword _f_s_t and second keyword _s_e_c that are
+    in bindtable _t_a_b_l_e and allowed for user with global userflags _g_u_f
+    or channel userflags _c_u_f, then send help to that topics to interface
+    _i_f_a_c_e.  First line of sent help will begin with _p_r_e_f_i_x.  If _m_o_d_e = 0
+    then sent just usage, if _m_o_d_e = 1 then sent short description,
+    otherwise full.  Returns number of found topics.
+    Note: this function is async-unsafe.
+
+  void mmssgg22nniicckk (char *_n_i_c_k, char *_t_e_x_t, _._._.);
+    Sends private message _t_e_x_t to IRC user or channel with name _n_i_c_k.
+
+  void nnoottiiccee22nniicckk (char *_n_i_c_k, char *_t_e_x_t, _._._.);
+    Sends notice _t_e_x_t to IRC user or channel with name _n_i_c_k.
+
+  int mmaattcchh (const char *_m_a_s_k, const char *_s_t_r_i_n_g);
+    Check whether the _s_t_r_i_n_g is matched mask _m_a_s_k.  Returns number of
+    characters (wildcards are not counted) that matched.  Cases "*" in
+    _m_a_s_k or in _s_t_r_i_n_g are special: match() returns 0.
+
+Bindings API:
+-------------
+  BINDTABLE *AAdddd__BBiinnddttaabbllee (const char *_n_a_m_e, bindtable_t _f_l_a_g_s);
+    Registers bindtable with _n_a_m_e and type of matching _f_l_a_g_s.  Returns
+    pointer to structure associated with _n_a_m_e.  Subsequent calls of
+    Check_Bindtable() function will check that bindtable.  If bindtable
+    with the same name already exist, returns address of it, otherwise
+    address of new created one.
+
+  BINDING *CChheecckk__BBiinnddttaabbllee (BINDTABLE *_t_a_b_l_e, const char *_s_t_r,
+			    userflag _g_u_f, userflag _c_u_f, BINDING *_l_a_s_t);
+    Checks bindtable _t_a_b_l_e for entries matched string _s_t_r for users with
+    global userflags _g_u_f and channel userflags _c_u_f.  Returns first
+    matched binding if _l_a_s_t equal NULL.  Returns next match if _l_a_s_t is
+    last found binding.  Note: this function is async-unsafe.
+
+  BINDING *AAdddd__BBiinnddiinngg (const char *_t_a_b_l_e_n_a_m_e, const char *_m_a_s_k,
+			userflag _g_u_f, userflag _c_u_f, Function _f_u_n_c);
+    Adds binding to bindtable _t_a_b_l_e_n_a_m_e.  Strings checked via bindtable
+    have to match string _m_a_s_k with current type of mathcing and users
+    must have all global userflags _g_u_f or all channel userflags _c_u_f.
+    _f_u_n_c is function associated with that binding.  Note: mask must be a
+    lowercase string until bindtable is B_MATCHCASE type.
+
+  void DDeelleettee__BBiinnddiinngg (const char *_t_a_b_l_e_n_a_m_e, Function _f_u_n_c);
+    Deletes all bindings that returning _f_u_n_c from bindtable _t_a_b_l_e_n_a_m_e.
+    Returns nothing.  You always have to call this function when module
+    terminating for each binding added on module init.  Note: this
+    function is async-unsafe.
+
+Listfile API:
+-------------
+
+  void *FFiinndd__UUsseerr (const unsigned char *_m_a_s_k, char **_n_a_m_e, userflag *_u_f,
+		   void *_p_r_e_v);
+    Finds user that has current hostmask _m_a_s_k ([[nick!]ident@]host]) and
+    gets his user login _n_a_m_e (Lname below) and his global userflags _u_f.
+    Locks Listfile record of that user.  If _p_r_e_v is not NULL, unlocks
+    Listfile record with internal structure _p_r_e_v and skip all previous
+    records in Listfile.  Returns pointer to internal Listfile record
+    structure.  If _m_a_s_k contains wildcards, first matched user will be
+    found, best matched otherwise.
+
+  void *LLoocckk__UUsseerr (const char *_n_a_m_e);
+    Locks Listfile record of user with Lname _n_a_m_e.  Returns pointer to
+    internal Listfile record structure or NULL if user was not found.
+
+  void UUnnlloocckk__UUsseerr (void *_u_s_e_r);
+    Unlocks Listfile record locked by calling Find_User() or Lock_User()
+    function that returned pointer to internal Listfile record structure
+    _u_s_e_r.  Returns nothing.
+
+  char *GGeett__UUsseerrffiieelldd (void *_u_s_e_r, const char *_f_n);
+    Returns content of Listfile field _f_n for user with internal Listfile
+    record structure at _u_s_e_r.  If _f_n is "", returns current dcc
+    console settings as string in form "console flags<space>IRC channel
+    <space>botnet channel number".  Note: Get_Userfield() fail if _u_s_e_r
+    is alias.
+
+  int SSeett__UUsseerrffiieelldd (void *_u_s_e_r, const char *_f_n, char *_v_a_l);
+    Sets content of Listfile field _f_n for user with internal Listfile
+    record structure at _u_s_e_r with value _v_a_l.  Returns nonull value
+    if successful.  If _f_n is "", sets dcc console settings for the user.
+    Note: if _f_n is "alias", Set_Userfield() will do not change Listfile
+    (delete old & add new aliases) so you must do it yourself.
+    Note2: Set_Userfield() fail if _u_s_e_r is alias.
+
+  int GGeett__UUsseerrlliisstt (INTERFACE *_i_f_a_c_e, userflag _u_f, const char *_f_n,
+		    char *_m_a_s_k);
+    Sends list (space separated) of known Lnames that have userflags any
+    of _u_f and Listfile field _f_n matched _m_a_s_k, to interface _i_f_a_c_e via
+    New_Request().  Returns number of requests was sent.
+
+  userflag MMaattcchh__UUsseerr (char *_h_o_s_t, char *_i_d_e_n_t, const char *_n_a_m_e);
+    Returns OR'ed userflags for all found Listfile records matched to
+    users with hostmask _i_d_e_n_t@_h_o_s_t and with Lname mask _n_a_m_e.
+
+  userflag GGeett__CChhaannFFllaaggss (const char *_n_a_m_e, const char *_c_h_a_n);
+    Returns userflags of user with Lname _n_a_m_e for IRC channel _c_h_a_n.  If
+    _c_h_a_n is NULL, returns global userflags.
+
+Async-unsafe listfile API:
+--------------------------
+
+  int AAdddd__UUsseerrrreeccoorrdd (const char *_n_a_m_e, const unsigned char *_m_a_s_k,
+		      userflag _u_f);
+    Adds user with Lname _n_a_m_e, hostmask _m_a_s_k at form nick!user@host and
+    global userflags _u_f to Listfile.  Returns nonull value if successful.
+
+  int AAdddd__AAlliiaass (const char *_n_a_m_e, const char *_o_w_n_e_r);
+    Adds user with Lname _n_a_m_e as alias for user with Lname _o_w_n_e_r to
+    Listfile.  Returns nonull value if successful.
+
+  void DDeelleettee__UUsseerrrreeccoorrdd (const char *_n_a_m_e);
+    Deletes user/alias with Lname _n_a_m_e from Listfile.  Returns nothing.
+
+  int AAdddd__UUsseerrmmaasskk (const char *_u_s_e_r, const unsigned char *_m_a_s_k);
+    Adds user hostmask _m_a_s_k at form nick!user@host for user with Lname
+    _u_s_e_r.  Returns nonull value if successful.
+
+  void DDeelleettee__UUsseerrmmaasskk (const char *_u_s_e_r, const unsigned char *_m_a_s_k);
+    Delete all user hostmasks matching _m_a_s_k from user with Lname _u_s_e_r.
+
+  int CChhaannggee__LLnnaammee (char *_n_n_e_w, char *_n_o_l_d);
+    Changes user Lname _n_o_l_d with new Lname _n_n_e_w in Listfile.  Returns 1
+    if successful, 0 otherwise.
+
+Wtmp API:
+---------
+#include "wtmp.h"
+
+  short EEvveenntt (const char *_e_v_e_n_t);
+    Returns event number by it name _e_v_e_n_t.
+
+  int FFiinnddEEvveenntt (wtmp_t *_t_e_m_p, const char *_u_s_e_r, short _e_v_e_n_t, lid_t _i_d);
+    Finds last event for Lname _u_s_e_r and it number _e_v_e_n_t that was logged
+    from bot or channel _i_d and writes it to array _t_e_m_p.  Returns 1 if
+    event found, 0 otherwise.  If _e_v_e_n_t is W_ANY, the function finds any
+    evend for that _i_d (_i_d equal 0 is special: find any event on botnet
+    or any channel).
+
+  void NNeewwEEvveenntt (short _e_v_e_n_t, const char *_u_s_e_r,
+		 const char *_f_r_o_m, short _n_u_m);
+    Adds new event record to Wtmp file for Lname _u_s_e_r, its number _e_v_e_n_t,
+    bot or channel _f_r_o_m with event specific data _n_u_m.  Returns nothing.
+
+Sheduler-timer API:
+-------------------
+#include "sheduler.h"
+
+  int NNeewwSShheedduullee (iface_t _i_f_t, char *_n_a_m_e, ifsig_t _s_i_g, char *_m_i_n,
+		  char *_h_r, char *_d_s, char *_m_n, char *_w_k);
+    Sets new shedule mask for some minutes _m_i_n, hours _h_r, days _d_s of
+    months _m_n on day of week _w_k.  When shedule is matched then signal
+    _s_i_g will be sent to interface _n_a_m_e with type _i_f_t.  Returns 0 if
+    shedule set successful, -1 otherwise.
+
+  int KKiillllSShheedduullee (iface_t _i_f_t, char *_n_a_m_e, ifsig_t _s_i_g, char *_m_i_n,
+		   char *_h_r, char *_d_s, char *_m_n, char *_w_k);
+    Kills shedule mask.  Synopsis equal to NewShedule().
+
+  int NNeewwTTiimmeerr (iface_t _i_f_t, char *_n_a_m_e, ifsig_t _s_i_g, int _s_e_c, int _m_i_n,
+		int _h_r, int _d_s);
+    Set new shedule job for _s_e_c seconds, _m_i_n minutes, _h_r hours and _d_s
+    days since current time.  When job time is reached then signal _s_i_g
+    will be sent to interface _n_a_m_e with type _i_f_t.  Returns 0 if shedule
+    set successful, -1 otherwise.
+
+Scripts API:
+------------
+#include "init.h"
+
+  Note: these functions is async-unsafe.
+
+  char *BBiinnddRReessuulltt;
+    Contains string result of executed binding.
+
+  int RReeggiisstteerrFFuunnccttiioonn (const char *_c_m_d, int (*_f_u_n_c)(const char *),
+			const char *_m_s_g);
+    Registers the function _f_u_n_c() in all interpreters with name _c_m_d.
+    Optional message _m_s_g may be used in prompt by config generator.
+    Returns 1 if function was registered.
+      Function _f_u_n_c() gets string arguments (may be with ending spaces)
+    and returns 0 when error or any other value otherwise.  Return value
+    is dependent with called function.  In case of error BindResult may
+    contain error message or may be leaved untouched.  If function can
+    be used in config file then it must allow recall on rehash.
+
+  int UUnnrreeggiisstteerrFFuunnccttiioonn (const char *_c_m_d);
+    Deletes function with name _c_m_d from all interpreters.  Returns 1 if
+    function was deleted.  You always have to call this function when
+    module terminating for each command that was added on module init.
+
+  int RReeggiisstteerrBBoooolleeaann (const char *_b_o_o_l, bool *_v_a_r);
+    Registers boolean variable _v_a_r in all interpreters with name _b_o_o_l.
+    Returns 1 if variable was registered.
+
+  int RReeggiisstteerrIInntteeggeerr (const char *_i_n_t, long int *_v_a_r);
+    Registers integer variable _v_a_r in all interpreters with name _i_n_t.
+    Returns 1 if variable was registered.
+
+  int RReeggiisstteerrSSttrriinngg (const char *_s_t_r, char *_p_t_r, size_t _c_o_u_n_t, int _r_o);
+    Registers string variable at address _p_t_r with size of _c_o_u_n_t bytes in
+    all interpreters with name _s_t_r.  If _r_o is not 0, attempt of change
+    that variable will cause script interpreter error.  Returns 1 if
+    variable was registered.
+
+  int UUnnrreeggiisstteerrVVaarriiaabbllee (const char *_v_a_r);
+    Deletes any variable with name _v_a_r from all interpreters.  Returns 1
+    if variable was deleted.  You always have to call this function when
+    module terminating for each variable that was added on module init.
+
+  int RRuunnBBiinnddiinngg (BINDING *_b_i_n_d, const unsigned char *_u_s_e_r, char *_f_s_t,
+		  char *_s_e_c, int _n_u_m, char *_l_a_s_t);
+    Runs binding defined at _b_i_n_d, with arguments, formed from _u_s_e_r
+    (nick!user@host) as "nick user@host", strings _f_s_t, _s_e_c, _l_a_s_t and
+    integer _n_u_m in order as its presents in function call.  Values of
+    NULL must be ignored, negative _n_u_m too.  Return value is 0 if
+    binding returns so, 1 otherwise.  If interpreter returned error,
+    RunBinding() returns 0, and a string result that represents an
+    error message must be logged.
+
+Sockets API:
+------------
+#include "socket.h"
+
+  idx_t AAddddSSoocckkeett (int _m_o_d_e, char *_d_o_m_a_i_n, unsigned short _p_o_r_t);
+    Opens new socket in non-block mode, establishes connection with
+    Internet address with name _d_o_m_a_i_n to port _p_o_r_t if _m_o_d_e is M_FILE or
+    M_NORM, or opens new listening socket if _m_o_d_e is M_LIST or M_LINP.
+    If _m_o_d_e is M_LINP then listening socket opens for only one
+    connection.  Returns new socket identifier or -1 if failed.
+
+  int KKiillllSSoocckkeett (idx_t *_i_d_x);
+    Closes the socket with identifier _i_d_x.  Returns 0 if socket closed
+    OK, -1 otherwise.
+
+  idx_t AAnnsswweerrSSoocckkeett (idx_t _i_d_x);
+    Attempts to answer for listening socket _i_d_x.  Returns new socket
+    identifier or -1 if no connections was made.
+
+  char *SSoocckkeettDDoommaaiinn (idx_t _i_d_x, unsigned short *_p);
+    Returns domain name for socket _i_d_x and his port in _p.  If socket is
+    opened in listen mode, returns own domain and port.  If no matched
+    socket found, leaves the _p untouched and returns empty string (but
+    no NULL).
+
+  ssize_t RReeaaddSSoocckkeett (char *_b_u_f, idx_t _i_d_x, size_t _s_z, int _m_o_d_e);
+    Reads data from socket _i_d_x to buffer _b_u_f.  If _m_o_d_e is M_FILE then
+    read raw data to max buffer size _s_z.  Otherwise read data while
+    buffer is full or while CR-LF is encountered in socket stream, in
+    this case ending CR-LF strips from got string and string terminates
+    with 0.  Returns size of got data from socket in bytes.  If socket
+    was died unexpectedly or got EOF, closes the socket and returns
+    E_EOF or E_NOSOCKET.  Also returns E_AGAIN if socket is waiting a
+    connection.
+
+  ssize_t WWrriitteeSSoocckkeett (idx_t _i_d_x, char *_b_u_f, size_t *_s_z, int _m_o_d_e);
+    Writes data to socket _i_d_x from buffer _b_u_f.  If _m_o_d_e is M_FILE then
+    write raw data of size _s_z.  Otherwise substitude all LF (without
+    CR before it) to CR-LF and end data with CR-LF.  Returns number of
+    wrote bytes and rewrites data in _b_u_f with data that still left.  If
+    socket was died unexpectedly, returns -1 and closes the socket.
+    Note: size of _b_u_f must be at least 1 even if _s_z is zero.
+
+DCC API:
+--------
+#include "dcc.h"
+
+  int GGeett__DDccccIIddxx (DCC_SESSION *_d_c_c);
+    Returns Tcl identifier of DCC session _d_c_c.  Note: this
+    function is async-safe.
+
+  DCC_SESSION *DDccccSSeenndd (char *_f_n_a_m_e, long _p_o_s);
+    Opens listening connection for send file.  Returns DCC session data
+    for connection.  You must get socket info (via SocketDomain() API)
+    and say it to recipient.  Name of file _f_n_a_m_e must contain full path
+    to the file and file will sent from position _p_o_s.
+
+  void CChhaatt__JJooiinn (INTERFACE *_i_f_a_c_e);
+    Runs bindtable "chat-join" for interface _i_f_a_c_e.  Returns nothing.
+
+  void CChhaatt__PPaarrtt (INTERFACE *_i_f_a_c_e);
+    Runs bindtable "chat-part" for interface _i_f_a_c_e.  Returns nothing.
+
+  void sseettddccccccoonnssoollee (DCC_SESSION *_d_c_c, char *_m_o_d_e);
+    Sets console output mode for user on DCC session _d_c_c, according to
+    his permissions.  Character string _m_o_d_e is in form "loglevel
+    #channel BotChannel" where loglevel may contain any abbreviation
+    for loggings or '+' for echo enabling, '%' for ansi mode (convert
+    all colors to ansi), '$' for ascii mode (strip all color codes), '#'
+    for mono mode (strip all but bold or inverse codes), #channel is IRC
+    channel for user's console log, BotChannel is botnet channel.
+    Returns nothing.
+
+Calling of bindings:
+--------------------
+Flags:
+  KEYWORD    for keyword (followed by space)
+  MATCHCASE  case-sensitive keyword search
+  MASK       for string wildcards matching
+  UNIQ       unique (replacing) binding for keyword, maybe with completion.
+  UNIQMASK   unique (replacing) binding for keymask
+
+All int func() returns 0 if binding did not executed.  If binding
+arguments are correct but no logs needed, func() may return -1.
+
+Interpreter's bindings:
+  int func(char *_n_a_m_e, int _a_r_g_c, char *_a_r_g_v[]);
+    Call interpreter function _n_a_m_e with _a_r_g_c arguments array _a_r_g_v (see
+    the "Tcl args:" label below).  If _n_a_m_e is "-" then interpreter must
+    return its name.
+
+
+Tcl name -- bindtable name -- flags -- synopsis & description
+
+DCC   "ddcccc"        UNIQ
+  int func(DCC_SESSION *_f_r_o_m, char *_a_r_g_s);
+    Used when user enters the command on partyline.  Partiline member
+    identified with session _f_r_o_m.  Arguments _a_r_g_s to command are
+    stripped from leading spaces.
+      Matching: first word of partyline command without leading '.'.
+      Tcl args: Lname Dcc-idx args
+
+FIL   "ffiilleess"      UNIQ
+  int func(DCC_SESSION *_f_r_o_m, char *_a_r_g_s);
+    The same as "dcc" but for user onto filesystem.
+      Matching: first word of partyline command without leading '.' if
+		it there is.
+      Tcl args: Lname Dcc-idx args
+
+CHAT  "cchhaatt"       MASK
+  (int) void func(DCC_SESSION *_f_r_o_m, char *_m_s_g);
+    Used when somebody says anything (text _m_s_g) on the partyline/botnet.
+    Partyline member identified with session _f_r_o_m.
+      Matching: full text line.
+      Tcl args: Lname BotChannel msg
+
+ACT   "cchhaatt-aacctt"   MASK
+  (int) void func(DCC_SESSION *_f_r_o_m, char *_m_s_g);
+    Used when somebody does an action (text _m_s_g) on the partyline/botnet.
+    Partyline member identified with session _f_r_o_m.
+      Matching: full text line.  (any channel userflags are ignored)
+      Tcl args: Lname BotChannel msg
+
+RCVD  "ddcccc--ggeett"    MASK
+  (int) void func(const unsigned char *_u_s_e_r, const char *_f_i_l_e);
+    Used when somebody _u_s_e_r succesfully uploads file _f_i_l_e to bot.
+      Matching: Lname.  (any channel userflags are ignored)
+      Tcl args: Lname nick file
+
+FILT  "iinn--ffiilltteerr"  MASK
+  int func(DCC_SESSION *_f_r_o_m, char *_m_s_g, size_t _m_s_g_l_e_n);
+    Used for filtering text _m_s_g on the partyline before parsing.  All
+    filters matched user (identified by _f_r_o_m) flags and text mask will
+    be applied.  Null-terminated text at area _m_s_g no longer than _m_s_g_l_e_n
+    can be rewritten.
+      Matching: full text line.
+      Tcl args: Dcc-idx msg
+      Bind result: new text line.
+
+-     "oouutt--ffiilltteerr" MASK
+  (int) void func(DCC_SESSION *_f_r_o_m, char *_m_s_g, size_t _m_s_g_l_e_n);
+    Used for filtering text _m_s_g before sending to partyline user.  All
+    filters matched user (identified by _f_r_o_m) flags and text mask will
+    be applied.  Null-terminated text at area _m_s_g no longer than _m_s_g_l_e_n
+    can be rewritten.
+      Matching: full text line.
+
+CHON  "cchhaatt--oonn"    MASK
+  (int) void func(DCC_SESSION *_w_h_o);
+    Used when somebody _w_h_o enters a DCC CHAT partyline.
+      Matching: Lname.
+      Tcl args: Lname Dcc-idx
+
+CHOF  "cchhaatt--ooffff"   MASK
+  (int) void func(DCC_SESSION *_w_h_o);
+    Used when somebody _w_h_o "logoff" from DCC CHAT partyline.
+      Matching: Lname.
+      Tcl args: Lname Dcc-idx
+
+CHJN  "cchhaatt--jjooiinn"  MASK
+  (int) void func(const char *_u_n_a_m_e, char *_b_n_a_m_e, DCC_SESSION *_w_h_e_r_e);
+    Used when somebody _u_n_a_m_e (Lname if on this bot or Lname@Bot if from
+    botnet) joins a botnet channel defined by _w_h_e_r_e via bot _b_n_a_m_e.
+      Matching: BotChannel.  (userflags are ignored)
+      Tcl args: bname uname BotChannel dccuserchar Dcc-idx host
+
+CHPT  "cchhaatt--ppaarrtt"  MASK
+  (int) void func(const char *_u_n_a_m_e, char *_b_n_a_m_e, DCC_SESSION *_w_h_e_r_e);
+    Used when somebody _u_n_a_m_e (Lname if on this bot or Lname@Bot if from
+    botnet) parts a botnet channel defined by _w_h_e_r_e via bot _b_n_a_m_e.
+      Matching: BotChannel.  (userflags are ignored)
+      Tcl args: bname uname Dcc-idx BotChannel
+
+CTCP  "ccttccpp"       UNIQ
+  int func(const char *_t_o, const unsigned char *_f_r_o_m, char *_l_n, char *_m_s_g);
+    Used when bot get any ctcp message _m_s_g from server.  Message from
+    nick!user@host _f_r_o_m (with Lname _l_n) go for nick/channel _t_o.
+      Matching: keyword (first word) of ctcp message.
+      Tcl args: nick user@host Lname to msg
+
+-     "ppaasssswwdd"     UNIQMASK
+  (int) void func(const char *_p_a_s_s, char **_c_r_y_p_t_e_d);
+    Used for translation plain-text _p_a_s_s password to encripted form
+    pointed by _c_r_y_p_t_e_d.
+      Matching: full passphrase.  (userflags are ignored)
+
+RAW   "sseerrvveerr"     UNIQMASK
+  int func (char *_p_r_e_f_i_x, char *_c_o_m_m_a_n_d, char *_p_a_r_a_m_s);
+    Used when bot get any message from server.  Optional _p_r_e_f_i_x is
+    message source (see the RFC), _c_o_m_m_a_n_d is keyword like "PRIVMSG"
+    with optional parameters _p_a_r_a_m_s.
+      Matching: command.
+      Tcl args: prefix command params
+
+NKCH  "nneeww--llnnaammee"  MASK
+  (int) void func(char *_n_e_w_l_n, char *_o_l_d_l_n);
+    Used when user Lname _o_l_d_l_n changed to Lname _n_e_w_l_n.
+      Matching: old Lname.  (userflags are ignored)
+      Tcl args: oldln newln
+
+LOAD  "llooaadd"       MASK
+  (int) void func(char *_m_o_d, char *_a_r_g_s);
+    Used when module with name _m_o_d was succesfully loaded with arguments
+    _a_r_g_s.
+      Matching: module name with arguments.
+      Tcl args: mod
+
+UNLD  "uunnllooaadd"     MASK
+  (int) void func(char *_m_o_d);
+    Used when module with name _m_o_d was terminated.
+      Matching: module name.
+      Tcl args: mod
+
+JOIN  "jjooiinn"       MASK
+  int func(unsigned char *_w_h_o, char *_c_h_a_n, char *_s_e_r_v);
+    Used when someone with nick!user@host _w_h_o joins IRC channel _c_h_a_n via
+    server _s_e_r_v.
+      Matching: "channel nick!user@host" string.
+      Tcl args: nick user@host Lname channel
+
+PART  "ppaarrtt"       MASK
+  int func(unsigned char *_w_h_o, const char *_c_h_a_n, char *_m_s_g);
+    Used when someone nick!user@host _w_h_o parts IRC channel _c_h_a_n with
+    reason _m_s_g (may be NULL).
+      Matching: "channel nick!user@host" string.
+      Tcl args: nick user@host Lname channel
+
+SIGN  "ssiiggnnooffff"    MASK
+  (int) void func(unsigned char *_w_h_o, char *_m_s_g);
+    Used when someone with nick!user@host _w_h_o leave IRC with the reason
+    _m_s_g.  Note: scripts are called for each channel separately.
+      Matching: "nick!user@host" string.
+      Tcl args: nick user@host Lname channel msg
+
+NICK  "nniicckkcchhgg"    MASK
+  (int) void func(char *_n_e_w_n, char *_o_l_d_n);
+    Used when someone changes his nick from _o_l_d_n to _n_e_w_n.  Note: scripts
+    are called for each channel separately.
+      Matching: "channel newnick" string.
+      Tcl args: oldn user@host Lname channel newn
+
+KICK  "kkiicckk"       MASK
+  (int) void func(unsigned char *_o_p, const char *_c_h_a_n,
+		  unsigned char *_w_h_o, char *_c_o_m_m_e_n_t);
+    Used when someone with nick!user@host _o_p kick nick(s) _w_h_o from
+    channel _c_h_a_n with reason _c_o_m_m_e_n_t.
+      Matching: "channel who" string.  (userflags are ignored)
+      Tcl args: op user@host Lname channel who comment
+
+MODE  "mmooddeecchhgg"    MASK
+  (int) void func(unsigned char *_w_h_o, const char *_c_h_a_n, char *_c_h_g);
+    Used when channel operator nick!user@host _w_h_o made mode change _c_h_g
+    on IRC channel _c_h_a_n.  Note: mode change line from server is parsed
+    and separated before calling any binding.
+      Matching: full mode change line (i.e. with channel name).
+      Tcl args: nick user@host Lname channel chg
+
+SPLT  "nneettsspplliitt"   MASK
+  (int) void func(char *_s_e_r_v, unsigned char *_w_h_o);
+    Used when IRC server _s_e_r_v netsplits from bot's IRC server and users
+    _w_h_o (as comma separated list of nicks) left this part of IRC net.
+    Note: scripts are called for each user separately.
+      Matching: nicks list.
+      Tcl args: nick user@host Lname channel
+
+REJN  "nneettjjooiinn"    MASK
+  (int) void func(char *_s_e_r_v, const char *_c_h_a_n, unsigned char *_w_h_o);
+    Used when bot's IRC server take netjoin with IRC server _s_e_r_v and
+    users _w_h_o (as comma separated list of nick!user@host) returned to
+    channel _c_h_a_n.  Note: scripts are called for each user separately.
+      Matching: "chan who" string.
+      Tcl args: nick user@host Lname channel
+
+-     "llooggiinn"      MASK
+  (int) void func(DCC_SESSION *_d_c_c, unsigned char *_w_h_o, char **_m_s_g);
+    Used when someone with Lname _w_h_o is about to enter telnet with bot.
+    The binding make password checking and creates bot interface if no
+    errors caused.  Else it returns error message _m_s_g.  Don't use it
+    please, until you know how it works!!!
+      Matching: Lname.  (any channel userflags are ignored)
+
+-     "rreeggiisstteerr"   MASK
+  int func(char *_n_a_m_e, void *_v_a_r, size_t _s_i_z_e);
+    Used when any module attempts to register any variable _v_a_r (_s_i_z_e is
+    1 for bool, 0 for long int, 2 for read-only null-terminated string
+    or >2 for regular string) with symbolic name _n_a_m_e.
+      Matching: none
+
+-     "uunnrreeggiisstteerr" MASK
+  int func(char *_n_a_m_e, void *_v_a_r);
+    Used when any module attempts to unregister any variable _v_a_r with
+    symbolic name _n_a_m_e.
+      Matching: none
+
+-     "ffuunnccttiioonn"   MASK
+  int func(char *_n_a_m_e, int (* _f_n) (char *));
+    Used when any module attempts to register any function _f_n with
+    symbolic name _n_a_m_e.
+      Matching: none
+
+-     "uunnffuunnccttiioonn" MASK
+  int func(char *_n_a_m_e);
+    Used when any module attempts to unregister any function with
+    symbolic name _n_a_m_e.
+      Matching: none
+
+-     "ssccrriipptt"     UNIQMASK
+  int func (char *_n_a_m_e);
+    Used when config parser attempts to load script file _n_a_m_e.
+      Matching: filename.
