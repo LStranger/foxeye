@@ -1,0 +1,11 @@
+AC_OUTPUT(Makefile \
+        doc/Makefile \
+        help/Makefile \
+        scripts/Makefile \
+	tree/Makefile \
+        modules/Makefile \
+	modules/Makefile.mods \
+        core/Makefile \
+	core/init.h \
+	intl/Makefile \
+	po/Makefile.in)
