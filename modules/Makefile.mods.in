@@ -15,7 +15,7 @@ DISTFILES = $(CFILES) $(HFILES) $(HELPFILES)
 srcdir = @srcdir@
 top_srcdir = ../..
 top_builddir = ../..
-subdir = mods/$(FILENAME)
+subdir = modules/$(FILENAME)
 override distdir = ${top_builddir}/@PACKAGE@-@VERSION@/$(subdir)
 
 prefix = @prefix@
@@ -23,7 +23,7 @@ exec_prefix = @exec_prefix@
 pkglibdir = @libdir@/@PACKAGE@
 helpdir = $(pkglibdir)/help
 
-INCLUDES = -I${top_srcdir}/intl -I${top_srcdir}/core
+INCLUDES = -I${top_srcdir}/tree -I${top_srcdir}/core
 INSTALL = @INSTALL@ -m 644
 mkinstalldirs = $(SHELL) ${top_srcdir}/mkinstalldirs
 CFLAGS = -c @CFLAGS@ @DEFS@ $(INCLUDES) @CPPFLAGS@
@@ -36,7 +36,7 @@ clean:
 	rm -f *.o *.so core *~
 
 $(FILENAME).so: $(OBJS)
-	@LD@ @LDFLAGS@ @LIBS@ -o $@ $^
+	@LD@ @LDFLAGS@ -o $@ $^
        
 %.o: %.c $(HFILES) ${top_srcdir}/core/modules.h ${top_srcdir}/core/foxeye.h ${top_srcdir}/core/protos.h
 	@CC@ -o $@ $(CFLAGS) -DMAKING_MODS -D_STATIC_INIT=modinit_`echo $(FILENAME)|sed 's/-/_/'` $<

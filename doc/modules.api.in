@@ -3,27 +3,37 @@
 Preamble.
 ---------
   All modules have the same interface - initialisation via ModuleInit()
-    function, destroying via bot signal S_TERMINATE.  When module going
-    to unload, all binds made on init must be deleted.  Files in the
-    module source: *.c, *.h - for compile, not installed; *.help - just
-    will be installed and loaded without extention ".help"; accvs.h.in
-    and accvs.m4 - additions to main acconfig.h and configure.in, CVS
-    only, not distributable.
+    function, destroying via the signal S_TERMINATE. When module going
+    to unload, all binds that were made on init must be deleted. Note:
+    module being initialised on startup then no listfile is loaded yet.
+    Files in the module source: *.c, *.h - to compile, never installed;
+    *.help - will be installed to help directory without last name part
+    (i.e.".help"); accvs.m4, accvs.api and accvs.cfg - additions to main
+    configure.in, doc/modules.api and core/foxeye.h, for CVS only, are
+    not distributable.
   Module have to have one or more of: interface, bind table, binding, or
-    script interface.  See descriptions below for ones.
+    script interface. See descriptions below for ones.
 
-What is a bot interface.
-----------------------
-  The bot interface is part of code what communicate with some resource.
-    This may be: log file, DCC session, channel, another bot, etc.  Each
-    bot interface have two functions, one for bot request (data message
-    for interface), and one for bot signal (simple command for interface
-    to shutdown, flush buffers, user programmed function, stop, etc.).
+What is an interface.
+--------------------
+  The interface is part of code what communicate with some resource(s).
+    This may be: log file, session, IRC channel, another bot, etc. Each
+    interface may have two functions, one for requests (data message for
+    interface), and one for signal (simple command for interface to do
+    something: shutdown, flush buffers, user programmed function, stop,
+    etc.). Each interface has appropriated INTERFACE structure that
+    contains all data of that interface. These data may be accessed
+    only from bindings, from request function or from signal function.
+    To access data from threads you must lock dispatcher first (by call
+    Set_Iface() function). When you want terminate interface then you
+    have to set I_DIED flag from the same thread that called function
+    Add_Iface() before. After that you CANNOT access any field of the
+    INTERFACE structure!
 
 What is a bind table.
 -------------------
   The bind table is check table contains one or more binding what can be
-    checked for matching input string.  Each bind table can be checked
+    checked for matching input string. Each bind table can be checked
     with only bot interface and must contain bindings one type and one
     purpose.
 
@@ -34,10 +44,10 @@ What is a binding.
 
 Interpreters.
 ------------
-  Basic interpreter is a config interpreter.  No outside scripts can be
-    run by it.  Any other interpreter's interface may be loaded as module
-    then config command "script" will run appropriate interpreter for that
-    script file.
+  Basic interpreter is a config interpreter. No outside scripts can be
+    run by it. Any other interpreter's interface may be loaded as module
+    then config command "script" will run appropriate interpreter for
+    that script file.
 
 Async-unsafe functions.
 ---------------------
@@ -47,230 +57,442 @@ Async-unsafe functions.
 Signals to interfaces.
 --------------------
   SS__RREEPPOORRTT:
-    Generate report and send it current interface (see the Set_Iface()
-    API).  Format of report: <code>text_\_0_0_1 where text is plain text
-    report and code is char one of:
-      _\_0_2_7  (reserved);
-      _\_0_3_0  ident@host or host:port;
-      _\_0_3_1  flags of interface;
-      _\_0_3_2  idle time in form: "%ed:%Hh" or "%kh:%Mm" or "%Mm:%Ss" (see
-            man strftime);
-      _\_0_3_3  connect time in form: "%e %b %H:%M";
-      _\_0_3_4  (reserved);
-      _\_0_3_5  version of that code;
-      _\_0_3_6  more info.
+    Generate report and send it to current interface (see the Set_Iface()
+    API). If it's not I_MODULE then report must be formatted via format
+    string ReportFormat (see printl() for any details). If it's I_SERVICE
+    then report for each client that has one of modeflags of ReportMask.
+    Note that some directives have other meanings in report format:
+      %@ - generally "from" name not only host (bot name for example);
+      %# - connection time string (in format of DateString);
+      %I - socket id;
+      %* - other descriptive text.
+  SS__RREEGG:
+    Reregister all module variables. If interface have to have line in
+    config file then put that line as request to interface I_INIT with
+    F_REPORT flag.
   SS__FFLLUUSSHH:
     Update infos, flush all streams.
-  SS__TTIIMMEEOOUUTT:
-    For interface internal use.
   SS__SSTTOOPP:
-    Pause the interface job.  If interface flags I_LOCKED set, requests
+    Pause the interface job. If interface flags I_LOCKED set, requests
     for that interface will be not received as interface is not exist.
   SS__CCOONNTTIINNUUEE:
     Continue the interface job after stop.
   SS__SSHHUUTTDDOOWWNN:
-    "Quiet" termination of interface.  Don't release any memory and
-    other resources, don't call any async-unsafe function, only common
-    or socket API's, don't lock any mutexes, just close the files and
-    connections.  If there is message in queue, it may be used as
-    shutdown reason.
+    "Quiet" termination of interface. Don't release any memory and/or
+    other resources, don't call any function but async-safe (see below),
+    don't lock any mutexes, just close the files and connections. The
+    message in (char *)SShhuuttddoowwnnRR may be used as shutdown reason.
   SS__TTEERRMMIINNAATTEE:
-    Terminate (unload) the interface.  You must release all resources
-    (allocated memory, bindings, etc.) here.  If that interface is
-    nested, stopped previous interface must be continued.  The signal
-    receiver function must set interface flag I_DIED.
-  SS__RREEGG:
-    Reregister all module variables.  If interface have to have line in
-    config file then put that line as request to interface I_CONFIG with
-    F_REPORT flag.
+    Terminate (unload) the interface. You must release all resources
+    (allocated memory, bindings, etc.) except associated data (it will
+    be released by dispatcher) here. If that interface is nested then
+    previous (stopped) interface will be continued. The signal receiver
+    function must set interface flag I_DIED. The message in variable
+    SShhuuttddoowwnnRR may be used as termination reason.
+  SS__TTIIMMEEOOUUTT and SS__LLOOCCAALL:
+    For interface internal use.
+
+Shutdown process.
+---------------
+  Shutdown sequence: all IP connections; all modules; all left interfaces
+  (if still there are any). In cause of normal shutdown every connection
+  or module gets signal SS__TTEERRMMIINNAATTEE and all others SS__SSHHUUTTDDOOWWNN. Else any
+  interface gets signal SS__SSHHUUTTDDOOWWNN. In any case variable SShhuuttddoowwnnRR will
+  contain reason of shutdown.
 
 Common API:
 -----------
-  INTERFACE *AAdddd__IIffaaccee (const char *_n_a_m_e, iface_t _t_y_p_e,
-                        iface_t (*_s_i_g___f_u_n_c) (INTERFACE *, ifsig_t),
-			REQUEST * (*_r_e_q___f_u_n_c) (INTERFACE *, REQUEST *),
-			void *_d_a_t_a);
-    Adds bot interface to end of dispatcher queue.  Returns pointer to
-    new created bot interface with name _n_a_m_e and flags _t_y_p_e.  Interface
-    may have optional data _d_a_t_a associated with it.  Each interface must
-    have function _r_e_q___f_u_n_c() for bot requests or _s_i_g___f_u_n_c() for bot
-    signals.  Note: you always have to set interface flag I_DIED when
-    module terminating for each interface added on module init.
+  Note for reenterability of all APIs:
+    none means that function is non-reenterable and cannot be called
+		from threads without locking of dispatcher, in some
+		cases it may cause even deadlock
+    thread-safe means that funsction may be called from threads
+    reenterable means that function may be called recursively
+    async-safe means that function may be called even on shutdown
+  Threads may call any functions but non-reenterable.
 
-  int RReennaammee__IIffaaccee (iface_t _i_f_t, const char *_o_l_d_n_a_m_e,
+  Note: main thread has dispatcher state locked on execution of any of
+  interface functions so if you want call pthread_join() from there you
+  must call Unset_Iface() before and Set_Iface(NULL) after.
+
+  INTERFACE *AAdddd__IIffaaccee (const char *_n_a_m_e, iftype_t _t_y_p_e,
+                        iftype_t (*_s_i_g___f_u_n_c) (INTERFACE *, ifsig_t),
+			int (*_r_e_q___f_u_n_c) (INTERFACE *, REQUEST *),
+			void *_d_a_t_a);
+    Adds interface to dispatcher list. Returns pointer to new created
+    interface with name _n_a_m_e and flags _t_y_p_e. Interface may have optional
+    data _d_a_t_a associated with it. Names "@myname" and "*" have special
+    meanings: interface with _n_a_m_e "@myname" is last resort, i.e. it will
+    receive requests for "someone@myname" if interface with such name
+    doesn't exist; interface with _n_a_m_e "*" will receive requests or
+    signals to any interface of that _t_y_p_e. Each interface must have at
+    least one of functions _r_e_q___f_u_n_c() for requests or _s_i_g___f_u_n_c() for
+    signals. These functions may call any API functions since they may
+    be called only when dispatcher is locked. Interface will be deleted
+    from dispatcher list after interface flag I_DIED is set, _d_a_t_a will
+    be deallocated by dispatcher then. Note: you always have to set
+    interface flag I_DIED when module terminating for each interface
+    that was added on module init.
+	Reenterability: reenterable
+
+  int RReennaammee__IIffaaccee (iftype_t _i_f_t, const char *_o_l_d_n_a_m_e,
 		    const char *_n_e_w_n_a_m_e);
-    Renames the bot interface with name _o_l_d_n_a_m_e that have any flag of
-    mask _i_f_t to name _n_e_w_n_a_m_e.  Changes mask of all requests without
-    destination wildcards with new name, too.
+    Renames the interface with name _o_l_d_n_a_m_e that have any flag of mask
+    _i_f_t to new name _n_e_w_n_a_m_e. Changes mask of all requests without
+    destination wildcards with new name, too. Returns 1 on success or 0
+    if no matched interface found.
+	Reenterability: reenterable
 
   INTERFACE *SSeett__IIffaaccee (INTERFACE *_i_f_a_c_e);
-    Sets the bot interface _i_f_a_c_e as current for Add_Request(),
-    New_Request(), or Get_Request() call.  Returns previous pointer to
-    such interface and locks dispatcher state.
+    Sets the interface _i_f_a_c_e as current for Add_Request(), New_Request(),
+    or Get_Request() call. Returns previous pointer to such interface
+    and locks dispatcher state.
+	Reenterability: thread-safe
 
-  INTERFACE *FFiinndd__IIffaaccee (iface_t _i_f_t, const char *_n_a_m_e);
-    Finds bot interface with name _n_a_m_e and flags _i_f_t.  Returns pointer
-    to found interface and locks dispatcher state or returns NULL if no
-    matched interface found.
+  INTERFACE *FFiinndd__IIffaaccee (iftype_t _i_f_t, const char *_n_a_m_e);
+    Finds interface with name _n_a_m_e and flags _i_f_t. Returns pointer to
+    found interface and locks dispatcher state or returns NULL if no
+    matched interface found. Note: name search is case-sensitive so if
+    you want case-insensitive search then do case conversions yourself
+    when adding interfaces.
+	Reenterability: reenterable
 
   int UUnnsseett__IIffaaccee (void);
-    Unlocks dispatcher state that was locked by previous call of
-    Set_Iface() or Find_Iface() and restore current interface.
-    Returns 0;
+    Unlocks dispatcher state that was locked by previous call of function
+    Set_Iface() or Find_Iface() and restore current interface that was
+    before that call. Returns 0.
+	Reenterability: reenterable
 
-  void AAdddd__RReeqquueesstt (iface_t _t_y_p_e, char *_t_o, flag_t _f_l, char *_t_e_x_t, _._._.);
-    Adds request for interfaces matched mask _t_o and flags _t_y_p_e.  Request
-    has mode flags _f_l.  Data of request (from _t_e_x_t) is formated string.
-    Returns nothing.
+  void AAdddd__RReeqquueesstt (iftype_t _t_y_p_e, char *_t_o, flag_t _f_l,
+		    const char *_t_e_x_t, _._._.);
+    Adds request for interfaces matched mask _t_o and flags _t_y_p_e. Request
+    has mode flags _f_l. Data of request (from _t_e_x_t) is formated string.
+    See match() for mask details. Returns nothing.
+	Reenterability: reenterable
 
-  void NNeeww__RReeqquueesstt (INTERFACE _i_f_a_c_e, flag_t _f_l, char *_t_e_x_t, _._._.);
-    Adds request for interface _i_f_a_c_e.  Request has mode flags _f_l.  Data
-    of request (from _t_e_x_t) is formated string.  Returns nothing.
+  void NNeeww__RReeqquueesstt (INTERFACE *_i_f_a_c_e, flag_t _f_l, const char *_t_e_x_t, _._._.);
+    Adds request for interface _i_f_a_c_e. Request has mode flags _f_l. Data
+    of request (from _t_e_x_t) is formated string. Returns nothing.
+	Reenterability: reenterable
 
   int GGeett__RReeqquueesstt (void);
-    Sends first request to current interface from its queue.  Returns
+    Sends first request to current interface from its queue. Returns
     number of requests those was sent and deleted from queue.
+	Reenterability: reenterable
 
   int AAdddd__HHeellpp (const char *_n_a_m_e);
-    Adds help file to bot help system.  If current language isn't "_C"
-    and file _n_a_m_e.$LANG exist load that instead of _n_a_m_e.  Returns 0 if
-    file not found, nozero value otherwise.  Note: this function is
-    async-unsafe.
+    Adds help file to the help system. If current language isn't "_C"
+    and file _n_a_m_e.$LANG exist load that instead of _n_a_m_e. Returns 0 if
+    file not found, nozero value otherwise.
+	Reenterability: none
 
   void DDeelleettee__HHeellpp (const char *_n_a_m_e);
-    Deletes help file _n_a_m_e from bot help system.  Returns nothing.  You
+    Deletes help file _n_a_m_e from the help system. Returns nothing. You
     always have to call this function when module terminating for each
-    help file added on module init.  Note: this function is
-    async-unsafe.
+    help file added on module init.
+	Reenterability: none
 
   int GGeett__HHeellpp (const char *_f_s_t, const char *_s_e_c, INTERFACE *_i_f_a_c_e,
-		userflag _g_u_f, userflag _c_u_f, BINDTABLE *_t_a_b_l_e,
+		userflag _g_u_f, userflag _c_u_f, bindtable_t *_t_a_b_l_e,
 		char *_p_r_e_f_i_x, int _m_o_d_e);
     Finds help matches first keyword _f_s_t and second keyword _s_e_c that are
     in bindtable _t_a_b_l_e and allowed for user with global userflags _g_u_f
     or channel userflags _c_u_f, then send help to that topics to interface
-    _i_f_a_c_e.  First line of sent help will begin with _p_r_e_f_i_x.  If _m_o_d_e = 0
+    _i_f_a_c_e. First line of sent help will begin with _p_r_e_f_i_x. If _m_o_d_e = 0
     then sent just usage, if _m_o_d_e = 1 then sent short description,
-    otherwise full.  Returns number of found topics.
-    Note: this function is async-unsafe.
+    otherwise full. Returns number of found topics.
+	Reenterability: none
 
-  void mmssgg22nniicckk (char *_n_i_c_k, char *_t_e_x_t, _._._.);
-    Sends private message _t_e_x_t to IRC user or channel with name _n_i_c_k.
-
-  void nnoottiiccee22nniicckk (char *_n_i_c_k, char *_t_e_x_t, _._._.);
-    Sends notice _t_e_x_t to IRC user or channel with name _n_i_c_k.
+  void ddpprriinntt (int _l_e_v_e_l, const char *_t_e_x_t, _._._.)
+    Prints debug message _t_e_x_t of given _l_e_v_e_l to all log interfaces. If
+    _l_e_v_e_l is too high then message is discarded.
+	Reenterability: reenterable
 
   int mmaattcchh (const char *_m_a_s_k, const char *_s_t_r_i_n_g);
-    Check whether the _s_t_r_i_n_g is matched mask _m_a_s_k.  Returns number of
-    characters (wildcards are not counted) that matched.  Cases "*" in
-    _m_a_s_k or in _s_t_r_i_n_g are special: match() returns 0.
+    Check whether the _s_t_r_i_n_g is matched mask _m_a_s_k. Returns number of
+    characters (wildcards are not counted) that matched. Cases "*" in
+    _m_a_s_k or in _s_t_r_i_n_g are special: match() returns 0. The mask may
+    contain:
+      ~		matched to one or more spaces
+      %		matched to any number of non-space characters
+      *		matched to any number of any characters
+      {a-n}	matched to any number of characters in range a...n
+      {^a-n}	matched to any number of characters not in range a...n
+      ?		matched to one any character
+      [a-n]	matched to any character in range a...n
+      [^a-n]	matched to any character not in range a...n
+      \		quote next char
+    Note: this function does not perform case-insensitive comparison!
+	Reenterability: async-safe
+
+  char *ssttrrffccaatt (char *_d_s_t, const char *_s_r_c, size_t _n)
+    Adds null-terminated text string _s_r_c to end of text string in the
+    _d_s_t but don't exceed maximum string length _n of _d_s_t.
+	Reenterability: async-safe
+
+  char *NNeexxttWWoorrdd (const char *_m_s_g)
+  char *NNeexxttWWoorrdd__UUnnqquuootteedd (char *_m_s_g, const char *_l_i_n_e, size_t _s)
+    Finds and returns next space-separated word in the text string _m_s_g.
+    NextWord_Unquoted() also puts copy of skipped word in text array in
+    _l_i_n_e of size _s. If first char in _m_s_g is double quotation mark then
+    extract all text up to next quotation mark in _l_i_n_e and skip both
+    quotation marks.
+  	Reenterability: async-safe
+
+  void SSttrrTTrriimm (char *_c_m_d)
+    Chops all trailing spaces from string _c_m_d. Returns nothing.
+	Reenterability: async-safe
+
+  int HHaavvee__WWiillddccaarrdd (const char *_s_t_r)
+    Checks null-terminated string _s_t_r for wildcards (see match() function
+    for details). Returns value 0 or more if there is one, -1 otherwise.
+	Reenterability: async-safe
+
+  void pprriinnttll (char *_b_u_f, size_t _s, char *_t_e_m_p_l, size_t _s_t_r_l_e_n,
+	       char *_n_i_c_k, const char *_u_h_o_s_t, const char *_l_n_a_m_e,
+	       char *_c_h_a_n, uint32_t _i_p, unsigned short _p_o_r_t, int _i_d_l_e,
+	       const char *_m_e_s_s_a_g_e)
+    Produces output in character array _b_u_f with size _s according to a
+    format _t_e_m_p_l. Format string is composed of zero or more directives:
+    ordinary characters (not %), which are copied unchanged to the output
+    string and conversion specifications. Each conversion specification
+    is introduced by the % character. Arguments: _n_i_c_k is argument for
+    %N conversion, _u_h_o_s_t is argument for %@ conversion, _l_n_a_m_e is argument
+    for %L conversion, _c_h_a_n is argument for %# conversion, _i_p is argument
+    for %I conversion, _p_o_r_t is argument for %P conversion, _m_e_s_s_a_g_e is
+    argument for %* conversion, _i_d_l_e is argument for %- conversion. All
+    other details see in doc/help.format file. Argument _s_t_r_l_e_n is maximum
+    size of each line (between LFs) in output. Returns nothing.
+	Reenterability: none
+
+  const char *eexxppaanndd__ppaatthh (char *_b_u_f, const char *_s_t_r, size_t _s)
+    If path _s_t_r begins from "~/" then substitutes that "~" by value of
+    environment variable "HOME" in buffer _b_u_f with size _s and returns
+    pointer to _b_u_f. Otherwise returns _s_t_r.
+	Reenterability: async-safe
+
+  char *ssaaffee__ssttrrlloowweerr (char *_d_s_t, const char *_s_r_c, size_t _s_z)
+    Copies string text from _s_r_c to array in _d_s_t that has size _s_z and
+    converts copied text to lower case.
+	Reenterability: async-safe
+
+  char *rrffcc22881122__ssttrrlloowweerr (char *_d_s_t, const char *_s_r_c, size_t _s_z)
+    Copies string text from _s_r_c to array in _d_s_t that has size _s_z and
+    converts copied text to lower case but with RFC2812 additions.
+	Reenterability: async-safe
 
 Bindings API:
 -------------
-  BINDTABLE *AAdddd__BBiinnddttaabbllee (const char *_n_a_m_e, bindtable_t _f_l_a_g_s);
-    Registers bindtable with _n_a_m_e and type of matching _f_l_a_g_s.  Returns
-    pointer to structure associated with _n_a_m_e.  Subsequent calls of
-    Check_Bindtable() function will check that bindtable.  If bindtable
+  bindtable_t *AAdddd__BBiinnddttaabbllee (const char *_n_a_m_e, bttype_t _f_l_a_g_s);
+    Registers bindtable with _n_a_m_e and type of matching _f_l_a_g_s. Returns
+    pointer to structure associated with _n_a_m_e. Subsequent calls of
+    Check_Bindtable() function will check that bindtable. If bindtable
     with the same name already exist, returns address of it, otherwise
     address of new created one.
+	Reenterability: none
 
-  BINDING *CChheecckk__BBiinnddttaabbllee (BINDTABLE *_t_a_b_l_e, const char *_s_t_r,
-			    userflag _g_u_f, userflag _c_u_f, BINDING *_l_a_s_t);
+  binding_t *CChheecckk__BBiinnddttaabbllee (bindtable_t *_t_a_b_l_e, const char *_s_t_r,
+			      userflag _g_u_f, userflag _c_u_f, binding_t *_l_a_s_t);
     Checks bindtable _t_a_b_l_e for entries matched string _s_t_r for users with
-    global userflags _g_u_f and channel userflags _c_u_f.  Returns first
-    matched binding if _l_a_s_t equal NULL.  Returns next match if _l_a_s_t is
-    last found binding.  Note: this function is async-unsafe.
+    global userflags _g_u_f or channel userflags _c_u_f. Returns first matched
+    binding if _l_a_s_t equal NULL. Returns next match if _l_a_s_t is last found
+    binding.
+	Reenterability: none
 
-  BINDING *AAdddd__BBiinnddiinngg (const char *_t_a_b_l_e_n_a_m_e, const char *_m_a_s_k,
-			userflag _g_u_f, userflag _c_u_f, Function _f_u_n_c);
-    Adds binding to bindtable _t_a_b_l_e_n_a_m_e.  Strings checked via bindtable
+  binding_t *AAdddd__BBiinnddiinngg (const char *_t_a_b_l_e_n_a_m_e, const char *_m_a_s_k,
+			  userflag _g_u_f, userflag _c_u_f, Function _f_u_n_c);
+    Adds binding to bindtable _t_a_b_l_e_n_a_m_e. Strings checked via bindtable
     have to match string _m_a_s_k with current type of mathcing and users
     must have all global userflags _g_u_f or all channel userflags _c_u_f.
-    _f_u_n_c is function associated with that binding.  Note: mask must be a
-    lowercase string until bindtable is B_MATCHCASE type.
+    _f_u_n_c is function associated with that binding. See match() for _m_a_s_k
+    details if bindtable is B_MASK or B_UNIQMASK. Returns pointer to
+    new added binding. Note: _m_a_s_k must be a lowercase string until
+    bindtable is B_MATCHCASE type.
+	Reenterability: none
 
   void DDeelleettee__BBiinnddiinngg (const char *_t_a_b_l_e_n_a_m_e, Function _f_u_n_c);
     Deletes all bindings that returning _f_u_n_c from bindtable _t_a_b_l_e_n_a_m_e.
-    Returns nothing.  You always have to call this function when module
-    terminating for each binding added on module init.  Note: this
-    function is async-unsafe.
+    Returns nothing. You always have to call this function when module
+    terminating for each binding added on module init.
+	Reenterability: none
+
+  int RRuunnBBiinnddiinngg (binding_t *_b_i_n_d, const unsigned char *_u_s_e_r, char *_f_s_t,
+		  char *_s_e_c, int _n_u_m, char *_l_a_s_t);
+    Runs script binding defined at _b_i_n_d, with arguments, formed from _u_s_e_r
+    (nick!user@host) as "nick user@host", strings _f_s_t, _s_e_c, _l_a_s_t and
+    integer _n_u_m in order as its presents in function call. Values of
+    NULL must be ignored, negative _n_u_m too. Return value is 0 if
+    binding returns so, 1 otherwise. If interpreter returned error,
+    RunBinding() returns 0, and a string result that represents an
+    error message must be logged.
+	Reenterability: none  (binding must be since Check_Bindtable)
+
+  int LLnnaammee__IIssOOnn (const char *_p_u_b_l_i_c, const char *_l_n_a_m_e,
+		  const char **_n_a_m_e);
+    Checks if someone _l_n_a_m_e is currently online for me in the community
+    _p_u_b_l_i_c. Returns 0 if it isn't and not 0 otherwise. If pointer _n_a_m_e
+    is not NULL then on return it will point to string that contains
+    last seen nick of this client. If _l_n_a_m_e is NULL then checks for own
+    nickname on that network.
+	Reenterability: none
+
+  modeflag IInnssppeecctt__CClliieenntt (const char *_p_u_b_l_i_c, const char *_n_a_m_e,
+			   const char **_l_n_a_m_e, const char **_h_o_s_t,
+			   time_t *_i_d_l_e);
+    Checks if someone with nick _n_a_m_e is currently in community _p_u_b_l_i_c
+    and returns his modeflags. If _l_n_a_m_e is not NULL then on return it
+    will point to string that contains Lname of this client. If _h_o_s_t is
+    not NULL then on return it will point to string that contains host
+    string (host or user@host) of this client. If _i_d_l_e is not NULL then
+    on return it will contain timestamp of last event for this client.
+    If _n_a_m_e is NULL or hostmask (nick!user@host) then _l_n_a_m_e will point
+    to string that contains nick of client who added that change. If
+    _n_a_m_e is NULL then _h_o_s_t will point to string that contains community
+    topic. If _n_a_m_e is hostmask then _h_o_s_t will point to string that
+    contains matched mode for community (for example, ban mask). If
+    _p_u_b_l_i_c is network name (so it starts with '@') then checks global
+    modeflags.
+	Reenterability: none
 
 Listfile API:
 -------------
 
-  void *FFiinndd__UUsseerr (const unsigned char *_m_a_s_k, char **_n_a_m_e, userflag *_u_f,
-		   void *_p_r_e_v);
-    Finds user that has current hostmask _m_a_s_k ([[nick!]ident@]host]) and
-    gets his user login _n_a_m_e (Lname below) and his global userflags _u_f.
-    Locks Listfile record of that user.  If _p_r_e_v is not NULL, unlocks
-    Listfile record with internal structure _p_r_e_v and skip all previous
-    records in Listfile.  Returns pointer to internal Listfile record
-    structure.  If _m_a_s_k contains wildcards, first matched user will be
-    found, best matched otherwise.
-
-  void *LLoocckk__UUsseerr (const char *_n_a_m_e);
-    Locks Listfile record of user with Lname _n_a_m_e.  Returns pointer to
-    internal Listfile record structure or NULL if user was not found.
-
-  void UUnnlloocckk__UUsseerr (void *_u_s_e_r);
-    Unlocks Listfile record locked by calling Find_User() or Lock_User()
-    function that returned pointer to internal Listfile record structure
-    _u_s_e_r.  Returns nothing.
-
-  char *GGeett__UUsseerrffiieelldd (void *_u_s_e_r, const char *_f_n);
-    Returns content of Listfile field _f_n for user with internal Listfile
-    record structure at _u_s_e_r.  If _f_n is "", returns current dcc
-    console settings as string in form "console flags<space>IRC channel
-    <space>botnet channel number".  Note: Get_Userfield() fail if _u_s_e_r
-    is alias.
-
-  int SSeett__UUsseerrffiieelldd (void *_u_s_e_r, const char *_f_n, char *_v_a_l);
-    Sets content of Listfile field _f_n for user with internal Listfile
-    record structure at _u_s_e_r with value _v_a_l.  Returns nonull value
-    if successful.  If _f_n is "", sets dcc console settings for the user.
-    Note: if _f_n is "alias", Set_Userfield() will do not change Listfile
-    (delete old & add new aliases) so you must do it yourself.
-    Note2: Set_Userfield() fail if _u_s_e_r is alias.
-
-  int GGeett__UUsseerrlliisstt (INTERFACE *_i_f_a_c_e, userflag _u_f, const char *_f_n,
-		    char *_m_a_s_k);
-    Sends list (space separated) of known Lnames that have userflags any
-    of _u_f and Listfile field _f_n matched _m_a_s_k, to interface _i_f_a_c_e via
-    New_Request().  Returns number of requests was sent.
-
-  userflag MMaattcchh__UUsseerr (char *_h_o_s_t, char *_i_d_e_n_t, const char *_n_a_m_e);
-    Returns OR'ed userflags for all found Listfile records matched to
-    users with hostmask _i_d_e_n_t@_h_o_s_t and with Lname mask _n_a_m_e.
-
-  userflag GGeett__CChhaannFFllaaggss (const char *_n_a_m_e, const char *_c_h_a_n);
-    Returns userflags of user with Lname _n_a_m_e for IRC channel _c_h_a_n.  If
-    _c_h_a_n is NULL, returns global userflags.
-
-Async-unsafe listfile API:
---------------------------
-
-  int AAdddd__UUsseerrrreeccoorrdd (const char *_n_a_m_e, const unsigned char *_m_a_s_k,
-		      userflag _u_f);
+  int AAdddd__CClliieennttrreeccoorrdd (const char *_n_a_m_e, const unsigned char *_m_a_s_k,
+			userflag _u_f);
     Adds user with Lname _n_a_m_e, hostmask _m_a_s_k at form nick!user@host and
-    global userflags _u_f to Listfile.  Returns nonull value if successful.
+    global userflags _u_f to Listfile. See match() for hostmask details.
+    Returns nonull value if successful.
+	Reenterability: none
 
   int AAdddd__AAlliiaass (const char *_n_a_m_e, const char *_o_w_n_e_r);
     Adds user with Lname _n_a_m_e as alias for user with Lname _o_w_n_e_r to
-    Listfile.  Returns nonull value if successful.
+    Listfile. Returns nonull value if successful.
+	Reenterability: none
 
-  void DDeelleettee__UUsseerrrreeccoorrdd (const char *_n_a_m_e);
-    Deletes user/alias with Lname _n_a_m_e from Listfile.  Returns nothing.
-
-  int AAdddd__UUsseerrmmaasskk (const char *_u_s_e_r, const unsigned char *_m_a_s_k);
-    Adds user hostmask _m_a_s_k at form nick!user@host for user with Lname
-    _u_s_e_r.  Returns nonull value if successful.
-
-  void DDeelleettee__UUsseerrmmaasskk (const char *_u_s_e_r, const unsigned char *_m_a_s_k);
-    Delete all user hostmasks matching _m_a_s_k from user with Lname _u_s_e_r.
+  void DDeelleettee__CClliieennttrreeccoorrdd (const char *_n_a_m_e);
+    Deletes user/alias with Lname _n_a_m_e from Listfile. Returns nothing.
+	Reenterability: none
 
   int CChhaannggee__LLnnaammee (char *_n_n_e_w, char *_n_o_l_d);
-    Changes user Lname _n_o_l_d with new Lname _n_n_e_w in Listfile.  Returns 1
+    Changes user Lname _n_o_l_d with new Lname _n_n_e_w in Listfile. Returns 1
     if successful, 0 otherwise.
+	Reenterability: none
+
+#include "list.h"
+
+  clrec_t *FFiinndd__CClliieennttrreeccoorrdd (const unsigned char *_m_a_s_k, char **_n_a_m_e,
+			      userflag *_u_f, char *_n_e_t);
+    Finds user that has current hostmask _m_a_s_k ([[nick!]ident@]host]) and
+    gets his user login _n_a_m_e (Lname below) and his userflags _u_f compiled
+    from global flags and flags for network _n_e_t (if _n_e_t is NULL then for
+    direct service). Locks Listfile record of that user. Returns pointer
+    to internal Listfile record structure. If _m_a_s_k contains wildcards
+    then first matched user will be found and best matched otherwise.
+    Function can find only regular user record not special or alias,
+    search is case sencitive so _m_a_s_k must be in lowercase. Note: Locks
+    in core are complex so until you want deadlock NEVER use Listfile
+    API calls from above or any API calls that are marked as thread-safe
+    or reenterable while any record in Listfile is locked!
+	Reenterability: thread-safe
+
+  clrec_t *LLoocckk__CClliieennttrreeccoorrdd (const char *_n_a_m_e);
+    Locks Listfile record of user with Lname _n_a_m_e. Returns pointer to
+    internal Listfile record structure or NULL if user was not found.
+    Note: Locks in core are complex so until you want deadlock NEVER use
+    Listfile API calls from above or any API calls that are marked as
+    thread-safe or reenterable while any record in Listfile is locked!
+	Reenterability: thread-safe
+
+  void UUnnlloocckk__CClliieennttrreeccoorrdd (clrec_t *_u_s_e_r);
+    Unlocks Listfile record locked by previous call Find_Clientrecord()
+    or Lock_Clientrecord() function. Returns nothing.
+	Reenterability: thread-safe
+
+  char *GGeett__FFiieelldd (clrec_t *_u_s_e_r, const char *_f_n, time_t *_t_i_m_e);
+    Returns content of Listfile field _f_n for user with internal Listfile
+    record structure at _u_s_e_r. If _f_n is "" then returns current dcc
+    console settings as string in form "console flags<space>IRC channel
+    <space>botnet channel number". If _f_n is NULL then returns Lname for
+    this record (so if it was alias originally then returned value will
+    be "host" Lname). If parameter _t_i_m_e is not NULL then it may get some
+    value: if _f_n is NULL then it gets record creation time, if _f_n is a
+    special name then it gets fields expiration time (that's used for
+    bans, for example).
+	Reenterability: thread-safe
+
+  int SSeett__FFiieelldd (clrec_t *_u_s_e_r, const char *_f_n, const char *_v_a_l);
+    Sets content of Listfile field _f_n for user with internal Listfile
+    record structure at _u_s_e_r with value _v_a_l. Returns nonull value if
+    success. If _f_n is "" then sets dcc console settings for the user.
+    Note: if _f_n is "alias", Set_Field() will do not change Listfile
+    (delete old & add new aliases) so you must do it yourself.
+	Reenterability: none
+
+  int GGrrooww__FFiieelldd (clrec_t *_u_s_e_r, const char *_f_n, const char *_v_a_l);
+    If Listfile record structure _u_s_e_r has not field _f_n yet then
+    does the same as previous function. Otherwise adds space and value
+    _v_a_l to end of string field _f_n. Returns nonull value on success.
+    Note: if _f_n is "alias", Grow_Field() will do not change Listfile
+    (delete old & add new aliases) so you must do it yourself.
+    Note2: maximum length of resulted field is limited to 256 bytes.
+	Reenterability: none
+
+  int AAdddd__MMaasskk (clrec_t *_u_s_e_r, const unsigned char *_m_a_s_k);
+    Adds hostmask _m_a_s_k at form nick!user@host for user with internal
+    Listfile record structure at _u_s_e_r. See match() for hostmask details.
+    Returns nonull value if successful.
+	Reenterability: none
+
+  void DDeelleettee__MMaasskk (clrec_t *_u_s_e_r, const unsigned char *_m_a_s_k);
+    Deletes all hostmasks matching _m_a_s_k from user with internal Listfile
+    record structure at _u_s_e_r. See match() for _m_a_s_k details.
+	Reenterability: none
+
+  userflag GGeett__FFllaaggss (clrec_t *_u_s_e_r, const char *_s_e_r_v);
+    Returns userflags of user with internal Listfile record structure at
+    _u_s_e_r for service _s_e_r_v. If _s_e_r_v is NULL then returns direct service
+    userflags. If _s_e_r_v is network name (i.e. starts with '@') then
+    returns value compiled from global userflags and userflags for the
+    network.
+	Reenterability: thread-safe
+
+  userflag GGeett__CClliieennttffllaaggss (const char *_n_a_m_e, const char *_s_e_r_v);
+    Returns userflags of user with Lname _n_a_m_e for service _s_e_r_v. If _s_e_r_v
+    is NULL then returns direct service userflags. If _s_e_r_v is network
+    name (i.e. starts with '@') then returns value compiled from global
+    userflags and userflags for the network.
+	Reenterability: thread-safe
+
+  int GGeett__CClliieennttlliisstt (INTERFACE *_i_f_a_c_e, userflag _u_f, const char *_f_n,
+		      char *_m_a_s_k);
+    Sends list (space separated) of known Lnames that have userflags any
+    of _u_f and Listfile field _f_n matched _m_a_s_k, to interface _i_f_a_c_e via
+    New_Request(). If _f_n is NULL then Lnames and hostmasks will be
+    checked against _m_a_s_k. Returns number of requests that were sent.
+	Reenterability: none
+
+  int GGeett__HHoossttlliisstt (INTERFACE *_i_f_a_c_e, const char *_n_a_m_e);
+    Sends list (space separated) of known hosts for Listfile record with
+    Lname _n_a_m_e to interface _i_f_a_c_e via New_Request(). Returns number of
+    requests that were sent.
+	Reenterability: none
+  
+  userflag MMaattcchh__CClliieenntt (char *_h_o_s_t, char *_i_d_e_n_t, const char *_n_a_m_e);
+    Returns OR'ed userflags for all found Listfile records matched to
+    users with hostmask _i_d_e_n_t@_h_o_s_t and with Lname mask _n_a_m_e.
+	Reenterability: thread-safe
+
+  lid_t GGeettLLIIDD (const char *_n_a_m_e);
+    Returns LID for client with Lname _n_a_m_e.
+	Reenterability: thread-safe
+
+  userflag SSeett__FFllaaggss (lid_t, const char *, userflag);
+	Reenterability: ???
+
+  char *uusseerrffllaaggttoossttrr (userflag _f_l_a_g_s, char *_b_u_f_f);
+    Converts _f_l_a_g_s to string and prints it to buffer _b_u_f_f. Returns _b_u_f_f
+    pointer. Note: buffer must be long enough to get the string.
+	Reenterability: async-safe
 
 Wtmp API:
 ---------
@@ -278,49 +500,88 @@ Wtmp API:
 
   short EEvveenntt (const char *_e_v_e_n_t);
     Returns event number by it name _e_v_e_n_t.
+	Reenterability: thread-safe
 
   int FFiinnddEEvveenntt (wtmp_t *_t_e_m_p, const char *_u_s_e_r, short _e_v_e_n_t, lid_t _i_d);
     Finds last event for Lname _u_s_e_r and it number _e_v_e_n_t that was logged
-    from bot or channel _i_d and writes it to array _t_e_m_p.  Returns 1 if
-    event found, 0 otherwise.  If _e_v_e_n_t is W_ANY, the function finds any
-    evend for that _i_d (_i_d equal 0 is special: find any event on botnet
-    or any channel).
+    from bot or service _i_d and writes it to array _t_e_m_p. Returns 1 if
+    event found, 0 otherwise. If _e_v_e_n_t is W_ANY, the function finds any
+    evend for that _i_d. If _i_d is ID_ME then find the event on botnet or
+    any service, if _i_d is ID_ANY then find the event on any service.
+	Reenterability: thread-safe
 
-  void NNeewwEEvveenntt (short _e_v_e_n_t, const char *_u_s_e_r,
-		 const char *_f_r_o_m, short _n_u_m);
-    Adds new event record to Wtmp file for Lname _u_s_e_r, its number _e_v_e_n_t,
-    bot or channel _f_r_o_m with event specific data _n_u_m.  Returns nothing.
+  void NNeewwEEvveenntt (short _e_v_e_n_t, lid_t _f_r_o_m, lid_t _i_d, short _n_u_m);
+  void NNeewwEEvveennttss (short _e_v_e_n_t, lid_t _f_r_o_m, size_t _n,
+		 lid_t *_i_d, short *_n_u_m);
+    Adds one or _n new event record(s) to Wtmp file for client _i_d, its
+    number _e_v_e_n_t, bot or service _f_r_o_m with event specific data _n_u_m.
+    Returns nothing. Note: don't call with _e_v_e_n_t W_DOWN from threads.
+	Reenterability: async-safe if _e_v_e_n_t is W_DOWN, else thread-safe
 
 Sheduler-timer API:
 -------------------
 #include "sheduler.h"
 
-  int NNeewwSShheedduullee (iface_t _i_f_t, char *_n_a_m_e, ifsig_t _s_i_g, char *_m_i_n,
-		  char *_h_r, char *_d_s, char *_m_n, char *_w_k);
-    Sets new shedule mask for some minutes _m_i_n, hours _h_r, days _d_s of
-    months _m_n on day of week _w_k.  When shedule is matched then signal
-    _s_i_g will be sent to interface _n_a_m_e with type _i_f_t.  Returns 0 if
-    shedule set successful, -1 otherwise.
-
-  int KKiillllSShheedduullee (iface_t _i_f_t, char *_n_a_m_e, ifsig_t _s_i_g, char *_m_i_n,
+  void NNeewwSShheedduullee (iftype_t _i_f_t, char *_n_a_m_e, ifsig_t _s_i_g, char *_m_i_n,
 		   char *_h_r, char *_d_s, char *_m_n, char *_w_k);
-    Kills shedule mask.  Synopsis equal to NewShedule().
+    Sets new shedule mask for some minutes _m_i_n, hours _h_r, days _d_s of
+    months _m_n on day of week _w_k. Each of these submasks is comma
+    separated list of times: "*[/i]" or "a[-b[/i]]". First format means
+    do the job each i, second means do each i in interval a to b, that
+    range is inclusive. If i is omitted then assume it's equal 1, if b
+    is omitted then assume it's equal to a. Allowed values: _m_i_n 0-59,
+    _h_r 0-23, _d_s 1-31, _m_n 1-12, _w_k 0-7, since real time will never reach
+    other. When shedule is matched then signal _s_i_g will be sent to
+    interface _n_a_m_e with type _i_f_t. Returns nothing.
+	Reenterability: thread-safe
 
-  int NNeewwTTiimmeerr (iface_t _i_f_t, char *_n_a_m_e, ifsig_t _s_i_g, int _s_e_c, int _m_i_n,
-		int _h_r, int _d_s);
+  void KKiillllSShheedduullee (iftype_t _i_f_t, char *_n_a_m_e, ifsig_t _s_i_g, char *_m_i_n,
+		    char *_h_r, char *_d_s, char *_m_n, char *_w_k);
+    Aborts shedule mask. Synopsis equal to NewShedule().
+	Reenterability: thread-safe
+
+  tid_t NNeewwTTiimmeerr (iftype_t _i_f_t, char *_n_a_m_e, ifsig_t _s_i_g, unsigned int _s_e_c,
+		  unsigned int _m_i_n, unsigned int _h_r, unsigned int _d_s);
     Set new shedule job for _s_e_c seconds, _m_i_n minutes, _h_r hours and _d_s
-    days since current time.  When job time is reached then signal _s_i_g
-    will be sent to interface _n_a_m_e with type _i_f_t.  Returns 0 if shedule
-    set successful, -1 otherwise.
+    days since current time. When job time is reached then signal _s_i_g
+    will be sent to interface _n_a_m_e with type _i_f_t. Returns new shedule
+    job identifier if shedule set successful or -1 otherwise.
+	Reenterability: thread-safe
+
+  void KKiillllTTiimmeerr (tid_t _t_i_d);
+    Aborts shedule job with identifier _t_i_d. Returns nothing.
+	Reenterability: thread-safe
+
+  int CChheecckkFFlloooodd (short *_c_o_u_n_t_e_r, short _f_l_o_o_d_t_y_p_e[2]);
+    Sets new flood entry. Value of _c_o_u_n_t_e_r checked for max value from
+    _f_l_o_o_d_t_y_p_e[0]. Counter will be decremented after _f_l_o_o_d_t_y_p_e[1] seconds
+    since call. Returns >0 if flood was detected.
+	Reenterability: none
+
+  void NNooCChheecckkFFlloooodd (short *_c_o_u_n_t_e_r);
+    Aborts all flood entries for given _c_o_u_n_t_e_r. Returns nothing.
+	Reenterability: none
 
 Scripts API:
 ------------
 #include "init.h"
 
-  Note: these functions is async-unsafe.
-
   char *BBiinnddRReessuulltt;
-    Contains string result of executed binding.
+    Contains string result of last executed binding.
+	Reenterability: none
+
+  time_t SSttaarrttTTiimmee;
+    Contains time when client core was started.
+	Reenterability: none
+
+  char *DDaatteeSSttrriinngg;
+    Contains current date and time in the form "%e %b %H:%M" (see man
+    strftime).
+	Reenterability: none
+
+  time_t TTiimmee;
+    Contains current local UNIX time.
+	Reenterability: none
 
   int RReeggiisstteerrFFuunnccttiioonn (const char *_c_m_d, int (*_f_u_n_c)(const char *),
 			const char *_m_s_g);
@@ -328,352 +589,400 @@ Scripts API:
     Optional message _m_s_g may be used in prompt by config generator.
     Returns 1 if function was registered.
       Function _f_u_n_c() gets string arguments (may be with ending spaces)
-    and returns 0 when error or any other value otherwise.  Return value
-    is dependent with called function.  In case of error BindResult may
-    contain error message or may be leaved untouched.  If function can
-    be used in config file then it must allow recall on rehash.
+    and returns 0 when error or any other value otherwise. Return value
+    is dependent on called function. In case of error BindResult may
+    contain error message or may be leaved untouched. If function can
+    be used in config file then it must allow duplicate calls.
+	Reenterability: none
 
   int UUnnrreeggiisstteerrFFuunnccttiioonn (const char *_c_m_d);
-    Deletes function with name _c_m_d from all interpreters.  Returns 1 if
-    function was deleted.  You always have to call this function when
+    Deletes function with name _c_m_d from all interpreters. Returns 1 if
+    function was deleted. You always have to call this function when
     module terminating for each command that was added on module init.
+	Reenterability: none
 
   int RReeggiisstteerrBBoooolleeaann (const char *_b_o_o_l, bool *_v_a_r);
     Registers boolean variable _v_a_r in all interpreters with name _b_o_o_l.
     Returns 1 if variable was registered.
+	Reenterability: none
 
   int RReeggiisstteerrIInntteeggeerr (const char *_i_n_t, long int *_v_a_r);
     Registers integer variable _v_a_r in all interpreters with name _i_n_t.
     Returns 1 if variable was registered.
+	Reenterability: none
 
   int RReeggiisstteerrSSttrriinngg (const char *_s_t_r, char *_p_t_r, size_t _c_o_u_n_t, int _r_o);
     Registers string variable at address _p_t_r with size of _c_o_u_n_t bytes in
-    all interpreters with name _s_t_r.  If _r_o is not 0, attempt of change
-    that variable will cause script interpreter error.  Returns 1 if
+    all interpreters with name _s_t_r. If _r_o is not 0, attempt of change
+    that variable will cause script interpreter error. Returns 1 if
     variable was registered.
+	Reenterability: none
 
   int UUnnrreeggiisstteerrVVaarriiaabbllee (const char *_v_a_r);
-    Deletes any variable with name _v_a_r from all interpreters.  Returns 1
-    if variable was deleted.  You always have to call this function when
+    Deletes any variable with name _v_a_r from all interpreters. Returns 1
+    if variable was deleted. You always have to call this function when
     module terminating for each variable that was added on module init.
+	Reenterability: none
 
-  int RRuunnBBiinnddiinngg (BINDING *_b_i_n_d, const unsigned char *_u_s_e_r, char *_f_s_t,
-		  char *_s_e_c, int _n_u_m, char *_l_a_s_t);
-    Runs binding defined at _b_i_n_d, with arguments, formed from _u_s_e_r
-    (nick!user@host) as "nick user@host", strings _f_s_t, _s_e_c, _l_a_s_t and
-    integer _n_u_m in order as its presents in function call.  Values of
-    NULL must be ignored, negative _n_u_m too.  Return value is 0 if
-    binding returns so, 1 otherwise.  If interpreter returned error,
-    RunBinding() returns 0, and a string result that represents an
-    error message must be logged.
+  short *FFllooooddTTyyppee (const char *_n_a_m_e);
+    Creates new or finds existing flood structure associated with given
+    _n_a_m_e. Returns pointer to flood pair (see CheckFlood() function).
+	Reenterability: none
+
+  char *SSeettFFoorrmmaatt (const char *_n_a_m_e, char *_v_a_l);
+    Creates new or finds existing format string with max size FORMATMAX
+    that associated with given _n_a_m_e, and updates it with _v_a_l. Returns
+    pointer to that string.
+	Reenterability: none
+
+  int SSaavvee__FFoorrmmaattss (void);
+    Saves all formats into file with path (char *)FormatsFile as strings
+    "name value", overwriting file if exist. Returns 0 on success.
+	Reenterability: none
+
+  int CCoonnffiigg__EExxeecc (const char *_c_m_d, const char *_a_r_g_s);
+    Runs function that was registered via RegisterFunction(). Function
+    _c_m_d will get one argument - text string _a_r_g_s. Returns value that
+    was returned by _c_m_d(_a_r_g_s).
+	Reenterability: none
+
+  bool CCoonnffiirrmm (char *_m_e_s_s_a_g_e, bool _d_e_f_l);
+    Waits until user (via module "ui") confirm (i.e. enters "y" or "n")
+    and then returns TRUE or FALSE. User will get prompt composed from
+    _m_e_s_s_a_g_e and default value from _d_e_f_l. Returns immediately if that
+    variable _d_e_f_l doesn't need to be asked (has no flag ASK) or if "ui"
+    module doesn't exist. In that case returns TRUE or FALSE from _d_e_f_l.
+    Note: don't lock dispatcher before Confirm() or you'll get freeze
+    or even deadlock!
+	Reenterability: may be called only from threads
 
 Sockets API:
 ------------
 #include "socket.h"
 
-  idx_t AAddddSSoocckkeett (int _m_o_d_e, char *_d_o_m_a_i_n, unsigned short _p_o_r_t);
-    Opens new socket in non-block mode, establishes connection with
-    Internet address with name _d_o_m_a_i_n to port _p_o_r_t if _m_o_d_e is M_FILE or
-    M_NORM, or opens new listening socket if _m_o_d_e is M_LIST or M_LINP.
-    If _m_o_d_e is M_LINP then listening socket opens for only one
-    connection.  Returns new socket identifier or -1 if failed.
+  idx_t GGeettSSoocckkeett (void);
+    Creates new socket. Socket must be sets up by SetupSocket() later.
+    Returns new socket identifier or -1 if failed. Note: that socket must
+    be owned by thread that call AddSocket() and closed only by it.
+    	Reenterability: thread-safe
 
-  int KKiillllSSoocckkeett (idx_t *_i_d_x);
-    Closes the socket with identifier _i_d_x.  Returns 0 if socket closed
-    OK, -1 otherwise.
+  int SSeettuuppSSoocckkeett (idx_t _i_d_x, int _m_o_d_e, char *_d_o_m_a_i_n,
+		   unsigned short _p_o_r_t);
+    Sets up new socket in non-block mode, establishes connection with
+    Internet address with name _d_o_m_a_i_n to port _p_o_r_t if _m_o_d_e is M_RAW or
+    M_TEXT, or opens new listening socket if _m_o_d_e is M_LIST or M_LINP.
+    If _m_o_d_e is M_LINP then listening socket will be opened for only
+    one connection. Returns 0 if success or error code otherwise.
+    	Reenterability: thread-safe
 
   idx_t AAnnsswweerrSSoocckkeett (idx_t _i_d_x);
-    Attempts to answer for listening socket _i_d_x.  Returns new socket
-    identifier or -1 if no connections was made.
+    Attempts to answer for listening socket _i_d_x. Returns new socket
+    identifier or -1 if no connections was made. Note: never cancel the
+    thread where there is this call or you may get deadlock.
+	Reenterability: thread-safe
+
+  int KKiillllSSoocckkeett (idx_t *_i_d_x);
+    Closes the socket with identifier _i_d_x. Returns 0 if socket closed
+    OK, -1 otherwise. Note: this function must be called by and only
+    by thread that opened the socket before.
+	Reenterability: thread-safe
+
+  void CClloosseeSSoocckkeett (idx_t _i_d_x);
+    Shutdowns TCP socket with identifier _i_d_x but doesn't kill it so
+    it must be closed after. Returns nothing.
+	Reenterability: async-safe
 
   char *SSoocckkeettDDoommaaiinn (idx_t _i_d_x, unsigned short *_p);
-    Returns domain name for socket _i_d_x and his port in _p.  If socket is
-    opened in listen mode, returns own domain and port.  If no matched
-    socket found, leaves the _p untouched and returns empty string (but
-    no NULL).
+    Returns domain name for socket _i_d_x. If _p is not NULL then also puts
+    port of the socket in *_p. If socket is opened in listen mode then
+    returns own domain and port. If no matched socket found then _p will
+    be left untouched and function returns empty string but no NULL.
+	Reenterability: async-safe
 
   ssize_t RReeaaddSSoocckkeett (char *_b_u_f, idx_t _i_d_x, size_t _s_z, int _m_o_d_e);
-    Reads data from socket _i_d_x to buffer _b_u_f.  If _m_o_d_e is M_FILE then
-    read raw data to max buffer size _s_z.  Otherwise read data while
-    buffer is full or while CR-LF is encountered in socket stream, in
-    this case ending CR-LF strips from got string and string terminates
-    with 0.  Returns size of got data from socket in bytes.  If socket
-    was died unexpectedly or got EOF, closes the socket and returns
-    E_EOF or E_NOSOCKET.  Also returns E_AGAIN if socket is waiting a
+    Reads data from socket _i_d_x to buffer _b_u_f. If _m_o_d_e is M_RAW then reads
+    raw data to max buffer size _s_z and returns size of data that was got.
+    Otherwise reads data into buffer until it is full or until CR+LF is
+    encountered in socket stream, in that case ending CR+LF will be
+    excluded from string, string terminated with zero byte and function
+    returns size of data that was got from socket (including terminating
+    byte). If _m_o_d_e is M_POLL then do the same but may wait up to 200
+    milliseconds. If socket was died unexpectedly or we got EOF then
+    returns E_NOSOCKET. Also may return E_AGAIN if socket is waiting a
     connection.
+	Reenterability: async-safe
 
-  ssize_t WWrriitteeSSoocckkeett (idx_t _i_d_x, char *_b_u_f, size_t *_s_z, int _m_o_d_e);
-    Writes data to socket _i_d_x from buffer _b_u_f.  If _m_o_d_e is M_FILE then
-    write raw data of size _s_z.  Otherwise substitude all LF (without
-    CR before it) to CR-LF and end data with CR-LF.  Returns number of
-    wrote bytes and rewrites data in _b_u_f with data that still left.  If
-    socket was died unexpectedly, returns -1 and closes the socket.
-    Note: size of _b_u_f must be at least 1 even if _s_z is zero.
+  ssize_t WWrriitteeSSoocckkeett (idx_t _i_d_x, char *_b_u_f, size_t *_p_t_r, size_t *_s_z,
+		       int _m_o_d_e);
+    Writes raw data of size _s_z to socket _i_d_x from buffer _b_u_f at _p_t_r.
+    Returns number of bytes written and changes counters _p_t_r and _s_z. If
+    _m_o_d_e is M_POLL then do the same but may wait up to 200 milliseconds.
+    If the socket was died unexpectedly then returns -1.
+	Reenterability: async-safe
 
 DCC API:
 --------
-#include "dcc.h"
+#include "direct.h"
 
-  int GGeett__DDccccIIddxx (DCC_SESSION *_d_c_c);
-    Returns Tcl identifier of DCC session _d_c_c.  Note: this
-    function is async-safe.
+  void CChhaatt__JJooiinn (INTERFACE *_i_f_a_c_e, userflag _u_f, int _b_o_t_c_h, int _i_d_x,
+		   char *host);
+    Runs bindtable "chat-join" when user that has interface _i_f_a_c_e and
+    flags _u_f and is connected from some _h_o_s_t via socket _i_d_x joins botnet
+    channel _b_o_t_c_h. Returns nothing.
+	Reenterability: none
 
-  DCC_SESSION *DDccccSSeenndd (char *_f_n_a_m_e, long _p_o_s);
-    Opens listening connection for send file.  Returns DCC session data
-    for connection.  You must get socket info (via SocketDomain() API)
-    and say it to recipient.  Name of file _f_n_a_m_e must contain full path
-    to the file and file will sent from position _p_o_s.
+  void CChhaatt__PPaarrtt (INTERFACE *_i_f_a_c_e, int _b_o_t_c_h, int _i_d_x, char *_q_m_s_g);
+    Runs bindtable "chat-part" when user that has interface _i_f_a_c_e and is
+    connected via socket _i_d_x parts botnet channel _b_o_t_c_h with quit message
+    _q_m_s_g. Returns nothing.
+	Reenterability: none
 
-  void CChhaatt__JJooiinn (INTERFACE *_i_f_a_c_e);
-    Runs bindtable "chat-join" for interface _i_f_a_c_e.  Returns nothing.
+  ssize_t SSeessssiioonn__PPuutt (peer_t *_s, char *_l_i_n_e, size_t _s_z);
+    Sends data _l_i_n_e of size _s_z to session _s. If there was an error then
+    returns error code. Else returns size of data was accepted.
+	Reenterability: none
 
-  void CChhaatt__PPaarrtt (INTERFACE *_i_f_a_c_e);
-    Runs bindtable "chat-part" for interface _i_f_a_c_e.  Returns nothing.
+  ssize_t SSeessssiioonn__GGeett (peer_t *_s, char *_b_u_f, size_t _b_u_f_s_i_z_e);
+    Gets data from session _s to buffer _b_u_f of maximal size _b_u_f_s_i_z_e. If
+    there was an error then returns error code. Else returns size of
+    data was got.
+	Reenterability: none
 
-  void sseettddccccccoonnssoollee (DCC_SESSION *_d_c_c, char *_m_o_d_e);
-    Sets console output mode for user on DCC session _d_c_c, according to
-    his permissions.  Character string _m_o_d_e is in form "loglevel
-    #channel BotChannel" where loglevel may contain any abbreviation
-    for loggings or '+' for echo enabling, '%' for ansi mode (convert
-    all colors to ansi), '$' for ascii mode (strip all color codes), '#'
-    for mono mode (strip all but bold or inverse codes), #channel is IRC
-    channel for user's console log, BotChannel is botnet channel.
-    Returns nothing.
+  unsigned short LLiisstteennPPoorrtt (char *_c_l_n, unsigned short _p, char *_c_o_n_f_l_i_n_e,
+			     void (*_p_r_e_h_a_n_d_l_e_r) (pthread_t _t_h, idx_t _s),
+			     void (*_h_a_n_d_l_e_r) (char *_c_l_n, char *_i_d_e_n_t,
+			     char *_h_o_s_t, idx_t _s_o_c_k_e_t));
+    Opens listening port for client name _c_l_n on port _p. It opens socket
+    and when connection is accepted then creates new thread where gets
+    ident (see RFC1413) for incoming connection and then passes data of
+    new connection (input client name _c_l_n, _i_d_e_n_t, _h_o_s_t, and new _s_o_c_k_e_t)
+    to function _h_a_n_d_l_e_r. If _c_l_n is not NULL then closes listening socket
+    after connection was accepted, else continue to listen the port. If
+    _c_o_n_f_l_i_n_e is not NULL then this port will be reported to config as
+    _c_o_n_f_l_i_n_e. Opened listening socket is presented in dispatcher with
+    name _c_o_n_f_l_i_n_e or with text string of opened port number if _c_o_n_f_l_i_n_e
+    is NULL, and type I_LISTEN. If _p_r_e_h_a_n_d_l_e_r is not NULL then it will be
+    called when a new connection is accepted (with new thread identifier
+    _t_h and socket _s) so caller may cancel that thread on emergency.
+    Socket of accepted connection is owned by listening thread. Returns
+    listening port number or 0 if no port was opened.
+	Reenterability: none
+
+  pthread_t CCoonnnneecctt__HHoosstt (char *_h_o_s_t, unsigned short _p_o_r_t, idx_t *_s_o_c_k_e_t,
+			  void (*_h_a_n_d_l_e_r) (int _r_e_s, void *_i_d), void *_i_d);
+    Attempts to create a thread to open outgoing connection to some _h_o_s_t
+    on some _p_o_r_t. It does DNS lookup then opens connection. After that
+    (eighter success or failure) given _h_a_n_d_l_e_r will be called with two
+    parameters: error code _r_e_s and value _i_d from caller. The thread is
+    joinable and caller gets identifier _s_o_c_k_e_t for the socket which is
+    waiting for connection at that moment. Socket is owned by created
+    thread. Returns thread identifier (so caller may cancel it even
+    while it doing DNS lookup) if thread was created successfully or 0
+    otherwise.
+	Reenterability: async-safe
+
+  int CChheecckk__PPaasssswwdd (const char *_p_l_a_i_n, char *_e_n_c_r);
+    Checks if _p_l_a_i_n text password has the same encrypted value as _e_n_c_r.
+    Returns 0 if password matches.
+	Reenterability: none
+
+Charset conversions API:
+------------------------
+#include "conversion.h"
+
+  conversion_t *Get_Conversion (const char *charset);
+	Reenterability: thread-safe
+
+  void Free_Conversion (conversion_t *conv);
+	Reenterability: thread-safe
+
+  size_t Do_Conversion (conversion_t *conv, char **out, size_t outsz,
+			const char *in, size_t insz);
+	Reenterability: thread-safe
+
+  size_t Undo_Conversion (conversion_t *conv, char **out, size_t outsz,
+			  const char *in, size_t insz);
+	Reenterability: thread-safe
 
 Calling of bindings:
 --------------------
 Flags:
   KEYWORD    for keyword (followed by space)
-  MATCHCASE  case-sensitive keyword search
   MASK       for string wildcards matching
-  UNIQ       unique (replacing) binding for keyword, maybe with completion.
+  MATCHCASE  case-sensitive wildcards matching
+  UNIQ       unique (replacing) binding for keyword
+  UCOMPL     the same with completion
   UNIQMASK   unique (replacing) binding for keymask
 
-All int func() returns 0 if binding did not executed.  If binding
-arguments are correct but no logs needed, func() may return -1.
+All int func() returns 0 if binding did not executed. If binding
+arguments are correct but no logs needed, func() may return -1. All
+bindings may be non-reenterable if another wasn't declared.
 
 Interpreter's bindings:
   int func(char *_n_a_m_e, int _a_r_g_c, char *_a_r_g_v[]);
     Call interpreter function _n_a_m_e with _a_r_g_c arguments array _a_r_g_v (see
-    the "Tcl args:" label below).  If _n_a_m_e is "-" then interpreter must
-    return its name.
+    the "Script args:" label below). If _n_a_m_e is "-" then interpreter
+    must return its name.
 
 
-Tcl name -- bindtable name -- flags -- synopsis & description
+Script name -- bindtable name -- flags -- synopsis & description
 
-DCC   "ddcccc"        UNIQ
-  int func(DCC_SESSION *_f_r_o_m, char *_a_r_g_s);
-    Used when user enters the command on partyline.  Partiline member
-    identified with session _f_r_o_m.  Arguments _a_r_g_s to command are
+DCC   "ddcccc"            UCOMPL
+  int func(peer_t *_f_r_o_m, char *_a_r_g_s);
+    Used when user enters the command on partyline. Partiline member
+    identified with session _f_r_o_m. Arguments _a_r_g_s to command are
     stripped from leading spaces.
       Matching: first word of partyline command without leading '.'.
-      Tcl args: Lname Dcc-idx args
+      Script args: Lname Dcc-idx args
 
-FIL   "ffiilleess"      UNIQ
-  int func(DCC_SESSION *_f_r_o_m, char *_a_r_g_s);
-    The same as "dcc" but for user onto filesystem.
-      Matching: first word of partyline command without leading '.' if
-		it there is.
-      Tcl args: Lname Dcc-idx args
-
-CHAT  "cchhaatt"       MASK
-  (int) void func(DCC_SESSION *_f_r_o_m, char *_m_s_g);
+CHAT  "cchhaatt"           MASK
+  (int) void func(peer_t *_f_r_o_m, char *_m_s_g);
     Used when somebody says anything (text _m_s_g) on the partyline/botnet.
     Partyline member identified with session _f_r_o_m.
       Matching: full text line.
-      Tcl args: Lname BotChannel msg
+      Script args: Lname BotChannel msg
 
-ACT   "cchhaatt-aacctt"   MASK
-  (int) void func(DCC_SESSION *_f_r_o_m, char *_m_s_g);
+ACT   "cchhaatt-aacctt"       MASK
+  (int) void func(peer_t *_f_r_o_m, char *_m_s_g);
     Used when somebody does an action (text _m_s_g) on the partyline/botnet.
     Partyline member identified with session _f_r_o_m.
       Matching: full text line.  (any channel userflags are ignored)
-      Tcl args: Lname BotChannel msg
+      Script args: Lname BotChannel msg
 
-RCVD  "ddcccc--ggeett"    MASK
-  (int) void func(const unsigned char *_u_s_e_r, const char *_f_i_l_e);
-    Used when somebody _u_s_e_r succesfully uploads file _f_i_l_e to bot.
-      Matching: Lname.  (any channel userflags are ignored)
-      Tcl args: Lname nick file
-
-FILT  "iinn--ffiilltteerr"  MASK
-  int func(DCC_SESSION *_f_r_o_m, char *_m_s_g, size_t _m_s_g_l_e_n);
-    Used for filtering text _m_s_g on the partyline before parsing.  All
+FILT  "iinn--ffiilltteerr"      MASK
+  int func(peer_t *_f_r_o_m, char *_m_s_g, size_t _m_s_g_l_e_n);
+    Used for filtering text _m_s_g on the partyline before parsing. All
     filters matched user (identified by _f_r_o_m) flags and text mask will
-    be applied.  Null-terminated text at area _m_s_g no longer than _m_s_g_l_e_n
-    can be rewritten.
-      Matching: full text line.
-      Tcl args: Dcc-idx msg
+    be applied. Null-terminated text at area _m_s_g no longer than _m_s_g_l_e_n
+    can be rewritten by internal binding.
+      Matching: full text line.  (any channel userflags are ignored)
+      Script args: Dcc-idx msg
       Bind result: new text line.
 
--     "oouutt--ffiilltteerr" MASK
-  (int) void func(DCC_SESSION *_f_r_o_m, char *_m_s_g, size_t _m_s_g_l_e_n);
-    Used for filtering text _m_s_g before sending to partyline user.  All
-    filters matched user (identified by _f_r_o_m) flags and text mask will
-    be applied.  Null-terminated text at area _m_s_g no longer than _m_s_g_l_e_n
-    can be rewritten.
-      Matching: full text line.
+-     "oouutt--ffiilltteerr"     MASK
+  (int) void func(peer_t *_t_o, char *_m_s_g, size_t _m_s_g_l_e_n);
+    Used for filtering text _m_s_g before sending to partyline user. All
+    filters matched user (identified by _t_o) flags and text mask will be
+    applied. Null-terminated text at area _m_s_g no longer than _m_s_g_l_e_n can
+    be rewritten.
+      Matching: full text line.  (any channel userflags are ignored)
 
-CHON  "cchhaatt--oonn"    MASK
-  (int) void func(DCC_SESSION *_w_h_o);
+CHON  "cchhaatt--oonn"        MASK
+  (int) void func(peer_t *_w_h_o);
     Used when somebody _w_h_o enters a DCC CHAT partyline.
       Matching: Lname.
-      Tcl args: Lname Dcc-idx
+      Script args: Lname Dcc-idx
 
-CHOF  "cchhaatt--ooffff"   MASK
-  (int) void func(DCC_SESSION *_w_h_o);
+CHOF  "cchhaatt--ooffff"       MASK
+  (int) void func(peer_t *_w_h_o);
     Used when somebody _w_h_o "logoff" from DCC CHAT partyline.
       Matching: Lname.
-      Tcl args: Lname Dcc-idx
+      Script args: Lname Dcc-idx
 
-CHJN  "cchhaatt--jjooiinn"  MASK
-  (int) void func(const char *_u_n_a_m_e, char *_b_n_a_m_e, DCC_SESSION *_w_h_e_r_e);
-    Used when somebody _u_n_a_m_e (Lname if on this bot or Lname@Bot if from
-    botnet) joins a botnet channel defined by _w_h_e_r_e via bot _b_n_a_m_e.
-      Matching: BotChannel.  (userflags are ignored)
-      Tcl args: bname uname BotChannel dccuserchar Dcc-idx host
+CHJN  "cchhaatt--jjooiinn"      MASK
+  (int) void func(INTERFACE *_i_f_a_c_e, int _b_c_h_a_n, char *_h_o_s_t);
+    Used when somebody _i_f_a_c_e (coming from _h_o_s_t) joins a botnet channel
+    _b_c_h_a_n.
+      Matching: bchan.  (userflags are ignored)
+      Script args: botname uname bchan dccuserchar Dcc-idx host
 
-CHPT  "cchhaatt--ppaarrtt"  MASK
-  (int) void func(const char *_u_n_a_m_e, char *_b_n_a_m_e, DCC_SESSION *_w_h_e_r_e);
-    Used when somebody _u_n_a_m_e (Lname if on this bot or Lname@Bot if from
-    botnet) parts a botnet channel defined by _w_h_e_r_e via bot _b_n_a_m_e.
-      Matching: BotChannel.  (userflags are ignored)
-      Tcl args: bname uname Dcc-idx BotChannel
+CHPT  "cchhaatt--ppaarrtt"      MASK
+  (int) void func(INTERFACE *_i_f_a_c_e, int _b_c_h_a_n);
+    Used when somebody _i_f_a_c_e parts a botnet channel _b_c_h_a_n.
+      Matching: bchan.  (userflags are ignored)
+      Script args: botname uname Dcc-idx bchan
 
-CTCP  "ccttccpp"       UNIQ
-  int func(const char *_t_o, const unsigned char *_f_r_o_m, char *_l_n, char *_m_s_g);
-    Used when bot get any ctcp message _m_s_g from server.  Message from
-    nick!user@host _f_r_o_m (with Lname _l_n) go for nick/channel _t_o.
-      Matching: keyword (first word) of ctcp message.
-      Tcl args: nick user@host Lname to msg
-
--     "ppaasssswwdd"     UNIQMASK
+-     "ppaasssswwdd"         UNIQMASK
   (int) void func(const char *_p_a_s_s, char **_c_r_y_p_t_e_d);
     Used for translation plain-text _p_a_s_s password to encripted form
-    pointed by _c_r_y_p_t_e_d.
+    pointed by _c_r_y_p_t_e_d. If previous value of _c_r_y_p_t_e_d is not NULL then
+    it may be used as prototype for generated password.
       Matching: full passphrase.  (userflags are ignored)
 
-RAW   "sseerrvveerr"     UNIQMASK
-  int func (char *_p_r_e_f_i_x, char *_c_o_m_m_a_n_d, char *_p_a_r_a_m_s);
-    Used when bot get any message from server.  Optional _p_r_e_f_i_x is
-    message source (see the RFC), _c_o_m_m_a_n_d is keyword like "PRIVMSG"
-    with optional parameters _p_a_r_a_m_s.
-      Matching: command.
-      Tcl args: prefix command params
-
-NKCH  "nneeww--llnnaammee"  MASK
+NKCH  "nneeww--llnnaammee"      MASK
   (int) void func(char *_n_e_w_l_n, char *_o_l_d_l_n);
     Used when user Lname _o_l_d_l_n changed to Lname _n_e_w_l_n.
       Matching: old Lname.  (userflags are ignored)
-      Tcl args: oldln newln
+      Script args: oldln newln
 
-LOAD  "llooaadd"       MASK
+LOAD  "llooaadd"           MASK
   (int) void func(char *_m_o_d, char *_a_r_g_s);
     Used when module with name _m_o_d was succesfully loaded with arguments
     _a_r_g_s.
       Matching: module name with arguments.
-      Tcl args: mod
+      Script args: mod
 
-UNLD  "uunnllooaadd"     MASK
+UNLD  "uunnllooaadd"         MASK
   (int) void func(char *_m_o_d);
     Used when module with name _m_o_d was terminated.
       Matching: module name.
-      Tcl args: mod
+      Script args: mod
 
-JOIN  "jjooiinn"       MASK
-  int func(unsigned char *_w_h_o, char *_c_h_a_n, char *_s_e_r_v);
-    Used when someone with nick!user@host _w_h_o joins IRC channel _c_h_a_n via
-    server _s_e_r_v.
-      Matching: "channel nick!user@host" string.
-      Tcl args: nick user@host Lname channel
-
-PART  "ppaarrtt"       MASK
-  int func(unsigned char *_w_h_o, const char *_c_h_a_n, char *_m_s_g);
-    Used when someone nick!user@host _w_h_o parts IRC channel _c_h_a_n with
-    reason _m_s_g (may be NULL).
-      Matching: "channel nick!user@host" string.
-      Tcl args: nick user@host Lname channel
-
-SIGN  "ssiiggnnooffff"    MASK
-  (int) void func(unsigned char *_w_h_o, char *_m_s_g);
-    Used when someone with nick!user@host _w_h_o leave IRC with the reason
-    _m_s_g.  Note: scripts are called for each channel separately.
-      Matching: "nick!user@host" string.
-      Tcl args: nick user@host Lname channel msg
-
-NICK  "nniicckkcchhgg"    MASK
-  (int) void func(char *_n_e_w_n, char *_o_l_d_n);
-    Used when someone changes his nick from _o_l_d_n to _n_e_w_n.  Note: scripts
-    are called for each channel separately.
-      Matching: "channel newnick" string.
-      Tcl args: oldn user@host Lname channel newn
-
-KICK  "kkiicckk"       MASK
-  (int) void func(unsigned char *_o_p, const char *_c_h_a_n,
-		  unsigned char *_w_h_o, char *_c_o_m_m_e_n_t);
-    Used when someone with nick!user@host _o_p kick nick(s) _w_h_o from
-    channel _c_h_a_n with reason _c_o_m_m_e_n_t.
-      Matching: "channel who" string.  (userflags are ignored)
-      Tcl args: op user@host Lname channel who comment
-
-MODE  "mmooddeecchhgg"    MASK
-  (int) void func(unsigned char *_w_h_o, const char *_c_h_a_n, char *_c_h_g);
-    Used when channel operator nick!user@host _w_h_o made mode change _c_h_g
-    on IRC channel _c_h_a_n.  Note: mode change line from server is parsed
-    and separated before calling any binding.
-      Matching: full mode change line (i.e. with channel name).
-      Tcl args: nick user@host Lname channel chg
-
-SPLT  "nneettsspplliitt"   MASK
-  (int) void func(char *_s_e_r_v, unsigned char *_w_h_o);
-    Used when IRC server _s_e_r_v netsplits from bot's IRC server and users
-    _w_h_o (as comma separated list of nicks) left this part of IRC net.
-    Note: scripts are called for each user separately.
-      Matching: nicks list.
-      Tcl args: nick user@host Lname channel
-
-REJN  "nneettjjooiinn"    MASK
-  (int) void func(char *_s_e_r_v, const char *_c_h_a_n, unsigned char *_w_h_o);
-    Used when bot's IRC server take netjoin with IRC server _s_e_r_v and
-    users _w_h_o (as comma separated list of nick!user@host) returned to
-    channel _c_h_a_n.  Note: scripts are called for each user separately.
-      Matching: "chan who" string.
-      Tcl args: nick user@host Lname channel
-
--     "llooggiinn"      MASK
-  (int) void func(DCC_SESSION *_d_c_c, unsigned char *_w_h_o, char **_m_s_g);
+-     "llooggiinn"          MASK
+  (int) void func(char *_w_h_o, char *_i_d_e_n_t, char *_h_o_s_t, idx_t _i_d_x,
+		  char _b_u_f[SHORT_STRING], char **_m_s_g);
     Used when someone with Lname _w_h_o is about to enter telnet with bot.
-    The binding make password checking and creates bot interface if no
-    errors caused.  Else it returns error message _m_s_g.  Don't use it
-    please, until you know how it works!!!
-      Matching: Lname.  (any channel userflags are ignored)
+    The binding is always called from thread but dispatcher is locked so
+    first thing you must to do is call Unset_Iface(). If first char in
+    _b_u_f isn't 0 then you are called from irc module on DCC CHAT. The
+    binding makes password checking and creates the interface if there
+    was no errors. Else it returns error message _m_s_g. Parameters
+    _i_d_e_n_t, and _h_o_s_t are coming from connection socket _i_d_x. Buffer _b_u_f
+    may be used by binding. Note: the binding must be thread-safe!
+    Don't use it please, until you know how it works!!!
+      Matching: network type.  (any channel userflags are ignored)
 
--     "rreeggiisstteerr"   MASK
+-     "ccoonnnneecctt"        MASK
+  int func (const char *_l_i_n_k, char *_a_r_g_s);
+    Used on "connect" command to network/server/channel/bot _l_i_n_k with
+    optional parameters _a_r_g_s. Note that channel has the same type as
+    it's network but binding for connect channel must have any channel
+    userflag instead of some global userflags.
+      Matching: link's network type.
+
+-     "rreeggiisstteerr"       MASK
   int func(char *_n_a_m_e, void *_v_a_r, size_t _s_i_z_e);
     Used when any module attempts to register any variable _v_a_r (_s_i_z_e is
     1 for bool, 0 for long int, 2 for read-only null-terminated string
     or >2 for regular string) with symbolic name _n_a_m_e.
       Matching: none
 
--     "uunnrreeggiisstteerr" MASK
+-     "uunnrreeggiisstteerr"     MASK
   int func(char *_n_a_m_e, void *_v_a_r);
     Used when any module attempts to unregister any variable _v_a_r with
     symbolic name _n_a_m_e.
       Matching: none
 
--     "ffuunnccttiioonn"   MASK
+-     "ffuunnccttiioonn"       MASK
   int func(char *_n_a_m_e, int (* _f_n) (char *));
     Used when any module attempts to register any function _f_n with
     symbolic name _n_a_m_e.
       Matching: none
 
--     "uunnffuunnccttiioonn" MASK
+-     "uunnffuunnccttiioonn"     MASK
   int func(char *_n_a_m_e);
     Used when any module attempts to unregister any function with
     symbolic name _n_a_m_e.
       Matching: none
 
--     "ssccrriipptt"     UNIQMASK
+-     "ssccrriipptt"         UNIQMASK
   int func (char *_n_a_m_e);
     Used when config parser attempts to load script file _n_a_m_e.
       Matching: filename.
+
+-     "iissoonn"           UNIQ
+  int func (const char *_n_e_t, const char *_p_u_b_l_i_c, const char *_l_n_a_m_e,
+	    const char **_n_a_m_e);
+    Used by Lname_IsOn() function for calling network-specific procedure
+    for community _p_u_b_l_i_c on the network _n_e_t. See description of that
+    function for any details.
+      Matching: network type.
+
+-     "iinnssppeecctt--cclliieenntt" UNIQ
+  (modeflag) int func (const char *_n_e_t, const char *_p_u_b_l_i_c,
+		       const char *_n_a_m_e, const char **_l_n_a_m_e,
+		       const char **_h_o_s_t, time_t *_i_d_l_e);
+    Used by Inspect_Client() function for calling network-specific
+    procedure for community _p_u_b_l_i_c on the network _n_e_t. See description
+    of that function for any details.
+      Matching: network type.

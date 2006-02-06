@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2002  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2001-2005  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -20,25 +20,59 @@
 
 #include "foxeye.h"
 
-#include "init.h"
-#include "users.h"
+#include <pthread.h>
 
-/* Note: since users.c calls ChangeUid() that locks Wtmp,
-   call no functions from that file but GetLID() is safe */
+#include "init.h"
+#include "wtmp.h"
 
 static pthread_mutex_t WtmpLock = PTHREAD_MUTEX_INITIALIZER;
-
 static char **Events = NULL;
-static short _Ealloc = 0;
 static short _Enum = 0;
+static char _Egot = 0;
 
 #define EVENTS_MAX	100
+
+/* returns 0 if success or -1 if fail */
+static int _set_event (const char *name, size_t sz)
+{
+  if (!Events)
+    Events = safe_malloc (EVENTS_MAX * sizeof (char *));
+  else if (_Enum == EVENTS_MAX)
+    return -1;
+  Events[_Enum] = safe_malloc (sz+1);
+  strfcpy (Events[_Enum++], name, sz+1);
+  return 0;
+}
 
 /* returns event number or -1 if don't found */
 static short _get_event (const char *name)
 {
   short i = 0;
 
+  if (!_Egot)					/* no events before */
+  {
+    clrec_t *user = Lock_Clientrecord ("");
+    register char *events;
+    register size_t sz;
+
+    if (user)
+    {
+      events = Get_Field (user, "events", NULL);
+      pthread_mutex_lock (&WtmpLock);
+      if (!_Egot)				/* still nobody fill it? */
+      {
+	_Egot = 1;
+	if (events) while (*events)		/* ok, let's process! */
+	{
+	  for (sz = 0; events[sz] && events[sz] != ' '; sz++);
+	  _set_event (events, sz);
+	  events = NextWord (&events[sz]);
+	}
+      }
+      pthread_mutex_unlock (&WtmpLock);
+      Unlock_Clientrecord (user);
+    }
+  }
   pthread_mutex_lock (&WtmpLock);
   while (i < _Enum)
   {
@@ -52,419 +86,224 @@ static short _get_event (const char *name)
   return i;
 }
 
-/* returns 0 if success or -1 if fail */
-static int _new_event (const char *name)
+/* returns event number if success or -1 if fail */
+static short _new_event (const char *name)
 {
-  pthread_mutex_lock (&WtmpLock);
-  if (_Enum == _Ealloc)
-  {
-    void *newevents;
+  clrec_t *user;
+  short i;
 
-    if (_Ealloc > EVENTS_MAX ||
-	!(newevents = realloc (Events, (_Ealloc+16) * sizeof (char *))))
-    {
-      pthread_mutex_unlock (&WtmpLock);
-      return -1;
-    }
-    _Ealloc += 16;
-    Events = newevents;
+  pthread_mutex_lock (&WtmpLock);
+  if (_set_event (name, safe_strlen(name)))
+  {
+    pthread_mutex_unlock (&WtmpLock);
+    return -1;
   }
-  Events[_Enum++] = safe_strdup (name);
+  i = _Enum - 1;
   pthread_mutex_unlock (&WtmpLock);
-  return 0;
+  user = Lock_Clientrecord ("");
+  Grow_Field (user, "events", name);
+  Unlock_Clientrecord (user);
+  return i;
 }
 
+/* rest are public and not locking itself */
 short Event (const char *ev)
 {
-  void *user;
   short i = 0;
-  char *events, *c;
-  char name[SHORT_STRING];
 
-  pthread_mutex_lock (&WtmpLock);
-  if (_Ealloc == 0)				/* no events before */
-    i = 1;
-  pthread_mutex_unlock (&WtmpLock);
-  if (i)
-  {
-    user = Lock_User ("");
-    if (user && (events = Get_Userfield (user, "events")))
-      while (*events)
-      {
-	for (c = name; *events && *events != ' ' && c < &name[sizeof(name)-1];
-		events++, c++)
-	  *c = *events;
-	*c = 0;
-	if (_get_event (name) < 0)
-	  _new_event (name);
-      }
-    Unlock_User (user);
-  }
   i = _get_event (ev);
   if (i < 0)
   {
-    size_t s = HUGE_STRING;
-
-    if (_new_event (ev))
+    i = _new_event (ev);
+    if (i < 0)
       return W_ANY;
-    i = 0;
-    events = safe_malloc (s);
-    c = events;
-    *c = 0;
-    pthread_mutex_lock (&WtmpLock);
-    while (i < _Enum)
-    {
-      if (events + s < c + safe_strlen(Events[i] + 2))
-      {
-	s += HUGE_STRING;
-	safe_realloc ((void **)&events, s * sizeof(char));
-	c = events + strlen (events);
-      }
-      *c++ = ' ';
-      strfcpy (c, NONULL(Events[i]), SHORT_STRING);
-    }
-    pthread_mutex_unlock (&WtmpLock);
-    user = Lock_User ("");
-    Set_Userfield (user, "events", events);
-    Unlock_User (user);
-    FREE (&events);
-    i--;					/* new event is last */
   }
   return i + W_USER;
 }
 
-#define TBLMAX	32				/* I hope, this enough */
+#define MYIDS_MAX 8
 
-lid_t _add_tbl (lid_t *tbl, lid_t id)
-{
-  register int i;
-
-  for (i = 0; i < TBLMAX; i++)
-    if (tbl[i] == ID_CHANN)			/* nonexistent id */
-      break;
-  if (i == TBLMAX)
-    return ID_CHANN;
-  tbl[i] = id;
-  return id;
-}
-
-lid_t _del_tbl (lid_t *tbl, lid_t id)
-{
-  register int i = 0;
-  lid_t idl = id;
-
-  if (id == ID_CHANN)
-  {
-    for (; i < TBLMAX && tbl[i] != id; i++)
-    {
-      idl = tbl[i];
-      tbl[i] = id;
-    }
-  }
-  else
-  {
-    for (; i < TBLMAX && tbl[i] != id; i++);
-    if (i == TBLMAX)
-      return ID_CHANN;
-    for (; i < TBLMAX-1; i++)
-      tbl[i] = tbl[i+1];
-    tbl[i] = ID_CHANN;
-  }
-  return idl;
-}
-
-/* returns: -1 if file does not exist, 0 otherwise */
-static int _scan_wtmp (const char *path, wtmp_t *wtmp,
-		       lid_t myid, short event, lid_t fid)
+/*
+ * searches wtmp file for entries for myid with some event
+ * fills array wtmp with maximum entries wn, updates array myid
+ * entry is valid for any fuid if fid == ID_ME
+ * or for any fuid but me if fid == ID_ANY
+ * or for only fuid == fid otherwise
+ * returns: -1 if file does not exist, number of found entries otherwise
+ */
+static int _scan_wtmp (const char *path, wtmp_t *wtmp, int wn,
+		       lid_t myid[], size_t *idn, short event, lid_t fid)
 {
   FILE *fp;
   wtmp_t buff[64];
-  lid_t tbl[TBLMAX];
-  int i;
-  size_t n;
-  lid_t idl;
+  size_t i, k, n;
+  int x = 0;
 
+  if (wn == 0)
+    return 0;
   fp = fopen (path, "rb");
   if (!fp)
     return -1;
-  for (i = 0; i < TBLMAX; i++) tbl[i] = ID_CHANN;	/* clear */
-  while ((n = fread (buff, sizeof(wtmp_t), 64, fp)))
+  fseek (fp, 0L, SEEK_END);
+  while((i = ftell (fp)))
   {
-    for (i = 0; i < n; i++)
+    if (i <= sizeof(buff))
     {
-      if (buff[i].event == W_DOWN && (event == W_ANY || event == W_END))
+      rewind (fp);
+      k = i / sizeof(wtmp_t);
+    }
+    else
+    {
+      fseek (fp, -sizeof(buff), SEEK_CUR);
+      k = sizeof(buff) / sizeof(wtmp_t);
+    }
+    i = fread (buff, sizeof(wtmp_t), k, fp);
+    fseek (fp, -sizeof(wtmp_t) * k, SEEK_CUR);
+    k = 0;
+    for (; i > 0 && wn; )
+    {
+      i--;
+      for (n = *idn; n; )
       {
-	if ((idl = _del_tbl (tbl, ID_CHANN)) != ID_CHANN)
-	{
-	  wtmp->time = buff[i].time;		/* shutdown but no stop */
-	  wtmp->event = W_DOWN;
-	  wtmp->count = 0;
-	  wtmp->fuid = idl;
-	  wtmp->uid = myid;
+	n--;
+	if ((buff[i].uid == myid[n] && buff[i].event == W_DEL) ||
+	    (buff[i].fuid == myid[n] && buff[i].event == W_CHG))
+	{			/* oops, it was another, delete from myids */
+	  (*idn)--;
+	  while ((++n) < *idn)
+	    myid[n-1] = myid[n];
+	  break;
 	}
-      }
-      else if (buff[i].uid == myid && (fid == ID_BOT || fid == buff[i].fuid ||
-	       (fid == ID_CHANN && buff[i].fuid > ID_CHANN &&
-	        buff[i].fuid < ID_FIRST)))	/* exactly */
-      {
-	if (event == W_ANY || event == W_END)
+	else if (buff[i].uid == myid[n])
 	{
-	  if (buff[i].event == W_END)
-	    _del_tbl (tbl, buff[i].fuid);
-	  else if (buff[i].event == W_START)
-	    _add_tbl (tbl, buff[i].fuid);
+	  if (buff[i].event == W_CHG)	/* something joined, add to myids */
+	  {
+	    if (*idn < MYIDS_MAX)
+	    {
+	      n = *idn;
+	      (*idn)++;
+	      myid[n] = buff[i].fuid;
+	    }
+	  }
+	  else if (fid == ID_ME || buff[i].fuid == fid ||
+	      (fid == ID_ANY && buff[i].fuid != ID_ME))
+	  {
+	    if (event == W_ANY || event == buff[i].event ||
+		(event == W_END && buff[i].event == W_DOWN))
+	    {
+	      memcpy (&wtmp[x], &buff[i], sizeof(wtmp_t));
+	      x++;
+	      wn--;
+	    }
+	  }
+	  break;
 	}
-	if (event == W_ANY || event == buff[i].event)
-	  memcpy (wtmp, &buff[i], sizeof(wtmp_t));
       }
     }
+    if (wn == 0 || *idn == 0)
+      break;
   }
   fclose (fp);
-  return 0;
+  return x;
 }
 
 /* finds last matched event
    returns 0 if no error and fills array wtmp */
 int FindEvent (wtmp_t *wtmp, const char *lname, short event, lid_t fid)
 {
-  lid_t myid;
+  lid_t myid[MYIDS_MAX]; /* I hope it's enough */
+  size_t idn;
   char path[LONG_STRING];
   char wp[LONG_STRING];
-  const char *wpp;
   int i;
-  
+
+  if (!lname || (myid[0] = GetLID (lname)) == ID_REM)	/* was removed? */
+    return -1;
+
   Set_Iface (NULL);			/* in order to access Wtpm variable */
-  wpp = expand_path (wp, Wtmp, sizeof(wp));
+  if (expand_path (wp, Wtmp, sizeof(wp)) == Wtmp)
+    strfcpy (wp, Wtmp, sizeof(wp));
   Unset_Iface();
-  pthread_mutex_lock (&WtmpLock);
-  if (!lname || (myid = GetLID (lname)) == ID_REM)
-  {
-    pthread_mutex_unlock (&WtmpLock);
-    return -1;
-  }
   memset (wtmp, 0, sizeof(wtmp_t));
+  idn = 1;
   /* scan Wtmp first */
-  if (_scan_wtmp (wpp, wtmp, myid, event, fid))
-  {
-    pthread_mutex_unlock (&WtmpLock);
+  i = _scan_wtmp (wp, wtmp, 1, myid, &idn, event, fid);
+  if (i < 0)
     return -1;
-  }
   /* if not found - scan Wtmp.1  ...  Wtmp.$wtmps */
-  for (i = 0; i < WTMPS_MAX && !wtmp->time; i++)
-  {
-    snprintf (path, sizeof(path), "%s.%d", wpp, i + 1);
-    if (_scan_wtmp (path, wtmp, myid, event, fid))
-      break;
-  }
+  if (i == 0)
+    for ( ; i < WTMPS_MAX && !wtmp->time; i++)
+    {
+      snprintf (path, sizeof(path), "%s.%d", wp, i + 1);
+      if (_scan_wtmp (path, wtmp, 1, myid, &idn, event, fid))
+	break;
+    }
   /* if not found - scan Wtmp.old */
   if (!wtmp->time)
   {
-    snprintf (path, sizeof(path), "%s." WTMP_GONE_EXT, wpp);
-    _scan_wtmp (path, wtmp, myid, event, fid);
+    snprintf (path, sizeof(path), "%s." WTMP_GONE_EXT, wp);
+    _scan_wtmp (path, wtmp, 1, myid, &idn, event, fid);
   }
-  pthread_mutex_unlock (&WtmpLock);
   return 0;
 }
 
-void NewEvent (short event, const char *from, const char *lname, short count)
+void NewEvent (short event, lid_t from, lid_t lid, short count)
 {
   wtmp_t wtmp;
   char wp[LONG_STRING];
   FILE *fp;
 
-  if (event != W_DOWN || from)			/* don't deadlock on shutdown */
-  {
-    pthread_mutex_lock (&WtmpLock);
+  if (event != W_DOWN)			/* don't deadlock on shutdown */
     Set_Iface (NULL);			/* in order to access Wtpm variable */
-  }
   fp = fopen (expand_path (wp, Wtmp, sizeof(wp)), "ab");
-  if (event != W_DOWN || from)			/* don't deadlock on shutdown */
-  {
+  if (event != W_DOWN)			/* don't deadlock on shutdown */
     Unset_Iface();
-  }
   if (fp)
   {
-    wtmp.fuid = GetLID (from);
+    wtmp.fuid = from;
     wtmp.event = event;
     wtmp.time = time (NULL);
-    wtmp.uid = GetLID (lname);
+    wtmp.uid = lid;
     wtmp.count = count;
     fwrite (&wtmp, sizeof(wtmp), 1, fp);
     fclose (fp);
   }
-  if (event != W_DOWN || from)			/* don't deadlock on shutdown */
-    pthread_mutex_unlock (&WtmpLock);
 }
 
-void NewEvents (short event, const char *from,
-		size_t n, const char *lname[], short count[])
+void NewEvents (short event, lid_t from, size_t n, lid_t ids[], short counts[])
 {
   wtmp_t wtmp;
   char wp[LONG_STRING];
   FILE *fp;
-  register size_t i = 0;
 
-  Set_Iface (NULL);			/* in order to access Wtpm variable */
+  if (n <= 0)				/* check for stupidity */
+    return;
+  if (event != W_DOWN)			/* don't deadlock on shutdown */
+    Set_Iface (NULL);			/* in order to access Wtpm variable */
   fp = fopen (expand_path (wp, Wtmp, sizeof(wp)), "ab");
-  Unset_Iface();
-  pthread_mutex_lock (&WtmpLock);
-  wtmp.fuid = GetLID (from);
+  if (event != W_DOWN)			/* don't deadlock on shutdown */
+    Unset_Iface();
+  wtmp.fuid = from;
   wtmp.event = event;
   wtmp.time = time (NULL);
   if (fp)
   {
-    while (i < n)
+    register size_t i;
+
+    for (i = 0; i < n; i++)
     {
-      wtmp.uid = GetLID (lname[i]);
-      wtmp.count = count[i];
+      wtmp.uid = ids[i];
+      wtmp.count = counts[i];
       fwrite (&wtmp, sizeof(wtmp), 1, fp);
     }
     fclose (fp);
   }
-  pthread_mutex_unlock (&WtmpLock);
 }
-
-#define UNS_CH_MAX	32
-
-static lid_t changes[UNS_CH_MAX][2] = {{ID_CHANN}};
-
-static int _change_wtmp_file (const char *wf, char *tmp, size_t n)
-{
-  size_t k, i, j;
-  wtmp_t buff[64];
-  FILE *dst, *src;
-  char bak[LONG_STRING];
-  int r = 0;
-
-  src = fopen (wf, "rb");
-  if (!src)
-    return -1;
-  else if (!(dst = fopen (tmp, "wb")))
-  {
-    fclose (src);
-    return -1;
-  }
-  dprint (4, "wtmp:_change_wtmp_file: %s %s", wf, tmp);
-  while ((k = fread (buff, sizeof(wtmp_t), 64, src)))
-  {
-    for (j = 0; j < k; )
-    {
-      for (i = 0; i < n; i++)
-      {
-	if (changes[i][1] == buff[j].uid)
-	{
-	  buff[j].uid = changes[i][0];
-	  r = 1;
-	}
-	if (changes[i][1] == buff[j].fuid)
-	{
-	  buff[j].fuid = changes[i][0];
-	  r = 1;
-	}
-      }
-      if (buff[j].uid == ID_REM)		/* wtmp record lost */
-	memmove (&buff[j], &buff[j+1], (--k - j) * sizeof(wtmp_t));
-      else
-	j++;
-    }
-    if (k)
-      fwrite (buff, sizeof(wtmp_t), k, dst);
-  }
-  fclose (src);
-  fclose (dst);
-  if (r == 0)					/* don't changed */
-    unlink (tmp);
-  else
-  {
-    snprintf (bak, sizeof(bak), "%s~", wf);
-    unlink (bak);
-    if (!rename (wf, bak))
-    {
-      if (!rename (tmp, wf))
-      {
-	unlink (bak);
-	bak[0] = 0;
-      }
-      else
-	rename (bak, wf);
-    }
-    if (!*bak)
-      dprint (2, "cannot update %s", wf);
-  }
-  return 0;
-}
-
-static void _change_wtmps (size_t n, const char *wfp)
-{
-  char path[LONG_STRING];
-  char path2[LONG_STRING];
-  int i = 0;
-
-  if (n == 0) return;
-  snprintf (path2, sizeof(path2), "%s.0", wfp);
-  /* first - Wtmp */
-  _change_wtmp_file (wfp, path2, n);
-  /* second - Wtmp.1 ... Wtmp.$wtmps */
-  do
-  {
-    i++;
-    snprintf (path, sizeof(path), "%s.%d", wfp, i);
-  } while (i <= WTMPS_MAX && !_change_wtmp_file (path, path2, n));
-  /* third - Wtmp.old */
-  snprintf (path, sizeof(path), "%s." WTMP_GONE_EXT, wfp);
-  _change_wtmp_file (path, path2, n);
-}
-
-void ChangeUid (lid_t oldid, lid_t newid)
-{
-  lid_t (* ch)[2];
-  char wp[LONG_STRING];
-  const char *wfp;
-
-  Set_Iface (NULL);			/* in order to access Wtpm variable */
-  wfp = expand_path (wp, Wtmp, sizeof(wp));
-  Unset_Iface();
-  if (newid == ID_CHANN || oldid == ID_REM)	/* :) */
-    return;
-  ch = &changes[0];
-  pthread_mutex_lock (&WtmpLock);
-  while (ch[0][0] != ID_CHANN) ch++;
-  ch[0][0] = newid;
-  ch[0][1] = oldid;
-  ch++;
-  if (ch == &changes[UNS_CH_MAX])
-  {
-    _change_wtmps (UNS_CH_MAX, wfp);
-    ch = &changes[0];
-  }
-  ch[0][0] = ID_CHANN;
-  pthread_mutex_unlock (&WtmpLock);
-}
-
-void CommitWtmp (void)
-{
-  int i = 0;
-  lid_t (*ch)[2];
-  char wp[LONG_STRING];
-  const char *wfp;
-
-  Set_Iface (NULL);			/* in order to access Wtpm variable */
-  wfp = expand_path (wp, Wtmp, sizeof(wp));
-  Unset_Iface();
-  pthread_mutex_lock (&WtmpLock);
-  for (ch = changes; ch[i][0] != ID_CHANN; i++);
-  _change_wtmps (i, wfp);
-  changes[0][0] = ID_CHANN;
-  pthread_mutex_unlock (&WtmpLock);
-}
-
-static uint32_t *GoneBitmap = NULL;
 
 void RotateWtmp (void)
 {
-  int i, update = 0;
-  char wp[LONG_STRING];
-  const char *wfp;
+  int i, wfps, update = 0;
+  char wfp[LONG_STRING];
   char path[LONG_STRING];
   char path2[LONG_STRING];
   FILE *fp, *dst = NULL;
@@ -473,21 +312,23 @@ void RotateWtmp (void)
   wtmp_t buff[64];
   wtmp_t buff2[64];
   uint32_t bits;
+  uint32_t *GoneBitmap = NULL;
 
+  Set_Iface (NULL);			/* in order to access variables */
   if (wtmps > WTMPS_MAX)
-    wtmps = WTMPS_MAX;
+    wtmps = WTMPS_MAX; /* max wtmps */
   if (wtmps < 1)
-    wtmps = 1;
+    wtmps = 1; /* min wtmps */
+  if (expand_path (wfp, Wtmp, sizeof(wfp)) == Wtmp)
+    strfcpy (wfp, Wtmp, sizeof(wfp));
+  wfps = wtmps;
+  Unset_Iface();			/* it's thread-safe process now */
   GoneBitmap = safe_calloc (1, sizeof(uint32_t) * LID_MAX);
-  Set_Iface (NULL);			/* in order to access Wtpm variable */
-  wfp = expand_path (wp, Wtmp, sizeof(wp));
-  Unset_Iface();
   snprintf (path, sizeof(path), "%s.1", wfp);
   snprintf (path2, sizeof(path2), "%s." WTMP_GONE_EXT, wfp);
-  pthread_mutex_lock (&WtmpLock);
   /* check if we need to rotate - check the first event of $Wtmp */
-  /* mark deletable events for wtmp.gone */
-  for (i = WTMPS_MAX; i >= wtmps; i--)
+  /* mark deletable events for wtmp.gone (from $Wtmp.max...$Wtmp.$wtmps) */
+  for (i = WTMPS_MAX; i >= wfps; i--)
   {
     snprintf (path, sizeof(path), "%s.%d", wfp, i);
     if ((fp = fopen (path, "rb")))
@@ -501,6 +342,12 @@ void RotateWtmp (void)
   }
   if (update)
   {
+    /* scan for deleted uids and mark these as deletable */
+    /* side effect - if entry was changed then new created with the same lid
+	and deleted then all events of that lid before change will be lost */
+    for (j = 0; j < LID_MAX ; j++)
+      if (GoneBitmap[j] & 1<<W_DEL)
+	GoneBitmap[j] = 0xffffffff;		/* set all bits */
     /* delete expired events from wtmp.gone (rewrite) */
     snprintf (path, sizeof(path), "%s.0", wfp);
     fp = fopen (path2, "rb");			/* wtmp.gone */
@@ -525,11 +372,15 @@ void RotateWtmp (void)
       fclose (dst);
       unlink (path2);				/* wtmp.gone */
       if (rename (path, path2))			/* wtmp.tmp --> wtmp.gone */
-	dprint (2, "couldn't make %s!", path2);
+	Add_Request (I_LOG, "*", F_ERROR, "couldn't make %s!", path2);
     }
     else
-      dprint (2, "cannot rewrite %s!", path2);
-    /* mark addable events for wtmp.gone: $Wtmp.$wtmps-1...$Wtmp.1, $Wtmp */
+      Add_Request (I_LOG, "*", F_ERROR, "cannot rewrite %s!", path2);
+    /* scan for deleted uids and mark these as non-addable */
+    for (j = 0; j < LID_MAX ; j++)
+      if (GoneBitmap[j] & 1<<W_DEL)
+	GoneBitmap[j] = 0;			/* unset all bits */
+    /* mark non-addable events for wtmp.gone: $Wtmp.$wtmps-1...$Wtmp.1, $Wtmp */
     for (; i > 1; i--)
     {
       snprintf (path, sizeof(path), "%s.%d", wfp, i);
@@ -549,9 +400,9 @@ void RotateWtmp (void)
       fclose (fp);
     }
     snprintf (path, sizeof(path), "%s.0", wfp);
-    dst = fopen (path, "wb+");			/* wtmp.gone */
+    dst = fopen (path, "wb+");			/* wtmp.tmp */
     /* create events in tmp file in reverse order */
-    if (dst) for (i = WTMPS_MAX; i >= wtmps; i--)
+    if (dst) for (i = WTMPS_MAX; i >= wfps; i--)
     {
       snprintf (path, sizeof(path), "%s.%d", wfp, i);
       if ((fp = fopen (path, "rb")))
@@ -589,7 +440,7 @@ void RotateWtmp (void)
       }
     }
     else
-      dprint (2, "cannot open %s!", path);
+      Add_Request (I_LOG, "*", F_ERROR, "cannot open %s!", path);
     /* add events to wtmp.gone in normal order */
     if (dst)
     {
@@ -623,21 +474,21 @@ void RotateWtmp (void)
     }
   }
   /* delete superfluous wtmp's */
-  for (i = WTMPS_MAX; i >= wtmps; i--)
+  for (i = WTMPS_MAX; i >= wfps; i--)
   {
     snprintf (path, sizeof(path), "%s.%d", wfp, i);
     unlink (path);
   }
-  /* rotate all */
+  /* rotate all other */
   for (; i > 1; i--)
   {
     snprintf (path2, sizeof(path2), "%s.%d", wfp, i);
     snprintf (path, sizeof(path), "%s.%d", wfp, i-1);
     if (rename (path, path2))
-      dprint (2, "couldn't rotate %s -> %s!", path, path2);
+      Add_Request (I_LOG, "*", F_WARN, "couldn't rotate %s -> %s!", path, path2);
   }
+  /* rotate $Wtmp -> $Wtmp.1 */
   if (rename (wfp, path))
-    dprint (2, "couldn't rotate %s -> %s!", wfp, path);
-  pthread_mutex_unlock (&WtmpLock);
+    Add_Request (I_LOG, "*", F_ERROR, "couldn't rotate %s -> %s!", wfp, path);
   FREE (&GoneBitmap);
 }

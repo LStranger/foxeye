@@ -1,31 +1,30 @@
-constants:
-A_xxx	bot attributes
-B_xxx	bindings types
-C_xxx	IRC/channels ...
-D_xxx	DCC states
+constants scheme is x_xxx, used in core are:
+A_xxx	client/channel modes
+B_xxx	bindtable types
+D_xxx	session states
 E_xxx	socket errors
-F_xxx	requests/logging flags
-I_xxx	interfaces types
+F_xxx	requests:logging flags
+I_xxx	interface types
 M_xxx	socket modes
-N_xxx	botnet ...
 O_xxx	runtime options
-R_xxx	types of fields (in users.c only)
 S_xxx	signal types
-T_xxx	Tree and Tcl types
-U_xxx	users types/states
-W_xxx	wtmp events and listfile IDs
-X_xxx	filesystem ...
+T_xxx	UI packet types
+U_xxx	clientrecord types
+W_xxx	wtmp events
 
-debug:
-1	unrecoverable (non-fatal) errors
-2	recoverable errors (search, etc.)
-3	data changes
-4	search results
-5	any other functions calls
-6	any transfers but debug itself
+debug levels (direct sessions may has debug log only if level<3):
+1	data changes
+2	search results
+3	any other functions calls
+4	any transfers but debug itself
 
-listfile:
-record	lname:passwd:uid:flags:charset:info:dccdir:login:logout:createtime
+listfile (<name> means it can be get via GetField(x,"name")):
+record	lname:<passwd>:uid:flags:<charset>:<info>:<.login>:<.logout>:createtime
 host	+nick!ident@host
-special	 speciallname:flags:expiretime greeting
+special	 speciallname:flags:expiretime text
 other	 name value
+
+speciallnames records:
+&#+!	channels	<passwd>=+k <info>=chanmodelock
+@	networks	<passwd>=ident <info>=realname <.logout>=network
+	bots		<.logout>=network(i.e."botnet","eggbot",etc.)

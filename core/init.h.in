@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2002  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2005  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -33,6 +33,9 @@ WHERE short O_DLEVEL		INITVAL(0);
 WHERE char *Config		INITVAL(NULL);
 WHERE char *RunPath		INITVAL(NULL);
 WHERE char *BindResult		INITVAL(NULL);
+WHERE char *ShutdownR		INITVAL(NULL);
+WHERE char *ReportFormat	INITVAL(NULL);
+WHERE modeflag ReportMask	INITVAL(0);
 
 WHERE time_t StartTime;
 
@@ -44,15 +47,13 @@ int RegisterFunction (const char *, int (*)(const char *), const char *);
 int UnregisterFunction (const char *);
 int RegisterInteger (const char *, long int *);
 int RegisterBoolean (const char *, bool *);
-int UnregisterInteger (const char *);
-int RegisterString (const char *, void *, size_t, int);
-int UnregisterString (const char *);
+int RegisterString (const char *, char *, size_t, int);
+int UnregisterVariable (const char *);
 
 char *SetFormat (const char *, char *);		/* name, new value */
 int Save_Formats (void);
 short *FloodType (const char *);
 
-int RunBinding (BINDING *, const uchar *, char *, char *, int, char *);
 int Config_Exec (const char *, const char *);
 bool Confirm (char *, bool);
 
@@ -64,7 +65,8 @@ char *IFInit_Sheduler (void);
 
 void Status_Interfaces (INTERFACE *);		/* for .status (dispatcher.c) */
 void Status_Sheduler (INTERFACE *);		/* the same (sheduler.c) */
-void Status_Users (INTERFACE *);		/* the same (userc.c) */
+void Status_Clients (INTERFACE *);		/* the same (list.c) */
+//void Status_Encodings (INTERFACE *);		/* the same (conversion.c) */
 
 #ifndef DISPATCHER_C
 # define Command(a,b,c)		int b(const char *);
@@ -96,32 +98,17 @@ String  ("my-hostname", hostname, "")
 String  ("locale", locale, "")
 String	("charset", Charset, "")		/* used by couple of modules */
 String  ("listfile", Listfile, "listfile")
-String  ("incoming-path", dnload_dir, "")
-Integer	("dcc-turbo", dcc_turbo, 1)
-Integer	("dcc-blocksize", dcc_blksize, 4096)
-Integer	("dccget-maxsize", dcc_getmax, 1000000)
-Integer	("dcc-resume-min", resume_min, 10000)
-Integer	("dcc-resume-timeout", resume_timeout, 120)
-Integer	("dcc-start-timeout", dcc_timeout, 120)
+Integer	("connection-timeout", dcc_timeout, 120)
 Integer ("ident-timeout", ident_timeout, 60)
-Bool	("dcc-get", dcc_get, TRUE|ASK|CAN_ASK)
-Bool	("dcc-resume", dcc_resume, TRUE|ASK|CAN_ASK)
-Bool	("dcc-overwrite", dcc_overwrite, TRUE|CAN_ASK)
 Flood   (dcc, 20, 5)
-Integer ("max-dcc", max_dcc, 50)
 Bool    ("protect-telnet", drop_unknown, TRUE)
-Integer ("reserved-port", port_files, 0)
 Command ("port", FE_port, "[-b] port")
-/* Bool    ("show-motd", motdon, TRUE) */
 String  ("motd", motd, "@prefix@/motd")
-/* Bool    ("rotate", rotate, TRUE)
-Command ("logfile", FE_logfile, "mode filename")
-String  ("logrotate-path", logs_pattern, "%$.1") */
 Integer ("cache-time", cache_time, 300)
-/* Integer ("cache-size", cache_size, 1024) */
 String  ("wtmpfile", Wtmp, "Wtmp")
 Integer ("wtmps", wtmps, 4)
 String	("formatsfile", FormatsFile, "")
+String	("replace-unknown-char", text_replace_char, "?")
 Command ("module", FE_module, "name")		/* must be last :) */
 #include "formats.default"
 #undef Command
@@ -131,3 +118,15 @@ Command ("module", FE_module, "name")		/* must be last :) */
 #undef Flood
 #undef Format
 #endif /* ifndef DISPATCHER_C */
+/* String  ("incoming-path", dnload_dir, "") */
+/* Integer	("dcc-turbo", dcc_turbo, 1) */
+/* Integer	("dcc-blocksize", dcc_blksize, 4096) */
+/* Integer	("dccget-maxsize", dcc_getmax, 1000000) */
+/* Integer	("dcc-resume-min", resume_min, 10000) */
+/* Integer	("dcc-resume-timeout", resume_timeout, 120) */
+/* Bool	("dcc-get", dcc_get, TRUE|ASK|CAN_ASK) */
+/* Bool	("dcc-resume", dcc_resume, TRUE|ASK|CAN_ASK) */
+/* Bool	("dcc-overwrite", dcc_overwrite, TRUE|CAN_ASK) */
+/* Integer ("max-dcc", max_dcc, 50) */
+/* Integer ("reserved-port", port_files, 0) */
+/* Bool    ("show-motd", motdon, TRUE) */

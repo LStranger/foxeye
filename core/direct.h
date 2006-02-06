@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2002  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2005  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -18,8 +18,8 @@
  * public structure of all the dcc connections
  */
 
-#ifndef _DCC_H
-#define _DCC_H 1
+#ifndef _DIRECT_H
+#define _DIRECT_H 1
 
 #include <pthread.h>
 
@@ -30,42 +30,33 @@ typedef enum
   D_OK,					/* closed session */
   D_CHAT,				/* user is on dcc chat */
   D_NOSOCKET,				/* lost socket */
-  D_PRELOGIN,				/* out the message and go to D_LOGIN */
-  D_R_WHO,				/* collects report .who */
-  D_R_WHO1,
-  D_R_WHO2,
-  D_R_WHOM,				/* collects report .whom */
-  D_R_DCCSTAT				/* collects report .dccstat */
+  D_PRELOGIN				/* out the message and go to D_LOGIN */
 } _dcc_state;
 
 typedef struct
 {
   _dcc_state state;
   userflag uf;
-  flag_t loglev;
   char *away;				/* user away message / filename */
-  unsigned int botnet;			/* botnet channel / transferred (.1%) */
-  short floodcnt;			/* flood counter */
   idx_t socket;                         /* what socket we have messages to */
-  uint32_t rate;			/* average (50s) filetransfer speed */
   time_t timestamp;
-  INTERFACE *iface;			/* full interface */
-  INTERFACE *log;			/* interface for logs */
-  INTERFACE *alias;			/* interface for botnet channel */
-  BINDTABLE *cmdbind;			/* commands bindtable */
-  pthread_mutex_t lock;			/* lock for all interface pointers */
-  pthread_t th;
+  INTERFACE *iface;			/* main interface of this session */
+  size_t inbuf;				/* how much bytes are in buf */
+  size_t bufpos;
   char start[13];			/* chat-on time */
-  char buf[LONG_STRING];
-} DCC_SESSION;
+  char buf[MB_LEN_MAX*MESSAGEMAX];	/* outgoing message buffer */
+} peer_t;
 
-int Get_DccIdx (DCC_SESSION *);
-DCC_SESSION *Dcc_Send (char *, long);
-void Chat_Join (DCC_SESSION *);		/* chat-join bindtable wrapper */
-void Chat_Part (DCC_SESSION *);		/* chat-part bindtable wrapper */
-void setdccconsole (DCC_SESSION *, char *);
+void Chat_Join (INTERFACE *, userflag, int, int, char *); /* wrappers */
+void Chat_Part (INTERFACE *, int, int, char *);
+int Check_Passwd (const char *, char *);		/* plain, encrypted */
 
-void Dcc_Exec (DCC_SESSION *, char *, char *, BINDTABLE *, userflag, \
-		   userflag, int);
+ssize_t Session_Put (peer_t *, char *, size_t);		/* data transfers */
+ssize_t Session_Get (peer_t *, char *, size_t);
 
+unsigned short Listen_Port (char *, unsigned short, char *,
+			    void (*prehandler) (pthread_t, idx_t),
+			    void (*) (char *, char *, char *, idx_t));
+pthread_t Connect_Host (char *, unsigned short, idx_t *,
+			void (*) (int, void *), void *);
 #endif

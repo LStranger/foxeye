@@ -1,6 +1,6 @@
 What is FoxEye?
     FoxEye is an IRC bot that is compatible (I meant:) with Eggdrop bot. Ones
-  have almost identical command set and Tcl interface.
+  have alike commands and Tcl interface but FoxEye has it as module.
 
 Note for SOCKS support:
     Full functionality of bot cannot be established since SOCKS does not have
@@ -8,7 +8,6 @@ Note for SOCKS support:
   ask your system adminstrator for NAT firewall. :)
 
 Catched signals and actions:
-SIGALRM	used by timer API
 SIGFPE	shutdown the bot
 SIGHUP	flush all
 SIGILL	shutdown the bot
@@ -49,3 +48,20 @@ Why iconv?
     Iconv is a library what make a conversion from one charset to other.
   You may need it if you have a number of different character sets in your
   botnet.
+
+What is in the core?
+    Core has the code which is common or used by many modules, so it's
+  vital for the bot or can avoid duplicate the code:
+    - init stuff (init.c)
+    - telnet/dcc login manager with little chat-like subsystem (direct.c)
+    - intermodule transfer/communication manager (dispatcher.c)
+    - helpfiles manager (help.c)
+    - bindings manager (init.c)
+    - config and formats files support (init.c)
+    - common functions (lib.c)
+    - terminal console driver (see -c switch) (main.c)
+    - modules manager (modules.c)
+    - timers API (sheduler.c)
+    - sockets API (socket.c)
+    - listfile manager (list.c)
+    - eventsfile manager (wtmp.c)

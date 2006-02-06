@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2002  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2005  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@ static char *EOL (const char *s)
 
 typedef struct HELP
 {
-  char *key;
+  char *key;			/* lower case */
   char *data;
   void *helpgr;
   struct HELP *next;		/* in helpfile */
@@ -40,14 +40,14 @@ typedef struct HELP
 
 typedef struct HELPGR
 {
-  char *key;
+  char *key;			/* case-insensitive */
   NODE *tree;
   struct HELPGR *next;
 } HELPGR;
 
 typedef struct HELPFILE
 {
-  char *name;
+  char *name;			/* matchcase */
   HELP *help;			/* first element */
   char *hfile;
   struct HELPFILE *next;
@@ -63,7 +63,7 @@ static HELPGR *_get_helpgr (char *name)
 
   for (; gr; gr = gr->next)
   {
-    if (!safe_strcmp (gr->key, name))
+    if (!safe_strcasecmp (gr->key, name))
       return gr;
     h = gr;				/* last group */
   }
@@ -209,8 +209,9 @@ int Add_Help (const char *name)
 	  (*ht)->helpgr = _get_helpgr (gr);
 	(*ht)->key = key;
 	if (Insert_Key (&((HELPGR *)(*ht)->helpgr)->tree, key, *ht, 1))
-	  dprint (2, "help: duplicate entry \"%s\" for set \"%s\" ignored",
-		  key, gr == key ? "" : gr);
+	  Add_Request (I_LOG, "*", F_WARN,
+		       "help: duplicate entry \"%s\" for set \"%s\" ignored",
+		       key, gr == key ? "" : gr);
 	else
 	  dprint (1, "help: adding entry for \"%s\" to set \"%s\"", key,
 		  gr == key ? "" : gr);
@@ -303,15 +304,15 @@ static int _help_one_topic (char *text, INTERFACE *iface, char *prefix,
 
     snprintf (tbuf, sizeof(tbuf), "%s %s", gr, topic);
     printl (buff, sizeof(buff), text, HELP_LINE_SIZE,
-	    iface->name, NULL, NULL, NULL, 0L, 0, tbuf);
+	    iface->name, NULL, NULL, NULL, 0L, 0, 0, tbuf);
   }
   else
     printl (buff, sizeof(buff), text, HELP_LINE_SIZE,
-	    iface->name, NULL, NULL, NULL, 0L, 0, topic);
+	    iface->name, NULL, NULL, NULL, 0L, 0, 0, topic);
   if (c)
     *c = '\n';
-  /* print out - line by line */
-  for (c = buff; c; c = end)
+  /* print out - line by line - only if there is something to out */
+  if (buff[0]) for (c = buff; c; c = end)
   {
     end = strchr (c, '\n');
     if (end)
@@ -324,7 +325,7 @@ static int _help_one_topic (char *text, INTERFACE *iface, char *prefix,
 }
 
 static int _help_all_topics (HELPGR *what, INTERFACE *iface, userflag gf,
-			     userflag cf, BINDTABLE *table, int mode)
+			     userflag cf, bindtable_t *table, int mode)
 {
   char *key;
   LEAF *leaf = NULL;
@@ -350,12 +351,12 @@ static int _help_all_topics (HELPGR *what, INTERFACE *iface, userflag gf,
       {
 	if (s)
 	{
-	  New_Request (iface, 0, buf);
+	  New_Request (iface, 0, "%s", buf);
 	  s = 0;
 	}
 	if (ns >= HELP_LINE_SIZE)
 	{
-	  New_Request (iface, 0, key);
+	  New_Request (iface, 0, "%s", key);
 	  continue;
 	}
       }
@@ -366,18 +367,19 @@ static int _help_all_topics (HELPGR *what, INTERFACE *iface, userflag gf,
     }
   }
   if (s)
-    New_Request (iface, 0, buf);
+    New_Request (iface, 0, "%s", buf);
   return r;
 }
 
 int Get_Help (const char *fst, const char *sec, INTERFACE *iface, userflag gf,
-	      userflag cf, BINDTABLE *table, char *prefix, int mode)
+	      userflag cf, bindtable_t *table, char *prefix, int mode)
 {
   const char *topic = NONULL(sec);
+  char *lct;
   HELPGR *h = Help;
   HELP *t;
 
-  dprint (4, "help:Get_Help: call \"%s %s\"", NONULL(fst), NONULL(sec));
+  dprint (3, "help:Get_Help: call \"%s %s\"", NONULL(fst), NONULL(sec));
   if (!fst || !*fst || !safe_strcmp (fst, "*"))
     return _help_all_topics (Help, iface, gf, cf, table, mode);
   if (!h || (table && Check_Bindtable (table, fst, gf, cf, NULL) == NULL))
@@ -393,21 +395,24 @@ int Get_Help (const char *fst, const char *sec, INTERFACE *iface, userflag gf,
   /* no such group? */
   if (!h)
   {
-    dprint (2, "help: set \"%s\" not found", fst);
+    Add_Request (I_LOG, "*", F_WARN, "help: set \"%s\" not found", fst);
     if (sec && *sec)
       return _no_such_help (iface, mode);
     /* find common help */
     h = Help;
     topic = fst;
   }
-  t = Find_Key (h->tree, topic);
+  lct = safe_malloc (strlen(topic) + 1);
+  safe_strlower (lct, topic, strlen(topic) + 1);
+  t = Find_Key (h->tree, lct);
+  FREE (&lct);
   if (!t)
   {
-    dprint (2, "help: topic \"%s\" not found", NONULL(topic));
+    Add_Request (I_LOG, "*", F_WARN, "help: topic \"%s\" not found", NONULL(topic));
     if (h != Help)
       return _help_all_topics (h, iface, gf, cf, table, mode);
     return _no_such_help (iface, mode);
   }
-  dprint (3, "help: found entry for \"%s\" in set \"%s\"", topic, NONULL(h->key));
+  dprint (2, "help: found entry for \"%s\" in set \"%s\"", topic, NONULL(h->key));
   return _help_one_topic (t->data, iface, NONULL(prefix), h->key, topic, mode);
 }

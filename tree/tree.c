@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2000-2002  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2000-2003  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -346,6 +346,8 @@ int Delete_Key (NODE *node, const char *key, void *data)
 	  node->num--;
 	  if (i < node->num)
 	    memmove (&node->l[i], &node->l[i+1], (node->num - i) * sizeof(LEAF));
+	  else
+	    node->l[i].s.data = NULL;
 	  r++;
 	}
 	else if (n > 0)
@@ -392,8 +394,8 @@ void Destroy_Tree (NODE **node, void (*destroy) (void *))
   *node = NULL;
 }
 
-// Находит первый подходящий ключ и возвращает ассоциированные данные
-void *Find_Key (NODE *node, const char *key)
+// Находит первый подходящий ключ и возвращает соответствующий элемент
+LEAF *Find_Leaf (NODE *node, const char *key)
 {
   register int i = 0;
   int n;
@@ -412,7 +414,7 @@ void *Find_Key (NODE *node, const char *key)
       {
 	n = strcmp ((char *)node->l[i].key, key);
 	if (n == 0)
-	  return node->l[i].s.data;
+	  return &node->l[i];
 	else if (n > 0)
 	  break;
       }
@@ -430,10 +432,17 @@ void *Find_Key (NODE *node, const char *key)
 	  break;
       }
       if (i)
-	return Find_Key (node->l[i-1].s.n, key);
+	return Find_Leaf (node->l[i-1].s.n, key);
     }
   }
   return NULL;
+}
+
+// Находит первый подходящий ключ и возвращает ассоциированные данные
+void *Find_Key (NODE *node, const char *key)
+{
+  register LEAF *l = Find_Leaf (node, key);
+  return (l == NULL ? NULL : l->s.data);
 }
 
 // Возвращает следующий элемент, или первый, если leaf равен NULL

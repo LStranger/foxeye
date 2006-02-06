@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2002  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2002-2003  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -16,15 +16,14 @@
  *     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-Format (log_notice,	"-%N%?#/%#??- %*")
-Format (log_msg,	"<%N%?#/%#??> %*")
-Format (log_ctcp,	"%N requested CTCP %* from %#")
-Format (log_action,	"* %N%?#/%#?? %*")
 Format (dcc_lost,	N_("DCC connection to %L lost."))
 Format (dcc_closed,	N_("DCC chat to %L closed: %*."))
-Format (dcc_startget,	N_("DCC get \"%*\" with %N established."))
-Format (dcc_gotfile,	N_("Get file \"%*\" from %N completed."))
 Format (dcc_input_connection, N_("Input connection from %@:%P, ident %*."))
-Format (dcc_request,	"DCC connection request for \"%*\" from %N(%@) to %I:%P")
-Format (w_head,		" NAME            FROM       LOGIN@ IDLE    WHAT")
-Format (w,		"%16L %10@ %N %#%*")
+Format (w_head,		" NAME            FROM                     IDLE    WHAT")
+Format (w,		"%16L %24@ %7- %*")
+Format (who_head_master," NAME            SOCK LOGIN@       FROM")
+Format (who_master,	"%16L %4I %12# %@%?- (idle %-)??")
+Format (who_head,	" NAME            LOGIN@       FROM")
+Format (who,		"%16L %12# %@%?- (idle %-)??")
+Format (cstat_head,	"SOCK NAME                 FROM")
+Format (cstat,		"%4I %20L %@%?P:%P??%?* (%*)??")

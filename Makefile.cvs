@@ -2,20 +2,23 @@
 cvs:
 	@echo ""
 	@echo "This Makefile is only for the CVS repository"
-	@echo "This will be deleted before making the distribution"
+	@echo "It will be deleted before making the distribution"
 	@echo ""
-	@echo "*** Concatenating configure defines into acconfig.h"
-	@-rm -f acconfig.h
-	@cat acconfig.h.in modules/*/accvs.h.in >acconfig.h 2>/dev/null || echo ""
 	@echo "*** Concatenating configure tests into configure.in"
 	@-rm -f configure.in
-	@cat configure.in.head modules/*/accvs.m4 configure.in.tail >configure.in 2>/dev/null || echo ""
+	@cat configure.in.head modules/*/accvs.m4 configure.in.tail >configure.in 2>/dev/null || echo -n ""
+	@echo "*** Concatenating config variables into core/foxeye.h"
+	@-rm -f core/foxeye.h
+	@cat core/foxeye.h.in modules/*/accvs.cfg >core/foxeye.h 2>/dev/null || echo -n ""
+	@echo "*** Concatenating documentation into doc/modules.api"
+	@-rm -f doc/modules.api
+	@cat doc/modules.api.in modules/*/accvs.api >doc/modules.api 2>/dev/null || echo -n ""
 	@echo "*** Retrieving configure tests needed by configure.in"
 	@aclocal
 	@echo "*** Scanning for include statements"
 	@autoheader
 	@echo "*** Building Makefile templates (step one)"
-	@automake --foreign
+	@automake
 	@echo "*** Building Makefile templates (step two)"
 	@autoconf
 	@-rm -f config.cache config.h
@@ -24,6 +27,7 @@ cvs:
 	@echo "*** Finished"
 	@echo "    Don't forget to run ./configure"
 	@echo "    If you haven't done so in a while, run ./configure --help"
+	@rm -rf autom4te.cache
 	@sleep 1
 
 cvs-clean:
@@ -44,7 +48,7 @@ cvs-clean:
 	  cd $$pwd/$$i ;\
 	  for f in * .*; do \
 	    if test ! -d $$f; then \
-	      if grep "^/$$f/" CVS/Entries > /dev/null; then \
+	      if grep "^/$$f/[^-]" CVS/Entries > /dev/null; then \
 		a="b"; \
 	      else \
 		echo "F $$i/$$f"; \

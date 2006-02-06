@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2002  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2005  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -39,6 +39,8 @@ static unsigned int _SFnum = 0;
 /* create new cell in Floodtable */
 int CheckFlood (short *ptr, short floodtype[2])
 {
+  if (floodtype[0] == 0)	/* don't check this flood */
+    return 0;
   if (_SFnum >= MAXTABLESIZE)
     bot_shutdown ("Internal error in CheckFlood()", 8);
   if (_SFnum >= _SFalloc)
@@ -53,7 +55,7 @@ int CheckFlood (short *ptr, short floodtype[2])
   return ((*ptr) - floodtype[0]);
 }
 
-/* delete cell from Floodtable */
+/* delete cells for ptr from Floodtable */
 void NoCheckFlood (short *ptr)
 {
   register int i;
@@ -118,7 +120,7 @@ typedef struct
   uint32_t day;
   uint16_t month;
   uint16_t weekday;
-  iface_t iface;		/* if 0 then this cell is empty */
+  iftype_t ift;
   char *to;
   ifsig_t signal;
 } shedentry_t;
@@ -128,12 +130,14 @@ static unsigned int _SCalloc = 0;
 static unsigned int _SCnum = 0;
 
 /* create new cell in Crontable */
-void NewShedule (iface_t ift, char *name, ifsig_t sig,
+void NewShedule (iftype_t ift, char *name, ifsig_t sig,
 		char *min, char *hr, char *ds, char *mn, char *wk)
 {
   register shedentry_t *ct;
   uint32_t mask[2];
 
+  if (ift == 0 || name == NULL)
+    return;
   pthread_mutex_lock (&LockShed);
   if (_SCnum >= MAXTABLESIZE)
     bot_shutdown ("Internal error in NewShedule()", 8);
@@ -143,7 +147,7 @@ void NewShedule (iface_t ift, char *name, ifsig_t sig,
     safe_realloc ((void **)&Crontable, (_SCalloc) * sizeof(shedentry_t));
   }
   ct = &Crontable[_SCnum];
-  ct->iface = ift;
+  ct->ift = ift;
   ct->to = name;
   ct->signal = sig;
   _get_mask (min, ct->min);
@@ -160,18 +164,20 @@ void NewShedule (iface_t ift, char *name, ifsig_t sig,
 }
 
 /* delete cell from Crontable */
-void KillShedule (iface_t ift, char *name, ifsig_t sig,
+void KillShedule (iftype_t ift, char *name, ifsig_t sig,
 		 char *min, char *hr, char *ds, char *mn, char *wk)
 {
   register int i;
   register shedentry_t *ct;
   uint32_t mask[2];
 
+  if (ift == 0 || name == NULL)
+    return;
   pthread_mutex_lock (&LockShed);
   for (i = 0; i < _SCnum; i++)
   {
     ct = &Crontable[i];
-    if (ct->iface == ift && ct->to == name)
+    if (ct->ift == ift && ct->to == name)
     {
       _get_mask (min, mask);
       ct->min[0] &= ~(mask[0]);
@@ -198,8 +204,9 @@ void KillShedule (iface_t ift, char *name, ifsig_t sig,
 
 typedef struct
 {
-  time_t timer;
-  iface_t iface;		/* if 0 then this cell is empty */
+  unsigned int timer;
+  tid_t id;
+  iftype_t ift;
   char *to;
   ifsig_t signal;
 } shedtimerentry_t;
@@ -207,43 +214,81 @@ typedef struct
 static shedtimerentry_t *Timerstable = NULL;
 static unsigned int _STalloc = 0;
 static unsigned int _STnum = 0;
+static tid_t _STid = 0;
 
 /* create new cell in Timerstable */
-void NewTimer (iface_t ift, char *name, ifsig_t sig, unsigned int sec,
-	      unsigned int min, unsigned int hr, unsigned int ds)
+tid_t NewTimer (iftype_t ift, char *name, ifsig_t sig, unsigned int sec,
+		unsigned int min, unsigned int hr, unsigned int ds)
 {
   register shedtimerentry_t *ct;
+  tid_t id;
 
+  if (ift == 0 || name == NULL)
+    return -1;
   pthread_mutex_lock (&LockShed);
   if (_STnum >= MAXTABLESIZE)
-    bot_shutdown ("Internal error in NewTimer()", 8);
+    return -1;
   if (_STnum >= _STalloc)
   {
     _STalloc += 32;
     safe_realloc ((void **)&Timerstable, (_STalloc) * sizeof(shedtimerentry_t));
   }
   ct = &Timerstable[_STnum];
-  ct->iface = ift;
+  ct->ift = ift;
   ct->to = name;
   ct->signal = sig;
   ct->timer = (sec + 60*min + 3600*hr + 86400*ds);
+  ct->id = id = _STid++;
+  if (_STid < 0)
+    _STid = 0;				/* never under zero! */
   _STnum++;
+  pthread_mutex_unlock (&LockShed);
+  return id;
+}
+
+/* delete cell from Timerstable */
+void KillTimer (tid_t tid)
+{
+  size_t i;
+
+  if (tid < 0)
+    return;
+  pthread_mutex_lock (&LockShed);
+  for (i = 0; i < _STnum; i++)
+  {
+    if (Timerstable[i].id == tid)
+    {
+      _STnum--;
+      if (i != _STnum)
+	memcpy (&Timerstable[i], &Timerstable[_STnum], sizeof(shedtimerentry_t));
+      break;
+    }
+  }
   pthread_mutex_unlock (&LockShed);
 }
 
-static REQUEST *Sheduler (INTERFACE *iface, REQUEST *req)
+static int Sheduler (INTERFACE *ifc, REQUEST *req)
 {
-  register time_t curtime = time (NULL);
+  register int drift;
+  time_t curtime = time (NULL);
   struct tm tm;
   struct tm tm0;
   register unsigned int i, j = 0;
 
   if (curtime != Time)
   {
+    drift = curtime - Time;
+    if (drift < 0 || drift > 120)	/* it seems system time was tuned */
+    {
+      if (Time)				/* if it's on start then it's ok */
+	Add_Request (I_LOG, "*", F_WARN,
+		     "system time was slipped by %d seconds!", drift);
+      drift = 1;			/* assume 1 second passed */
+    }
     /* decrement floodtimers */
     for (i = 0; i < _SFnum; i++)
     {
-      if (Floodtable[i].ptr && (--Floodtable[i].timer) == 0)
+      if (Floodtable[i].ptr && (Floodtable[i].timer -= drift) <= 0)
       {
 	(*Floodtable[i].ptr)--;
 	_SFnum--;
@@ -253,42 +298,47 @@ static REQUEST *Sheduler (INTERFACE *iface, REQUEST *req)
       }
     }
     if (j)
-      dprint (3, "Sheduler: removed %u flood timer(s), remained %u/%u",
+      dprint (1, "Sheduler: removed %u flood timer(s), remained %u/%u",
 	      j, _SFnum, MAXTABLESIZE);
     pthread_mutex_lock (&LockShed);
     /* decrement timers */
-    for (i = 0; i < _STnum; i++)
+    for (i = 0, j = 0; i < _STnum; i++)
     {
       register shedtimerentry_t *ct = &Timerstable[i];
 
-      if (ct->iface && (--ct->timer) == 0)
+      if (ct->timer > (unsigned int)drift)
+	ct->timer -= drift;
+      else
       {
-	ifsig_t sig = ct->signal;
-	iface_t iface = ct->iface;
-	char *to = ct->to;
+	char sig[sizeof(ifsig_t)];
+	iftype_t ift = ct->ift;
+	char to[IFNAMEMAX+1];
 
-	pthread_mutex_unlock (&LockShed);
-	Add_Request (iface, to, F_SIGNAL, (char *)sig);
-	pthread_mutex_lock (&LockShed);
+	sig[0] = ct->signal;
+	strfcpy (to, ct->to, sizeof(to));
 	_STnum--;
 	if (i != _STnum)
 	  memcpy (ct, &Timerstable[_STnum], sizeof(shedtimerentry_t));
+	pthread_mutex_unlock (&LockShed);
+	Add_Request (ift, to, F_SIGNAL, sig);
+	pthread_mutex_lock (&LockShed);
+	j++;
       }
     }
     /* update time variables */
     localtime_r (&Time, &tm0);
     Time = curtime;
     localtime_r (&Time, &tm);
-    if (tm.tm_min != tm0.tm_min)
+    if (!ifc || tm.tm_min != tm0.tm_min)	/* ifc == NULL only on start */
     {
       shedentry_t sh;
-      ifsig_t ifsig = S_TIMEOUT;
+      char ifsig[sizeof(ifsig_t)] = {S_TIMEOUT};
 
       /* update datestamp */
       if (!strftime (DateString, sizeof(DateString), "%e %b %H:%M", &tm))
-	dprint (1, "Cannot form datestamp!");
+	Add_Request (I_LOG, "*", F_WARN, "Cannot form datestamp!");
       /* flush all files */
-      Add_Request (I_FILE, "*", F_SIGNAL, (char *)&ifsig);
+      Add_Request (I_FILE, "*", F_SIGNAL, ifsig);
       /* run Crontable (?TODO: check for missed minutes?) */
       memset (&sh, 0, sizeof(sh));
       if (tm.tm_min > 31)
@@ -296,30 +346,36 @@ static REQUEST *Sheduler (INTERFACE *iface, REQUEST *req)
       else
 	sh.min[0] = 1<<tm.tm_min;
       sh.hour = 1<<tm.tm_hour;
-      sh.day = 1<<(tm.tm_mday-1);
-      sh.month = 1<<tm.tm_mon;
+      sh.day = 1<<tm.tm_mday;
+      sh.month = 1<<(tm.tm_mon+1);
       sh.weekday = 1<<tm.tm_wday;
       for (i = 0; i < _SCnum; i++)
       {
 	register shedentry_t *ct = &Crontable[i];
 
-	if (ct->iface && ((ct->min[0] & sh.min[0]) || (ct->min[1] & sh.min[1])) &&
+	if (ct->ift && ((ct->min[0] & sh.min[0]) || (ct->min[1] & sh.min[1])) &&
 	    (ct->hour & sh.hour) && (ct->day & sh.day) &&
 	    (ct->month & sh.month) && (ct->weekday & sh.weekday))
 	{
-	  ifsig_t sig = ct->signal;
-	  iface_t iface = ct->iface;
+	  char sig[sizeof(ifsig_t)];
+	  iftype_t ift = ct->ift;
 	  char *to = ct->to;
 
+	  sig[0] = ct->signal;
 	  pthread_mutex_unlock (&LockShed);
-	  Add_Request (iface, to, F_SIGNAL, (char *)sig);
+	  Add_Request (ift, to, F_SIGNAL, sig);
 	  pthread_mutex_lock (&LockShed);
 	}
       }
     }
+    i = _STnum;
     pthread_mutex_unlock (&LockShed);
+    if (j)
+      dprint (1, "Sheduler: sent %u timer signal(s), remained %u/%u",
+	      j, i, MAXTABLESIZE);
+    /* TODO: check if we need Wtmp rotation: if (!ifc || tm.tm_mon != wlm) */
   }
-  return NULL;
+  return REQ_OK;
 }
 
 void Status_Sheduler (INTERFACE *iface)
@@ -344,27 +400,22 @@ char *IFInit_Sheduler (void)
     Floodtable = safe_calloc (32, sizeof(shedfloodentry_t));
     _SFalloc = 32;
   }
-  else
-    _SFnum = 0;
   /* create/reset timers table */
   if (!Timerstable)
   {
     Timerstable = safe_calloc (32, sizeof(shedtimerentry_t));
     _STalloc = 32;
   }
-  else
-    _STnum = 0;
   /* create/reset Crontable */
   if (!Crontable)
   {
     Crontable = safe_calloc (32, sizeof(shedentry_t));
     _SCalloc = 32;
   }
-  else
-    _SCnum = 0;
+  /* init time variables */
+  Sheduler (NULL, NULL);
   /* create own interface - I_TEMP forever ;) */
   if (!ShedIface)
     ShedIface = Add_Iface (NULL, I_TEMP, NULL, &Sheduler, NULL);
-  Sheduler (NULL, NULL);
   return NULL;
 }

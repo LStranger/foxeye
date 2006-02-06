@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2002  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2003  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -18,8 +18,11 @@
  * This file contains sheduler interface.
  */
 
-void NewShedule (iface_t, char *, ifsig_t, char *, char *, char *, char *, char *);
-void KillShedule (iface_t, char *, ifsig_t, char *, char *, char *, char *, char *);
-void NewTimer (iface_t, char *, ifsig_t, unsigned int, unsigned int, unsigned int, unsigned int);
+typedef int tid_t;
+
+void NewShedule (iftype_t, char *, ifsig_t, char *, char *, char *, char *, char *);
+void KillShedule (iftype_t, char *, ifsig_t, char *, char *, char *, char *, char *);
+tid_t NewTimer (iftype_t, char *, ifsig_t, unsigned int, unsigned int, unsigned int, unsigned int);
+void KillTimer (tid_t);
 int CheckFlood (short *, short[2]);
 void NoCheckFlood (short *);

@@ -31,6 +31,7 @@ typedef struct NODE
 
 int Insert_Key (NODE **, const char *, void *, int);
 void *Find_Key (NODE *, const char *);
-LEAF *Next_Leaf (NODE *, LEAF *, char **);
 int Delete_Key (NODE *, const char *, void *);
+LEAF *Find_Leaf (NODE *, const char *);
+LEAF *Next_Leaf (NODE *, LEAF *, char **);
 void Destroy_Tree (NODE **, void (*) (void *));

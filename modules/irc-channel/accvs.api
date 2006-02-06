@@ -1,0 +1,55 @@
+
+Module "irc-channel":
+---------------------
+
+join=>part|kick|quit join=>netsplit=>netjoin join=>netsplit=>quit
+
+JOIN  "iirrcc--jjooiinn"       MASK
+  int func(unsigned char *_w_h_o, const char *_l_n_a_m_e, INTERFACE *_c_h_a_n);
+    Used when someone _l_n_a_m_e with nick!user@host _w_h_o joins IRC channel
+    _c_h_a_n.
+      Matching: "channel nick!user@host" string.
+      Script args: nick user@host Lname channel
+
+PART  "iirrcc--ppaarrtt"       MASK
+  (int) void func(unsigned char *_w_h_o, const char *_l_n_a_m_e,
+		  INTERFACE *_c_h_a_n, char *_m_s_g);
+    Used when someone _l_n_a_m_e with nick!user@host _w_h_o parts IRC channel
+    _c_h_a_n with reason _m_s_g.
+      Matching: "channel nick!user@host" string.
+      Script args: nick user@host Lname channel msg
+
+KICK  "iirrcc--kkiicckk"       MASK
+  (int) void func(unsigned char *_o_p, const char *_l_n_a_m_e, INTERFACE *_c_h_a_n,
+		  unsigned char *_w_h_o, char *_c_o_m_m_e_n_t);
+    Used when someone _l_n_a_m_e with nick!user@host _o_p kicks nick _w_h_o from
+    channel _c_h_a_n with reason _c_o_m_m_e_n_t.
+      Matching: "channel who" string.  (userflags are ignored)
+      Script args: op user@host Lname "channel who" comment
+
+TOPC  "iirrcc--ttooppiicc"      MASK
+  (int) void func(???????);
+    Used when we got new topic info (on join or topic change).
+      Matching: "channel topic" string.
+      Script args: nick user@host Lname channel topic
+
+MODE  "iirrcc--mmooddeecchhgg"    MASK
+  (int) void func(unsigned char *_w_h_o, const char *_l_n_a_m_e,
+		  INTERFACE *_c_h_a_n, char *_c_h_g);
+    Used when someone _l_n_a_m_e with nick!user@host _w_h_o made mode change _c_h_g
+    on IRC channel _c_h_a_n.  Note: mode change line from server is parsed
+    and separated before calling any binding.
+      Matching: full mode change line (i.e. with channel name).
+      Tcl args: nick user@host Lname channel chg
+
+REJN  "iirrcc--nneettjjooiinn"    MASK
+  (int) void func(unsigned char *_w_h_o, const char *_l_n_a_m_e,
+		  INTERFACE *_c_h_a_n);
+    Used when IRC netjoin was detected (i.e. netsplit is over) and
+    someone _l_n_a_m_e with nick!user@host _w_h_o returned to channel _c_h_a_n.
+      Matching: "chan who" string.
+      Script args: nick user@host Lname channel
+
+-     "kkeeyycchhaannggee"      MASK
+  (int) void func(char *_p_u_b_l_i_c, unsigned char *_w_h_o, const char *_l_n_a_m_e,
+		  userflag _c_f, char *_k_e_y);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2002  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2005  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -37,7 +37,10 @@ void unknown (void);
 #include <signal.h>
 
 #include "init.h"
-#include "dcc.h"
+#include "direct.h"
+
+/* from direct.c */
+extern void Dcc_Exec (peer_t *, char *, char *, userflag, userflag, int);
 
 #ifndef HAVE_SIGACTION
 # define sigaction sigvec
@@ -51,16 +54,15 @@ void unknown (void);
 static int Fifo_Inp[2];		/* console keyboard */
 static int Fifo_Out[2];		/* console display */
 
-static REQUEST Req_EOF = {0, NULL, I_DIED, "", ""};
-
 /* ------------------------------
  * child side */
 
-static REQUEST *_kill_pipe (void)
+static int _kill_pipe (INTERFACE *iface)
 {
   close (Fifo_Inp[0]);
   close (Fifo_Out[1]);
-  return (&Req_EOF);
+  iface->ift |= I_DIED;
+  return REQ_OK;
 }
 
 static char _inp_buf[2*MESSAGEMAX];
@@ -161,9 +163,9 @@ ssize_t _write_pipe (char *buf, size_t *sw)
   return (sg);
 }
 
-static REQUEST *_request (INTERFACE *iface, REQUEST *req)
+static int _request (INTERFACE *iface, REQUEST *req)
 {
-  DCC_SESSION *dcc = (DCC_SESSION *)iface->data;
+  peer_t *dcc = (peer_t *)iface->data;
   ssize_t sw;
   char buff[MESSAGEMAX];
   volatile int to_all;
@@ -171,61 +173,50 @@ static REQUEST *_request (INTERFACE *iface, REQUEST *req)
   /* first time? */
   if (!dcc->iface)
   {
-    dcc->iface = dcc->alias = iface;
+    dcc->iface = iface;
     close (Fifo_Inp[1]);
     close (Fifo_Out[0]);
   }
   if (req)
   {
-    to_all = Have_Wildcard (req->mask) + 1;
-    /* check if this is: not for me exactly, but from me and no echo */
-    if (req->from == iface && (req->mask_if & I_DCCALIAS) && to_all &&
-	!(dcc->loglev & F_ECHO))
+    to_all = Have_Wildcard (req->to) + 1;
+    /* check if this is: not for me exactly but from me */
+    if (req->from == iface && (req->mask_if & I_DCCALIAS) && to_all)
       req = NULL;
   }
   /* check if we have empty output buf */
   while (dcc->buf[0] || req)
   {
-    if (req && dcc->buf[0])
-      req->flag |= F_REJECTED;
-    else if (req)
+    if (req && !dcc->buf[0])
     {
       /* for logs - if not from me */
       if (to_all && (req->mask_if & I_LOG))
       {
-	if (req->flag & dcc->loglev)
+	if (req->flag & CONSOLE_LOGLEV)
 	{
 	  printl (dcc->buf, sizeof(dcc->buf) - 1, "[%t] %*", 0,
-		  NULL, NULL, NULL, NULL, 0, 0, req->string);
+		  NULL, NULL, NULL, NULL, 0, 0, 0, req->string);
 	}
       }
-      /* not do reports... */
-      else if (*req->string > '\026' && *req->string < '\037' &&
-	       (dcc->state == D_R_WHO || dcc->state == D_R_WHOM ||
-	       dcc->state == D_R_DCCSTAT))
-      {
-	if (req->string[1] == '\002')
-	  dcc->state = D_CHAT;
-      }
       /* for chat channel messages */
-      else if (req->from && (req->from->iface & I_CHAT) && to_all &&
+      else if (req->from && (req->from->ift & I_DIRECT) && to_all &&
 	       (req->mask_if & I_DCCALIAS))
       {
 	char *prefix = "";
 	char *suffix = "";
 	char *str = req->string;
 
-	if (req->flag & F_NOTICE)
+	switch (req->flag & F_T_MASK)
+	{
+	  case F_T_NOTICE:
 	    prefix = "*** ";
-	else if (*str == '.')
-	{
-	  prefix = "* ";
-	  str++;
-	}
-	else
-	{
-	  prefix = "<";
-	  suffix = ">";
+	    break;
+	  case F_T_ACTION:
+	    prefix = "* ";
+	    break;
+	  default:
+	    prefix = "<";
+	    suffix = ">";
 	}
 	snprintf (dcc->buf, sizeof(dcc->buf) - 1, "%s%s%s %s", prefix,
 		  req->from->name, suffix, str);
@@ -233,61 +224,67 @@ static REQUEST *_request (INTERFACE *iface, REQUEST *req)
       /* direct messages */
       else
 	strfcpy (dcc->buf, req->string, sizeof(dcc->buf) - 1);
-      sw = safe_strlen (dcc->buf);
-      if (sw && !(req->from->iface & I_INIT))	/* ending with newline */
+      sw = strlen (dcc->buf);
+      if (sw && !(req->from->ift & I_INIT))	/* ending with newline */
 	strfcpy (&dcc->buf[sw], "\n", 2);
       req = NULL;		/* request done */
     }
-    sw = safe_strlen (dcc->buf);
+    sw = strlen (dcc->buf);
     /* write the buffer to pipe, same as Write_Socket() does */
     if (sw)
       sw = _write_pipe (dcc->buf, (size_t *)&sw);
     if (sw < 0)			/* error, kill the pipe... */
-      return _kill_pipe();
-    if (!(iface->iface & I_DCCALIAS))
+      return _kill_pipe (iface);
+    if (!(iface->ift & I_DCCALIAS))
       continue;			/* write pipe if in config */
     else if (req)
-      return req;		/* don't input until empty buffer */
+      return REQ_REJECTED;	/* don't input until empty buffer */
     break;			/* normal run */
   }
   /* read the string from the pipe to buffer and supress ending CR/LF */
   sw = _read_pipe (buff, sizeof(buff));
   if (sw < 0)			/* error, kill the pipe... */
-    return _kill_pipe();
-  if (!(iface->iface & I_DCCALIAS) && buff[0])	/* return to config anyway */
-    Add_Request (I_INIT, "*", 0, buff);
+    return _kill_pipe (iface);
+  if (!(iface->ift & I_DCCALIAS) && buff[0])	/* return to config anyway */
+    Add_Request (I_INIT, "*", 0, "%s", buff);
   else if (!sw)
-    return NULL;
+    return REQ_OK;
   /* run command */
   else if (buff[0] == '.')
-    Dcc_Exec (dcc, "", buff, NULL, -1, -1, -2);
-  else
-  {
-    char ch[16];
-
-    snprintf (ch, sizeof(ch), ":*:%u", dcc->botnet);
-    Add_Request (I_DCCALIAS, ch, F_BOTNET, buff);
-  }
-  return NULL;
+    Dcc_Exec (dcc, "", &buff[1], -1, -1, -2);
+  else				/* always send to 0 channel of botnet */
+    Add_Request (I_DCCALIAS, ":*:0", F_BOTNET, "%s", buff);
+  return REQ_OK;
 }
 
-static iface_t _signal (INTERFACE *iface, ifsig_t signal)
+static iftype_t _signal (INTERFACE *iface, ifsig_t signal)
 {
-  if (signal == S_TERMINATE)
+  char buff[SHORT_STRING];
+  INTERFACE *tmp;
+
+  switch (signal)
   {
-    _kill_pipe();
-    FREE (&((DCC_SESSION *)iface->data)->away);
-    iface->iface = I_CONSOLE | I_DIED;
-    return (int)I_DIED;
-  }
-  else if (signal == S_SHUTDOWN)
-  {
-    if (BindResult)
-    {
-      write (Fifo_Out[1], BindResult, safe_strlen (BindResult));
-      write (Fifo_Out[1], "\n", 1);
-    }
-    _kill_pipe();
+    case S_TERMINATE:
+      _kill_pipe (iface);
+      FREE (&((peer_t *)iface->data)->away);
+      iface->ift = I_CONSOLE | I_DIED;
+      return I_DIED;
+    case S_REPORT:
+      printl (buff, sizeof(buff), ReportFormat, 0,
+	      NULL, NULL, "-console-", NULL, 0, 0, 0, NULL);
+      tmp = Set_Iface (iface);
+      New_Request (tmp, F_REPORT, "%s", buff);
+      Unset_Iface();
+      break;
+    case S_SHUTDOWN:
+      if (ShutdownR)
+      {
+	write (Fifo_Out[1], ShutdownR, safe_strlen (ShutdownR));
+	write (Fifo_Out[1], "\n", 1);
+      }
+      _kill_pipe (iface);
+    default:
+      break;
   }
   return 0;
 }
@@ -314,7 +311,7 @@ static void *_stdin2pipe (void *bbbb)
 #endif
     if (!(cc = fgets (buff, sizeof(buff), stdin)))
       break;
-    write (Fifo_Inp[1], buff, safe_strlen(buff));
+    write (Fifo_Inp[1], buff, strlen(buff));
   };
   close (Fifo_Inp[1]);
   return (NULL);
@@ -351,7 +348,7 @@ static int _get_RunPath (char *callpath)
       if (path[0] == 0)
 	break;
       strfcpy (buff, path, sizeof(buff) - 3);
-      c = safe_strchr (buff, ':');
+      c = strchr (buff, ':');
       if (!c)
 	c = &buff[strlen(buff)];
       *c++ = '/';
@@ -362,7 +359,7 @@ static int _get_RunPath (char *callpath)
 	  (st.st_gid == gid && (st.st_mode & S_IXGRP)) ||	/* group */
 	  (st.st_mode & S_IXOTH)))				/* world */
 	break;
-      path = safe_strchr (buff, ':');		/* next in PATH */
+      path = strchr (buff, ':');		/* next in PATH */
     }
     if (!path || !path[0])			/* no such file */
       return -1;
@@ -391,14 +388,14 @@ options:\n\
    <file>\tconfig file name\n\
 ");
 
-#define version_string "FoxEye " ## VERSION ## "\n"
+#define version_string "FoxEye " VERSION "\n"
 static void print_version (void)
 {
   struct utsname buf;
 
   uname (&buf);
   printf (version_string);
-  printf (_("Copiright (C) 1999-2002 Andriy Gritsenko.\n\n\
+  printf (_("Copyright (C) 1999-2005 Andriy Gritsenko.\n\n\
 System: %s %s on %s.\n"), buf.sysname, buf.release, buf.machine);
 }
 #undef version_string
@@ -409,7 +406,7 @@ int main (int argc, char *argv[])
   INTERFACE if_console;
   FILE *fp;
   int ch;
-  DCC_SESSION *dcc = safe_calloc (1, sizeof(DCC_SESSION));
+  peer_t *dcc = safe_calloc (1, sizeof(peer_t));
   char buff[STRING];
   pthread_t sit;
 
@@ -449,7 +446,7 @@ int main (int argc, char *argv[])
 	strfcpy (buff, optarg, sizeof(buff));
 	break;
       case 'n':		/* set nickname to Nick */
-	strfcpy (Nick, optarg, NICKMAX+1);
+	strfcpy (Nick, optarg, NAMEMAX+1);
 	break;
       case 'v':		/* version information */
 	print_version();
@@ -538,9 +535,9 @@ int main (int argc, char *argv[])
   fcntl (Fifo_Inp[0], F_SETFL, O_NONBLOCK);
   fcntl (Fifo_Out[1], F_SETFL, O_NONBLOCK);
   if (have_con)
-    if_console.iface = I_CONSOLE | I_LOG | I_TELNET | I_CHAT;
+    if_console.ift = I_CONSOLE | I_LOG | I_TELNET | I_DIRECT;
   else
-    if_console.iface = I_LOCKED;
+    if_console.ift = I_LOCKED | I_DIED;
   if_console.name = safe_strdup ("::0");
   if_console.IFSignal = &_signal;
   if_console.IFRequest = &_request;
@@ -549,8 +546,6 @@ int main (int argc, char *argv[])
   dcc->state = D_CHAT;
   dcc->socket = -1;
   dcc->uf = -1;
-  dcc->loglev = F_MSGS | F_CMDS | F_CONN | F_USERS | F_BOOT | F_CRAP |
-		F_DEBUG | F_COLOR | F_COLORCONV;
   /* run the dispatcher and fork there */
   if ((ch = dispatcher (&if_console)))
     return (ch);
@@ -561,16 +556,16 @@ int main (int argc, char *argv[])
     perror ("console input create");
   else FOREVER					/* and here output part */
   {
-    ch = read (Fifo_Out[0], buff, sizeof(buff) - 1);
-    if (ch > 0)
+    if (have_con && (ch = read (Fifo_Out[0], buff, sizeof(buff) - 1)) > 0)
     {
       buff[ch] = 0;
       if (buff[0])
-	fprintf (stderr, buff);
+	fprintf (stderr, "%s", buff);		/* buff can contain %'s! */
     }
     else
     {						/* broken pipe - kill all */
       pthread_kill (sit, SIGTERM);
+      pthread_join (sit, NULL);
       break;
     }
   }

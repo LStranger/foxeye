@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2002  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2005  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -25,9 +25,9 @@
 #include <signal.h>
 #include <ctype.h>
 
-#include "dcc.h"
+#include "direct.h"
 #include "tree.h"
-#include "users.h"
+#include "list.h"
 
 #ifndef HAVE_SIGACTION
 # define sigaction sigvec
@@ -38,20 +38,30 @@
 #endif
 #endif /* HAVE_SIGACTION */
 
+struct bindtable_t
+{
+  bttype_t type;
+  const char *name;
+  union {
+    binding_t *bind;
+    NODE *tree;
+  } list;
+  binding_t *lr;			/* last resort - for B_UNIQ unly */
+  bindtable_t *next;
+};
+
 /* ----------------------------------------------------------------------------
  * bindtables functions
  */
 
-static pthread_mutex_t BindLock = PTHREAD_MUTEX_INITIALIZER;
+static bindtable_t *Tables = NULL;
 
-static BINDTABLE *Tables = NULL;
-
-BINDTABLE *Add_Bindtable (const char *name, bindtable_t type)
+bindtable_t *Add_Bindtable (const char *name, bttype_t type)
 {
-  BINDTABLE *bt;
+  bindtable_t *bt;
 
   if (Tables == NULL)
-    bt = Tables = safe_calloc (1, sizeof(BINDTABLE));
+    bt = Tables = safe_calloc (1, sizeof(bindtable_t));
   else
   {
     for (bt = Tables; bt; bt = bt->next)
@@ -60,7 +70,7 @@ BINDTABLE *Add_Bindtable (const char *name, bindtable_t type)
 	break;
       if (!bt->next)
       {
-	bt->next = safe_calloc (1, sizeof(BINDTABLE));
+	bt->next = safe_calloc (1, sizeof(bindtable_t));
 	bt = bt->next;
 	break;
       }
@@ -68,70 +78,111 @@ BINDTABLE *Add_Bindtable (const char *name, bindtable_t type)
   }
   if (!bt->name)
     bt->name = safe_strdup (name);
-  bt->type = type;
+  if (bt->type != B_UNDEF && bt->type != type && type != B_UNDEF)
+    Add_Request (I_LOG, "*", F_ERROR,
+		 "binds: illegal redefinition of type of bindtable!");
+  else if (type != B_UNDEF)
+    /* TODO: convert from B_UNDEF to new table type here */
+    bt->type = type;
   dprint (1, "binds: added bindtable with name \"%s\"", name);
   return bt;
 }
 
-static BINDTABLE *Try_Bindtable (const char *name, int force_add)
+static bindtable_t *Try_Bindtable (const char *name, int force_add)
 {
-  BINDTABLE *bt = Tables;
+  bindtable_t *bt = Tables;
 
   for (; bt; bt = bt->next)
     if (!safe_strcmp (bt->name, name))
       break;
   if (bt || !force_add)
     return bt;
-  return Add_Bindtable (name, B_MASK);	/* default type */
+  return Add_Bindtable (name, B_UNDEF);	/* default type */
 }
 
-BINDING *Add_Binding (const char *table, const char *mask, userflag gf,
+binding_t *Add_Binding (const char *table, const char *mask, userflag gf,
 		      userflag cf, Function func)
 {
-  BINDTABLE *bt = Try_Bindtable (table, 1);
-  BINDING *bind = safe_calloc (1, sizeof(BINDING));
-  BINDING *b, *last = NULL;
+  bindtable_t *bt = Try_Bindtable (table, 1);
+  binding_t *bind = safe_malloc (sizeof(binding_t));
+  binding_t *b;
 
-  bind->key = safe_strdup (mask);
+  if (bt->type == B_UNIQ)
+  {
+    if (!mask || !*mask)
+    {
+      bind->key = NULL;
+      bind->gl_uf = gf;
+      bind->ch_uf = cf;
+      bind->name = NULL;
+      bind->func = func;
+      bind->prev = bt->lr;
+      bt->lr = bind;
+      dprint (1, "binds: added last resort binding to bindtable \"%s\"", table);
+      return bind;
+    }
+    if (bt->list.tree && (b = Find_Key (bt->list.tree, mask)))
+    {
+      if (b->func == func && b->gl_uf == gf && b->ch_uf == cf)
+      {
+	FREE (&bind);				/* duplicate binding */
+	return NULL;
+      }
+      /* now replace data in current leaf with new and insert new */
+      memcpy (bind, b, sizeof(binding_t));
+      b->prev = bind; /* new previous binding */
+      bind = b;
+    }
+    else
+    {
+      bind->key = safe_strdup (mask);
+      if (Insert_Key (&bt->list.tree, bind->key, bind, 1))
+      {
+	FREE (&bind->key);			/* tree error */
+	FREE (&bind);
+	return NULL;
+      }
+      bind->prev = NULL;
+    }
+  }
+  else /* not B_UNIQ */
+  {
+    binding_t *last = NULL;
+
+    bind->prev = NULL;				/* if it's really unique */
+    for (b = bt->list.bind; b; b = b->next)	/* check if binding is duplicate */
+    {
+      if (!safe_strcasecmp (b->key, mask))	/* the same mask found! */
+      {
+	if (b->func == func && b->gl_uf == gf && b->ch_uf == cf)
+	{
+	  FREE (&bind->key);			/* duplicate binding */
+	  FREE (&bind);
+	  return NULL;
+	}
+	if (bt->type == B_UCOMPL || bt->type == B_UNIQMASK)
+	{
+	  bind->prev = b;
+	  b = b->next;
+	  break;
+	}
+      }
+      last = b;
+    }
+    if (bind->prev)
+      bind->key = bind->prev->key;
+    else
+      bind->key = safe_strdup (mask);
+    bind->next = b;				/* next after current */
+    if (last)
+      last->next = bind;			/* insert as last binding */
+    else
+      bt->list.bind = bind;			/* insert as first binding */
+  }
   bind->gl_uf = gf;
   bind->ch_uf = cf;
   bind->name = NULL;
   bind->func = func;
-  pthread_mutex_lock (&BindLock);
-  if (bt->type == B_UNIQ && (!mask || !*mask))
-  {
-    bind->nbind = bt->lr;
-    bt->lr = bind;
-    pthread_mutex_unlock (&BindLock);
-    dprint (1, "binds: added last resort binding to bindtable \"%s\"", table);
-    return bind;
-  }
-  for (b = bt->bind; b; b = b->next)
-  {
-    if (!safe_strcasecmp (b->key, mask))	/* the same mask found! */
-    {
-      if (bind->func == func && b->gl_uf == gf && b->ch_uf == cf)
-      {
-	FREE (&bind->key);			/* duplicate binding */
-	FREE (&bind);
-	pthread_mutex_unlock (&BindLock);
-	return NULL;
-      }
-      if (bt->type == B_UNIQ || bt->type == B_UNIQMASK)
-      {
-	bind->nbind = b;
-	b = b->next;
-	break;
-      }
-    }
-    last = b;
-  }
-  bind->next = b;
-  if (last)
-    last->next = bind;
-  else
-    bt->bind = bind;
-  pthread_mutex_unlock (&BindLock);
   dprint (1, "binds: added binding to bindtable \"%s\" with mask \"%s\"",
 	  table, mask);
   return bind;
@@ -139,8 +190,8 @@ BINDING *Add_Binding (const char *table, const char *mask, userflag gf,
 
 void Delete_Binding (const char *table, Function func)
 {
-  BINDTABLE *bt = Try_Bindtable (table, 0);
-  BINDING *bind, *b, *last = NULL, *next;
+  bindtable_t *bt = Try_Bindtable (table, 0);
+  binding_t *bind, *b, *last = NULL, *next;
 
   if (bt == NULL)
     return;
@@ -149,94 +200,128 @@ void Delete_Binding (const char *table, Function func)
     if (b->func == func)
     {
       if (last)
-	last->nbind = bind = b->nbind;
+	last->prev = bind = b->prev;
       else
-	bt->lr = bind = b->nbind;
+	bt->lr = bind = b->prev;
       dprint (1, "binds: deleting last resort binding from bindtable \"%s\"",
 	      table);
-      pthread_mutex_lock (&BindLock);
-      FREE (&b->key);
       FREE (&b);
-      pthread_mutex_unlock (&BindLock);
       b = bind;
     }
     else
     {
       last = b;
-      b = b->nbind;
+      b = b->prev;
     }
   }
-  last = NULL;
-  for (b = bt->bind; b; )		/* second pass: check list */
+  if (bt->type == B_UNIQ)		/* second pass: check list */
   {
-    for (bind = b, next = NULL; bind; )
+    LEAF *l = NULL;
+
+    while ((l = Next_Leaf (bt->list.tree, l, NULL)))
+    {
+      for (b = l->s.data; b; )
+      {
+	if (b->func == func)
+	{
+	  dprint (1, "binds: deleting binding from bindtable \"%s\" with key \"%s\"",
+		  table, b->key);
+	  if (last)			/* it's not first binding - remove */
+	  {
+	    last->prev = bind = b->prev;
+	    FREE (&b);
+	    b = bind;
+	  }
+	  else if (b->prev)		/* it's first binding - replace */
+	  {
+	    bind = b->prev;
+	    memcpy (b, bind, sizeof(binding_t));
+	    FREE (&bind);
+	  }
+	  else				/* it's only binding - free leaf */
+	  {
+	    Delete_Key (bt->list.tree, b->key, b);
+	    FREE (&b->key);
+	    FREE (&b);
+	    b = l->s.data;			/* next leaf is moved here */
+	  }
+	}
+	else
+	{
+	  last = b;
+	  b = b->prev;
+	}
+      }
+    }
+  }
+  else for (b = bt->list.bind, last = NULL; b; )
+  {
+    for (bind = b, next = NULL; bind; )	/* try descent into it */
     {
       if (bind->func == func)
       {
 	dprint (1, "binds: deleting binding from bindtable \"%s\" with mask \"%s\"",
 		table, bind->key);
-	pthread_mutex_lock (&BindLock);
-	FREE (&bind->key);
-	if (next)
+	if (next)			/* it's not first binding */
 	{
-	  next->nbind = bind->nbind;
-	  next = bind;
+	  next->prev = bind->prev;
+	  FREE (&bind);
+	  bind = next->prev;
 	}
-	else
+	else if (bind->prev)		/* it's first binding */
 	{
-	  b = bind->nbind;
-	  if (!b)
-	  {
-	    if (!last)
-	      bt->bind = bind->next;
-	    else
-	      last->next = bind->next;
-	  }
+	  b = bind->prev;
+	  FREE (&bind);
+	  if (!last)				/* skip current */
+	    bt->list.bind = b;
+	  else for (bind = last; bind; bind = bind->prev)
+	    bind->next = b;
+	  bind = b;
+	}
+	else				/* only binding - delete it */
+	{
+	  b = bind->next;
+	  if (!last)
+	    bt->list.bind = b;
 	  else
-	  {
-	    b->next = bind->next;
-	    if (!last)
-	      bt->bind = b;
-	    else
-	      last->next = b;
-	  }
+	    last->next = b;
+	  FREE (&bind->key);
+	  FREE (&bind);
+	  bind = b;
 	}
-	FREE (&bind);
-	pthread_mutex_unlock (&BindLock);
       }
-      else
+      else /* bind->func != func */
+      {
 	next = bind;
-      if (next)
-	bind = next->nbind;
-      else
-	bind = b;
-    }
+	bind = next->prev;
+      }
+    } /* all b->prev are checked now */
+    last = b;
     if (b)
-      last = b;
-    if (last)
-      b = last->next;
-    else
-      b = bt->bind;
+      b = b->next;
   }
 }
 
-BINDING *Check_Bindtable (BINDTABLE *bt, const char *str, userflag gf,
-			  userflag cf, BINDING *bind)
+binding_t *Check_Bindtable (bindtable_t *bt, const char *str, userflag gf,
+			  userflag cf, binding_t *bind)
 {
   int i = 0;
-  BINDING *b;
+  binding_t *b;
   char buff[LONG_STRING];
   register char *ch = buff;
   register const char *s = NONULL(str);
   char cc = ' ';
   size_t sz;
 
-  if (bt == NULL)
+  if (bt == NULL || bt->type == B_UNDEF)
     return NULL;
   if (bt->type == B_MASK || bt->type == B_UNIQMASK)
     cc = 0;
   else if (bt->type == B_MATCHCASE)
+  {
+    cc = 0;
     i++;
+  }
   for (; *s && *s != cc && ch < &buff[sizeof(buff)-1]; ch++, s++)
   {
     if (i)
@@ -245,51 +330,58 @@ BINDING *Check_Bindtable (BINDTABLE *bt, const char *str, userflag gf,
       *ch = tolower (*s);
   }
   *ch = 0;
-  sz = safe_strlen (buff);
-  pthread_mutex_lock (&BindLock);
-  b = bt->bind;
-  if (bind)		/* check if binding bind exist */
+  if (bt->type == B_UNIQ)
   {
-    for (; b && b != bind; b = b->next);
-    if (b) b = b->next;
-    bind = NULL;
+    b = Find_Key (bt->list.tree, buff);
+    if (b && (b->gl_uf & gf) != b->gl_uf && (b->ch_uf & cf) != b->ch_uf)
+      b = NULL;
   }
-  for (i = 0; b; b = b->next)
+  else
   {
-    if ((b->gl_uf & gf) != b->gl_uf && (b->ch_uf & cf) != b->ch_uf)
-      continue;
-    switch (bt->type)
+    b = bt->list.bind;
+    sz = strlen (buff);
+    if (bind)		/* check if binding bind exist */
     {
-      case B_MATCHCASE:
-      case B_KEYWORD:
-      case B_UNIQ:
-	if (!safe_strcmp (b->key, buff))	/* exact matching */
-	  i = 1;
-	else if (bt->type == B_UNIQ && !safe_strncmp (b->key, buff, sz))
-	{
-	  if (bind)
-	    i = -1;		/* more than one matched, wait to exact */
-	  else
-	    bind = b;		/* that is matched to completion */
-	}
-	break;
-      case B_MASK:
-      case B_UNIQMASK:
-	i = match (b->key, str) + 1;
+      for (; b && b != bind; b = b->next);
+      if (b) b = b->next;
+      bind = NULL;
+    }
+    for (i = 0; b; b = b->next)
+    {
+      if ((b->gl_uf & gf) != b->gl_uf && (b->ch_uf & cf) != b->ch_uf)
+	continue;
+      switch (bt->type)
+      {
+	case B_KEYWORD:
+	case B_UCOMPL:
+	  if (!safe_strcmp (b->key, buff))	/* exact matching */
+	    i = 1;
+	  else if (bt->type == B_UCOMPL && !safe_strncmp (b->key, buff, sz))
+	  {
+	    if (bind)
+	      i = -1;		/* more than one matched, wait to exact */
+	    else
+	      bind = b;		/* that is matched to completion */
+	  }
+	  break;
+	case B_MASK:
+	case B_UNIQMASK:
+	case B_MATCHCASE:
+	  i = match (b->key, str) + 1;
+	  break;
+      }
+      if (i > 0)
 	break;
     }
-    if (i > 0)
-      break;
   }
-  pthread_mutex_unlock (&BindLock);
-  if (bt->type == B_UNIQ && !i)
+  if (bt->type == B_UCOMPL && !i)
     b = bind;			/* completion */
   if (b)
-    dprint (3, "binds: bindtable \"%s\" string \"%s\", flags 0x%x/0x%x, found mask \"%s\"",
+    dprint (2, "binds: bindtable \"%s\" string \"%s\", flags 0x%x/0x%x, found mask \"%s\"",
 	    bt->name, str, gf, cf, b->key);
   else if (bt->type == B_UNIQ && bt->lr)
   {
-    dprint (3, "binds: bindtable \"%s\" string \"%s\", using last resort",
+    dprint (2, "binds: bindtable \"%s\" string \"%s\", using last resort",
 	    bt->name, str);
     return bt->lr;
   }
@@ -300,7 +392,7 @@ BINDING *Check_Bindtable (BINDTABLE *bt, const char *str, userflag gf,
 /* define functions & variables first */
 #include "init.h"
 
-int RunBinding (BINDING *bind, const uchar *uh, char *fst, char *sec, int num,
+int RunBinding (binding_t *bind, const uchar *uh, char *fst, char *sec, int num,
 		char *last)
 {
   char uhost[STRING] = "";
@@ -310,7 +402,7 @@ int RunBinding (BINDING *bind, const uchar *uh, char *fst, char *sec, int num,
 
   if (!bind || !bind->name || !bind->func)	/* checking... */
     return 0;
-  dprint (4, "init:RunBinding: %s %s %s %s %d %s", bind->name,
+  dprint (3, "init:RunBinding: %s %s %s %s %d %s", bind->name,
 	  NONULL((char *)uh), NONULL(fst), NONULL(sec), num, NONULL(last));
   BindResult = NULL;				/* clear result */
   if (uh)
@@ -350,28 +442,42 @@ typedef struct
   bool res;
 } confirm_t;
 
-static iface_t confirm_sig (INTERFACE *iface, ifsig_t sig)
+static iftype_t confirm_sig (INTERFACE *iface, ifsig_t sig)
 {
   pthread_mutex_lock (&((confirm_t *)iface->data)->mutex);
   ((confirm_t *)iface->data)->res &= 1;		/* reset to FALSE/TRUE */
   pthread_mutex_unlock (&((confirm_t *)iface->data)->mutex);
-  return I_DIED;
+  return 0;		/* don't kill it, it will be killed by Confirm() */
 }
 
-static REQUEST *confirm_req (INTERFACE *iface, REQUEST *req)
+static int confirm_req (INTERFACE *iface, REQUEST *req)
 {
-  pthread_mutex_lock (&((confirm_t *)iface->data)->mutex);
-  if (req && req->string[0] == 'y')
-    ((confirm_t *)iface->data)->res = TRUE;
-  else
-    ((confirm_t *)iface->data)->res = FALSE;
-  pthread_mutex_unlock (&((confirm_t *)iface->data)->mutex);
-  iface->iface = I_DIED;			/* we got answer so can die */
-  return NULL;
+  if (req)				/* only requests are accepting */
+  {
+    pthread_mutex_lock (&((confirm_t *)iface->data)->mutex);
+    if (req->string[0] == 'y')				/* yes */
+      ((confirm_t *)iface->data)->res = TRUE;
+    else if (req->string[0] != 0)			/* no */
+      ((confirm_t *)iface->data)->res = FALSE;
+    else						/* default */
+      ((confirm_t *)iface->data)->res &= 1;
+    pthread_mutex_unlock (&((confirm_t *)iface->data)->mutex);
+  }
+  return REQ_OK;
 }
 
 static pthread_mutex_t ConfirmLock = PTHREAD_MUTEX_INITIALIZER;
 static unsigned short _confirm_num = 0;
+
+static void confirm_cleanup (void *newif)
+{
+  register confirm_t *ct = ((INTERFACE *)newif)->data;
+
+  ((INTERFACE *)newif)->data = NULL;		/* it's not allocated! */
+  ((INTERFACE *)newif)->ift = I_DIED;
+  pthread_mutex_unlock (&ConfirmLock);
+  pthread_mutex_destroy (&ct->mutex);
+}
 
 bool Confirm (char *message, bool defl)
 {
@@ -379,11 +485,12 @@ bool Confirm (char *message, bool defl)
   INTERFACE *ui;
   confirm_t ct;
   char n[8];
+  struct timespec tp;
 
-  if (!(defl & 2))
+  if (!(defl & ASK))
     return defl;
   ct.res = defl;
-  pthread_mutex_lock (&ConfirmLock);
+  pthread_mutex_lock (&ConfirmLock);		/* don't mix all confirmations */
   if ((ui = Find_Iface (I_MODULE, "ui")) == NULL)
   {
     pthread_mutex_unlock (&ConfirmLock);
@@ -398,17 +505,21 @@ bool Confirm (char *message, bool defl)
 	      (defl & 1) == TRUE ? 'y' : 'n');
   Unset_Iface();	/* newif */
   Unset_Iface();	/* ui */
-  while (1) {
+  tp.tv_sec = 0;
+  tp.tv_nsec = 50000000L;			/* 0.05s recheck interval */
+  pthread_cleanup_push (&confirm_cleanup, newif);
+  FOREVER
+  {
     pthread_mutex_lock (&ct.mutex);
-    if (!(ct.res & 2))
+    if (!(ct.res & ASK))
     {
       pthread_mutex_unlock (&ct.mutex);
       break;
     }
     pthread_mutex_unlock (&ct.mutex);
+    nanosleep (&tp, NULL);			/* it may be cancelled here */
   }
-  pthread_mutex_unlock (&ConfirmLock);
-  pthread_mutex_destroy (&ct.mutex);
+  pthread_cleanup_pop (1);
   return ct.res;
 }
 
@@ -420,7 +531,7 @@ bool Confirm (char *message, bool defl)
 static INTERFACE *ConfigFileIface = NULL;
 static FILE *ConfigFileFile = NULL;
 
-static REQUEST *_cfile_req (INTERFACE *iface, REQUEST *req)
+static int _cfile_req (INTERFACE *iface, REQUEST *req)
 {
   if (req && req->string[0])
   {
@@ -429,7 +540,7 @@ static REQUEST *_cfile_req (INTERFACE *iface, REQUEST *req)
     else					/* from help */
       fprintf (ConfigFileFile, "# %s\n", req->string);
   }
-  return NULL;
+  return REQ_OK;
 }
 
 static INTERFACE *Init = NULL;
@@ -440,7 +551,7 @@ static char _usage[MESSAGEMAX];
  *   if F_REPORT then bounce to config file
  *   else store it in _usage[] - it was from console
  */
-REQUEST *_config_req (INTERFACE *iface, REQUEST *req)
+static int _config_req (INTERFACE *iface, REQUEST *req)
 {
   register char *c;
 
@@ -450,14 +561,14 @@ REQUEST *_config_req (INTERFACE *iface, REQUEST *req)
     {
       if (ConfigFileFile)
 	return _cfile_req (ConfigFileIface, req);
-      return NULL;
+      return REQ_OK;
     }
     c = req->string;
     while (*c == ' ') c++;			/* ltrim it */
     if (*c)
       strfcpy (_usage, c, sizeof(_usage));
   }
-  return NULL;
+  return REQ_OK;
 }
 
 static char *_quote_expand (char *ptr)
@@ -490,7 +601,7 @@ static void Get_ConfigFromConsole (const char *name, void *ptr, size_t s)
   Unset_Iface();
   if (!Init)
     return;
-  if (cons && !(cons->iface & I_DIED)) do
+  if (cons && !(cons->ift & I_DIED)) do
     {
       if (prompt)
       {
@@ -546,7 +657,7 @@ static void Get_ConfigFromConsole (const char *name, void *ptr, size_t s)
 	}
 	break;
       }
-    } while (!(cons->iface & I_DIED));
+    } while (!(cons->ift & I_DIED));
   if (ConfigFileIface)
   {
     Get_Help ("set", name, ConfigFileIface, -1, -1, NULL, NULL, 1);
@@ -574,7 +685,7 @@ static int Start_FunctionFromConsole
   INTERFACE *cons = Find_Iface (I_CONSOLE, NULL);
 
   Unset_Iface();
-  if (!Init || !cons || (cons->iface & I_DIED))
+  if (!Init || !cons || (cons->ift & I_DIED))
     return 0;
   /* get function parameters */
   Set_Iface (Init);
@@ -591,11 +702,13 @@ static int Start_FunctionFromConsole
     Unset_Iface();
     if (_usage[0])
       break;
-  } while (!(cons->iface & I_DIED));
+  } while (!(cons->ift & I_DIED));
   if (!_usage[0] || _usage[0] == '\n')	/* just "Enter" was pressed */
     return 0;
+  if (_usage[0] == '?')
+    Get_Help ("function", name, cons, -1, -1, NULL, "\n", 2);
   /* start - check if valid */
-  if ((*func) (_usage) != 0 && ConfigFileIface)
+  else if ((*func) (_usage) != 0 && ConfigFileIface)
   {
     New_Request (ConfigFileIface, F_REPORT, "%s %s", name, _usage);
     Set_Iface (ConfigFileIface);
@@ -609,11 +722,11 @@ static int Start_FunctionFromConsole
  * internal core tables: variables, operators(functions), formats, flood types
  */
 
-BINDTABLE *BT_Reg = NULL;
-BINDTABLE *BT_Unreg = NULL;
-BINDTABLE *BT_Fn = NULL;
-BINDTABLE *BT_Unfn = NULL;
-BINDTABLE *BT_Script = NULL;
+static bindtable_t *BT_Reg = NULL;
+static bindtable_t *BT_Unreg = NULL;
+static bindtable_t *BT_Fn = NULL;
+static bindtable_t *BT_Unfn = NULL;
+static bindtable_t *BT_Script = NULL;
 
 static NODE *VTree = NULL;		/* variables */
 static NODE *STree = NULL;		/* operators */
@@ -627,15 +740,29 @@ typedef struct
   char name[1] __attribute__ ((packed));
 } VarData __attribute__ ((packed));
 
+static void _lock_var (const char *name)
+{
+  VarData *data;
+
+  data = Find_Key (VTree, name);
+  if (data)
+    data->len = 2;				/* set read-only */
+}
+
 static int _add_var (const char *name, void *var, size_t s)
 {
   VarData *data;
 
   if (O_GENERATECONF != FALSE && s != 2)	/* not read only */
     Get_ConfigFromConsole (name, var, s);
-  if (Find_Key (VTree, name))			/* already registered */
+  if ((data = Find_Key (VTree, name)))		/* already registered */
+  {
+    if (data->data != var)
+      Add_Request (I_LOG, "*", F_WARN,
+		   "init: another data already binded to variable \"%s\"", name);
     return 0;
-  dprint (4, "init:_add_var: %s %u", name, (unsigned int)s);
+  }
+  dprint (3, "init:_add_var: %s %u", name, (unsigned int)s);
   data = safe_calloc (1, sizeof(VarData) + safe_strlen(name));
   data->data = var;
   strcpy (data->name, name);
@@ -649,7 +776,7 @@ static int _add_var (const char *name, void *var, size_t s)
 static int _register_var (const char *name, void *var, size_t s)
 {
   int i;
-  BINDING *bind = NULL;
+  binding_t *bind = NULL;
 
   if (!name || !var)
     return 0;
@@ -670,7 +797,7 @@ int RegisterBoolean (const char *name, bool *var)
   return _register_var (name, var, 1);
 }
 
-int RegisterString (const char *name, void *str, size_t len, int ro)
+int RegisterString (const char *name, char *str, size_t len, int ro)
 {
   return _register_var (name, str, ro ? 2 : len);
 }
@@ -680,8 +807,12 @@ static int _del_var (const char *name)
   VarData *data;
 
   if (!(data = Find_Key (VTree, name)))		/* not registered? */
+  {
+    Add_Request (I_LOG, "*", F_WARN,
+		 "init: attempting delete non-existent variable \"%s\"", name);
     return 0;
-  dprint (4, "init:_del_var: %s", name);
+  }
+  dprint (3, "init:_del_var: %s", name);
   Delete_Key (VTree, name, data);
   FREE (&data);
   return 1;
@@ -690,7 +821,7 @@ static int _del_var (const char *name)
 int UnregisterVariable (const char *name)
 {
   int i = 0;
-  BINDING *bind = NULL;
+  binding_t *bind = NULL;
 
   i = _del_var (name);				/* static binding ;) */
   while ((bind = Check_Bindtable (BT_Unreg, "*", -1, -1, bind)))
@@ -715,7 +846,7 @@ _add_fn (const char *name, int (*func)(const char *), const char *msg)
   int i;
   VarData2 *data;
 
-  dprint (4, "init:_add_fn: %s", name);
+  dprint (3, "init:_add_fn: %s", name);
   if (O_GENERATECONF != FALSE && msg)		/* ask for list */
     do {
       i = Start_FunctionFromConsole (name, func, msg);
@@ -735,7 +866,7 @@ static int _del_fn (const char *name)
 
   if (!(data = Find_Key (STree, name)))		/* not registered? */
     return 0;
-  dprint (4, "init:_del_fn: %s", name);
+  dprint (3, "init:_del_fn: %s", name);
   Delete_Key (STree, name, data);
   FREE (&data);
   return 1;
@@ -745,7 +876,7 @@ int
 RegisterFunction (const char *name, int (*func)(const char *), const char *msg)
 {
   int i;
-  BINDING *bind = NULL;
+  binding_t *bind = NULL;
 
   if (!name || !func)
     return 0;
@@ -759,7 +890,7 @@ RegisterFunction (const char *name, int (*func)(const char *), const char *msg)
 int UnregisterFunction (const char *name)
 {
   int i;
-  BINDING *bind = NULL;
+  binding_t *bind = NULL;
 
   i = _del_fn (name);				/* static binding ;) */
   while ((bind = Check_Bindtable (BT_Unfn, "*", -1, -1, bind)))
@@ -774,7 +905,7 @@ static short *_add_fl (const char *name, short n0, short n1)
 
   if (data)					/* already registered */
     return data->f.ld;
-  dprint (4, "init:_add_fl: %s %hd:%hd", name, n0, n1);
+  dprint (3, "init:_add_fl: %s %hd:%hd", name, n0, n1);
   data = safe_calloc (1, sizeof(VarData2) + safe_strlen(name));
   data->f.ld[0] = n0;
   data->f.ld[1] = n1;
@@ -786,7 +917,7 @@ static short *_add_fl (const char *name, short n0, short n1)
 
 short *FloodType (const char *name)
 {
-  return _add_fl (name, 1, 1);			/* one event per one second */
+  return _add_fl (name, 0, 0);			/* disabled per default */
 }
 
 static void _set_floods (void)
@@ -800,7 +931,7 @@ static void _set_floods (void)
   while ((leaf = Next_Leaf (TTree, leaf, &name)))
   {
     data = leaf->s.data;
-    if (cons && !(cons->iface & I_DIED))
+    if (cons && !(cons->ift & I_DIED))
     {
       Set_Iface (Init);
       New_Request (cons, 0, "set flood-type %s [%hd:%hd]: ", name,
@@ -828,7 +959,7 @@ static void _set_floods (void)
 	  }
 	  break;
 	}
-      } while (!(cons->iface & I_DIED));
+      } while (!(cons->ift & I_DIED));
     }
     if (ConfigFileIface)
     {
@@ -847,7 +978,7 @@ static void _add_fmt (const char *name, char *fmt)
 
   if (Find_Key (FTree, name))			/* already registered */
     return;
-  dprint (4, "init:_add_fmt: %s", name);
+  dprint (3, "init:_add_fmt: %s", name);
   data = safe_calloc (1, sizeof(VarData2) + strlen(name));
   data->f.mt = fmt;
   strcpy (data->name, name);
@@ -864,7 +995,7 @@ char *SetFormat (const char *name, char *val)
   _add_fmt (name, NULL);
   if ((data = Find_Key (FTree, name)) == NULL)	/* some error? */
     return NULL;
-  strfcpy (data->f.mt, val, FORMATMAX);
+  strfcpy (data->f.mt, NONULL(val), FORMATMAX);
   return data->f.mt;
 }
 
@@ -880,6 +1011,7 @@ static int ParseConfig (char *name, int ask)
   static char cmd[LONG_STRING];
   INTERFACE *cons = NULL;
   VarData2 *data;
+  int i = 0;
 
   BindResult = cmd;
   snprintf (cmd, sizeof(cmd), "not permitted to load %s", name);
@@ -887,7 +1019,7 @@ static int ParseConfig (char *name, int ask)
     return -1;
   if (!(S_ISREG (st.st_mode)))			/* only regular file! */
     return -1;
-  if ((f = fopen (name, "rb")))
+  if ((f = fopen (name, "r")))
   {
     if (!Init)
       ask = 0;
@@ -895,11 +1027,12 @@ static int ParseConfig (char *name, int ask)
       cons = Find_Iface (I_CONSOLE, NULL);
     while (fgets (cmd, sizeof(cmd), f))
     {
+      i++;
       c = cmd;
       while (*c == ' ') c++;
       if (*c == '#')				/* comment */
 	continue;
-      while (*c && *c != '\n' && *c != ' ') c++;
+      c += strcspn (c, "\n ");
       if (*c)					/* delimit the command */
         *c++ = 0;
       while (*c == ' ') c++;			/* left trim */
@@ -908,8 +1041,9 @@ static int ParseConfig (char *name, int ask)
 	continue;
       if (!(data = Find_Key (STree, cmd)))	/* not found! */
       {
-	c = NULL;
-	break;
+	Add_Request (I_LOG, "*", F_BOOT, "%s: line %d: unknown command, ignored",
+		     name, i);
+	continue;
       }
       if (ask && cons && strcmp (cmd, "set"))	/* ask for all but set lines */
       {
@@ -925,7 +1059,7 @@ static int ParseConfig (char *name, int ask)
 	  Set_Iface (Init);			/* get a line from console */
 	  Get_Request();
 	  Unset_Iface();
-	  if (cons->iface & I_DIED)
+	  if (cons->ift & I_DIED)
 	    ask = 0;
 	} while (!_usage[0] && ask);
 	if (_usage[0] == 'n')			/* "n" entered - abort line */
@@ -933,8 +1067,9 @@ static int ParseConfig (char *name, int ask)
       }
       if ((data->f.n) (c) == 0)			/* exec command */
       {
-	c = NULL;				/* error? */
-	break;
+	Add_Request (I_LOG, "*", F_BOOT, "%s: line %d: illegal command, ignored",
+		     name, i);
+	continue;
       }
     }
     if (cons)					/* unlock */
@@ -956,7 +1091,7 @@ int Config_Exec (const char *cmd, const char *args)
 
   if (!cmd || !(data = Find_Key (STree, cmd)))	/* no such command */
     return 0;					/* silent ignore */
-  dprint (4, "init:Config_Exec: %s %s", cmd, args);
+  dprint (3, "init:Config_Exec: %s %s", cmd, args);
   return data->f.n (NONULL(args));
 }
 
@@ -986,7 +1121,7 @@ static int _set (VarData *data, register char *val)
     case 2:					/* r/o string */
       return 0;
     default:					/* string */
-      NextWord_Unquoted ((char *)data->data, data->len, val);
+      NextWord_Unquoted ((char *)data->data, val, data->len);
   }
   return 1;
 }
@@ -1021,7 +1156,7 @@ static char *_Scripts_List = NULL;
 
 static ScriptFunction (cfg_script)	/* to config - keep and store */
 {
-  BINDING *bind;
+  binding_t *bind;
   register size_t ss;
 
   if (!args || !*args)
@@ -1042,9 +1177,6 @@ static ScriptFunction (cfg_flood_type)	/* to config - by ask after all */
   VarData2 *data = NULL;
   register char *c, *c2;
 
-//  if (args && !*args)
-//    args = NULL;
-//  if (args)
   if (args && *args)
   {
     for (c = var; *args && *args != ' ' && c < &var[sizeof(var)-1]; )
@@ -1081,21 +1213,21 @@ static int _load_formats (void)
     return -1;
   if (!(S_ISREG (st.st_mode)))			/* only regular file! */
     return -1;
-  if ((f = fopen (FormatsFile, "rb")))
+  if ((f = fopen (FormatsFile, "r")))
   {
     while (fgets (fmt, sizeof(fmt), f))
     {
       c = fmt;
       if (*c == '#')				/* comment */
 	continue;
-      while (*c && *c != '\n' && *c != ' ') c++;
+      c += strcspn (c, "\n ");
       if (*c)					/* delimit the format name */
         *c++ = 0;
       while (*c == ' ') c++;			/* skip spaces */
       if (!*c)					/* empty line */
 	continue;
       if ((data = Find_Key (FTree, fmt)))	/* if format found */
-	NextWord_Unquoted (data->f.mt, FORMATMAX, c);
+	NextWord_Unquoted (data->f.mt, c, FORMATMAX);
     }
     fclose (f);
     return 0;
@@ -1114,7 +1246,7 @@ int Save_Formats (void)
     return -1;
   if (!(S_ISREG (st.st_mode)))			/* only regular file! */
     return -1;
-  if ((f = fopen (FormatsFile, "wb")))
+  if ((f = fopen (FormatsFile, "w")))
   {
     while ((leaf = Next_Leaf (FTree, leaf, &name)))
     {
@@ -1129,11 +1261,11 @@ int Save_Formats (void)
 
 /* ----------------------------------------------------------------------------
  * Internal dcc bindings:
- * int func(DCC_SESSION *from, char *args)
+ * int func(peer_t *from, char *args)
  */
 
 		/* .set [<variable>[ <value>]] */
-static int dc_set (DCC_SESSION *dcc, char *args)
+static int dc_set (peer_t *dcc, char *args)
 {
   char var[STRING];
   VarData *data = NULL;
@@ -1145,7 +1277,8 @@ static int dc_set (DCC_SESSION *dcc, char *args)
   {
     register char *c;
 
-    for (c = var; *c && *c != ' ' && c < &var[sizeof(var)-1]; ) *c++ = *args++;
+    for (c = var; *args && *args != ' ' && c < &var[sizeof(var)-1]; )
+      *c++ = *args++;
     *c = 0;
     data = Find_Key (VTree, var);
     if (!data)
@@ -1179,7 +1312,7 @@ static int dc_set (DCC_SESSION *dcc, char *args)
       s = safe_strlen (name) + 16 - (c - var)%16;
       if (&c[s] > &var[72])
       {
-	New_Request (dcc->iface, 0, var);
+	New_Request (dcc->iface, 0, "%s", var);
 	c = var;
 	strfcpy (var, name, sizeof(var));
       }
@@ -1194,13 +1327,13 @@ static int dc_set (DCC_SESSION *dcc, char *args)
       c = &var[strlen(var)];
     }
     if (*var)
-      New_Request (dcc->iface, 0, var);
+      New_Request (dcc->iface, 0, "%s", var);
   }
   return 1;
 }
 
 		/* .fset [<format variable>[ <value>]] */
-static int dc_fset (DCC_SESSION *dcc, char *args)
+static int dc_fset (peer_t *dcc, char *args)
 {
   char var[STRING];
   VarData2 *data = NULL;
@@ -1212,13 +1345,15 @@ static int dc_fset (DCC_SESSION *dcc, char *args)
   {
     register char *c;
 
-    for (c = var; *c && *c != ' ' && c < &var[sizeof(var)-1]; ) *c++ = *args++;
+    for (c = var; *args && *args != ' ' && c < &var[sizeof(var)-1]; )
+      *c++ = *args++;
     *c = 0;
     data = Find_Key (FTree, var);
     if (!data)
       return 0;
-    if ((c = NextWord (args)))
-      NextWord_Unquoted (data->f.mt, FORMATMAX, c);
+    c = NextWord (args);
+    if (*c)
+      NextWord_Unquoted (data->f.mt, c, FORMATMAX);
     New_Request (dcc->iface, 0, _("Current format %s: %s"), var, data->f.mt);
   }
   else					/* list of formats */
@@ -1236,7 +1371,7 @@ static int dc_fset (DCC_SESSION *dcc, char *args)
       s = safe_strlen (name) + 16 - (c - var)%16;
       if (&c[s] > &var[72])
       {
-	New_Request (dcc->iface, 0, var);
+	New_Request (dcc->iface, 0, "%s", var);
 	c = var;
 	strfcpy (var, name, sizeof(var));
       }
@@ -1251,15 +1386,15 @@ static int dc_fset (DCC_SESSION *dcc, char *args)
       c = &var[strlen(var)];
     }
     if (*var)
-      New_Request (dcc->iface, 0, var);
+      New_Request (dcc->iface, 0, "%s", var);
   }
   return 1;
 }
 
 		/* .status [-a|<module name>] */
-static int dc_status (DCC_SESSION *dcc, char *args)
+static int dc_status (peer_t *dcc, char *args)
 {
-  ifsig_t ifsig = S_REPORT;
+  char ifsig[sizeof(ifsig_t)] = {S_REPORT};
   char buff[STRING];
 
   if (args && !*args)
@@ -1267,29 +1402,33 @@ static int dc_status (DCC_SESSION *dcc, char *args)
   else if (args && !strcmp (args, "-a"))
     args = "*";
   printl (buff, sizeof(buff),
-_("Universal network client %V.\n\
+_("Universal network client " PACKAGE ", version " VERSION ".\n\
 Operating system %s, hostname %@, started %*."),
-	  0, NULL, hostname, Nick, NULL, 0L, 0, ctime (&StartTime));
+	  0, NULL, hostname, Nick, NULL, 0L, 0, 0, ctime (&StartTime));
   New_Request (dcc->iface, 0, buff);
   if (!args)
   {
     Status_Interfaces (dcc->iface);
     Status_Sheduler (dcc->iface);
-    Status_Users (dcc->iface);
+    Status_Clients (dcc->iface);
   }
   else
-    Add_Request (I_MODULE, args, F_SIGNAL, (char *)&ifsig);
+  {
+    ReportFormat = "%*";
+    Add_Request (I_MODULE, args, F_SIGNAL, ifsig);
+  }
   return 1;
 }
 
 		/* .binds [-l|<name>|-a [<name>]] */
-static int dc_binds (DCC_SESSION *dcc, char *args)
+static int dc_binds (peer_t *dcc, char *args)
 {
   int io;
-  BINDTABLE *bt;
-  BINDING *b;
+  bindtable_t *bt;
+  binding_t *b = NULL;
   char *c;
   char flags[128];
+  LEAF *l = NULL;
 
   if (args && args[0] == '-')
   {
@@ -1299,8 +1438,12 @@ static int dc_binds (DCC_SESSION *dcc, char *args)
       for (bt = Tables; bt; bt = bt->next)
       {
 	io = 0;
-	for (b = bt->bind; b; b = b->next)
-	  io++;
+	if (bt->type == B_UNIQ)
+	  while ((l = Next_Leaf (bt->list.tree, l, NULL)))
+	    io++;
+	else
+	  for (b = bt->list.bind; b; b = b->next)
+	    io++;
 	switch (bt->type)
 	{
 	  case B_MATCHCASE:
@@ -1314,6 +1457,9 @@ static int dc_binds (DCC_SESSION *dcc, char *args)
 	    break;
 	  case B_UNIQ:
 	    c = _("first key only ");
+	    break;
+	  case B_UCOMPL:
+	    c = _("try completion ");
 	    break;
 	  case B_UNIQMASK:
 	    c = _("first mask only");
@@ -1344,7 +1490,14 @@ static int dc_binds (DCC_SESSION *dcc, char *args)
     if (!bt)
       return 0;
     New_Request (dcc->iface, 0, "Key                     Flags   Interpreter     Command");
-    for (b = bt->bind; b; b = b->next)
+    if (bt->type == B_UNIQ)
+    {
+      if ((l = Next_Leaf (bt->list.tree, NULL, NULL)))
+	b = l->s.data;
+    }
+    else
+      b = bt->list.bind;
+    while (b)
     {
       if (io && b->name)
 	continue;
@@ -1359,15 +1512,31 @@ static int dc_binds (DCC_SESSION *dcc, char *args)
 		     flags, BindResult, b->name);
       else
 	New_Request (dcc->iface, 0, "%-23.23s %s", b->key, flags);
+      if (bt->type == B_UNIQ)
+      {
+	if ((l = Next_Leaf (bt->list.tree, l, NULL)))
+	  b = l->s.data;
+	else
+	  b = NULL;
+      }
+      else
+	b = b->next;
     }
   }
   else for (bt = Tables; bt; bt = bt->next)
   {
-    if (!bt->bind)
+    if (!bt->list.bind)		/* list.bind has the same size as list.tree */
       continue;
     New_Request (dcc->iface, 0, _("  Bindtable %s:"), bt->name);
     New_Request (dcc->iface, 0, "Key                     Flags   Interpreter     Command");
-    for (b = bt->bind; b; b = b->next)
+    if (bt->type == B_UNIQ)
+    {
+      if ((l = Next_Leaf (bt->list.tree, NULL, NULL)))
+	b = l->s.data;
+    }
+    else
+      b = bt->list.bind;
+    while (b)
     {
       if (io && b->name)
 	continue;
@@ -1382,6 +1551,15 @@ static int dc_binds (DCC_SESSION *dcc, char *args)
 		     flags, BindResult, b->name);
       else
 	New_Request (dcc->iface, 0, "%-23.23s %s", b->key, flags);
+      if (bt->type == B_UNIQ)
+      {
+	if ((l = Next_Leaf (bt->list.tree, l, NULL)))
+	  b = l->s.data;
+	else
+	  b = NULL;
+      }
+      else
+	b = b->next;
     }
   }
   return 1;
@@ -1389,31 +1567,31 @@ static int dc_binds (DCC_SESSION *dcc, char *args)
 
 		/* .module -l */
 		/* .module [-c|-d] <module name> */
-static int dc_module (DCC_SESSION *dcc, char *args)
+static int dc_module (peer_t *dcc, char *args)
 {
   if (!args || !*args)
     return 0;
   BindResult = _("Success");
   if (Config_Exec ("module", args) == 0)
     BindResult = _("Fail");
-  New_Request (dcc->iface, 0, BindResult);
+  New_Request (dcc->iface, 0, "%s", BindResult);
   return 1;
 }
 
 		/* .rehash */
-static int dc_rehash (DCC_SESSION *dcc, char *args)
+static int dc_rehash (peer_t *dcc, char *args)
 {
-  ifsig_t i = S_FLUSH;
+  char i[sizeof(ifsig_t)] = {S_FLUSH};
 
   New_Request (dcc->iface, 0, "Rehashing...");
   if (ParseConfig (Config, 0))
     bot_shutdown (BindResult, 3);
-  Add_Request (-1, "*", F_SIGNAL, (char *)&i);    /* flush all interfaces */
+  Add_Request (-1, "*", F_SIGNAL, i);    /* flush all interfaces */
   return 1;
 }
 
 		/* .restart */
-static int dc_restart (DCC_SESSION *dcc, char *args)
+static int dc_restart (peer_t *dcc, char *args)
 {
   New_Request (dcc->iface, 0, "Restarting...");
   init();
@@ -1421,32 +1599,95 @@ static int dc_restart (DCC_SESSION *dcc, char *args)
 }
 
 		/* .die [<reason>] */
-static void dc_die (DCC_SESSION *dcc, char *args)
+static void dc_die (peer_t *dcc, char *args)
 {
   char message[MESSAGEMAX];
-  static ifsig_t ifsig = S_TERMINATE;
 
   if (dcc)
   {
     snprintf (message, sizeof(message), _("Killed by %s%c %s"),
 	      dcc->iface->name, (args && *args) ? ':' : '!', NONULL(args));
-    BindResult = message;
+    bot_shutdown (message, 0);
   }
   else
-    BindResult = NONULL(args);
-	/* nice termination of modules (logs also, of cource) */
-  Add_Request (I_MODULE, "*", F_SIGNAL, (char *)&ifsig);
-	/* quiet termination of the core */
-  bot_shutdown (message, 0);
+    bot_shutdown (args, 0);
   exit (0);
 }
 
+/* ----------------------------------------------------------------------------
+ * helpers for client matching
+ */
+
+static bindtable_t *BT_IsOn = NULL;
+static bindtable_t *BT_Inspect = NULL;
+
+int Lname_IsOn (const char *pub, const char *lname, const char **name)
+{
+  binding_t *bind;
+  const char *c, *nt;
+  clrec_t *netw;
+
+  if (!pub)
+    return 0;
+  if ((c = strrchr (pub, '@'))) /* network community */
+    netw = Lock_Clientrecord (c++);
+  else /* my link */
+    netw = Lock_Clientrecord ((c = pub));
+  if (netw)
+  {
+    if ((Get_Flags (netw, NULL) & (U_SPECIAL | U_BOT)) &&
+	(nt = Get_Field (netw, ".logout", NULL))) /* get network type */
+      bind = Check_Bindtable (BT_IsOn, nt, -1, -1, NULL);
+    else
+      bind = NULL;
+    Unlock_Clientrecord (netw);
+  }
+  else
+    bind = NULL;
+  if (!bind || bind->name)
+    return 0;		/* no such network/service */
+  return bind->func (c, pub, lname, name);
+}
+
+modeflag Inspect_Client (const char *pub, const char *name, const char **lname,
+			 const char **host, time_t *idle)
+{
+  binding_t *bind;
+  const char *c, *nt;
+  clrec_t *netw;
+
+  if (!pub)
+    return 0;
+  if ((c = strrchr (pub, '@'))) /* network community */
+    netw = Lock_Clientrecord (c++);
+  else /* my link */
+    netw = Lock_Clientrecord ((c = pub));
+  if (netw)
+  {
+    if ((Get_Flags (netw, NULL) & (U_SPECIAL | U_BOT)) &&
+	(nt = Get_Field (netw, ".logout", NULL))) /* get network type */
+      bind = Check_Bindtable (BT_Inspect, nt, -1, -1, NULL);
+    else
+      bind = NULL;
+    Unlock_Clientrecord (netw);
+  }
+  else
+    bind = NULL;
+  if (!bind || bind->name)
+    return 0;		/* no such network/service */
+  return bind->func (c, pub, name, lname, host, idle);
+}
+
+/* ----------------------------------------------------------------------------
+ * main init()
+ */
+
 static void sighup_handler (int signo)
 {
-  ifsig_t i = S_FLUSH;
+  char i[sizeof(ifsig_t)] = {S_FLUSH};
 
   Add_Request (I_LOG, "*", F_BOOT, "Got SIGHUP: rehashing...");
-  Add_Request (-1, "*", F_SIGNAL, (char *)&i);	/* flush all interfaces */
+  Add_Request (-1, "*", F_SIGNAL, i);	/* flush all interfaces */
 }
 
 static void sigint_handler (int signo)
@@ -1464,11 +1705,25 @@ static void _init_all (void)
 # include "init.h"
 }
 
-static ifsig_t _init_sig (INTERFACE *iface, ifsig_t sig)
+static iftype_t _init_sig (INTERFACE *iface, ifsig_t sig)
 {
   if (sig == S_REG)
     _init_all();
   return 0;
+}
+
+static void _bind_destroy (void *bind)
+{
+  binding_t *b = bind;
+
+  if (b)
+    FREE (&b->key);
+  while (b)
+  {
+    bind = b->prev;
+    FREE (&b);
+    b = bind;
+  }
 }
 
 void init (void)
@@ -1477,9 +1732,9 @@ void init (void)
   struct sigaction act;
   char new_path[PATH_MAX+FILENAME_LENGTH+2];
   char *msg;
-  ifsig_t ifsig = S_TERMINATE;
-  BINDTABLE *bt;
-  BINDING *b2, *b;
+  char ifsig[sizeof(ifsig_t)] = {S_TERMINATE};
+  bindtable_t *bt;
+  binding_t *b;
 
 //
 // этап 0 - инициализация всего, что инициализируется в core
@@ -1500,26 +1755,22 @@ void init (void)
 //  - main loop
 //
   /* kill all modules */
-  Add_Request (I_MODULE, "*", F_SIGNAL, (char *)&ifsig);
+  Add_Request (I_MODULE, "*", F_SIGNAL, ifsig);
   /* I think I need to destroy trees ? */
   Destroy_Tree (&VTree, free);
   Destroy_Tree (&STree, free);
   /* empty all bindtables */
   for (bt = Tables; bt; bt = bt->next)
-    while (bt->bind)
+  {
+    if (bt->type == B_UNIQ)
+      Destroy_Tree (&bt->list.tree, &_bind_destroy);
+    else while (bt->list.bind)
     {
-      b = bt->bind;
-      bt->bind = b->next;
-      while (b->nbind)
-      {
-	b2 = b->nbind;
-	b->nbind = b2->nbind;
-	FREE (&b2->key);
-	FREE (&b2);
-      }
-      FREE (&b->key);
-      FREE (&b);
+      b = bt->list.bind;
+      bt->list.bind = b->next;
+      _bind_destroy (b);
     }
+  }
   /* init sheduler to have current time */
   IFInit_Sheduler();
   /* add own bindtables and bindings */
@@ -1528,6 +1779,8 @@ void init (void)
   BT_Fn = Add_Bindtable ("function", B_MASK);
   BT_Unfn = Add_Bindtable ("unfunction", B_MASK);
   BT_Script = Add_Bindtable ("script", B_UNIQMASK);
+  BT_IsOn = Add_Bindtable ("ison", B_UNIQ);
+  BT_Inspect = Add_Bindtable ("inspect-client", B_UNIQ);
 
   _add_fn ("set", &cfg_set, NULL);		/* add operators */
   _add_fn ("script", &cfg_script, NULL);	/* but don't ask */
@@ -1538,6 +1791,10 @@ void init (void)
   /* load help for variables and more */
   Add_Help ("set");
   Add_Help ("main");
+  /* it can be recall of init so don't create another */
+  if (!Init)
+    Init = Add_Iface (NULL, I_INIT, &_init_sig, &_config_req, NULL);
+  Init->ift &= ~I_LOCKED;			/* must be not locked! */
 //
 // этап 1 - инициализация переменных и загрузка конфига, если не указан "-r"
 //
@@ -1568,18 +1825,14 @@ void init (void)
     fprintf (ConfigFileFile, "#!%s\n# Generated by itself on %s\n", RunPath,
 	     ctime (&Time));
     ConfigFileIface = Add_Iface (NULL, I_TEMP, NULL, &_cfile_req, NULL);
-    ConfigFileIface->iface = I_TEMP;		/* create interface */
+    ConfigFileIface->ift = I_TEMP;		/* create interface */
   }
-  /* it can be recall of init so don't create another */
-  if (!Init)
-    Init = Add_Iface (NULL, I_INIT, &_init_sig, &_config_req, NULL);
-  Init->iface &= ~I_LOCKED;			/* must be not locked! */
   if (g != FALSE || O_DEFAULTCONF != FALSE)
   {
     /* reregister all, ask, and write to config */
-    ifsig = S_REG;
+    ifsig[0] = S_REG;
     O_GENERATECONF = TRUE;
-    Add_Request (-1, "*", F_SIGNAL, (char *)&ifsig);
+    Add_Request (-1, "*", F_SIGNAL, ifsig);
     _set_floods ();
     /* ask to include any new scripts */
     while (Start_FunctionFromConsole ("script", &cfg_script, "filename"));
@@ -1588,6 +1841,7 @@ void init (void)
     FREE (&_Scripts_List);
     /* ending */
   }
+  _lock_var ("charset");		/* not changeable anymore */
   if ((msg = IFInit_Users()))		/* try to load listfile */
     bot_shutdown (msg, 3);
   if (!_load_formats())			/* try to load formats */
@@ -1601,12 +1855,12 @@ void init (void)
     chmod (new_path, S_IRUSR | S_IWUSR | S_IXUSR);
     unlink (Config);				/* delete old config */
     rename (new_path, Config);
-    ConfigFileIface->iface |= I_DIED;		/* delete interface */
+    ConfigFileIface->ift |= I_DIED;		/* delete interface */
     ConfigFileFile = NULL;
     ConfigFileIface = NULL;
   }
   /* Init have to get signal S_REG so don't kill it */
-  Init->iface |= I_LOCKED;
+  Init->ift |= I_LOCKED;
   O_GENERATECONF = FALSE;
   O_DEFAULTCONF = FALSE;
   /* check if we going to finish:

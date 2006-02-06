@@ -1,0 +1,8 @@
+# first section is usage
+# second section is that config maker will put into config
+# third section is full help
+
+module irc-channel
+:%*
+:
+:

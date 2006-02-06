@@ -1,30 +1,289 @@
 # base dcc/msg commands of FoxEye
 
+# first section is usage
+# second section is help to /msg mynick help
+# third section is help to dcc chat .help
+
+# -----------------------
+# direct.c bindings:
+
+function port
+:port [-b|-d] <1024-65535>
+:
+:Opens or closes listening port for direct connections. Usage:
+ port <x>     opens port x for direct connections
+ port -b <x>  opens port x for direct connections from bots only
+ port -d <x>  closes port x for direct connections
+    <x> may be in range 1024...65535
+
+away
+:%* [message]
+:
+:Sets your status on the botnet channel as "away". Your away message will\
+ be displayed in the %^who%^ list. You can remove your "away" status by\
+ typing %^back%^ command. %* without arguments will show you your away\
+ message.
+
+back
+:%*
+:
+:Unsets your "away" status on the bothet channel.
+
+boot
+:%* name
+:
+:Kicks someone (%_name%_) from botnet (as if he/she has entered ".quit"). \
+ You cannot boot the bot owner/runner.
+
+chat
+:%* [channel]
+:
+:Changes your current botnet channel. If %_channel%_ is omitted then changes\
+ to channel 0 (default). You can sit in silence while nobody knows where\
+ you are. It's about as secure IRC channels.
+
+color
+:%* [mode]
+:
+:Changes color codes of your dcc/telnet session. %_mode%_ can be one of:
+   off    supress any color/bold/reverse/underline/blink codes
+   mono   supress color codes
+   ansi   convert any color/etc. mIRC sequences to ANSI ones
+   mirc   pass all as is
+ If %_mode%_ is omitted then it shows your current color mode.
+
+console
+:%* [service] [flags change]
+:
+:Changes log mode for your dcc/telnet session. You can also change which\
+ service (or channel) log messages you want to see. If flags are prepended\
+ with '+' then you have log level added, if with '-' then removed. You can\
+ combine both adds and removes in one command. Valid levels are:
+   m  display unhandled private msgs/ctcps/notices
+   p  display public talk and ctcps for the channel/service
+   n  display partyline msgs/notices
+   k  display kicks/bans/topic or mode changes on the channel
+   j  display joins/parts/nick changes/signoffs/etc on the channel
+   b  display clients connections and shares
+   s  display server messages and connect/disconnects
+   w  display msgs between IRCops (wallops)
+   c  display any user commands
+   u  display listfile changes information
+   i  display boot time messages
+   o  display different state notices and warnings
+   e  display correctable internal errors
+   d  display debug messages that only coders would care about
+
+cstat
+:%*
+:
+:Shows all connections status in table form. It will display login name of\
+ connected user or service, domain which is connection from, and short\
+ description of current connection state for each connection.
+
+echo
+:%* [on|off]
+:
+:Sets whether you want your messages will be echoed back to you on botnet\
+ channel. If you set it to %^on%^ then all you say will be displayed to you\
+ as other people on your botnet channel will see it. If you set it to %^off%^\
+ then you will not see your messages. If no parameters given then just shows\
+ your current echo mode.
+
 help
 :%* [topic]
 :Get help message for topic.
-:Prints out help message for topic.  First line is usage template. \
+:Prints out help message for %_topic%_. First line is usage template. \
  Second (and more) line is description.
 
-quit
-:%* [message]
+me
+:%*
 :
-:Ends your current telnet/dcc session.  If message is specified then\
- prints out it as reason, else prints "no reason."
+:Sends action message to the botnet channel. It will be displayed as\
+ %^* %N does something.%^
+
+motd
+:%*
+:
+:Shows motd (message of the day) file contents. Usually it's shown when you\
+ first joined the botnet.
+
+simul
+:%* text
+:
+:Simulates input of someone else on dcc/telnet session. It seems as if\
+ someone will type that text itself. Note: you must remember about\
+ nethicette when you use this command!
+
+who
+:%* [botnick|service]
+:
+:Shows who connected to bot or service. This command shows
 
 w
 :%* [channel]
 :
-:Prints out list of people on your botnet channel or other channel if it\
- was specified.  This command shows a login name (preceded with "*" for\
+:Prints out list of people on your botnet channel or other %_channel%_ if it\
+ was specified. This command shows a login name (preceded with "*" for\
  owner, "+" for anyone with master permissions, "@" for any operator or\
  "%%" for anyone with half-op status), from here he/she connected (bot\
  name or "-" for local connections), date or time of connection, idle\
  time, and some info if available.
 
-su
+quit
+:%* [message]
+:
+:Ends your current telnet/dcc session. If message is specified then it will\
+ be printed out for other party members as reason.
+
+connect
+:%* <network|botnick> [<args>]
+:
+:Starts connection attempt to network or bot with given name. Optional %_args%_\
+ are network specific. Network or botnick must be already defined in Listfile\
+ to get this command to work since there is no way to know which protocol we\
+ have to use to connect.
+
+disconnect
+:%* <network|botnick>
+:
+:Disconnects you from network or bot with given name if you are connected to\
+ it.
+
+# -----------------------
+# init.c bindings:
+
+binds
+:%* [-l|name|-a [name]]
+:
+:Shows binding status. Modifiers:
+   -l    	show list of all tables and number of bindings in each
+   -a [name]	show list of all bindings in table %_name%_ (or in all tables)
+   name  	show list of internal bindings in table %_name%_
+
+module
+:%* [-c|-d] modulename [args]
+:
+:Controls of module state (the same as %^function module%^):
+ %*	loads an unloaded module by it's name with optional arguments
+ %* -c	checks if module is already loaded
+ %* -d	unloads a loaded module
+ See also %yhelp %*%n %_modulename%_.
+
+status
+:%* [-a|module]
+:
+:Shows condensed information about core and/or modules.
+
+fset
+:%* [formatname [value]]
+:
+:Shows or sets format by given name. If format name is omitted then shows\
+ list of all known names.
+ See also %yhelp %*%n %_formatname%_.
+
+rehash
+:%*
+:
+:Flushes unsaved listfile changes to disk then reloads config file and\
+ freshes all variables from it. All commands from config file will be also\
+ restarted.
+
+restart
+:%*
+:
+:Flushes unsaved listfile changes to disk then restarts the core and all\
+ modules.
+
+die
+:%* [reason]
+:
+:Terminates the core and all modules.
+
+set
+:%* [variable [value]]
+:
+:Shows or sets value for variable. If variable name is omitted then shows\
+ list of all known variables.
+ See also %yhelp %*%n %_variable%_.
+
+# -----------------------
+# module.c bindings:
+
+function module
+:
+:
+:Loads an installed unloaded module by it's name with optional arguments.\
+ See also %yhelp module%n.
+
+# -----------------------
+# list.c bindings:
+
+chattr
+:%* name [flags] [service]
+:
+:Lets you view and change flags for client record. Usage:
+ %* name     	only shows current flags
+ %* name +x  	adds flag with symbolic name x to client record
+ %* name -x  	removes flag with symbolic name x from client record
+ %* name +x #ch	adds flag with symbolic name x to channel #ch of client
+ %* name +x|-y #ch	adds flag x to client record and removes flag y from\
+ 			channel #ch of client
+ Only owner may change permissions for owners and masters.
+
++host
+:%* name hostmask
+:
+:Adds a hostmask to client record %_name%_. Hostmask helps bot to identify\
+ a client.
+
+-host
+:%* name hostmask
+:
+:Removes a hostmask from client record %_name%_.
+
++user
+:%* [-<network>] name [hostmask [flags]]
+:
+:Creates a new client record for given %_name%_. If %_hostmask%_ given then\
+ adds that hostmask to listfile. The new record will have given %_flags%_\
+ or no flags otherwise. You may also add network records with this command,\
+ in that case you have to add %_network%_ type before %_name%_ with minus\
+ sign, first character of %_name%_ must be '%^@%^'.
+
+-user
 :%* name
 :
-:Changes your session to name (nested logging in).  You cannot log in as\
- bot or service name, and login name you specified have to have\
- permissions for telnet/dcc.
+:Removes the client record from listfile.
+
+passwd
+:%* password
+:
+:Changes your password in the listfile.
+
+chpass
+:%* name [password]
+:
+:Changes password for client %_name%_. If you leave off the new password then\
+ password will be erased. Client does need the password for some commands.
+
+lname
+:%* newname
+:
+:Changes your login name with new one.
+
+chln
+:%* name newname
+:
+:Changes login name of user %_name%_ with %_newname%_.
+
+reload
+:%*
+:
+:Reloads listfile, discarding any changes made since the last save.
+
+save
+:%*
+:
+:Forcibly saves listfile to disk. This is useful if you think the program may\
+ be about to crash or something.

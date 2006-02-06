@@ -32,16 +32,16 @@
 # define RTLD_NOW DL_LAZY
 #endif
 
-static BINDTABLE *BT_Modadd = NULL;
-static BINDTABLE *BT_Moddel = NULL;
+static bindtable_t *BT_Modadd = NULL;
+static bindtable_t *BT_Moddel = NULL;
 
 static char ModuleList[LONG_STRING];
 
-static REQUEST *scr_collect (INTERFACE *iface, REQUEST *req)
+static int scr_collect (INTERFACE *iface, REQUEST *req)
 {
   if (req->from && req->from->name)
     strfcat (ModuleList, req->from->name, sizeof(ModuleList));
-  return NULL;
+  return REQ_OK;
 }
 
 /* need for static compiling */
@@ -54,10 +54,10 @@ ScriptFunction (FE_module)
   char *c;
   char name[SHORT_STRING];
   INTERFACE *tmp;
-  BINDING *bind = NULL;
-  ifsig_t sig;
+  binding_t *bind = NULL;
+  char sig[sizeof(ifsig_t)];
   Function func;
-  iface_t (*mods) (INTERFACE *, ifsig_t);
+  iftype_t (*mods) (INTERFACE *, ifsig_t);
 #ifndef STATIC
   char path[STRING];
   void *modh;
@@ -71,13 +71,14 @@ ScriptFunction (FE_module)
   {
     if (args[1] == 'l')				/* get list of modules */
     {
-      sig = S_REPORT;
+      sig[0] = S_REPORT;
       tmp = Add_Iface (NULL, I_TEMP, NULL, &scr_collect, NULL);
       ModuleList[0] = 0;
       Set_Iface (tmp);
-      Add_Request (I_MODULE, "*", F_SIGNAL, (char *)&sig);
+      ReportFormat = NULL;
+      Add_Request (I_MODULE, "*", F_SIGNAL, sig);
       Unset_Iface();
-      tmp->iface = I_DIED;
+      tmp->ift = I_DIED;
       BindResult = ModuleList;
       return 1;
     }
@@ -88,6 +89,7 @@ ScriptFunction (FE_module)
     cmd = 'l';				/* load the module */
   /* find loaded module */
   strfcpy (name, args, sizeof(name));
+  args = NextWord (args);
   for (c = name; *c && *c != ' '; c++);
   *c = 0;
   tmp = Find_Iface (I_MODULE, name);
@@ -103,8 +105,8 @@ ScriptFunction (FE_module)
   {
     if (!tmp)					/* check if don't loaded */
       return 0;
-    sig = S_TERMINATE;
-    New_Request (tmp, F_SIGNAL, (char *)&sig);	/* kill the module */
+    sig[0] = S_TERMINATE;
+    New_Request (tmp, F_SIGNAL, sig);		/* kill the module */
 #ifndef STATIC
     dlclose (tmp->data);			/* close dll */
 #endif
@@ -116,7 +118,7 @@ ScriptFunction (FE_module)
       if ((bind = Check_Bindtable (BT_Moddel, name, -1, -1, bind)))
       {
 	if (bind->name)
-	  RunBinding (bind, NULL, name, NULL, 0, NULL);
+	  RunBinding (bind, NULL, name, NULL, -1, NULL);
 	else
 	  bind->func (name);
       }
@@ -143,7 +145,8 @@ ScriptFunction (FE_module)
     if (!func)
     {
       c = (char *)dlerror();
-      dprint (2, "cannot load module %s: %s", name, NONULL(c));
+      Add_Request (I_LOG, "*", F_ERROR, "cannot load module %s: %s", name,
+		   NONULL(c));
       if (modh)
 	dlclose (modh);
       return 0;
@@ -154,14 +157,14 @@ ScriptFunction (FE_module)
 	break;
     if ((func = (Function)ModulesTable[i].func) == NULL)
     {
-      dprint (2, "cannot start module %s: not found", name);
+      Add_Request (I_LOG, "*", F_ERROR, "cannot start module %s: not found", name);
       return 0;
     }
 #endif
     /* start the module */
-    if ((mods = (iface_t(*)())func (args)) == NULL)
+    if ((mods = (iftype_t(*)(INTERFACE *,ifsig_t))func (args)) == NULL)
     {
-      dprint (2, "module %s: ModuleInit() error", name);
+      Add_Request (I_LOG, "*", F_ERROR, "module %s: ModuleInit() error", name);
 #ifndef STATIC
       dlclose (modh);
 #endif
@@ -184,7 +187,7 @@ ScriptFunction (FE_module)
       if ((bind = Check_Bindtable (BT_Modadd, name, -1, -1, bind)))
       {
 	if (bind->name)
-	  RunBinding (bind, NULL, name, NULL, 0, NULL);
+	  RunBinding (bind, NULL, name, NULL, -1, NULL);
 	else
 	  bind->func (name, args);
       }
@@ -197,6 +200,6 @@ ScriptFunction (FE_module)
     return 1;
   }
   else					/* unknown command? */
-    dprint (2, "invalid call: module -%c %s", cmd, args);
+    Add_Request (I_LOG, "*", F_ERROR, "invalid call: module -%c %s", cmd, args);
   return 0;
 }

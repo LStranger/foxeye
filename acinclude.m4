@@ -52,13 +52,76 @@ AC_SET_NODEBUG)
 ])
 
 AC_DEFUN(AC_CHECK_LDFLAG,
-[
-$3=no
-echo 'int main(){return 0;}' > conftest.c
-if test -z "`$1 $2 -o conftest conftest.c 2>&1`"; then
-  $3=yes
+[AC_CACHE_CHECK([for '$2' option], $1,
+    [$1=no
+    echo 'int main(){return 0;}' > conftest.c
+    if test -z "`${CC} $2 -o conftest conftest.c 2>&1`"; then
+	$1=yes
+    else
+	$1=no
+    fi
+    rm -f conftest*
+    ])
+if test x${$1} = xyes; then $3="$2 ${$3}"; fi
+])
+
+AC_DEFUN(AC_CHECK_ICONV,
+[AC_MSG_CHECKING(for iconv paths)
+AC_CACHE_VAL(ac_have_iconv,
+    [dnl check for default includes first...
+    fe_save_CPPFLAGS="$CPPFLAGS"
+    fe_save_LIBS="$LIBS"
+    AC_TRY_CPP([#include <iconv.h>],
+	ac_iconv_includes=,
+	[dnl not found, now try to find...
+	CPPFLAGS="-I/usr/local/include $CPPFLAGS"
+	AC_TRY_CPP([#include <iconv.h>],
+	    ac_iconv_includes=/usr/local/include,
+	    ac_iconv_includes=no
+    )])
+    if test "x$ac_iconv_includes" != xno ; then
+	dnl check if we need -liconv...
+	AC_TRY_LINK([#include <iconv.h>], [
+iconv_open("","");
+], ac_iconv_libs=,
+	    [dnl check for default library first...
+		LIBS="${LIBS} -liconv"
+		AC_TRY_LINK([#include <iconv.h>], [
+iconv_open("","");
+], ac_iconv_libs=,
+		    [dnl not found, now try to find...
+		    LIBS="${LIBS} -L/usr/local/lib"
+		    AC_TRY_LINK([#include <iconv.h>], [
+iconv_open("","");
+], ac_iconv_libs=/usr/local/lib,
+		    ac_iconv_libs=no
+	)])])
+    fi
+    LIBS="$fe_save_LIBS"
+    CPPFLAGS="$fe_save_CPPFLAGS"
+    ac_have_iconv="ac_iconv_includes=$ac_iconv_includes ac_iconv_libs=$ac_iconv_libs"
+])
+
+eval "$ac_have_iconv"
+
+if test "x$ac_iconv_libs" = xno -o "x$ac_iconv_includes" = xno ; then
+    AC_MSG_RESULT(fault)
 else
-  $3=no
+    AC_MSG_RESULT(ok)
+    if test "x$ac_iconv_includes" != x ; then
+	CPPFLAGS="-I$ac_iconv_includes ${CPPFLAGS}"
+    fi
+    if test "x$ac_iconv_libs" != x ; then
+	LDFLAGS="-L$ac_iconv_libs ${LDFLAGS}"
+    fi
+
+    AC_MSG_CHECKING(for russian translit)
+    dnl set LC_ALL due to configure might set it to C
+    if test x`echo проба|LC_ALL=ru_RU.KOI8-R iconv -f koi8-r -t ascii//translit` != xproba; then
+	AC_MSG_RESULT(no)
+	AC_MSG_WARN(Your iconv doesn't support Cyrillic translit!)
+    else
+	AC_MSG_RESULT(yes)
 fi
-rm -f conftest*
+fi
 ])

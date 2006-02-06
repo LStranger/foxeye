@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2002  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2005  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -32,97 +32,133 @@
 
 #include "socket.h"
 
-typedef struct SOCKET
+typedef struct
 {
-  char *domain;			/* if free is NULL */
+  char *domain;			/* if free then this is NULL */
   unsigned short port;
   ssize_t bufpos;
   size_t available;
-  char inbuf[2*MESSAGEMAX];
-} SOCKET;
+  char inbuf[MB_LEN_MAX*MESSAGEMAX]; /* cyclic input buffer */
+} socket_t;
 
 static pid_t _mypid;
 
-static SOCKET *Socket = NULL;
+static socket_t *Socket = NULL;
 static idx_t _Salloc = 0;
 static idx_t _Snum = 0;
 static struct pollfd *Pollfd = NULL;
 
-static pthread_mutex_t LockPoll;
+static pthread_mutex_t LockPoll = PTHREAD_MUTEX_INITIALIZER;
 
 static void sigio_handler (int signo)
 {
-  pthread_mutex_lock (&LockPoll);
   poll (Pollfd, _Snum, 0);
-  pthread_mutex_unlock (&LockPoll);
 }
 
 /* warning: does not check anything! */
-static void _socket_get_line (char *buf, SOCKET *s, size_t l, int mode)
+static void _socket_get_line (char *buf, socket_t *s, size_t l)
 {
-  register char *c;
+  register size_t available, bufpos;
 
-  memcpy (buf, &s->inbuf[s->bufpos], l);
-  c = s->inbuf + s->bufpos + l;
-  if (mode && *c == '\r')
+  if (s->bufpos + l >= sizeof(s->inbuf))
   {
-    c++;
-    l++;
+    /* get tail of buffer */
+    bufpos = sizeof(s->inbuf) - s->bufpos;
+    memcpy (buf, &s->inbuf[s->bufpos], bufpos);
+    buf += bufpos;
+    l -= bufpos;
+    s->available -= bufpos;
+    s->bufpos = 0;
+    /* get head of buffer now */
   }
-  if (mode && *c == '\n')
-    l++;
-  s->bufpos += l;
-  s->available -= l;
-  if (s->bufpos < MESSAGEMAX && s->available)
-    return;
-  if (s->available)
-    memcpy (s->inbuf, c, s->available);
-  s->bufpos = 0;
+  if (l)
+    memcpy (buf, &s->inbuf[s->bufpos], l);
+  bufpos = s->bufpos + l;
+  available = s->available - l;
+  if (available && s->inbuf[bufpos] == '\r')
+  {
+    bufpos++;
+    available--;
+    /* reached EOB? */
+    if (bufpos == sizeof(s->inbuf))
+      bufpos = 0;
+  }
+  if (available && s->inbuf[bufpos] == '\n')
+  {
+    bufpos++;
+    available--;
+  }
+  s->available = available;
+  if (available == 0 || bufpos == sizeof(s->inbuf))
+    s->bufpos = 0;
+  else
+    s->bufpos = bufpos;
 }
 
-static ssize_t _socket_find_line (SOCKET *s)
+static ssize_t _socket_find_line (socket_t *s)
 {
   register ssize_t p;
-  register char *c = memchr (&s->inbuf[s->bufpos], '\n', s->available);
+  register char *c;
 
+  if (s->bufpos + s->available > sizeof(s->inbuf))
+  {
+    /* check tail first */
+    c = memchr (&s->inbuf[s->bufpos], '\n', sizeof(s->inbuf) - s->bufpos);
+    /* if not found then check head */
+    if (!c)
+      c = memchr (s->inbuf, '\n', s->bufpos + s->available - sizeof(s->inbuf));
+  }
+  else
+    c = memchr (&s->inbuf[s->bufpos], '\n', s->available);
   if (!c)
-    return (-1);
-  p = c - &s->inbuf[s->bufpos];
+  {
+    if (s->available < sizeof(s->inbuf)) /* there is still a chance of LF */
+      return (-1);
+    else
+      c = &s->inbuf[s->bufpos];
+  }
+  if (c)
+    p = c - &s->inbuf[s->bufpos];
+  else
+    p = sizeof(s->inbuf);
+  if (p < 0)
+    p += sizeof(s->inbuf);
   if (!p)
     return 0;
-  c--;
+  if (c > s->inbuf)
+    c--;
+  else
+    c = &s->inbuf[sizeof(s->inbuf)-1];
   if (*c != '\r')
     return (p);
   return (p-1);
 }
 
-static void close_socket (idx_t idx)
+void CloseSocket (idx_t idx)
 {
-  pthread_mutex_lock (&LockPoll);
   if (Pollfd[idx].fd != -1)
   {
-    dprint (5, "socket:close_socket: fd=%d", Pollfd[idx].fd);
     shutdown (Pollfd[idx].fd, SHUT_RDWR);
     close (Pollfd[idx].fd);
     Pollfd[idx].fd = -1;
   }
-  pthread_mutex_unlock (&LockPoll);
 }
 
+/*
+ * returns -1 if too many opened sockets or idx 
+ * note: there may be a problem with Socket[idx].domain and _Snum since its
+ * are never locked but in reality these words must be changed at once so I
+ * hope it must work anyway
+*/
 static idx_t allocate_socket ()
 {
   idx_t idx;
 
-  pthread_mutex_lock (&LockPoll);
   for (idx = 0; idx < _Snum; idx++)
     if (Socket[idx].domain == NULL && Pollfd[idx].fd == -1)
       break;
   if (idx == _Salloc)
-  {
-    _Salloc += 8;
-    safe_realloc ((void **)&Socket, _Salloc * sizeof(SOCKET));
-    safe_realloc ((void **)&Pollfd, _Salloc * sizeof(struct pollfd));
-  }
+    return -1; /* no free sockets! */
   Pollfd[idx].fd = -1;
   Pollfd[idx].events = POLLIN | POLLPRI | POLLOUT;
   Pollfd[idx].revents = 0;
@@ -130,40 +166,35 @@ static idx_t allocate_socket ()
   Socket[idx].bufpos = Socket[idx].available = 0;
   if (idx == _Snum)
     _Snum++;
-  pthread_mutex_unlock (&LockPoll);
   return idx;
 }
 
 /*
- * returns -1 on error and -2 on wait to connection
+ * returns E_NOSOCKET on error and E_AGAIN on wait to connection
  */
 ssize_t ReadSocket (char *buf, idx_t idx, size_t sr, int mode)
 {
-  SOCKET *sock;
+  socket_t *sock;
   ssize_t sg = -1;
   short rev;
 
-  pthread_mutex_lock (&LockPoll);
-  if (idx < 0 || idx >= _Snum || Pollfd[idx].fd < 0)
-  {
-    pthread_mutex_unlock (&LockPoll);
+  if (idx < 0 || idx >= _Snum)
     return (E_NOSOCKET);
-  }
-  rev = Pollfd[idx].revents;
-  pthread_mutex_unlock (&LockPoll);
-  mode -= M_FILE;
   sock = &Socket[idx];
+  if (Pollfd[idx].fd < 0)
+    rev = POLLERR;
+  else
+    rev = Pollfd[idx].revents;
+  mode -= M_RAW;
   /* now check for incomplete connection... */
   if (sock->bufpos == -1)
   {
     if (!(rev & (POLLIN | POLLPRI | POLLOUT | POLLERR)))
-    {
       return (E_AGAIN);		/* still waiting for connection */
-    }
     if ((rev & POLLERR) ||
 	(read (Pollfd[idx].fd, sock->inbuf, 0) < 0))
     {
-      close_socket (idx);
+      CloseSocket (idx);
       return (E_NOSOCKET);	/* connection timeout or other error */
     }
     sock->bufpos = 0;		/* connection established! */
@@ -173,13 +204,13 @@ ssize_t ReadSocket (char *buf, idx_t idx, size_t sr, int mode)
   if (sg < 0)
   {
     if (!rev)
-      return 0;
-    if (rev & POLLNVAL)
     {
-      close_socket (idx);
-      return (E_NOSOCKET);
+      poll (&Pollfd[idx], 1, mode == (M_POLL - M_RAW) ? POLL_TIMEOUT : 0);
+      rev = Pollfd[idx].revents;
     }
-    else if (rev & POLLERR)
+    if (rev & POLLNVAL)
+      CloseSocket (idx);
+    if (rev & (POLLNVAL | POLLERR))
     {
       if (!(sg = sock->available))
 	return (E_NOSOCKET);
@@ -187,121 +218,96 @@ ssize_t ReadSocket (char *buf, idx_t idx, size_t sr, int mode)
     else if (rev & (POLLIN | POLLPRI))
     {
       sg = sock->bufpos + sock->available;
-      pthread_mutex_lock (&LockPoll);
       if (mode)				/* non-raw socket, read into inbuf */
-	sg = read (Pollfd[idx].fd, &sock->inbuf[sg], (sizeof(sock->inbuf) - sg));
+      {
+	/* fill tail first */
+	if (sg < sizeof(sock->inbuf))
+	{
+	  sg = read (Pollfd[idx].fd, &sock->inbuf[sg], (sizeof(sock->inbuf) - sg));
+	  /* could we fill head too? */
+	  if (sg > 0 && sock->bufpos &&
+	      sock->bufpos + sock->available + sg == sizeof(sock->inbuf))
+	  {
+	    sock->available += sg;
+	    sg = read (Pollfd[idx].fd, sock->inbuf, sock->bufpos);
+	  }
+	}
+	/* could we still fill head? */
+	else if (sock->available < sizeof(sock->inbuf))
+	  sg = read (Pollfd[idx].fd, &sock->inbuf[sg-sizeof(sock->inbuf)],
+		     sizeof(sock->inbuf) - sock->available);
+	else	/* no free space available */
+	  sg = 0;
+      }
       else				/* raw socket, just read it */
 	sg = read (Pollfd[idx].fd, buf, sr);
-      pthread_mutex_unlock (&LockPoll);
-      if (sg < 0)
-        return (E_NOSOCKET);
-      else if (sg == 0)
-	return (E_EOF);
-      sigio_handler (0);		/* we read socket, recheck state */
+      if (sg <= 0)
+      {
+	CloseSocket (idx);
+	sg = 0;				/* if socket died then close it */
+      }
+      Pollfd[idx].revents = 0;		/* we read socket, reset state */
       sock->available += sg;
       if (mode)
 	sg = _socket_find_line (sock);
       if (sg < 0)
-        return 0;
+	return 0;
     }
     else
       return 0;
   }
   if (mode)
   {
-    if (sg > sr)
-      sg = sr;
+    if (sg >= sr)
+      sg = sr - 1;
   }
-  else if (sg >= sr)
-    sg = sr - 1;
+  else if (sg > sr)
+    sg = sr;
   if (mode)
   {
-    _socket_get_line (buf, sock, sg, mode);
     if (sg)
-      buf[sg] = 0;			/* line terminator */
+      _socket_get_line (buf, sock, sg);
+    buf[sg] = 0;			/* line terminator */
+    sg++;				/* in text modes it includes 0 */
   }
   return (sg);
 }
 
-ssize_t _write_conv_crlf (int fd, char *buf, size_t count)
+/*
+ * returns: -1 if error or number of writed bytes from buf
+ */
+ssize_t WriteSocket (idx_t idx, char *buf, size_t *ptr, size_t *sw, int mode)
 {
-  char *ch, *chcr;
-  char *che = &buf[count];
-  ssize_t s = count, wr = 0;
-
-  while (count)
-  {
-    ch = chcr = buf;
-    do
-    {
-      ch = memchr (ch, '\n', s);
-      if (!ch)
-	ch = che;
-      if (ch != buf)
-	chcr = ch - 1;
-      s = che - ch;
-    } while (s && *chcr == '\r');
-    s = write (fd, buf, ch - buf);
-    if (s < 0)
-      break;
-    wr += s;
-    count -= s;
-    buf += s;
-    if (ch != buf || !count || write (fd, "\r\n", 2) != 2)
-      break;
-    wr++;
-    buf++;
-    count--;
-  }
-  return wr;
-}
-
-/* we considered we can rewrite *buf limited by *sw :)
- * returns: -1 if error or number of writed bytes from buf */
-ssize_t WriteSocket (idx_t idx, char *buf, size_t *sw, int mode)
-{
-  SOCKET *sock;
+  socket_t *sock;
   short rev;
 
-  pthread_mutex_lock (&LockPoll);
   if (idx < 0 || idx >= _Snum || Pollfd[idx].fd < 0)
-  {
-    pthread_mutex_unlock (&LockPoll);
     return -1;
-  }
-  rev = Pollfd[idx].revents;
-  pthread_mutex_unlock (&LockPoll);
   if (!buf || !sw)
     return 0;
+  rev = Pollfd[idx].revents;
   sock = &Socket[idx];
-  if (rev & POLLNVAL)			/* socket destroyed yet */
-    close_socket (idx);
+  if (!rev)
+  {
+    poll (&Pollfd[idx], 1, mode == M_POLL ? POLL_TIMEOUT : 0);
+    rev = Pollfd[idx].revents;
+  }
+  if (rev & POLLNVAL)			/* socket destroyed already */
+    CloseSocket (idx);
   if (rev & (POLLNVAL | POLLERR))	/* any error */
     return -1;
   else
   {
-    ssize_t sg = 0;
+    ssize_t sg;
 
     if (!(rev & POLLOUT))
       return 0;
-    pthread_mutex_lock (&LockPoll);
-    if (mode == M_FILE)
-      sg = write (Pollfd[idx].fd, buf, *sw);
-    else
-      sg = _write_conv_crlf (Pollfd[idx].fd, buf, *sw);
-    pthread_mutex_unlock (&LockPoll);
-    sigio_handler (0);			/* we wrote socket, recheck state */
-    if (sg < 0)				/* EAGAIN */
+    sg = write (Pollfd[idx].fd, &buf[*ptr], *sw);
+    Pollfd[idx].revents = 0;		/* we wrote socket, reset state */
+    if (sg <= 0)			/* EAGAIN */
       return 0;
-    else if (sg != *sw)
-    {
-      *sw -= sg;
-      memmove (buf, &buf[sg], *sw);
-    }
-    else
-      *sw = 0;
-    if (sg > 0 && mode != M_FILE)
-      buf[*sw] = 0;			/* line was moved - line terminator */
+    *ptr += sg;
+    *sw -= sg;
     return (sg);
   }
 }
@@ -313,29 +319,38 @@ int KillSocket (idx_t *idx)
   if (i < 0)
     return -1;
   *idx = -1;			/* no more that socket */
-  pthread_mutex_lock (&LockPoll);
   if (i >= _Snum || Socket[i].domain == NULL)
-  {
-    pthread_mutex_unlock (&LockPoll);
     return -1;			/* no such socket */
-  }
-  pthread_mutex_unlock (&LockPoll);
-  close_socket (i);		/* must be first for reentrance */
+  dprint (3, "socket:KillSocket: fd=%d", Pollfd[i].fd);
+  CloseSocket (i);		/* must be first for reentrance */
   Socket[i].port = 0;
-  pthread_mutex_lock (&LockPoll);
-  FREE (&Socket[i].domain);
-  pthread_mutex_unlock (&LockPoll);
+  FREE (&Socket[i].domain);	/* indicator of free socket */
   return 0;
 }
 
-/* For a listening process - we have to get ECONNREFUSED to own port :) */
-idx_t AddSocket (int type, char *domain, unsigned short port)
+idx_t GetSocket (void)
 {
   idx_t idx;
+  int sockfd;
+
+  pthread_mutex_lock (&LockPoll);
+  if ((idx = allocate_socket()) < 0)
+    sockfd = -1; /* too many sockets */
+  else
+    Pollfd[idx].fd = sockfd = socket (AF_INET, SOCK_STREAM, 0);
+  pthread_mutex_unlock (&LockPoll);
+  if (sockfd == -1)
+    return (E_NOSOCKET);
+  return idx;
+}
+
+/* For a listening process - we have to get ECONNREFUSED to own port :) */
+int SetupSocket (idx_t idx, int type, char *domain, unsigned short port)
+{
   struct sockaddr_in sin;
   struct hostent *hptr = NULL;
   struct linger ling;
-  int i = 1, sockfd;
+  int i = 1, sockfd = Pollfd[idx].fd;
 
   /* check for errors! */
   if (!domain && type != M_LIST && type != M_LINP)
@@ -354,14 +369,6 @@ idx_t AddSocket (int type, char *domain, unsigned short port)
       return (E_NOSUCHDOMAIN);
     memcpy (&sin.sin_addr, hptr->h_addr_list[0], hptr->h_length);
   }
-  sockfd = socket (AF_INET, SOCK_STREAM, 0);
-  pthread_mutex_lock (&LockPoll);
-  idx = allocate_socket();
-  /* now we have new idx */
-  Pollfd[idx].fd = sockfd;
-  pthread_mutex_unlock (&LockPoll);
-  if (sockfd == -1)
-    return (E_NOSOCKET);
   Socket[idx].port = port;
   setsockopt (sockfd, SOL_SOCKET, SO_KEEPALIVE, (void *) &i, sizeof(i));
   ling.l_onoff = 1;
@@ -379,10 +386,7 @@ idx_t AddSocket (int type, char *domain, unsigned short port)
     if (bind (sockfd, (struct sockaddr *)&sin, sizeof(sin)) < 0 ||
 	listen (sockfd, backlog) < 0 ||
 	getsockname (sockfd, (struct sockaddr *)&sin, &len) < 0)
-    {
-      close_socket (idx);
       return (E_NOLISTEN);
-    }
     Socket[idx].port = ntohs (sin.sin_port);
   }
   else
@@ -390,19 +394,14 @@ idx_t AddSocket (int type, char *domain, unsigned short port)
     while ((i = connect (sockfd, (struct sockaddr *)&sin, sizeof(sin))) < 0 &&
 	    errno == EAGAIN);
     if (errno != EINPROGRESS)
-    {
-      close_socket (idx);
       return (E_NOCONNECT);
-    }
     Socket[idx].bufpos = i;
   }
   hptr = gethostbyaddr ((char *)&sin.sin_addr, sizeof(sin.sin_addr), AF_INET);
   if (hptr && hptr->h_name)
     domain = hptr->h_name;	/* subst canonical name */
-  pthread_mutex_lock (&LockPoll);
   Socket[idx].domain = safe_strdup (domain);
-  pthread_mutex_unlock (&LockPoll);
-  return (idx);
+  return 0;
 }
 
 idx_t AnswerSocket (idx_t listen)
@@ -414,36 +413,37 @@ idx_t AnswerSocket (idx_t listen)
   short rev;
   socklen_t len = sizeof(cliaddr);
 
-  pthread_mutex_lock (&LockPoll);
   if (listen < 0 || listen >= _Snum || Pollfd[listen].fd < 0)
-  {
-    pthread_mutex_unlock (&LockPoll);
     return (E_NOSOCKET);
-  }
   rev = Pollfd[listen].revents;
-  pthread_mutex_unlock (&LockPoll);
+  if (!rev)
+  {
+    poll (&Pollfd[listen], 1, POLL_TIMEOUT);
+    rev = Pollfd[listen].revents;
+  }
   if (!(rev & (POLLIN | POLLPRI | POLLNVAL | POLLERR)))
     return (E_AGAIN);
   else if (rev & POLLNVAL)
   {
-    close_socket (listen);
+    CloseSocket (listen);
     return (E_NOSOCKET);
   }
   else if (rev & POLLERR)
     return (E_NOSOCKET);
-  sockfd = accept (Pollfd[listen].fd, (struct sockaddr *)&cliaddr, &len);
   pthread_mutex_lock (&LockPoll);
-  idx = allocate_socket();
-  Pollfd[idx].fd = sockfd;
+  if ((idx = allocate_socket()) < 0)
+    sockfd = -1;
+  else
+    Pollfd[idx].fd = sockfd = accept (Pollfd[listen].fd, (struct sockaddr *)&cliaddr, &len);
   pthread_mutex_unlock (&LockPoll);
+  Pollfd[listen].revents = 0;		/* we accepted socket, reset state */
   if (sockfd == -1)
-    return (E_NOSOCKET);
+    return (E_AGAIN);
   Socket[idx].port = ntohs (cliaddr.sin_port);
   fcntl (sockfd, F_SETOWN, _mypid);
   fcntl (sockfd, F_SETFL, O_NONBLOCK | O_ASYNC);
   hptr = gethostbyaddr ((char *)&cliaddr.sin_addr, sizeof(cliaddr.sin_addr),
 			AF_INET);
-  pthread_mutex_lock (&LockPoll);
   if (hptr && hptr->h_name)
     Socket[idx].domain = safe_strdup (hptr->h_name); /* subst canonical name */
   else
@@ -454,7 +454,6 @@ idx_t AnswerSocket (idx_t listen)
     snprintf (nd, sizeof(nd), "%u.%u.%u.%u", p[0], p[1], p[2], p[3]);
     Socket[idx].domain = safe_strdup (nd);	/* unresolved domain name */
   }
-  pthread_mutex_unlock (&LockPoll);
   return (idx);
 }
 
@@ -462,26 +461,26 @@ char *SocketDomain (idx_t idx, unsigned short *port)
 {
   char *d = NULL;
   /* check if idx is invalid */
-  pthread_mutex_lock (&LockPoll);
   if (idx >= 0 && idx < _Snum)
   {
     if (port)
       *port = Socket[idx].port;
     d = Socket[idx].domain;
   }
-  pthread_mutex_unlock (&LockPoll);
   return NONULL(d);
 }
 
 int fe_init_sockets (void)
 {
   struct sigaction act;
-  pthread_mutexattr_t attr;
 
-  /* init recursive LockIface - Unix98 only */
-  pthread_mutexattr_init (&attr);
-  pthread_mutexattr_settype (&attr, PTHREAD_MUTEX_RECURSIVE);
-  pthread_mutex_init (&LockPoll, &attr);
+  /* allocate sockets structures */
+  if (_Salloc == 0)
+  {
+    _Salloc = SOCKETMAX;
+    Socket = safe_malloc (SOCKETMAX * sizeof(socket_t));
+    Pollfd = safe_malloc (SOCKETMAX * sizeof(struct pollfd));
+  }
   /* init SIGIO handler */
   _mypid = getpid();
   act.sa_handler = &sigio_handler;

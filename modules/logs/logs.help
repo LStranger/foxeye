@@ -2,9 +2,34 @@
 # second section is that config maker will put into config
 # third section is full help
 
+function logfile
+:logfile [-n[ots]] [-y[early]|-m[onthly]|-w[eekly]] [-r[path] rpath] filename\
+ level [service]
+ logfile -c[lose] filename
+:
+:Starts or stops (with -c command switch) logfile %_filename%_ which will\
+ collect all log events of any type from list %_level%_ that come for\
+ %_service%_ (if it's omitted then assume it has value "*" what means collect\
+ events for any destination)  See %yhelp console%n for details of %_level%_.
+
 set logrotate-path
 :%* <template>
-:Template for logs was daily rotated
-:This is template for daily rotated logs. Substitutions:%.
+:Template for next rotated log file.
+:This is template for daily rotated logs, i.e. previous log file will be\
+ renamed with that name. Substitutions:
  %%$ - filename of rotated log (current log before rotation)
  %%d, %%b, %%y, etc - date fields as in strftime(3)
+ Default: "%%$.1".
+
+set logfile-lock-attempts
+:%* <number>
+:Number of lock attempts of log file before giving up.
+:This variable defines how much attempts will be made when module trying to\
+ save changes into log file on shutdown.
+ Default: 16.
+
+set logrotate-time
+:%* <HHMM>
+:Local time when logs are rotating.
+:This variable defines hour and minutes when logs are being rotated.
+ Default: "0000".

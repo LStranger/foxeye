@@ -1,0 +1,94 @@
+
+Module "irc":
+-------------
+RAW   "iirrcc--rraaww"    MATCHCASE
+  int func (INTERFACE *_i_f_a_c_e, char *_s_e_r_v_n_a_m_e, char *_m_e, char *_p_r_e_f_i_x,
+	    int _n, char **_p_a_r_a_m_s, char *(*_l_c) (char *, const char *, size_t));
+    Used when bot get any message from server. Optional _p_r_e_f_i_x is
+    message source (see the RFC), _c_o_m_m_a_n_d is keyword like "PRIVMSG"
+    with optional parameters _p_a_r_a_m_s.
+      Matching: command  (any flags are ignored)
+      Script args: network sender command (params)...
+
+-     "iirrcc--ccoonnnneecctteedd" MASK
+  (int) void func (INTERFACE *iface, char *servname, char *nick,
+		   char *(*lc) (char *, const char *, size_t));
+      Matching: network name  (any flags are ignored)
+      Script args: network servname nick
+
+-     "iirrcc--ddiissccoonnnneecctteedd" MASK
+  (int) void func (INTERFACE *iface, char *servname, char *nick,
+		   char *(*lc) (char *, const char *, size_t));
+      Matching: network name  (any flags are ignored)
+      Script args: network servname nick
+
+PUBM  "iirrcc--ppuubb--mmssgg--mmaasskk" MASK
+-     "iirrcc--ppuubb--nnoottiiccee--mmaasskk" MASK
+  (int) void func (INTERFACE *client, unsigned char *who, char *lname,
+		   char *unick, char *chan, char *msg);
+      Matching: "chan msg" string
+      Script args: nick user@host Lname chan msg
+
+PUB   "iirrcc--ppuubb--mmssgg--ccmmdd" UNIQ
+-     "iirrcc--ppuubb--nnoottiiccee--ccmmdd" UNIQ
+CTCP  "iirrcc--ppuubb--mmssgg--ccttccpp" MATCHCASE
+CTCR  "iirrcc--ppuubb--nnoottiiccee--ccttccpp" MATCHCASE
+  int func (INTERFACE *client, unsigned char *who, char *lname,
+	    char *unick, char *chan, char *msg);
+      Matching: command
+      Script args: nick user@host Lname chan args
+
+MSGM  "iirrcc--pprriivv--mmssgg--mmaasskk" MASK
+NOTC  "iirrcc--pprriivv--nnoottiiccee--mmaasskk" MASK
+  (int) void func (INTERFACE *client, unsigned char *who, char *lname,
+		   char *unick, char *msg);
+      Matching: msg
+      Script args: nick user@host Lname msg
+
+MSG   "iirrcc--pprriivv--mmssgg--ccmmdd" UNIQ
+-     "iirrcc--pprriivv--nnoottiiccee--ccmmdd" UNIQ
+CTCP  "iirrcc--pprriivv--mmssgg--ccttccpp" MATCHCASE
+CTCR  "iirrcc--pprriivv--nnoottiiccee--ccttccpp" MATCHCASE
+  int func (INTERFACE *client, unsigned char *who, char *lname,
+	    char *unick, char *msg);
+      Matching: command
+      Script args: nick user@host Lname args
+
+FLUD  "iirrcc--fflloooodd"   MASK
+  int func (unsigned char *from, char *lname, char *ft, char *chan);
+      Matching: flood type
+      Script args: nick user@host Lname ft chan
+
+NICK  "iirrcc--nniicckkcchhgg"    MASK
+  (int) void func(INTERFACE *_n_e_t, char *_l_n_a_m_e, unsigned char *_w_h_o,
+		  char *lcoldn, char *_n_e_w_n, char *lcnewn);
+    Used when someone with nick _w_h_o and user@host _h_o_s_t changes on IRC
+    network _n_e_t his/her nick to _n_e_w_n and is identified now as _l_n_a_m_e.
+    Note: scripts are called for each channel separately and script
+    bindings will be called only if module "irc-channel" is loaded, and
+    channel flags are not ignored only for script bindings.
+      Matching: newnick.
+      Script args: oldn user@host Lname channel newn
+
+SIGN  "iirrcc--ssiiggnnooffff"    MASK
+  (int) void func(INTERFACE *_n_e_t, char *_l_n_a_m_e, unsigned char *_w_h_o,
+		  char *lcnick, char *_m_s_g);
+    Used when someone _l_n_a_m_e with nick _w_h_o and user@host _h_o_s_t leaves
+    IRC network _n_e_t with the reason _m_s_g. Note: scripts are called for
+    each channel separately and script bindings will be called only if
+    "irc-channel" module is loaded, and channel flags are not ignored
+    only for script bindings.
+      Matching: "nick!user@host" string.
+      Script args: nick user@host Lname channel msg
+
+SPLT  "iirrcc--nneettsspplliitt"   MASK
+  (int) void func(INTERFACE *_n_e_t, char *_l_n_a_m_e, unsigned char *_w_h_o,
+		  char *lcnick, char *_s_e_r_v_e_r_s);
+    Used when some IRC server splits out of another IRC server (_s_e_r_v_e_r_s
+    is string "left-server gone-server") on the network _n_e_t and someone
+    _l_n_a_m_e with nick _w_h_o and user@host _h_o_s_t has left our part of network.
+    Note: scripts are called for each channel separately and any script
+    bindings will be called only if "irc-channel" module is loaded, and
+    channel flags are not ignored only for script bindings.
+      Matching: "nick!user@host" string.
+      Script args: nick user@host Lname channel

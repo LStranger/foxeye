@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 1996-8 Michael R. Elkins <me@cs.hmc.edu>
  * Copyright (C) 1999 Thomas Roessler <roessler@guug.de>
- * Copyright (C) 1999-2002  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2005  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -46,7 +46,7 @@ void *safe_malloc (size_t siz)
   void *p;
 
   if (siz == 0)
-    return 0;
+    return NULL;
   if ((p = (void *) malloc (siz)) == 0)
     bot_shutdown (mem_msg, 2);
   return p;
@@ -83,7 +83,7 @@ void safe_free (void **p)
   if (*p)
   {
     free (*p);
-    *p = 0;
+    *p = NULL;
   }
 }
 
@@ -116,31 +116,32 @@ char *strfcat (char *dst, const char *src, size_t n)
 }
 
 /* convert all characters in the string to lowercase */
-char *strlower (char *s)
+char *safe_strlower (char *dst, const char *src, size_t sz)
 {
-  char *p = s;
+  register char *s = dst;
+  register char c;
 
-  while (*p)
-  {
-    *p = tolower (*p);
-    p++;
-  }
-  return s;
+  while ((c = *src++) != 0 && sz-- > 1)
+    *s++ = tolower (c);
+  *s = 0;
+  return dst;
 }
 
-char *rfc2812_strlower (char *s)
+char *rfc2812_strlower (char *dst, const char *src, size_t sz)
 {
-  char *p = s;
+  register char *s = dst;
+  register char c;
 
-  while (*p)
+  while ((c = *src++) != 0 && sz-- > 1)
   {
-    if (strchr ("[]\\~", *p))
-      *p ^= 32;
+    if (strchr ("[]\\~", c))
+      *s = c ^ 32;
     else
-      *p = tolower (*p);
-    p++;
+      *s = tolower (c);
+    s++;
   }
-  return s;
+  *s = 0;
+  return dst;
 }
 
 static int compare_stat (struct stat *osb, struct stat *nsb)
@@ -352,7 +353,7 @@ char *safe_strchr (const char *s, int c)
 }
 
 static char Wildcards[] = "~%*{?[";
-#define wildcard(c) safe_strchr (Wildcards, c)
+#define wildcard(c) strchr (Wildcards, c)
 
 static int match_wildcard (uchar *w, uchar c)
 {
@@ -510,6 +511,12 @@ int match (const char *mask, const char *text)
     return 0;
   if (!text || !mask)
     return -1;
+  if (Have_Wildcard (mask) < 0)
+  {
+    if (strcmp (mask, text))
+      return -1;
+    return (strlen (mask));
+  }
   return match_it ((uchar *)mask, (uchar *)text);
 }
 
@@ -521,7 +528,7 @@ char *NextWord (const char *msg)
   return (char *)msg;
 }
 
-char *NextWord_Unquoted (char *name, size_t s, const char *line)
+char *NextWord_Unquoted (char *name, const char *line, size_t s)
 {
   register char *c;
   char ch;
@@ -557,8 +564,8 @@ void StrTrim (char *cmd)
 
   if (!cmd)
     return;
-  for (ch = &cmd[safe_strlen(cmd)]; ch >= cmd; ch--)
-    if (*ch && !safe_strchr (" \r\n", *ch))
+  for (ch = &cmd[strlen(cmd)]; ch >= cmd; ch--)
+    if (*ch && !strchr (" \r\n", *ch))
       break;
   if (ch < cmd || *ch)
     ch[1] = 0;
@@ -569,12 +576,13 @@ int Have_Wildcard (const char *str)
   register int i;
 
   for (i = 0; str[i]; i++)
-    if (safe_strchr (Wildcards, str[i]))
+    if (wildcard (str[i]))
       return i;
   return -1;
 }
 
-/* bs is max space available if text doesn't fit in linelen s */
+/* bs is max space available if text doesn't fit in linelen s
+ * bs >= s or bs == 0 if wrapping enabled */
 static size_t _try_subst (char *buf, size_t bs, const char *text, size_t s)
 {
   size_t n = safe_strlen (text);
@@ -598,13 +606,33 @@ typedef struct {
   char *chan;
   uint32_t ip;
   unsigned short port;
+  int idle;
   const char *message;
+  char idlestr[8];
   int bold;
   int flash;
   int color;
   int ul;
   int inv;
 } printl_t;
+
+static void makeidlestr (printl_t *p)
+{
+  if (p->idle <= 0 || p->idlestr[0] != 0)
+    return;
+  /* %Mm:%Ss */
+  if (p->idle < 3600)
+    snprintf (p->idlestr, sizeof(p->idlestr), "%2dm:%02ds", p->idle/60,
+	      p->idle%60);
+  /* %kh:%Mm */
+  else if (p->idle < 86400)
+    snprintf (p->idlestr, sizeof(p->idlestr), "%2dh:%02dm", p->idle/3600,
+	      (p->idle%3600)/60);
+  /* %ed:%Hh */
+  else
+    snprintf (p->idlestr, sizeof(p->idlestr), "%2dd:%02dh", p->idle/86400,
+	      (p->idle%86400)/3600);
+}
 
 /* returns new buffer pointer */
 /* ll - line length, q - need check for '?' */
@@ -617,10 +645,10 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
   char *cc, *end;
 
   unbuf.sysname[0] = 0;
-  c = &buf[strlen(buf)];		/* set to end of buffer */
+  c = buf;				/* set to end of buffer */
   while (*t && (!q || *t != '?'))
   {					/* all colors are mIRC colors */
-    if (&buf[s+7] > c)
+    if (p->i == 0 && &buf[s+7] > c)
     {
       if (p->bold)			/* recreate modes at new line */
 	*c++ = '\002';			/* i is number of real chars in buff */
@@ -631,41 +659,44 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
       if (p->inv)
 	*c++ = '\026';
       if (p->color)
+      {
 	snprintf (c, s, "\003%d", p->color - 1);
-      c = &buf[strlen(buf)];
+	c = &c[strlen(c)];
+      }
     }
     while (ll == 0 || p->i < ll)
     {
-      size_t n;				/* n is number of real chars to add */
+      ssize_t n;			/* n is number of real chars to add */
       size_t nmax;
       char *fix;
       int nn;
       static char mircsubst[] = "WkbgrymRYGcCBMKw";
 
-      if (!q || (end = safe_strchr (t, '?')) == NULL)
+      if (!q || (end = strchr (t, '?')) == NULL)
         end = &t[strlen(t)];
-      if (ll && end > &t[ll - p->i])
-	end = &t[ll - p->i];
-      cc = safe_strchr (t, '\n');
+      cc = strchr (t, '\n');
       if (cc && cc < end)
-	end = cc;			/* now end is template that fit here */
+	end = cc;			/* now end is template for parse */
+      n = end - t;
+      if (ll && n > ll - p->i)
+	n = ll - p->i;			/* now n is template that fit here */
       nn = &buf[s-1] - c;		/* rest chars in buff */
       if (nn < 0)
         nn = 0;
-      cc = safe_strchr (t, '%');
-      if (!cc || cc >= end)		/* next subst is over */
+      cc = memchr (t, '%', n);
+      if (!cc)				/* next subst is over */
       {					/* try by words */
-	char *cs = t;
+	char *cs;
 
-	if (*end == '\n')		/* special case if EOL */
-	  cs = end;
+	if (end > &t[n])		/* if template doesn't fit */
+	  for (cc = cs = t; *cs && cc <= &t[n]; cc = NextWord (cs)) cs = cc;
 	else
-	  for (cc = t; *cs && cc <= end; cc = NextWord (cs)) cs = cc;
+	  cs = end;
 /*	if (q && *end == '?' && cs > end)
 	  cs = end;*/
-	/* cs now is first char of last word */
-	for (cc = cs; cc > t && (*cc == ' ' || *cc == '\t');) cc--;
-	/* cc now is end of last fitting word */
+	/* cs now is first char of unfitting word so skip end spaces */
+	for (cc = cs; cc > t && (*(cc-1) == ' ' || *(cc-1) == '\t');) cc--;
+	/* cc now is after last fitting word */
 	n = cc - t;
 	if (n > nn)			/* how many chars we can put here? */
 	  n = nn;
@@ -682,19 +713,22 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
       t = cc;				/* we are on '%' now */
       p->i += n;			/* and we have line space for it */
       c += n;
-      if (p->i)				/* nmax is max for line */
-	nmax = 0;				/* drop to ll */
+      if (p->i == 0)			/* nmax is max for line, 0 to wrap */
+	nmax = 0;				/* wrap: drop line to ll */
       else
-	nmax = nn;				/* rest in buffer */
-      if (ll && nn > ll - p->i)
-        nn = ll - p->i;			/* nn is rest for line - at least 1 */
+	nmax = nn;				/* rest of buffer */
       fix = &t[1];
-      if (*fix >= '0' && *fix <= '9')
+      if (*fix >= '0' && *fix <= '9')	/* we have fixed field width here */
       {
 	n = (int)strtol (fix, &fix, 10);
 	if (n < nn)
+	{
+	  nmax = nn;		/* disable wrapping: assume field has width n */
 	  nn = n;
+	}
       }
+      else if (ll && nn > ll - p->i)
+	nn = ll - p->i;			/* nn is rest for line - at least 1 */
       n = 0;
       tbuf[0] = 0;
       if ((cc = strchr (mircsubst, *fix)))
@@ -702,7 +736,7 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
 	p->color = ++cc - mircsubst;	/* mIRC color incremented by 1 */
 	snprintf (tbuf, sizeof(tbuf), "\003%d", p->color - 1);
       }
-      else switch (*fix)
+      else switch (*fix)		/* nmax must be 0 (wrap) or nmax > nn */
       {
 	case 'N':			/* the user nick */
 	  n = _try_subst (c, nmax, p->nick, nn);
@@ -719,6 +753,10 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
 	case '#':			/* channel(s) */
 	  n = _try_subst (c, nmax, p->chan, nn);
 	  break;
+	case '-':			/* idle string */
+	  makeidlestr (p);
+	  n = _try_subst (c, nmax, p->idlestr, nn);
+	  break;
 	case 's':
 	  if (unbuf.sysname[0] == 0)
 	    uname (&unbuf);
@@ -731,15 +769,6 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
 	  snprintf (tbuf, sizeof(tbuf), "%hu", p->port);
 	  break;
 	case 't':			/* current time */
-//	  if (nn > 5)
-//	  {
-//	    struct tm tm;
-//	    time_t tt = Time;
-
-//	    localtime_r (&tt, &tm);
-	    /* may be, try strftime with variable format? */
-//	    snprintf (tbuf, sizeof(tbuf), "%02d:%02d", tm.tm_hour, tm.tm_min);
-//	  }
 	  n = _try_subst (c, nmax, &DateString[7], nn);
 	  break;
 	case 'n':			/* color stop */
@@ -771,19 +800,19 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
 	  switch (fix[1])
 	  {
 	    case 'N':
-	      if (p->nick && p->nick)
+	      if (p->nick && *p->nick)
 		n = 1;
 	      break;
 	    case '@':
-	      if (p->host && p->host)
+	      if (p->host && *p->host)
 		n = 1;
 	      break;
 	    case 'L':
-	      if (p->lname && p->lname)
+	      if (p->lname && *p->lname)
 		n = 1;
 	      break;
 	    case '#':
-	      if (p->chan && p->chan)
+	      if (p->chan && *p->chan)
 		n = 1;
 	      break;
 	    case 'I':
@@ -794,22 +823,28 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
 	      if (p->port)
 		n = 1;
 	      break;
+	    case '-':
+	      if (p->idle)
+		n = 1;
+	      break;
 	    case '*':
 	      if (p->message && *p->message)
 		n = 1;
 	  }
+	  end = &buf[s];		/* for the next _try_printl */
 	  if (n)
 	  {
-	    c = _try_printl (buf, s, p, ll, 1);
-	    _try_printl (buf, 0, p, ll, 1);
+	    c = _try_printl (c, end - c, p, ll, 1);
+	    _try_printl (c, 0, p, ll, 1);
 	    n = 0;
 	  }
 	  else
 	  {
-	    _try_printl (buf, 0, p, ll, 1);
-	    c = _try_printl (buf, s, p, ll, 1);
+	    _try_printl (c, 0, p, ll, 1);
+	    c = _try_printl (c, end - c, p, ll, 1);
 	  }
 	  t = p->t;
+	  break;
 	case '*':
 	  n = _try_subst (c, nmax, p->message, nn);
 	  break;
@@ -820,32 +855,36 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
       }
       if (*tbuf)
 	n = _try_subst (c, nmax, tbuf, nn);
-      if (n > 0)
+      if (n)
       {
-	c += n;
+	if (n > 0)			/* if something was added */
+	{
+	  c += n;
+	  p->i += n;
+	}
+	else				/* if no space available or empty */
+	  n = 0;
 	if (fix > &t[1])		/* check if fixed size */
 	  for (; n < nn; n++)
 	    *c++ = ' ';			/* fill rest with spaces */
-	p->i += n;
-	t = &fix[1];
+	t = &fix[1];			/* skip command char */
       }
-      else if (n)			/* if no space available */
-	t = &fix[1];
     }
     end = &buf[s];
-    if (c < end)
+    if ((!q || *t != '?') && c < end)	/* if line was wrapped */
     {
       if (p->bold)			/* reset modes at end of line */
 	*c++ = '\002';
-      if (p->flash)
-	if (c < end) *c++ = '\006';
-      if (p->ul)
-	if (c < end) *c++ = '\037';
-      if (p->inv)
-	if (c < end) *c++ = '\026';
-      if (p->color)
-	if (c < end) *c++ = '\003';
-      if (c < end && *t) *c++ = '\n';
+      if (p->flash && c < end)
+	*c++ = '\006';
+      if (p->ul && c < end)
+	*c++ = '\037';
+      if (p->inv && c < end)
+	*c++ = '\026';
+      if (p->color && c < end)
+	*c++ = '\003';
+      if (*t && c < end)
+	*c++ = '\n';
     }
     /* terminate the line */
     if (s)
@@ -855,7 +894,7 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
       *c = 0;
     }
     /* we are at EOL - recalculate buf and s */
-    if (c > &buf[s])
+    if (c > end)
       s = 0;
     else
       s -= (c - buf);
@@ -872,13 +911,18 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
 
 void printl (char *buf, size_t s, char *templ, size_t strlen,
 		char *nick, const char *uhost, const char *lname, char *chan,
-		uint32_t ip, unsigned short port, const char *message)
+		uint32_t ip, unsigned short port, int idle, const char *message)
 {
   printl_t p;
 
-  if (buf) buf[0] = 0;
-  if (templ == NULL || buf == NULL)
+  if (templ == NULL || buf == NULL || s == 0)
     return;
+//fprintf(stderr,"%s[%u]:nick=%s:uhost=%s:lname=%s:chan=%s:ip=%u:port=%hu:msg=%s\n",templ,strlen,nick,uhost,lname,chan,ip,port,message);
+  if (*templ == 0)	/* just terminate line if empty template */
+  {
+    buf[0] = 0;
+    return;
+  }
   p.t = templ;
   p.nick = nick;
   p.host = uhost;
@@ -886,7 +930,9 @@ void printl (char *buf, size_t s, char *templ, size_t strlen,
   p.chan = chan;
   p.ip = ip;
   p.port = port;
+  p.idle = idle;
   p.message = message;
+  p.idlestr[0] = 0;
   p.i = p.bold = p.flash = p.color = p.ul = p.inv = 0;
   _try_printl (buf, s, &p, strlen, 0);
 }

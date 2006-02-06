@@ -6,51 +6,174 @@
 
 set nick
 :%* <string>
-:Name of bot to use on the botnet.
-:This is a name of bot to use on the botnet.  Also it is default nickname\
+:Name of bot to use on the botnet
+:This is a name of bot to use on the botnet. Also it is default nickname\
  for connection to servers.
+
+set my-hostname
+:%* <string>
+:Network DNS name used to identify itself on servers
+:If your machine has multiple hostnames and you would like to use a\
+ particular one then set this variable to preferred host.
 
 set locale
 :%* <locale name>
 :Locale name for messages and case conversions
 :This variable changes your preferred language for messages, help files\
- and case (upper<->lower) conversions.  Affects only [re]boot.
+ and case (upper<->lower) conversions. Affects only [re]boot.
+ Default: value of LANG environment variable.
 
 set charset
 :%* <charset>
-:Charset name for current %ilocale%i
+:Charset name for current locale
 :This variable changes character set name for any character conversions:\
  server, dcc recodings, scripting languages (such as Tcl), etc.
 
 set listfile
 :%* <path>
-:Filename for main bot Listfile
-:Listfile has all info about users, passwords, servers, channels, etc.  This\
+:Filename for main Listfile
+:Listfile has all info about users, passwords, servers, channels, etc. This\
  variable points to the file which has such info.
+ Default: "listfile".
+
+set connection-timeout
+:%* <seconds>
+:Direct connection start timeout
+:This variable defines how much amount of time core will keep connection\
+ until connection is complete. If client still doesn't enter login name or\
+ password but spends that time then connection will be terminated.
+ Default: 120.
+
+set ident-timeout
+:%* <seconds>
+:Ident timeout
+:This variable defines how much amount of time core will wait for ident\
+ answer from remote side. If still was not answer after that time since\
+ connection was made then connection will be terminated and ident assumed\
+ undefined.
+ Default: 60.
+
+set protect-telnet
+:%* <yes|no>
+:Do we must drop connections from unknown hosts?
+:If we have to drop incoming connections from hosts which do not match to\
+ any hostmask in listfile with appropriate permissions then set that\
+ variable to %^yes%^.
+ Default: yes.
+
+set motd
+:%* <path>
+:Filename for MOTD file
+:MOTD (message of the day) is message that is usually shown to user when\
+ he/she logins to partyline. This variable points to a file which contains\
+ text of MOTD in %^printl%^() format (see documentation for details).
+
+set cache-time
+:%* <seconds>
+:Write-cache hold time
+:This variable defines how much amount of time unsaved changes are keeping\
+ in listfile, logfile, etc. internal buffers until save on disk, in seconds.
+ Default: 300.
 
 set wtmpfile
 :%* <path>
 :Filename for bot statistics
 :Wtmpfile has info about all events - logins, joins, parts, requests, any\
- statistics.  This variable points to the file which collects such data.
+ statistics. This variable points to the file which collects such data.
+ Default: "Wtmp".
 
 set wtmps
 :%* <number>
-:Number of Wtmp files to keep.
-:This variable defines number of Wtmp files to keep when rotating.  Each\
+:Number of Wtmp files to keep
+:This variable defines number of Wtmp files to keep when rotating. Each\
  Wtmp file can contain data for one month so this defines how much\
- statistics you want to have.  Set that to 0 says keep only current\
+ statistics you want to have. Set that to 0 says keep only current\
  month data.
+ Default: 4.
 
-set my-hostname
-:%* <string>
-:Network DNS name used to identify itself on servers
-:If your machine has multiple hostnames and you would like the bot to use\
- a particular one, set this variable to identify itself on servers, etc.
-
-set incoming-path
+set formatsfile
 :%* <path>
-:Path for uploading files
-:This variable specifies the directory where uploaded files will be put.  It\
- used also by users sharing for temporary files.  If unset then you cannot\
- download any files.
+:Filename for formats
+:Formats are directives which defines how different events will be logged\
+ into logfiles or user interface (see documentation for details). This\
+ variable points to a file where these formats are saved.
+
+set replace-unknown-char
+:%* <char>
+:Replacer for unconvertable characters
+:This character will replace any characters in output of charset conversion\
+ if these characters cannot be converted. If set empty then unconvertable\
+ characters will be silently omitted.
+ Default: "?".
+
+fset dcc_lost
+:
+:
+:Used when direct connection to client lost. Macros: %%L, %%@.
+ Default: "DCC connection to %%L lost.".
+
+fset dcc_closed
+:
+:
+:Used when direct connection was closed before login. Macros: %%L, %%P,\
+ %%@, %%* (reason).
+ Default: "DCC chat to %%L closed: %%*.".
+
+fset dcc_input_connection
+:
+:
+:Used when someone connected on listening socket for direct connection.\
+ Macros: %%* (ident), %%@, %%L, %%P.
+ Default: "Input connection from %%@:%%P, ident %%*.".
+
+fset w_head
+:
+:
+:That is header for output of %^w%^ command. No macros.
+ Default: " NAME            FROM                     IDLE    WHAT".
+
+fset w
+:
+:
+:That is format of each line of output of %^w%^ command (see S_REPORT in\
+ docs).
+ Default: "%%16L %%24@ %%7- %%*".
+
+fset who_head_master
+:
+:
+:That is header for output of %^who%^ command for masters. No macros.
+ Default: " NAME            SOCK LOGIN@       FROM".
+
+fset who_master
+:
+:
+:That is format of each line of output of %^who%^ command for masters.\
+ (see S_REPORT in\ docs).
+ Default: "%%16L %%4I %%12# %%@%%?- (idle %%-)??".
+
+fset who_head
+:
+:
+:That is header for output of %^who%^ command. No macros.
+ Default: " NAME            LOGIN@       FROM".
+
+fset who
+:
+:
+:That is format of each line of output of %^who%^ command (see S_REPORT in\
+ docs).
+ Default: "%%16L %%12# %%@%%?- (idle %%-)??".
+
+fset cstat_head
+:
+:
+:That is header for output of %^cstat%^ command. No macros.
+ Default: "SOCK NAME                 FROM".
+
+fset cstat
+:
+:
+:That is format of each line of output of %^cstat%^ command (see S_REPORT in\
+ docs).
+ Default: "%%4I %%20L %%@%%?P:%%P??%%?* (%%*)??".

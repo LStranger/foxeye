@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2001  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2005  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -15,70 +15,40 @@
  *     along with this program; if not, write to the Free Software
  *     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * Internal userfile structures. It is the best do not use its outside users.c
+ * Listfile specific functions declarations.
  */
 
-#ifndef _USERS_H
-#define _USERS_H 1
+#ifndef _LIST_H
+#define _LIST_H 1
 
-#include <pthread.h>
-#include "wtmp.h"
+typedef short lid_t;
+#define LID_MIN SHRT_MIN
+#define LID_MAX SHRT_MAX
 
-typedef struct user_chr
-{
-  lid_t cid;			/* channel index in list */
-  userflag flag;
-  char *greeting;		/* greeting or ban comment */
-  time_t expire;
-  struct user_chr *next;
-} user_chr;
+/* special lids */
+#define ID_REM -1	/* removed id */
+#define ID_ME 0		/* my own id */
+#define ID_ANY 150	/* any user/channel/service */
 
-typedef struct user_hr
-{
-  struct user_hr *next;
-  char hostmask[STRING];	/* Warning!!! This field may be variable size,
-				 * don't use 'sizeof(user_hr)' anymore! */
-} user_hr;
+typedef struct USERRECORD clrec_t;
 
-typedef struct user_fr
-{
-  struct user_fr *next;
-  char *value;
-  lid_t id;
-} user_fr;
-
-typedef struct USERRECORD
-{
-  lid_t uid;
-  userflag flag;
-  char *lname;
-  char *rfcname;
-  unsigned progress : 1;	/* is 1 if updating */
-  unsigned ignored : 1;
-  user_chr *channels;
-  user_hr *host;
-  char *passwd;			/* the "passwd" field */
-  union				/* NULL by default */
-  {
-    char *info;			/* the "info" field or ban comment */
-    char *chanmode;		/* channel mode string */
-    struct USERRECORD *owner;	/* owner of this alias */
-  }u;
-  char *charset;		/* the "charset" field - no default */
-  char *login;			/* the ".login" field - "motd" by default */
-  char *logout;			/* the ".logoff" field - NULL by default */
-  char *dccdir;			/* the "dccdir" field */
-  time_t created;
-  struct USERRECORD *next;
-  struct USERRECORD *prev;
-  user_fr *fields;
-  pthread_mutex_t mutex;
-} USERRECORD;
+int Get_Clientlist (INTERFACE *, userflag, const char *, char *);
+int Get_Hostlist (INTERFACE *, const char *);
+userflag Match_Client (char *, char *, const char *);
+userflag Get_Clientflags (const char *, const char *);
+clrec_t *Find_Clientrecord (const uchar *, char **, userflag *, char *);
+clrec_t *Lock_Clientrecord (const char *);
+char *Get_Field (clrec_t *, const char *, time_t *);
+int Set_Field (clrec_t *, const char *, const char *);
+int Grow_Field (clrec_t *, const char *, const char *);
+userflag Get_Flags (clrec_t *, const char *);
+userflag Set_Flags (clrec_t *, const char *, userflag);
+int Add_Mask (clrec_t *, const uchar *);
+void Delete_Mask (clrec_t *, const uchar *);
+void Unlock_Clientrecord (clrec_t *);
 
 lid_t GetLID (const char *);	/* Lname -> LID */
 
-/* async-safe, input userflag XOR'ed and final userflag returned */
-userflag Set_ChanFlags (lid_t, const char *, userflag);
 char *userflagtostr (userflag, char *);
 
 #endif

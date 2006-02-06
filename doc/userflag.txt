@@ -1,0 +1,61 @@
+Since it's a bit hard let's explain what each userflag means:
+flag	user(:service)	bot:direct	user:public	any service (mode/egg)
+------	--------------	--------------	--------------	--------------
+FRIEND	no kick		-		no kick		+dontkickops
+DENY	N:kill		reject		ban		-user(bans|exempts|invites)
+ACCESS	N:access/exempt	leaf		ban exempt	-inactive/autoreconnect/
+INVITE	invite		-*-		invite		-secret
+VOICE	can ask voice	-*-		can ask voice	+autovoice
+QUIET	never voice	-*-		never voice	+revenge|+revengebot
+HALFOP	N:local op	shared		can get halfop	+cycle
+ +AUTO	N:auto-halfop	-		auto-halfop	+enforcebans
+OP	N:op		hub		can get op	+autoop
+ +AUTO	N:autoop	autoconnect	autoop		-/autoconnect/
+MASTER	master/admin	-		master/admin	+protect(ops|friends)
+DEOP	N:never op	-		never op	+bitch
+SPEAK	can simulate	-		auto-voice	+greet
+OWNER	full access	-		full access	+clearbans
+BOT	G:a bot		-		-		+dynamic(bans|exempts|invites)
+UNSHARE	local record	local record	local record	-shared
+
+each lower flag has more priority than upper one
+each public flag has more priority that equivalent server/global one
+
+only OWNER can change MASTER SPEAK OWNER UNSHARED
+only MASTER can change :OP :HALFOP :AUTO VOICE QUIET INVITE
+only OP can change FRIEND :DEOP *BOT
+only HALFOP can change :DENY :ACCESS
+
+ierarchy: *HALFOP->*OP->*MASTER->*OWNER
+          #HALFOP->#OP->*MASTER,#MASTER->*OWNER,#OWNER
+
+so eggdrop's flags are (* not for bots):
+a	OP +AUTO #chan
+b	BOT *
+c	?
+d	DEOP [#chan]
+f	FRIEND [#chan]
+g	SPEAK #chan
+h	-
+j	MASTER fserv
+k *	DENY [#chan]
+m	MASTER [#chan]
+n	OWNER [#chan]
+o	OP #chan
+p *	ACCESS *
+q	QUIET #chan
+t *	OP *
+u	UNSHARED *
+v	VOICE [#chan]
+w	-
+x	ACCESS fserv
+
+eggdrop's botattrs are:
+a	OP
+g	-
+h	OP +AUTO
+i	?
+l	ACCESS
+p	HALFOP
+r	DENY
+s	HALFOP

@@ -1,17 +1,331 @@
+	* core/list.c: to implement Get_Fieldlist() and Lock_byLID().
+	* core/modules.c, core/init.*: to do partial reloading of config.
+	* core/init.c: dc_set() and dc_fset() must show not exact but all
+	  matching names.
+	* core/dispatcher.c: to optimize queueing.
+	* tree/tree.c: to gather garbage in Delete_Key() (?).
+	* core/modules.api: to check for lost descriptions.
+	* core/list.c: to implement Set_Flags().
+	* core/list.c: to check for conflicts with bot Someone and net Someone.
+	* modules/logs/logs.c: to implement '-stripcolor' modifier.
+	* core/lib.c: to implement %{subfmt} macro and SetSubformat().
+
+--- [0.21] * to join on channel and do some control and save logs *
+
+Sun Feb  5 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/foxeye.h, modules/irc/irc.c: added F_END request flag.
+	* modules/autolog: started new module.
+	* core/init.c, modules/irc/irc.c, modules/irc-channel/irc-channel.c:
+	  few coredump fixes.
+	* modules/irc/*: added irc_lcs() helper to correct casemapping.
+
+Sat Feb  4 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/list.c, core/Makefile: done some cleanup.
+
+Fri Feb  3 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/irc-channel/*: implemented the module.
+	* modules/irc/*: implemented different casemappings from server.
+	* core/direct.c, doc/modules.api: extended command "connect" to allow
+	  connecting (and disconnecting) of channels.
+	* core/init.c, doc/modules.api: changed matching for Lname_IsOn() and
+	  Inspect_Client() - they have to work with network type instead of
+	  network name.
+
+--- [0.20] ok
+Sun Jan 29 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/list.c: reverted to case-sensitive Find_Clientrecord().
+	* core/foxeye.h: fixed size of HOSTMASKLEN and minor constants.
+
+Mon Jan 23 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/irc/irc.c: get rid of fmt[].
+
+Wed Mar 23 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/list.*, core/direct.c, core/wtmp.c, modules/irc/irc.c, doc/modules.api:
+	  added an extra parameter for Get_Field(): creating/expiration time.
+	* core/list.c: optimised _get_index() a bit.
+
+Tue Mar 22 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/list.c, core/rwlock_init.*: changed locking scheme on Listfile.
+	* doc/modules.api: documented recent changes in Listfile functions.
+
+Sun Mar 20 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/list.*, core/direct.c, modules/irc/irc.c, modules/irc/msgs.c:
+	  Get_Flags() renamed to Get_Clientflags(), Get_Flags() works now
+	  for locked clientrecord.
+
+Sat Mar 19 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/foxeye.h: A_CREATOR changed to A_ADMIN (see UltimateIRCd).
+	* modules/irc/irc.c: rewritten parsing of RPL_ISUPPORT.
+
+Sat Mar 12 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/init.c: added cleanup to Confirm() since it may be cancelled.
+	* core/dispather.c, core/foxeye.h: added I_PENDING interface flag.
+
+Sat Mar  5 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/list.c, doc/userflag.txt: revised checks in dc_chattr().
+
+Thu Mar  3 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/list.c, doc/modules.api: changed return of Get_Flags() for nets.
+
+Tue Mar  1 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/dispatcher.c, core/foxeye.h, modules/irc/msgs.c: hidden queue
+	  structure inside dispather.c.
+
+Wed Feb 23 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/foxeye.h, core/protos.h, core/init.c: new typedef modeflag for
+	  Inspect_Client() return value.
+	* doc/modules.api: documented a bit more.
+
+Mon Feb 21 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* acinclude.m4, configure.in, core/Makefile, modules/Makefile.mods:
+	  fixed libs statements.
+	* core/lib.c, core/help.c: replaced strlower() with safe_strlower().
+	* core/list.c: replaced rfc2812_strlower() with safe_strlower().
+	* core/init.c, core/protos.h: implemented Lname_IsOn() and
+	  Inspect_Client() with appropriate bindtables.
+
+Sun Feb 20 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/dispatcher.c: optimized requests allocation.
+
+Sat Feb 19 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* doc/modules.api: fixed description of Read_Socket().
+
+Fri Feb 18 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/dispatcher.c: implemented output conversion in Add_Request().
+	* core/direct.c, modules/irc/irc.c: implemented input conversion.
+
+Thu Feb 17 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/conversion.*, core/foxeye.h, core/init.* core/Makefile, acinclude.m4, configure.in, help/set:
+	  introduced base charset conversions support.
+
+Tue Feb 15 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/direct.c core/dispatcher.c core/foxeye.h core/init.c core/main.c core/modules.c core/protos.h core/sheduler.c doc/modules.api modules/irc/irc.c modules/irc/irc.h modules/irc/msgs.c modules/irc-channel/irc-channel.c modules/logs/logs.c:
+	  removed F_RELAYED and F_REJECTED flags, IFRequest now returns REQ_*.
+	* core/foxeye.h, modules/irc/msgs.c: introduced F_MINE flag.
+	* core/wtmp.c: fixed bug in _scan_wtmp().
+
+Mon Feb 14 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/foxeye.h, core/direct.c, modules/irc/irc.c, modules/irc/msgs.c:
+	  renamed I_LINK to I_SERVICE as more associative.
+	* core/dispatcher.c, doc/modules.api: send S_TERMINATE instead of
+	  S_SHUTDOWN to I_CONNECTs on normal shutdown.
+
+Sun Feb 13 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/help.c, core/init.c, core/lib.c, core/direct.c, core/main.c, core/protos.h, doc/help.format, doc/modules.api, modules/irc/irc.c, modules/irc/msgs.c:
+	  added "idle time" conversion to printl().
+	* core/dispatcher.c, core/init.c, core/main.c, core/modules.c, core/sheduler.c, core/direct.c, core/foxeye.h, core/protos.h, doc/modules.api, modules/logs/logs.c, modules/irc/irc.*, modules/irc/msgs.c:
+	  changed return type of IFRequest to flag_t.
+
+Sat Feb 12 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/lib.c, core/help.c: fixed incorrect formatting and empty lines.
+
+Sun Feb  6 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/irc/ircparams.h: removed to foxeye.h since it's common. :)
+
+Sat Feb  5 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/direct.c: found and fixed my bug with pthread_cleanup_push().
+	* modules/irc/irc.c: fixed confilct with non-ready-yet socket in
+	  _irc_request().
+	* modules/irc/ircparams.h, modules/irc/irc.c: introduced some server
+	  parameters table.
+	* core/sheduler.c: added debug for timers too.
+	* core/list.c: fixed bug with new field.
+	* core/dispatcher.c: fixed bug with requests for signals when new
+	  interface inserting at that time.
+
+Fri Feb  4 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/list.c: found and fixed possibility of deadlock on shutdown.
+	* modules/irc/irc.*, modules/irc/msgs.c: own messages logging was
+	  missed, fixed.
+	* doc/tech.txt, ui/ui.h: created common header file for UIs.
+	* core/list.c: improved syntax dc__puser(). now it is:
+	  +user [-<network>] lname [hostmask [attrs]]
+	* modules/irc-channel: started new module.
+
+Thu Feb  3 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/irc: got working.
+	* core/dispatcher.c: fixed bug with dprint() in vsadd_request().
+	* core/list.c: special records were ignored, fixed.
+	* help/main, help/set, modules/logs/logs.help: updated help files.
+	* missing: updated version.
+	* modules/irc/irc.c: delayed autoconnection: listfile not loaded on
+	  start.
+	* core/init.c: fixed serious bug in Delete_Binding().
+
+Wed Feb  2 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/irc/*: implemented release of garbage of I_CLIENTs.
+
+Sat Jan 29 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/dispatcher.c: replased strchr() with strrchr() since client name
+	  at some services may have '@' in it.
+	* core/init.c: changed B_MATCHCASE from keyword to match type.
+	* core/lib.c: speedup: do strcmp() in match() if no wildcards in mask.
+	* modules/irc: finished somehow.
+
+Wed Jan 26 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/foxeye.h, core/main.c, core/list.c, core/direct.c: reserved
+	  some bits for message type.
+	* core/dispatcher.c: removed msg2nick() and notice2nick() as nonsence.
+
+Mon Jan 24 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/irc/*: draft of irc base support done, no msgs yet.
+	* core/foxeye.h, core/dispatcher.c: hidden queue_t struct.
+	* core/sheduler.c: don't check flood if flood max counter is set to 0.
+
+Sun Jan 23 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/list.c: hostmasks now will be saved in lower case.
+	* core/list.c: speedup _del_userrecord() by _del_usermask -> _delhost.
+	* doc/modules.api: added some words about pthread_cancel().
+
+Sat Jan 22 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/socket.*, core/direct.c: we must split AddSocket() to two
+	  GetSocket() and SetupSocket() for cancellation availability.
+	* core/direct.c, doc/modules.api: changed cancellation mechanics for
+	  Connect_Host().
+
+Thu Jan 20 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/foxeye.h: added I_AUTHPASS and U_NOAUTH.
+	* core/direct.c, doc/modules.api: changed "login" bindtable.
+
+Tue Jan 18 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/main.c, core/direct.c: was missed pthread_*() for cleanup
+	  everywhere so fixed.
+	* core/direct.*, doc/modules.api: changed and documented Listen_Port()
+	  and Connect_Host().
+	* core/socket.c: ReadSocket() now does not memmove() now.
+	* core/socket.*, doc/modules.api: don't perform any memory rewriting
+	  with WriteSocket() but advance pointers instead. Also this function
+	  sends only binary data now so caller have to format it itself.
+
+Sun Jan 16 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/list.*, doc/modules.api: implemented Get_Clientlist() and
+	  Get_Hostlist().
+	* core/list.c, core/direct.c: done unaliasing where it's possible.
+	  Get_Field() now returns "host" Lname if asked for NULL field.
+
+Sat Jan 15 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* README.ru, core/foxeye.h: revised network ierarchy.
+	* core/direct.c: added new bindtable "connect" then implemented
+	  dc_connect() and dc_disconnect().
+	* configure.in: need autoconf >= 2.50.
+	* modules/irc: renamed from irc-common.
+
+--- [0.12] ok
+Wed May 22 2004 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/lib.c, core/protos.h, modules/irc-common/irc.c: moved
+	  parce_ircparam() into module.
+
+Mon Mar 22 2004 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/irc-common: new module.
+	* core/direct.*: added Connect_Host().
+	* core/direct.*, core/init.c, core/list.c, core/main.c: changed
+	  session_t to peer_t as more associative.
+
+--- [0.11] ok
+Tue Nov 11 2003 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/direct.c: we should not get default hostname for listen, fixed.
+	* core/dispatcher.c: fixed tree names error.
+	* core/lib.c: fixed conditional substitution errors.
+	* core/sheduler.c: we should not drop tables on rehash, fixed.
+	* modules/logs/logs.c: fixed neverending cycle in logfile_printlevel().
+
+Mon Nov 10 2003 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/direct.c, core/socket.*, doc/modules.api: added M_POLL transfer
+	  mode and redone parsing for non-raw transfers.
+	* core/direct.c, core/dispatcher.c, core/init.c, core/lib.c, core/list.c, core/main.c, core/sheduler.c, modules/logs/logs.c:
+	  fixed a couple of bugs (get rid of some SIGSEGVs).
+
+Wed Nov  5 2003 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/dispatcher.c: fixed disallowed recursion for get request.
+	* core/init.c: a little fix in init().
+	* core/wtmp.c: fixed calls of expand_path().
+	* modules/logs/logs.c: was missed LF at EOL, fixed.
+
+Mon Nov  3 2003 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/dispatcher.c, core/init.c, core/direct.c, doc/modules.api:
+	  changed shutdown process.
+
+Sun Nov  2 2003 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/sheduler.c: implemented KillTimer(), fixed a bit sheduler.
+	* core/init.*, core/modules.c, core/main.c, core/direct.*, core/formats.default, doc/modules.api:
+	  change all reports scheme
+	* core/direct.c, core/help.c, core/init.c: fixed some buggy calls of
+	  New_Request() and Add_Request().
+	* modules/logs/logs.c, modules/logs/logs.help: added parameter -rpath
+	  for command "logfile".
+
+Sat Nov  1 2003 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/lib.c: fixed two bugs in printl().
+	* doc/help.format: it had no field width mentions, fixed.
+
+Fri Oct 31 2003 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/logs/logs.c, modules/logs/logs.help: implemented the module.
+
+Tue Oct 28 2003 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/help.c: corrected case-insensitive search.
+	* core/lib.c, doc/modules.api: added parse_ircparams() function.
+	* core/init.c: implemented help for Start_FunctionFromConsole().
+	* core/list.c, core/foxeye.h: redone U_* list, changed dc_chattr().
+
+Sun Oct 26 2003 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* doc/modules.api, help/set, help/main: misc documentation updates.
+
+Thu Oct 16 2003 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/socket.*: added CloseSocket() function.
+	* core/direct.*: added Session_Put() and Session_Get() functions.
+	* core/direct.*, core/main.c, core/foxeye.h: changed implementation
+	  of session_t, deleted '.console' support for I_CONSOLE type.
+	* core/direct.*: added Listen_Port() function.
+	* doc/modules.api: updated documentation.
+
+Sun Oct 12 2003 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/lib.c, core/list.c, core/direct.c: changed syntax of function
+	  rfc2812_strlower().
+	* tree/tree.*: added Find_Leaf() function.
+	* core/dispatcher.c: implemented fast interface search.
+	* core/list.c: revised listfile loading/saving.
+	* Makefile.cvs: added support for accvs.cfg.h and accvs.api.
+	* doc/modules.api: updated documentation.
+
+Sat Oct 11 2003 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* tree/tree.c: reset data ptr for deleted leaf when it was last.
+	* core/foxeye.h, core/init.c: implemented tree-hash for B_UNIQ type.
+	* core/list.c: added Grow_Field() function.
+	* core/wtmp.*, core/list.c: changed to using W_CHG and W_DEL.
+	* core/list.*: changed locking scheme.
+
+Sat Oct  4 2003 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/users.*: renamed to list.* ones.
+	* core/dcc.*: renamed to direct.* ones.
+	* core/init.c, core/foxeye.h, core/list.c: added B_UNDEF.
+	* core/foxeye.h, core/direct.c, core/main.c, core/list.c: changed
+	  interface types list a bit.
+
+Fri Oct  3 2003 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/socket.c: rewritten in unlocking style in hope that words will
+	  be ever read at once (no byte collisions).
+
+Wed Oct  1 2003 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/dcc.c, core/dcc.h: removed IRC-specific code to module irc.
+
+Sat Oct 26 2002 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/dcc.c, core/foxeye.h: introduced I_CONNECT interface type.
+
 Sat Oct 19 2002 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/socket.c: fixed raw socket mode.
 	* core/dcc.*: cleaned up chat/telnet handlers.
 
 Tue Oct 15 2002 Andriy Gritsenko <andrej@rep.kiev.ua>
-	* core/dcc.*, core/foxeye.h, core/users.c:
-	  revised file service mentions in core and access levels.
+	* core/dcc.*, core/foxeye.h, core/users.c: revised file service
+	  mentions in core and access levels.
 
 Fri Aug 16 2002 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dcc.c, core/dispatcher.c, core/help.c, core/init.c, core/modules.c, core/users.c, core/wtmp.c:
 	  checked logging.
-	* doc/help.format, core/dcc.c, core/init.h.in:
-	  removed "botnetnick" variable (for multiserver capability).
+	* doc/help.format, core/dcc.c, core/init.h: removed "botnetnick"
+	  variable (for multiserver capability).
 
+--- [0.10] ok
 Sat May 25 2002 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dcc.c, core/init.*, core/dispatcher.c, core/wtmp.c, core/lib.c:
 	  improved functionality and fixed some holes.
@@ -22,13 +336,12 @@ Fri Apr  5 2002 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/sheduler.*: made sheduler interface.
 
 Wed Apr  3 2002 Andriy Gritsenko <andrej@rep.kiev.ua>
-	* modules/tcl, core/init.h.in: corrected charsets support.
+	* modules/tcl, core/init.h: corrected charsets support.
 
 Mon Mar 11 2002 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/lib.c, core/formats.default, core/init.*, core/protos.h, core/help.c, core/dcc.c:
 	  implemented formats support.
 	* core/init.*, core/foxeye.h: added last resort for B_UNIQ.
-	* core/*: killed by bad automake, will be redone later... :(((
 
 Sat Mar  2 2002 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* tree/tree.c, tree/tree.h: simple Tree-Hash library has finished.

@@ -1,0 +1,130 @@
+# first section is usage
+# second section is that config maker will put into config
+# third section is full help
+
+module irc
+:%*
+:
+:Common support of client connection to IRC server: creating/destroying server\
+ connection; sending output traffic; receiving and parsing input traffic;\
+ handling PING-PONG command pair; handling IRC clients interface.
+
+set irc-timeout
+:%* <seconds>
+:Max idle timeout for link to server.
+:This variable defines how mich time link is idle before it will be PINGed.
+ Default: 180.
+
+set irc-connect-timeout
+:%* <seconds>
+:Max connection time for IRC network.
+:This variable defines maximum time for registration on the IRC network.
+ Default: 300.
+
+set irc-retry-timeout
+:%* <seconds>
+:Delay before reconnection the same server.
+:This variable defines how much time we will wait before trying next list\
+ cycle on IRC network reconnection.
+ Default: 120.
+
+set irc-default-port
+:%* <number>
+:Default port to connect IRC server.
+:This variable defines which port will be connected if it isn't specified in\
+ server hostmask.
+ Default: 6667.
+
+set irc-max-penalty
+:%* <seconds>
+:Max IRC server messages penalty.
+:Variable for "Excess flood" protection.
+ Default: 10.
+
+set irc-privmsg-keep
+:%* <seconds>
+:How long keep I_CLIENT interface if there isn't I_QUERY for it.
+:This variable defines how long created interface will be kept by module.\
+ Keeping of it avoids excessive creating/destroying an interface.
+ Default: 30.
+
+set irc-default-nick
+:%* <nick>
+:Default nick in IRC networks.
+:Used on registering on IRC network if there wasn't defined "%^nick%^" field\
+ (list of used nicks) in listfile record for this network.
+ Default: value of variable %^nick%^.
+
+set irc-default-ident
+:%* <ident>
+:Default ident in IRC networks.
+:Used on registering on IRC network. Note that if there is %^identd%^ service\
+ on your host then value of %_ident%_ will be ignored by server.
+ Default: your login name.
+
+set irc-default-realname
+:%* <string>
+:Default realname in IRC networks.
+:Used on registering on IRC network.
+ Default: your system's real name.
+
+set irc-umode
+:%* <+|-modes>
+:Default umode changes in IRC networks.
+:Your startup user mode is set by server (usually it's "+i") but we may\
+ attempt to change it. This variable defines desired changes in user mode\
+ after registering on network.
+
+set irc-privmsg-commands
+:%* <yes|no>
+:Allow or not using of private messages as commands.
+:This variable defines behavior when someone sends private message to me. If\
+ this variable is set to %^yes%^ then it will be parsed and checked for\
+ commands.
+ Default: no.
+
+fset irc-message
+:
+:
+:Used when logging standard message on IRC network. Macros: %%N, %%@, %%L,\
+ %%#, %%*.
+ Default: "<%%N> %%*"
+
+fset irc-notice
+:
+:
+:Used when logging notice on IRC network. Macros: %%N, %%@, %%L, %%#, %%*.
+ Default: "-%%N- %%*"
+
+fset irc-ctcp
+:
+:
+:Used when logging CTCP message on IRC network. Macros: %%N, %%@, %%L, %%#,\
+ %%*.
+ Default: "%%N requested CTCP %%* from %%?#%%#?me?"
+
+fset irc-ctcp-reply
+:
+:
+:Used when logging CTCP reply on IRC network. Macros: %%N, %%@, %%L, %%#, %%*.
+ Default: "CTCP reply from %%N: %%*"
+
+fset irc-action
+:
+:
+:Used when logging action on IRC network. Macros: %%N, %%@, %%L, %%#, %%*.
+ Default: "* %%N %%*"
+
+fset irc-message-command
+:
+:
+:Used when logging private message command on IRC network. Macros: %%N,\
+ %%@, %%L, %%#, %%*.
+ Default: "%%?#<<?(?%%N%%?#>>?!%%@)? !%%L! %%*"
+
+fset irc-ctcp-command
+:
+:
+:Used when logging CTCP command on IRC network. Macros: %%N, %%@, %%L,\
+ %%#, %%*.
+ Default: ""

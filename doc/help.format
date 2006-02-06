@@ -1,15 +1,22 @@
-Each help and motd file contains number of strings, describes help topics.
+Help file structure.
+=====================
+Each help file contains number of strings, describes help topics.
 
 Each line identified by its first character (not for motd file!):
 "#"	this line is comment.
-" "	this line just continues previous.
+" "	this line continues previous text.
 ":"	this line is help - first line after topic is usage,
-		second line is short help (for generated config and msg help)
-		third line is full help (for dcc help)
-<any>	this line is help topic (one or two words)
+		second line is short help (for generated config and msg help),
+		third line is full help (for dcc help).
+<any>	this line is help topic (one or two words).
 
+"\" at end of line joins current line with next one with a space char, extra
+spaces (and tabs) will be removed.
+
+Summary list of all printl() directives.
+=========================================
 Helps can contain the macros prepends with % (percent):
-"*"	arguments (help topic)
+"*"	help topic for help file or extra message for printl()
 "X"	start color foreground, where X:
 	k   black
 	b   blue
@@ -32,31 +39,38 @@ Helps can contain the macros prepends with % (percent):
 "_"	start/stop understriking
 "v"	start/stop inverse
 "f"	start/stop flashing (blinking)
-"t"	the current time
-"="	the bot nickname (or botnetnick)
+"t"	current time in format HH:MM
+"-"	idle time in form "%ed:%Hh" or "%kh:%Mm" or "%Mm:%Ss" (see strftime())
+"="	own nickname on the botnet
 "s"	operating system name
-"%"	percent as is
-"N"	the user nickname (help only)
-"L"	the user login name (motd only)
-"@"	the user hostname (motd only)
+"%"	percent sign
+"N"	the user nickname (but motd)
+"L"	the user login name (but help)
+"@"	the user hostname (but help)
 
 these macros are present in printl() but aren't used by help/motd:
-"#"	channel (or comma separated channels list)
+"#"	target (or comma separated targets list)
 "I"	the user's IP
 "P"	the port of connection
+
+macros "*","t","=","s","N","L","@","#","I","P","-" may have optional field
+width value as digits between % and macro character (for example %10N) - if
+that field width is used then substitution will be padded by spaces to that
+width if substituting value string is too short.
+
+note that all colors are in mIRC color scheme so if you want other then you
+must convert it yourself.
 
 conditional macro:
 "%?C<if>?<else>?
 
 	if C isn't empty then print <if> sequence else print <else> sequence.
 	C may be:
-		H	user's nickname
+		N	user's nickname
 		@	user's hostname
 		L	user's login name
-		#	channel(s)
+		#	target(s)
 		I	user's IP
 		P	port
-		*	extra arguments
-
-"\" at end of line joins current line with next one with a space char, extra
-spaces (and tabs) will be removed.
+		-	idle time
+		*	extra message
