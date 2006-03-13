@@ -6,7 +6,8 @@ RAW   "iirrcc--rraaww"    MATCHCASE
 	    int _n, char **_p_a_r_a_m_s, char *(*_l_c) (char *, const char *, size_t));
     Used when bot get any message from server. Optional _p_r_e_f_i_x is
     message source (see the RFC), _c_o_m_m_a_n_d is keyword like "PRIVMSG"
-    with optional parameters _p_a_r_a_m_s.
+    with optional parameters _p_a_r_a_m_s. Note: returned value -1 of the
+    binding has unusual meaning: parameters are incorrect.
       Matching: command  (any flags are ignored)
       Script args: network sender command (params)...
 

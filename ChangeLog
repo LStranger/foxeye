@@ -9,8 +9,103 @@
 	* core/list.c: to check for conflicts with bot Someone and net Someone.
 	* modules/logs/logs.c: to implement '-stripcolor' modifier.
 	* core/lib.c: to implement %{subfmt} macro and SetSubformat().
+	* doc/foxeye.sgml, help/main: to document switch '-D'.
+	* core/lib.c: to implement optimized strfcpy() and gettoken().
 
---- [0.21] * to join on channel and do some control and save logs *
+--- [0.3g] * to test all *
+
+Sat Mar 11 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/init.c: implemented long waited bindtable conversion from UNDEF.
+	* modules/logs/logs.c: fixed unlimited growth of queue if logfile is
+	  locked by someone else.
+	* core/init.c, core/protos.h, core/direct.c: introduced new function
+	  Bindtable_Name() and implemented help for "ss-*" bindtables too.
+	* core/init.h, core/protos.h, doc/module.template.c, modules/logs/logs.c, modules/irc/irc.c, modules/irc-channel/irc-channel.c:
+	  implemented CheckVersion macro for simple core version control (some
+	  header files may be changed between major versions), checking made
+	  by three first chars of version string.
+
+Fri Mar 10 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* doc/userflag.txt: cleared '+clearbans' since it's obsoleted.
+	* modules/irc-channel/chmanagement.c, modules/irc-channel/irc-channel.c:
+	  implemented some ss-irc commands and bans/exempts/invites expiring.
+	* modules/irc-channel/chmanagement.c: implemented on-join greeting.
+	* core/list.c: fixed botnet control messages for +name and -name.
+	* modules/irc-channel/irc-channel.c, modules/irc-channel/chmanagement.c:
+	  implemented delay between attempts to change channel mode for the
+	  same nick, it may be abusive if we op/deop someone too fast.
+
+Thu Mar  9 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/irc-channel/irc-channel.c: fixed absence of reason for
+	  on-join kickban.
+	* modules/irc/irc.c, modules/irc-channel/irc-channel.c: moved variable
+	  irc-ignore-ident-prefix from irc module to irc-channel module.
+	* core/list.c, doc/modules.api: hostmask with wildcards must be matched
+	  as without them in Find_Clientrecord(), double logic removed.
+
+Wed Mar  8 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/list.*, doc/modules.api: changed return value of Delete_Mask()
+	  to int.
+	* core/list.c, core/dispatcher.c, core/init.c, core/modules.c, core/sheduler.c, core/direct.c, core/protos.h, doc/modules.api, modules/irc-channel/irc-channel.c, modules/irc/irc.c, modules/irc/msgs.c, modules/logs/logs.c:
+	  swapped first two parameters of Add_Iface(). Sorry, it was pending...
+
+Wed Feb 22 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/direct.*, core/main.c, modules/irc/irc.c: changed structure
+	  peer_t a bit, dcc_state renamed into peer_state and D_* into P_*.
+
+Mon Feb 20 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* Makefile.cvs, doc/modules.api, po/POTFILES.in: implemented POTFILES
+	  add-ons for CVS as <modulename>/accvs.POTFILES.
+	* core/direct.*, core/main.c, doc/modules.api: added "ss-*" bindtable
+	  with support in parser; function Dcc_Parse() has been made public.
+	* core/direct.c: implemented "chat off" by chat channel < 0.
+
+Sun Feb 19 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/direct.*, core/main.c: added field 'parse' to structure peer_t.
+
+Sat Feb 18 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/irc-channel/irc-channel.*: added L_HASREGMODE and debugs.
+
+Mon Feb 13 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/dispatcher.c, core/main.c, help/set: fixed locale setting a bit.
+	* core/list.c, doc/modules.api, help/main: updated concept of Listfile
+	  records and documentation about Listfile.
+
+Sun Feb 12 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/direct.c: defined macro LOG_CONN because it's better readable.
+	* core/protos.h, core/dispatcher.c, core/socket.c: defined macroses:
+	  ERROR, WARNING, and DBG.
+	* configure: implemented '--enable-profile' switch.
+	* core/direct.c, core/dispatcher.c, core/help.c, core/init.c, core/list.c, core/modules.c, core/sheduler.c, core/wtmp.c, doc/tech.txt, modules/irc/irc.c, modules/irc/msgs.c, modules/logs/logs.c:
+	  changed debug log levels a bit.
+	* modules/irc/irc.c: changed behavior of bindtable "irc-raw": returned
+	  value -1 means incorrect parameters so is error.
+	* core/foxeye.h, modules/logs/logs.c, modules/logs/logs.help, modules/irc-channel/irc-channel.c:
+	  implemented F_PREFIXED flags mask.
+
+Sat Feb 11 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/main.c: added static prefixes that were missed.
+	* modules/irc-channel/chmanagement.c: fixed bug with number of
+	  parameters in ircch_parse_modeline().
+	* modules/irc-channel/irc-channel.*: completely rewritten netjoin
+	  detection.
+
+Thu Feb  9 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/dispatcher.c: enabled switch '-D' independent of '-d'.
+	* modules/irc/msgs.c: fixed coredump in irc_privmsgin().
+
+Tue Feb  7 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/conversion.c: fixed coredump with empty conversion.
+	* core/direct.c: fixed dc_connect(), added reason support to
+	  dc_disconect().
+	* core/dispatcher.c, core/main.c, core/init.h: implemented switch '-D'.
+	* core/dispatcher.c: rewritten conversions and I_PENDING support.
+	* core/lib.c: fixed error in NextWord_Unquoted().
+	* core/list.c: fixed coredump in Get_Clientlist() for unknown lname.
+	* core/socket.c: changed SetupSocket() to be blocking until connect,
+	  _socket_find_line() got again to work.
+	* modules/irc/irc.c: fixed quitting and isupport parsing.
+	* modules/irc-channel: got working.
 
 Sun Feb  5 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/foxeye.h, modules/irc/irc.c: added F_END request flag.
@@ -19,6 +114,7 @@ Sun Feb  5 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  few coredump fixes.
 	* modules/irc/*: added irc_lcs() helper to correct casemapping.
 
+--- [0.21] ok
 Sat Feb  4 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/list.c, core/Makefile: done some cleanup.
 

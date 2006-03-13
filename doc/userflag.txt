@@ -1,21 +1,22 @@
 Since it's a bit hard let's explain what each userflag means:
-flag	user(:service)	bot:direct	user:public	any service (mode/egg)
+flag	user(:service)	bot:direct	user:public	service/net (mode/egg)
 ------	--------------	--------------	--------------	--------------
 FRIEND	no kick		-		no kick		+dontkickops
 DENY	N:kill		reject		ban		-user(bans|exempts|invites)
-ACCESS	N:access/exempt	leaf		ban exempt	-inactive/autoreconnect/
+ACCESS	N:access/exempt	leaf		ban exempt	-inactive/autoreconnect
 INVITE	invite		-*-		invite		-secret
 VOICE	can ask voice	-*-		can ask voice	+autovoice
 QUIET	never voice	-*-		never voice	+revenge|+revengebot
 HALFOP	N:local op	shared		can get halfop	+cycle
- +AUTO	N:auto-halfop	-		auto-halfop	+enforcebans
+ +AUTO	N:auto-halfop	-		auto-halfop	-
 OP	N:op		hub		can get op	+autoop
- +AUTO	N:autoop	autoconnect	autoop		-/autoconnect/
+ +AUTO	N:autoop	autoconnect	autoop		+enforcebans/autoconnect
 MASTER	master/admin	-		master/admin	+protect(ops|friends)
 DEOP	N:never op	-		never op	+bitch
 SPEAK	can simulate	-		auto-voice	+greet
-OWNER	full access	-		full access	+clearbans
-BOT	G:a bot		-		-		+dynamic(bans|exempts|invites)
+OWNER	full access	-		full access	-
+BOT	G:a bot		-		-		-
+NOAUTH	need no auth	-		sticky		+dynamic(bans|exempts|invites)
 UNSHARE	local record	local record	local record	-shared
 
 each lower flag has more priority than upper one

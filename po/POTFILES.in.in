@@ -8,4 +8,3 @@ core/lib.c
 core/main.c
 core/list.c
 core/sheduler.c
-modules/irc/irc.c

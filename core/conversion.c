@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003-2005  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2003-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -188,20 +188,22 @@ static size_t _do_conversion (iconv_t cd, char **buf, size_t sz,
     sl--;
   }					/* do ignore unknown */
   else if (iconv (cd, (ICONV_CONST char **)&line, &sl, &sbuf, &sz) == (size_t)(-1))
-    dprint(1, "conversion error: %lu chars left unconverted", sz); /* error */
+    WARNING ("conversion error: %lu chars left unconverted", sz); /* error */
   return (sbuf - *buf);
 }
 
 size_t Do_Conversion (conversion_t *conv, char **buf, size_t bufsize,
 		      const char *str, size_t len)
 {
-  return _do_conversion (conv->cdin, buf, bufsize, str, len);
+  return _do_conversion (conv ? conv->cdin : (iconv_t)(-1), buf, bufsize,
+			 (const unsigned char *)str, len);
 }
 
 size_t Undo_Conversion (conversion_t *conv, char **buf, size_t bufsize,
 			const char *str, size_t len)
 {
-  return _do_conversion (conv->cdout, buf, bufsize, str, len);
+  return _do_conversion (conv ? conv->cdout : (iconv_t)(-1), buf, bufsize,
+			 (const unsigned char *)str, len);
 }
 
 #endif

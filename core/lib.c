@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 1996-8 Michael R. Elkins <me@cs.hmc.edu>
  * Copyright (C) 1999 Thomas Roessler <roessler@guug.de>
- * Copyright (C) 1999-2005  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -548,9 +548,10 @@ char *NextWord_Unquoted (char *name, const char *line, size_t s)
       break;
     if (s > 1)
     {
-      *name++ = *c++;
+      *name++ = *c;
       s--;
     }
+    c++;
   }
   if (s)
     *name = 0;

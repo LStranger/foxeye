@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2005-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -20,22 +20,24 @@
 #define _UI_H 1
 
 enum {
-  T_WINNAME,			/* set name for next text */
-  T_WINACT,			/* set name and activate */
-  T_OFFSET,			/* set offset for next text */
+  T_WINNAME,			/* select window name for next packet */
+  T_WINACT,			/* select name and activate */
+  T_OFFSET,			/* set offset <val> for text (0 - autoshift) */
   T_PRIVTEXT,			/* private/highlighted text */
   T_GROUPTEXT,			/* group/public text */
   T_INFO,			/* info text */
   T_ADDLIST,			/* add people list */
   T_DELLIST,			/* delete people list */
-  T_DOWN,			/* scroll down <arg> lines */
-  T_UP,				/* scroll up <arg> lines */
+  T_SCROLL,			/* shift offset by <val> lines */
+  T_GET,			/* get lines from <val1+val2> up to <val1> */
   T_HEADER,			/* set header for window */
   T_TARGET,			/* change window target */
+  T_HISTORY,			/* saved input (start <val> is max size) */
   T_INPUT,			/* put <arg> in input line */
   T_PROMPT,			/* set prompt for window input */
   T_ASK,			/* asked for new input with prompt <arg> */
-  T_CLOSE			/* close window/client */
+  T_CLOSE,			/* close window */
+  T_FRAGMENT			/* it's fragment of packet, to be continued */
 };
 
 #define UI_PKT_LEN 2048

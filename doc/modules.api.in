@@ -8,11 +8,19 @@ Preamble.
     module being initialised on startup then no listfile is loaded yet.
     Files in the module source: *.c, *.h - to compile, never installed;
     *.help - will be installed to help directory without last name part
-    (i.e.".help"); accvs.m4, accvs.api and accvs.cfg - additions to main
-    configure.in, doc/modules.api and core/foxeye.h, for CVS only, are
-    not distributable.
+    (i.e.".help"); accvs.m4, accvs.api, accvs.cfg and accvs.POTFILES -
+    additions to main configure.in, doc/modules.api, core/foxeye.h and
+    po/POTFILES.in, for CVS only, are not distributable.
   Module have to have one or more of: interface, bind table, binding, or
     script interface. See descriptions below for ones.
+  Each module is fully independent part with own functionality that may
+    be written on any programming language. Module interoperable with
+    other modules and core only via this API and any module CANNOT rely
+    on any functionality beyond of this API. If you found something from
+    existing code and that isn't stated in this document then be sure it
+    may be changed in the future and it WILL be changed even. And if you
+    think you cannot do something without hook then you just don't know
+    that you can do it with no hooks. Enjoy! :)
 
 What is an interface.
 --------------------
@@ -32,15 +40,30 @@ What is an interface.
 
 What is a bind table.
 -------------------
-  The bind table is check table contains one or more binding what can be
-    checked for matching input string. Each bind table can be checked
+  The bind table is check table contains one or more bindings what can
+    be checked for matching input string. Each bind table can be checked
     with only bot interface and must contain bindings one type and one
     purpose.
 
 What is a binding.
 ----------------
-  The binding is string. When input is matched to it, bound function is
-    called.
+  The binding consist of string to match and bound function. When some
+    input is matched to string, bound function is called.
+
+Client records in listfile.
+-------------------------
+  Listfile has two types of client record. First one is ordinary name,
+    second type is special name. Special name is a kind of limited one,
+    since it never may be connected via someone else but it always may
+    play a community role for others instead. Special names are names of
+    networks, names of channels, or may be something similar. Special
+    names always have '@' in the name and ordinary never have it. Name
+    for a network starts from a '@' and never have other '@', and name
+    for an other community has '@' in middle of name, last '@' starts
+    network name which community belongs to.
+  Client may never have spaces, commas, control chars or colons within
+    it's name. All rest characters are permitted. Case conventions are
+    locale-dependent.
 
 Interpreters.
 ------------
@@ -113,9 +136,9 @@ Common API:
 
   Note: main thread has dispatcher state locked on execution of any of
   interface functions so if you want call pthread_join() from there you
-  must call Unset_Iface() before and Set_Iface(NULL) after.
+  must call Unset_Iface() before that and Set_Iface(NULL) after that.
 
-  INTERFACE *AAdddd__IIffaaccee (const char *_n_a_m_e, iftype_t _t_y_p_e,
+  INTERFACE *AAdddd__IIffaaccee (iftype_t _t_y_p_e, const char *_n_a_m_e,
                         iftype_t (*_s_i_g___f_u_n_c) (INTERFACE *, ifsig_t),
 			int (*_r_e_q___f_u_n_c) (INTERFACE *, REQUEST *),
 			void *_d_a_t_a);
@@ -299,6 +322,9 @@ Bindings API:
     binding.
 	Reenterability: none
 
+  const char *BBiinnddttaabbllee__NNaammee (bindtable_t *_t_a_b_l_e);
+	Reenterability: async-safe
+
   binding_t *AAdddd__BBiinnddiinngg (const char *_t_a_b_l_e_n_a_m_e, const char *_m_a_s_k,
 			  userflag _g_u_f, userflag _c_u_f, Function _f_u_n_c);
     Adds binding to bindtable _t_a_b_l_e_n_a_m_e. Strings checked via bindtable
@@ -382,17 +408,16 @@ Listfile API:
 
   clrec_t *FFiinndd__CClliieennttrreeccoorrdd (const unsigned char *_m_a_s_k, char **_n_a_m_e,
 			      userflag *_u_f, char *_n_e_t);
-    Finds user that has current hostmask _m_a_s_k ([[nick!]ident@]host]) and
+    Finds user that is matched to hostmask _m_a_s_k (nick!ident@host]) and
     gets his user login _n_a_m_e (Lname below) and his userflags _u_f compiled
     from global flags and flags for network _n_e_t (if _n_e_t is NULL then for
     direct service). Locks Listfile record of that user. Returns pointer
-    to internal Listfile record structure. If _m_a_s_k contains wildcards
-    then first matched user will be found and best matched otherwise.
-    Function can find only regular user record not special or alias,
-    search is case sencitive so _m_a_s_k must be in lowercase. Note: Locks
-    in core are complex so until you want deadlock NEVER use Listfile
-    API calls from above or any API calls that are marked as thread-safe
-    or reenterable while any record in Listfile is locked!
+    to internal Listfile record structure. Function never can find any
+    special user record or alias. Also search is case sencitive so _m_a_s_k
+    must be in lowercase. Note: Locks in core are complex so until you
+    want deadlock NEVER use Listfile API calls from above or any API
+    calls that are marked as thread-safe or reenterable while any record
+    in Listfile is locked!
 	Reenterability: thread-safe
 
   clrec_t *LLoocckk__CClliieennttrreeccoorrdd (const char *_n_a_m_e);
@@ -440,12 +465,13 @@ Listfile API:
   int AAdddd__MMaasskk (clrec_t *_u_s_e_r, const unsigned char *_m_a_s_k);
     Adds hostmask _m_a_s_k at form nick!user@host for user with internal
     Listfile record structure at _u_s_e_r. See match() for hostmask details.
-    Returns nonull value if successful.
+    Returned value is not 0 if successful.
 	Reenterability: none
 
-  void DDeelleettee__MMaasskk (clrec_t *_u_s_e_r, const unsigned char *_m_a_s_k);
+  int DDeelleettee__MMaasskk (clrec_t *_u_s_e_r, const unsigned char *_m_a_s_k);
     Deletes all hostmasks matching _m_a_s_k from user with internal Listfile
-    record structure at _u_s_e_r. See match() for _m_a_s_k details.
+    record structure at _u_s_e_r. See match() for _m_a_s_k details. Returns -1
+    if no hostmasks left in the record.
 	Reenterability: none
 
   userflag GGeett__FFllaaggss (clrec_t *_u_s_e_r, const char *_s_e_r_v);
@@ -748,6 +774,11 @@ DCC API:
     data was got.
 	Reenterability: none
 
+  void DDcccc__PPaarrssee (peer_t *_s, char *_n_a_m_e, char *_c_m_d, userflag _g_f,
+		  userflag _c_f, int _i_d_x, int _b_o_t_c_h, bindtable_t *_s_s_b_t,
+		  char *_s_e_r_v_i_c_e)
+	Reenterability: none
+
   unsigned short LLiisstteennPPoorrtt (char *_c_l_n, unsigned short _p, char *_c_o_n_f_l_i_n_e,
 			     void (*_p_r_e_h_a_n_d_l_e_r) (pthread_t _t_h, idx_t _s),
 			     void (*_h_a_n_d_l_e_r) (char *_c_l_n, char *_i_d_e_n_t,
@@ -790,18 +821,18 @@ Charset conversions API:
 ------------------------
 #include "conversion.h"
 
-  conversion_t *Get_Conversion (const char *charset);
+  conversion_t *GGeett__CCoonnvveerrssiioonn (const char *_c_h_a_r_s_e_t);
 	Reenterability: thread-safe
 
-  void Free_Conversion (conversion_t *conv);
+  void FFrreeee__CCoonnvveerrssiioonn (conversion_t *_c_o_n_v);
 	Reenterability: thread-safe
 
-  size_t Do_Conversion (conversion_t *conv, char **out, size_t outsz,
-			const char *in, size_t insz);
+  size_t DDoo__CCoonnvveerrssiioonn (conversion_t *_c_o_n_v, char **_o_u_t, size_t _o_u_t_s_z,
+			const char *_i_n, size_t _i_n_s_z);
 	Reenterability: thread-safe
 
-  size_t Undo_Conversion (conversion_t *conv, char **out, size_t outsz,
-			  const char *in, size_t insz);
+  size_t UUnnddoo__CCoonnvveerrssiioonn (conversion_t *_c_o_n_v, char **_o_u_t, size_t _o_u_t_s_z,
+			  const char *_i_n, size_t _i_n_s_z);
 	Reenterability: thread-safe
 
 Calling of bindings:
@@ -829,7 +860,7 @@ Script name -- bindtable name -- flags -- synopsis & description
 
 DCC   "ddcccc"            UCOMPL
   int func(peer_t *_f_r_o_m, char *_a_r_g_s);
-    Used when user enters the command on partyline. Partiline member
+    Used when user enters the command on partyline. Partyline member
     identified with session _f_r_o_m. Arguments _a_r_g_s to command are
     stripped from leading spaces.
       Matching: first word of partyline command without leading '.'.
@@ -986,3 +1017,12 @@ UNLD  "uunnllooaadd"         MASK
     procedure for community _p_u_b_l_i_c on the network _n_e_t. See description
     of that function for any details.
       Matching: network type.
+
+-     "ssss--**"       UNIQ
+  int func(peer_t *_w_h_o, INTERFACE *_w_h_e_r_e, char *_a_r_g_s);
+    Used when user _w_h_o enters server-specific command on user interface.
+    Other side (I_SERVICE or I_CLIENT) is specified by _w_h_e_r_e. Arguments
+    _a_r_g_s to command are stripped from leading spaces. "**" in the name
+    means network type (i.e. "irc", etc.). That's similar to and is
+    extension of "ddcccc" bindtable.
+      Matching: first word of command without leading '.'.

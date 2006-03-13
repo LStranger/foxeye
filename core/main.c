@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2005  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -40,8 +40,6 @@ void unknown (void);
 #include "direct.h"
 
 /* from direct.c */
-extern void Dcc_Exec (peer_t *, char *, char *, userflag, userflag, int);
-
 #ifndef HAVE_SIGACTION
 # define sigaction sigvec
 #ifndef HAVE_SA_HANDLER
@@ -103,7 +101,7 @@ static ssize_t _pipe_find_line (void)
   return (p-1);
 }
 
-ssize_t _read_pipe (char *buf, size_t sr)
+static ssize_t _read_pipe (char *buf, size_t sr)
 {
   ssize_t sg;
 
@@ -136,7 +134,7 @@ ssize_t _read_pipe (char *buf, size_t sr)
   return (sg);
 }
 
-ssize_t _write_pipe (char *buf, size_t *sw)
+static ssize_t _write_pipe (char *buf, size_t *sw)
 {
   register ssize_t sg = 0;
 
@@ -249,11 +247,9 @@ static int _request (INTERFACE *iface, REQUEST *req)
     Add_Request (I_INIT, "*", 0, "%s", buff);
   else if (!sw)
     return REQ_OK;
-  /* run command */
-  else if (buff[0] == '.')
-    Dcc_Exec (dcc, "", &buff[1], -1, -1, -2);
-  else				/* always send to 0 channel of botnet */
-    Add_Request (I_DCCALIAS, ":*:0", F_BOTNET, "%s", buff);
+  /* run command or send to 0 channel of botnet */
+  else
+    Dcc_Parse (dcc, "", buff, -1, -1, -2, 0, NULL, NULL);
   return REQ_OK;
 }
 
@@ -266,7 +262,7 @@ static iftype_t _signal (INTERFACE *iface, ifsig_t signal)
   {
     case S_TERMINATE:
       _kill_pipe (iface);
-      FREE (&((peer_t *)iface->data)->away);
+      FREE (&((peer_t *)iface->data)->dname);
       iface->ift = I_CONSOLE | I_DIED;
       return I_DIED;
     case S_REPORT:
@@ -283,8 +279,7 @@ static iftype_t _signal (INTERFACE *iface, ifsig_t signal)
 	write (Fifo_Out[1], "\n", 1);
       }
       _kill_pipe (iface);
-    default:
-      break;
+    default: ;
   }
   return 0;
 }
@@ -406,11 +401,17 @@ int main (int argc, char *argv[])
   INTERFACE if_console;
   FILE *fp;
   int ch;
+  char *c;
   peer_t *dcc = safe_calloc (1, sizeof(peer_t));
   char buff[STRING];
   pthread_t sit;
 
   strfcpy (locale, getenv ("LANG"), sizeof(locale));
+  if ((c = strchr (locale, '.')))
+  {
+    *c++ = 0;
+    strfcpy (Charset, c, sizeof(Charset));
+  }
   setlocale (LC_ALL, "");
 #ifdef ENABLE_NLS
   bindtextdomain (PACKAGE, LOCALEDIR);
@@ -418,7 +419,7 @@ int main (int argc, char *argv[])
 #endif
   buff[0] = 0;
   /* parse command line parameters */
-  while ((ch = getopt (argc, argv, "cdg:hmn:rtvw")) > 0)
+  while ((ch = getopt (argc, argv, "cdDg:hmn:rtvw")) > 0)
   {
     switch (ch)
     {
@@ -436,6 +437,9 @@ int main (int argc, char *argv[])
 	return 0;
       case 'd':		/* increase debug level */
 	O_DLEVEL++;
+	break;
+      case 'D':		/* fast debuglog on */
+	O_DDLOG = TRUE;
 	break;
       case 'r':		/* reset with defaults */
 	O_DEFAULTCONF = TRUE;
@@ -543,7 +547,7 @@ int main (int argc, char *argv[])
   if_console.IFRequest = &_request;
   if_console.prev = NULL;
   if_console.data = dcc;
-  dcc->state = D_CHAT;
+  dcc->state = P_TALK;
   dcc->socket = -1;
   dcc->uf = -1;
   /* run the dispatcher and fork there */

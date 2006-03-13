@@ -22,7 +22,7 @@
  * Common functions used by modules and submodules
  */
  
-INTERFACE *Add_Iface (const char *, iftype_t, iftype_t (*) (INTERFACE *, ifsig_t), \
+INTERFACE *Add_Iface (iftype_t, const char *, iftype_t (*) (INTERFACE *, ifsig_t), \
 		int (*) (INTERFACE *, REQUEST *), void *);
 INTERFACE *Find_Iface (iftype_t, const char *);
 INTERFACE *Set_Iface (INTERFACE *);
@@ -32,6 +32,7 @@ void Add_Request (iftype_t, char *, flag_t, const char *, ...);
 void New_Request (INTERFACE *, flag_t, const char *, ...);
 int Get_Request (void);
 bindtable_t *Add_Bindtable (const char *, bttype_t); /* init.c */
+const char *Bindtable_Name (bindtable_t *);
 binding_t *Check_Bindtable (bindtable_t *, const char *, userflag, userflag, \
 		binding_t *);
 binding_t *Add_Binding (const char *, const char *, userflag, userflag, Function);
@@ -56,6 +57,11 @@ int Change_Lname (char *, char *);
 void dprint (int, const char *, ...);		/* dispatch.c */
 void bot_shutdown (char *, int);
 int dispatcher (INTERFACE *);
+
+#define ERROR(a...) dprint (0, ##a)
+#define WARNING(a...) dprint (1, ##a)
+
+#define DBG(a...) dprint (100, ##a)
 
 /* ----------------------------------------------------------------------------
  * Common library functions and definitions
@@ -105,6 +111,9 @@ const char *expand_path (char *, const char *, size_t);
 
 #define strfcpy(A,B,C) strncpy(A,B,C), *(A+(C)-1)=0
 
+/* helper function for modules and UIs */
+#define CheckVersion if (strncmp(VERSION,_VERSION,3)) return NULL
+
 /* ----------------------------------------------------------------------------
  * Prototypes for broken systems
  */
@@ -129,5 +138,7 @@ const char *expand_path (char *, const char *, size_t);
 #endif
 
 /* AIX doesn't define these in any headers (sigh) */
+#ifndef HAVE_STRCASECMP
 int strcasecmp (const char *, const char *);
 int strncasecmp (const char *, const char *, size_t);
+#endif

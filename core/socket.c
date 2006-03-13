@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2005  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@ typedef struct
   unsigned short port;
   ssize_t bufpos;
   size_t available;
-  char inbuf[MB_LEN_MAX*MESSAGEMAX]; /* cyclic input buffer */
+  char inbuf[2*MB_LEN_MAX*MESSAGEMAX]; /* cyclic input buffer */
 } socket_t;
 
 static pid_t _mypid;
@@ -55,6 +55,12 @@ static void sigio_handler (int signo)
   poll (Pollfd, _Snum, 0);
 }
 
+static void dmemcpy (void *d, socket_t *s, size_t l)
+{
+  DBG ("dmemcpy(%u+%u)[%*.*s]", s->bufpos, l, l, l, &s->inbuf[s->bufpos]);
+  memcpy (d, &s->inbuf[s->bufpos], l);
+}
+
 /* warning: does not check anything! */
 static void _socket_get_line (char *buf, socket_t *s, size_t l)
 {
@@ -64,7 +70,8 @@ static void _socket_get_line (char *buf, socket_t *s, size_t l)
   {
     /* get tail of buffer */
     bufpos = sizeof(s->inbuf) - s->bufpos;
-    memcpy (buf, &s->inbuf[s->bufpos], bufpos);
+    //memcpy (buf, &s->inbuf[s->bufpos], bufpos);
+    dmemcpy (buf, s, bufpos);
     buf += bufpos;
     l -= bufpos;
     s->available -= bufpos;
@@ -72,7 +79,8 @@ static void _socket_get_line (char *buf, socket_t *s, size_t l)
     /* get head of buffer now */
   }
   if (l)
-    memcpy (buf, &s->inbuf[s->bufpos], l);
+    //memcpy (buf, &s->inbuf[s->bufpos], l);
+    dmemcpy (buf, s, l);
   bufpos = s->bufpos + l;
   available = s->available - l;
   if (available && s->inbuf[bufpos] == '\r')
@@ -95,12 +103,15 @@ static void _socket_get_line (char *buf, socket_t *s, size_t l)
     s->bufpos = bufpos;
 }
 
+/* returns: -1 if not found, 0+ (strlen) if found */
 static ssize_t _socket_find_line (socket_t *s)
 {
   register ssize_t p;
   register char *c;
 
-  if (s->bufpos + s->available > sizeof(s->inbuf))
+  if (!s->available)
+    return (-1);
+  if (s->bufpos + s->available > sizeof(s->inbuf))	/* YZ.....X */
   {
     /* check tail first */
     c = memchr (&s->inbuf[s->bufpos], '\n', sizeof(s->inbuf) - s->bufpos);
@@ -108,21 +119,27 @@ static ssize_t _socket_find_line (socket_t *s)
     if (!c)
       c = memchr (s->inbuf, '\n', s->bufpos + s->available - sizeof(s->inbuf));
   }
-  else
+  else							/* ...XYZ.. */
     c = memchr (&s->inbuf[s->bufpos], '\n', s->available);
   if (!c)
   {
     if (s->available < sizeof(s->inbuf)) /* there is still a chance of LF */
       return (-1);
-    else
-      c = &s->inbuf[s->bufpos];
-  }
-  if (c)
-    p = c - &s->inbuf[s->bufpos];
-  else
+    c = &s->inbuf[s->bufpos];		/* full buffer for out */
     p = sizeof(s->inbuf);
+  }
+  else
+    p = c - &s->inbuf[s->bufpos];
   if (p < 0)
+  {
     p += sizeof(s->inbuf);
+    DBG ("found in buffer: %d(%u:%u)[%*.*s]...", p, s->bufpos, s->available,
+	 sizeof(s->inbuf) - s->bufpos, sizeof(s->inbuf) - s->bufpos,
+	 &s->inbuf[s->bufpos]);
+  }
+  else
+    DBG ("found in buffer: %d(%u:%u)[%*.*s]", p, s->bufpos, s->available, p, p,
+	 &s->inbuf[s->bufpos]);
   if (!p)
     return 0;
   if (c > s->inbuf)
@@ -221,23 +238,36 @@ ssize_t ReadSocket (char *buf, idx_t idx, size_t sr, int mode)
       if (mode)				/* non-raw socket, read into inbuf */
       {
 	/* fill tail first */
+	DBG ("trying read socket %d:(%u:%u)", idx, sock->bufpos, sock->available);
 	if (sg < sizeof(sock->inbuf))
 	{
 	  sg = read (Pollfd[idx].fd, &sock->inbuf[sg], (sizeof(sock->inbuf) - sg));
 	  /* could we fill head too? */
+	  if (sg > 0)
+	    DBG ("got from socket %d:[%*.*s]", idx, sg, sg,
+		 &sock->inbuf[sock->bufpos + sock->available]);
 	  if (sg > 0 && sock->bufpos &&
 	      sock->bufpos + sock->available + sg == sizeof(sock->inbuf))
 	  {
 	    sock->available += sg;
 	    sg = read (Pollfd[idx].fd, sock->inbuf, sock->bufpos);
+	    if (sg > 0)
+	      DBG ("got from socket %d:[%*.*s]", idx, sg, sg, sock->inbuf);
 	  }
 	}
 	/* could we still fill head? */
 	else if (sock->available < sizeof(sock->inbuf))
+	{
 	  sg = read (Pollfd[idx].fd, &sock->inbuf[sg-sizeof(sock->inbuf)],
 		     sizeof(sock->inbuf) - sock->available);
+	  if (sg > 0)
+	    DBG ("got from socket %d:[%*.*s]", idx, sg, sg,
+		 &sock->inbuf[sock->bufpos + sock->available - sizeof(sock->inbuf)]);
+	}
 	else	/* no free space available */
 	  sg = 0;
+	if (sg > 0)
+	  sock->available += sg;
       }
       else				/* raw socket, just read it */
 	sg = read (Pollfd[idx].fd, buf, sr);
@@ -247,7 +277,6 @@ ssize_t ReadSocket (char *buf, idx_t idx, size_t sr, int mode)
 	sg = 0;				/* if socket died then close it */
       }
       Pollfd[idx].revents = 0;		/* we read socket, reset state */
-      sock->available += sg;
       if (mode)
 	sg = _socket_find_line (sock);
       if (sg < 0)
@@ -321,7 +350,7 @@ int KillSocket (idx_t *idx)
   *idx = -1;			/* no more that socket */
   if (i >= _Snum || Socket[i].domain == NULL)
     return -1;			/* no such socket */
-  dprint (3, "socket:KillSocket: fd=%d", Pollfd[i].fd);
+  dprint (4, "socket:KillSocket: fd=%d", Pollfd[i].fd);
   CloseSocket (i);		/* must be first for reentrance */
   Socket[i].port = 0;
   FREE (&Socket[i].domain);	/* indicator of free socket */
@@ -375,7 +404,6 @@ int SetupSocket (idx_t idx, int type, char *domain, unsigned short port)
   ling.l_linger = 0;
   setsockopt (sockfd, SOL_SOCKET, SO_LINGER, (void *) &ling, sizeof(ling));
   fcntl (sockfd, F_SETOWN, _mypid);
-  fcntl (sockfd, F_SETFL, O_NONBLOCK | O_ASYNC);
   if (type == M_LIST || type == M_LINP)
   {
     socklen_t len = sizeof(sin);
@@ -391,12 +419,14 @@ int SetupSocket (idx_t idx, int type, char *domain, unsigned short port)
   }
   else
   {
-    while ((i = connect (sockfd, (struct sockaddr *)&sin, sizeof(sin))) < 0 &&
-	    errno == EAGAIN);
-    if (errno != EINPROGRESS)
+//    while ((i = connect (sockfd, (struct sockaddr *)&sin, sizeof(sin))) < 0 &&
+//	    errno == EAGAIN);
+//    if (errno != EINPROGRESS)
+    if ((i = connect (sockfd, (struct sockaddr *)&sin, sizeof(sin))) < 0)
       return (E_NOCONNECT);
     Socket[idx].bufpos = i;
   }
+  fcntl (sockfd, F_SETFL, O_NONBLOCK | O_ASYNC);
   hptr = gethostbyaddr ((char *)&sin.sin_addr, sizeof(sin.sin_addr), AF_INET);
   if (hptr && hptr->h_name)
     domain = hptr->h_name;	/* subst canonical name */

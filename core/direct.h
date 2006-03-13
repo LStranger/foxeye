@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2005  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -25,22 +25,25 @@
 
 typedef enum
 {
-  D_LOGIN = 0,				/* initiate state - user enters dcc */
-  D_OFFER,				/* waiting for dcc get/send */
-  D_OK,					/* closed session */
-  D_CHAT,				/* user is on dcc chat */
-  D_NOSOCKET,				/* lost socket */
-  D_PRELOGIN				/* out the message and go to D_LOGIN */
-} _dcc_state;
+  P_DISCONNECTED = 0,			/* no socket yet / lost socket */
+  P_INITIAL,				/* out the message and go P_LOGIN */
+  P_LOGIN,				/* main login state */
+  P_TALK,				/* connected, main state */
+  P_IDLE,				/* waiting for response */
+  P_QUIT,				/* has to send quit message */
+  P_LASTWAIT				/* closed session */
+} _peer_state;
 
-typedef struct
+typedef struct peer_t
 {
-  _dcc_state state;
+  _peer_state state;
   userflag uf;
-  char *away;				/* user away message / filename */
+  char *dname;				/* user away message / dest. name */
   idx_t socket;                         /* what socket we have messages to */
-  time_t timestamp;
+  time_t last_input;
   INTERFACE *iface;			/* main interface of this session */
+  void (*parse) (struct peer_t *, char *, char *, userflag, userflag, int, int,
+		 bindtable_t *, char *);/* function to parse/broadcast line */
   size_t inbuf;				/* how much bytes are in buf */
   size_t bufpos;
   char start[13];			/* chat-on time */
@@ -53,6 +56,9 @@ int Check_Passwd (const char *, char *);		/* plain, encrypted */
 
 ssize_t Session_Put (peer_t *, char *, size_t);		/* data transfers */
 ssize_t Session_Get (peer_t *, char *, size_t);
+
+void Dcc_Parse (struct peer_t *, char *, char *, userflag, userflag, int, int,
+		bindtable_t *, char *);			/* default parser */
 
 unsigned short Listen_Port (char *, unsigned short, char *,
 			    void (*prehandler) (pthread_t, idx_t),

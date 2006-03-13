@@ -34,6 +34,19 @@ static char autolog_timestamp[32] = "[%H:%M] ";	/* with ending space */
 static bool autolog_by_lname = TRUE;
 static long int autolog_autoclose = 600;	/* in seconds */
 
+typedef struct autolog_t
+{
+  struct autolog_t *next;
+  struct autolog_t *prev;
+  char *path;
+  int fd;
+  time_t timestamp;
+  int reccount;
+  INTERFACE *iface;
+  int inbuf;
+  char buf[HUGE_STRING];
+} autolog_t;
+
 /* ----------------------------------------------------------------------------
  *	"*" autolog interface - handles new networks
  */
@@ -87,6 +100,10 @@ static int module_autolog_signal (INTERFACE *iface, ifsig_t sig)
  */
 Function ModuleInit (char *args)
 {
+  CheckVersion;
+  strfcpy (autolog_open, _("IRC log started %c"), sizeof(autolog_open));
+  strfcpy (autolog_close, _("IRC log ended %c"), sizeof(autolog_close));
+  strfcpy (autolog_daychange, _("Day changed: %a %x"), sizeof(autolog_daychange));
   return NULL;
     //return (&module_autolog_signal);
 }

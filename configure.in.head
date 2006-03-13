@@ -2,7 +2,7 @@ dnl Process this file with autoconf to produce a configure script.
 AC_PREREQ(2.50)
 AC_INIT(core/foxeye.h)
 AM_CONFIG_HEADER(config.h)
-AM_INIT_AUTOMAKE(foxeye, 0.21)
+AM_INIT_AUTOMAKE(foxeye, 0.3g)
 
 ALL_LINGUAS="ru uk"
 
@@ -30,12 +30,16 @@ AC_C_INLINE
 dnl AC_C_BIGENDIAN
 
 ac_default_prefix="${HOME}/${PACKAGE}"
-AC_CHECK_DEBUG
 
 LD="${CC}" dnl Linker for the modules
 CPPFLAGS="-D_REENTRANT ${CPPFLAGS}" dnl defaults
 
-if test "$ac_cv_prog_CC" = gcc; then CFLAGS="-pedantic ${CFLAGS}"; fi
+if test "x$CC" = xgcc; then
+    AC_ARG_ENABLE([profile],
+        [  --enable-profile        enable profiling statistics generation for GCC],
+	[AC_CHECK_LDFLAG(fe_cv_add_pg, -pg, CFLAGS)])
+fi
+AC_CHECK_DEBUG
 
 dnl Need to make static code?
 AC_ARG_ENABLE(static,

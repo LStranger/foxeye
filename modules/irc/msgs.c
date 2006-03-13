@@ -154,8 +154,8 @@ static INTERFACE *_pmsgout_stack_insert (pmsgout_stack **stack, char *to)
   INTERFACE *client;
   pmsgout_stack *cur = safe_malloc (sizeof(pmsgout_stack));
 
-  dprint (3, "_pmsgout_stack_insert: adding %s", to);
-  client = Add_Iface (to, I_CLIENT, NULL, &_pmsgout_run, NULL);
+  dprint (4, "_pmsgout_stack_insert: adding %s", to);
+  client = Add_Iface (I_CLIENT, to, NULL, &_pmsgout_run, NULL);
   if (*stack)
   {
     cur->next = *stack;
@@ -174,7 +174,7 @@ static INTERFACE *_pmsgout_stack_insert (pmsgout_stack **stack, char *to)
 
 static void _pmsgout_stack_remove (pmsgout_stack **stack, pmsgout_stack *cur)
 {
-  dprint (3, "_pmsgout_stack_remove: removing %s", cur->client->name);
+  dprint (4, "_pmsgout_stack_remove: removing %s", cur->client->name);
   if (cur->prev == cur->next)
   {
     *stack = NULL;
@@ -195,7 +195,7 @@ static INTERFACE *_pmsgout_get_client (char *net, char *to)
 
   strfcpy (lcto, to, sizeof(lcto));
   strfcat (lcto, net, sizeof(lcto));
-  dprint (2, "_pmsgout_get_client: search %s", lcto);
+  dprint (4, "_pmsgout_get_client: search %s", lcto);
   return Find_Iface (I_CLIENT, lcto); 
 }
 
@@ -260,7 +260,7 @@ void irc_privmsgout_cancel (INTERFACE *pmsgout, char *to)
 {
   INTERFACE *iface;
 
-  dprint (3, "_privmsgout_cancel: cancel %s%s", to ? to : "*", pmsgout->name);
+  dprint (4, "_privmsgout_cancel: cancel %s%s", to ? to : "*", pmsgout->name);
   if (pmsgout->data && !to)
   {
     while (pmsgout->data)
@@ -344,7 +344,7 @@ int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
       msg_type = 4;
     msglen--;
   }
-  dprint (3, "irc_privmsgin: got message from %s to %s of type %d", from, to,
+  dprint (4, "irc_privmsgin: got message from %s to %s of type %d", from, to,
 	  msg_type);
   /* find the sender or create new pmsgout for it */
   if (!(client = _pmsgout_get_client (pmsgout->name, fromnick)))
@@ -449,8 +449,10 @@ int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
     {
       userflag cf;
 
-      if (to)
+      if (lname && to)
 	cf = Get_Clientflags (lname, tocl);
+      else if (to)
+	cf = 0;
       else
 	cf = -1;
       /* do mask bindtable */

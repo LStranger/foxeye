@@ -1,8 +1,169 @@
 # first section is usage
-# second section is that config maker will put into config
+# second section is that config maker will put into config or /msg style help
 # third section is full help
 
 module irc-channel
 :%*
+:
+:
+
+set irc-netsplit-log-timeout
+:%* <seconds>
+:
+:
+ Default: 3.
+
+set irc-netjoin-log-timeout
+:%* <seconds>
+:
+:
+ Default: 6.
+
+set irc-netsplit-keep
+:%* <seconds>
+:
+:
+ Default: 21600.
+
+set irc-join-on-invite
+:%* ["ask-"]<"yes"|"no">
+:
+:
+ Default: ask-no.
+
+set irc-enforcer-time
+:%* <seconds>
+:
+:
+ Default: 4.
+
+set irc-ban-keep
+:%* <minutes>
+:
+:
+ Default: 120.
+
+set irc-exempt-keep
+:%* <minutes>
+:
+:
+ Default: 60.
+
+set irc-invite-keep
+:%* <minutes>
+:
+:
+ Default: 60.
+
+set irc-mode-timeout
+:%* <seconds>
+:
+:
+ Default: 30
+
+set irc-greet-time
+:%* <seconds>
+:
+:
+ Default: 120.
+
+set irc-ignore-ident-prefix
+:% <"yes"|"no">
+:
+:
+ Default: yes.
+
+fset irc-join
+:
+:
+:Used when... Macros: %%.
+ Default: "%%y%%N%%n(%%@) has joined %%#"
+
+fset irc-part
+:
+:
+:Used when... Macros: %%.
+ Default: "%%b%%N%%b(%%@) has left %%# (%%*)"
+
+fset irc-nickchange
+:
+:
+:Used when... Macros: %%.
+ Default: "%%b%%N%%b is now known as %%y%%*%%n"
+
+fset irc-quit
+:
+:
+:Used when... Macros: %%.
+ Default: "%%b%%N%%b(%%@) has quit %%# (%%*)"
+
+fset irc-lost-in-netsplit
+:
+:
+:Used when... Macros: %%.
+ Default: "%%b%%N%%b has lost in netsplit (%%*)"
+
+fset irc-kick
+:
+:
+:Used when... Macros: %%.
+ Default: "%%b%%N%%b has kicked %%L from %%# (%%*)"
+
+fset irc-modechange
+:
+:
+:Used when... Macros: %%.
+ Default: "mode/%%# (%%*) by %%b%%N%%b"
+
+fset irc-netsplit
+:
+:
+:Used when... Macros: %%.
+ Default: "netsplit (%%*), quits: %%N"
+
+fset irc-netjoin
+:
+:
+:Used when... Macros: %%.
+ Default: "netsplit of %%* over, joins: %%N"
+
+fset irc-topic
+:
+:
+:Used when... Macros: %%.
+ Default: "%%N %%?*changed?unset? the topic of %%#%%?* to: %%*??"
+
+ss-irc adduser
+:adduser ["!"]<nick> [lname]
+:
+:
+
+ss-irc deluser
+:deluser ["!"]<nick>
+:
+:
+
+ss-irc say
+:say [channel["@"net]] <text>
+:
+:
+
+ss-irc act
+:act [channel["@"net]] <text>
+:
+:
+
+ss-irc ctcp
+:ctcp target["@"net] <text>
+:
+:
+
+ss-irc notice
+:notice target["@"net] <text>
+:
+:
+
+ss-irc topic
+:topic [channel["@"net]] <text>
 :
 :

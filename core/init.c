@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2005  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -56,6 +56,60 @@ struct bindtable_t
 
 static bindtable_t *Tables = NULL;
 
+static void _bt_convert2uniqtype (bindtable_t *bt, bttype_t type)
+{
+  binding_t *b;
+  binding_t **last = &bt->list.bind;
+
+  for (; (b = (*last)); last = &(*last)->next)
+    while (b->next)
+    {
+      if (!safe_strcasecmp ((*last)->key, b->next->key))
+      {
+	b->next->prev = *last;
+	*last = b->next;			/* replace head with found */
+	b->next = b->next->next;		/* skip found from there */
+	(*last)->next = (*last)->prev->next;	/* noop if two consequent */
+	FREE (&(*last)->key);			/* replace duplicate key */
+	(*last)->key = (*last)->prev->key;
+      }
+      b = b->next;
+    }
+  bt->type = type;				/* bindtable is uniqued now */
+  if (type != B_UNIQ)
+    return;
+  b = bt->list.bind;
+  bt->list.tree = NULL;
+  while (b)					/* now create tree */
+  {
+    if (b->key)
+    {
+      if (Insert_Key (&bt->list.tree, b->key, b, 1))
+      {
+	binding_t *b2 = b, *b3;
+
+	ERROR ("bindtable conversion error (tree error): \"%s\":\"%s\"",
+	       bt->name, b->key);
+	b = b->next;
+	while (b2)
+	{
+	  b3 = b2->prev;
+	  FREE (&b2->key);
+	  FREE (&b2);
+	  b2 = b3;
+	}
+	continue;
+      }
+    }
+    else
+    {
+      bt->lr = b;
+      dprint (2, "bindtable conversion: added last resort binding");
+    }
+    b = b->next;
+  }
+}
+
 bindtable_t *Add_Bindtable (const char *name, bttype_t type)
 {
   bindtable_t *bt;
@@ -79,12 +133,18 @@ bindtable_t *Add_Bindtable (const char *name, bttype_t type)
   if (!bt->name)
     bt->name = safe_strdup (name);
   if (bt->type != B_UNDEF && bt->type != type && type != B_UNDEF)
-    Add_Request (I_LOG, "*", F_ERROR,
-		 "binds: illegal redefinition of type of bindtable!");
-  else if (type != B_UNDEF)
-    /* TODO: convert from B_UNDEF to new table type here */
-    bt->type = type;
-  dprint (1, "binds: added bindtable with name \"%s\"", name);
+    ERROR ("binds: illegal redefinition of type of bindtable!");
+  else if (bt->type == B_UNDEF && type != B_UNDEF) switch (type)
+  {				/* convert from B_UNDEF to new table type */
+    case B_UNIQ:
+    case B_UCOMPL:
+    case B_UNIQMASK:
+      _bt_convert2uniqtype (bt, type);
+      break;
+    default:
+      bt->type = type;
+  }
+  dprint (2, "binds: added bindtable with name \"%s\"", name);
   return bt;
 }
 
@@ -118,7 +178,7 @@ binding_t *Add_Binding (const char *table, const char *mask, userflag gf,
       bind->func = func;
       bind->prev = bt->lr;
       bt->lr = bind;
-      dprint (1, "binds: added last resort binding to bindtable \"%s\"", table);
+      dprint (2, "binds: added last resort binding to bindtable \"%s\"", table);
       return bind;
     }
     if (bt->list.tree && (b = Find_Key (bt->list.tree, mask)))
@@ -156,8 +216,7 @@ binding_t *Add_Binding (const char *table, const char *mask, userflag gf,
       {
 	if (b->func == func && b->gl_uf == gf && b->ch_uf == cf)
 	{
-	  FREE (&bind->key);			/* duplicate binding */
-	  FREE (&bind);
+	  FREE (&bind);				/* duplicate binding */
 	  return NULL;
 	}
 	if (bt->type == B_UCOMPL || bt->type == B_UNIQMASK)
@@ -183,7 +242,7 @@ binding_t *Add_Binding (const char *table, const char *mask, userflag gf,
   bind->ch_uf = cf;
   bind->name = NULL;
   bind->func = func;
-  dprint (1, "binds: added binding to bindtable \"%s\" with mask \"%s\"",
+  dprint (2, "binds: added binding to bindtable \"%s\" with mask \"%s\"",
 	  table, mask);
   return bind;
 }
@@ -203,7 +262,7 @@ void Delete_Binding (const char *table, Function func)
 	last->prev = bind = b->prev;
       else
 	bt->lr = bind = b->prev;
-      dprint (1, "binds: deleting last resort binding from bindtable \"%s\"",
+      dprint (2, "binds: deleting last resort binding from bindtable \"%s\"",
 	      table);
       FREE (&b);
       b = bind;
@@ -224,7 +283,7 @@ void Delete_Binding (const char *table, Function func)
       {
 	if (b->func == func)
 	{
-	  dprint (1, "binds: deleting binding from bindtable \"%s\" with key \"%s\"",
+	  dprint (2, "binds: deleting binding from bindtable \"%s\" with key \"%s\"",
 		  table, b->key);
 	  if (last)			/* it's not first binding - remove */
 	  {
@@ -260,7 +319,7 @@ void Delete_Binding (const char *table, Function func)
     {
       if (bind->func == func)
       {
-	dprint (1, "binds: deleting binding from bindtable \"%s\" with mask \"%s\"",
+	dprint (2, "binds: deleting binding from bindtable \"%s\" with mask \"%s\"",
 		table, bind->key);
 	if (next)			/* it's not first binding */
 	{
@@ -369,6 +428,7 @@ binding_t *Check_Bindtable (bindtable_t *bt, const char *str, userflag gf,
 	case B_MATCHCASE:
 	  i = match (b->key, str) + 1;
 	  break;
+	case B_UNDEF: case B_UNIQ: ; /* never reached but make compiler happy */
       }
       if (i > 0)
 	break;
@@ -377,15 +437,22 @@ binding_t *Check_Bindtable (bindtable_t *bt, const char *str, userflag gf,
   if (bt->type == B_UCOMPL && !i)
     b = bind;			/* completion */
   if (b)
-    dprint (2, "binds: bindtable \"%s\" string \"%s\", flags 0x%x/0x%x, found mask \"%s\"",
+    dprint (3, "binds: bindtable \"%s\" string \"%s\", flags 0x%x/0x%x, found mask \"%s\"",
 	    bt->name, str, gf, cf, b->key);
   else if (bt->type == B_UNIQ && bt->lr)
   {
-    dprint (2, "binds: bindtable \"%s\" string \"%s\", using last resort",
+    dprint (3, "binds: bindtable \"%s\" string \"%s\", using last resort",
 	    bt->name, str);
     return bt->lr;
   }
   return b;
+}
+
+const char *Bindtable_Name (bindtable_t *bt)
+{
+  if (!bt)
+    return NULL;
+  return bt->name;
 }
 
 #define __INIT_C 1
@@ -402,7 +469,7 @@ int RunBinding (binding_t *bind, const uchar *uh, char *fst, char *sec, int num,
 
   if (!bind || !bind->name || !bind->func)	/* checking... */
     return 0;
-  dprint (3, "init:RunBinding: %s %s %s %s %d %s", bind->name,
+  dprint (4, "init:RunBinding: %s %s %s %s %d %s", bind->name,
 	  NONULL((char *)uh), NONULL(fst), NONULL(sec), num, NONULL(last));
   BindResult = NULL;				/* clear result */
   if (uh)
@@ -499,7 +566,7 @@ bool Confirm (char *message, bool defl)
   pthread_mutex_init (&ct.mutex, NULL);
   snprintf (n, sizeof(n), "=%hu", _confirm_num);
   _confirm_num++;
-  newif = Add_Iface (n, I_TEMP, &confirm_sig, &confirm_req, &ct);
+  newif = Add_Iface (I_TEMP, n, &confirm_sig, &confirm_req, &ct);
   Set_Iface (newif);
   New_Request (ui, F_ASK, _("%s (y/n)?[%c] "), message,
 	      (defl & 1) == TRUE ? 'y' : 'n');
@@ -758,11 +825,10 @@ static int _add_var (const char *name, void *var, size_t s)
   if ((data = Find_Key (VTree, name)))		/* already registered */
   {
     if (data->data != var)
-      Add_Request (I_LOG, "*", F_WARN,
-		   "init: another data already binded to variable \"%s\"", name);
+      WARNING ("init: another data already binded to variable \"%s\"", name);
     return 0;
   }
-  dprint (3, "init:_add_var: %s %u", name, (unsigned int)s);
+  dprint (2, "init:_add_var: %s %u", name, (unsigned int)s);
   data = safe_calloc (1, sizeof(VarData) + safe_strlen(name));
   data->data = var;
   strcpy (data->name, name);
@@ -770,6 +836,7 @@ static int _add_var (const char *name, void *var, size_t s)
   if (!Insert_Key (&VTree, data->name, data, 1))	/* try unique name */
     return 1;
   FREE (&data);
+  WARNING ("init:_add_var: variable \"%s\" already exist", name);
   return 0;
 }
 
@@ -808,11 +875,10 @@ static int _del_var (const char *name)
 
   if (!(data = Find_Key (VTree, name)))		/* not registered? */
   {
-    Add_Request (I_LOG, "*", F_WARN,
-		 "init: attempting delete non-existent variable \"%s\"", name);
+    WARNING ("init: attempting to delete non-existent variable \"%s\"", name);
     return 0;
   }
-  dprint (3, "init:_del_var: %s", name);
+  dprint (2, "init:_del_var: %s", name);
   Delete_Key (VTree, name, data);
   FREE (&data);
   return 1;
@@ -846,7 +912,7 @@ _add_fn (const char *name, int (*func)(const char *), const char *msg)
   int i;
   VarData2 *data;
 
-  dprint (3, "init:_add_fn: %s", name);
+  dprint (2, "init:_add_fn: %s", name);
   if (O_GENERATECONF != FALSE && msg)		/* ask for list */
     do {
       i = Start_FunctionFromConsole (name, func, msg);
@@ -854,9 +920,10 @@ _add_fn (const char *name, int (*func)(const char *), const char *msg)
   data = safe_calloc (1, sizeof(VarData2) + safe_strlen(name));
   data->f.n = func;
   strcpy (data->name, name);
-  if (!Insert_Key (&STree, name, data, 1))	/* try unique */
+  if (!Insert_Key (&STree, data->name, data, 1))	/* try unique */
     return 1;
   FREE (&data);
+  WARNING ("init:_add_fn: function \"%s\" already exist", name);
   return 0;
 }
 
@@ -865,8 +932,11 @@ static int _del_fn (const char *name)
   VarData2 *data;
 
   if (!(data = Find_Key (STree, name)))		/* not registered? */
+  {
+    WARNING ("init: attempting to delete non-existent function \"%s\"", name);
     return 0;
-  dprint (3, "init:_del_fn: %s", name);
+  }
+  dprint (2, "init:_del_fn: %s", name);
   Delete_Key (STree, name, data);
   FREE (&data);
   return 1;
@@ -905,7 +975,7 @@ static short *_add_fl (const char *name, short n0, short n1)
 
   if (data)					/* already registered */
     return data->f.ld;
-  dprint (3, "init:_add_fl: %s %hd:%hd", name, n0, n1);
+  dprint (2, "init:_add_fl: %s %hd:%hd", name, n0, n1);
   data = safe_calloc (1, sizeof(VarData2) + safe_strlen(name));
   data->f.ld[0] = n0;
   data->f.ld[1] = n1;
@@ -978,7 +1048,7 @@ static void _add_fmt (const char *name, char *fmt)
 
   if (Find_Key (FTree, name))			/* already registered */
     return;
-  dprint (3, "init:_add_fmt: %s", name);
+  dprint (2, "init:_add_fmt: %s", name);
   data = safe_calloc (1, sizeof(VarData2) + strlen(name));
   data->f.mt = fmt;
   strcpy (data->name, name);
@@ -1091,7 +1161,7 @@ int Config_Exec (const char *cmd, const char *args)
 
   if (!cmd || !(data = Find_Key (STree, cmd)))	/* no such command */
     return 0;					/* silent ignore */
-  dprint (3, "init:Config_Exec: %s %s", cmd, args);
+  dprint (4, "init:Config_Exec: %s %s", cmd, args);
   return data->f.n (NONULL(args));
 }
 
@@ -1793,7 +1863,7 @@ void init (void)
   Add_Help ("main");
   /* it can be recall of init so don't create another */
   if (!Init)
-    Init = Add_Iface (NULL, I_INIT, &_init_sig, &_config_req, NULL);
+    Init = Add_Iface (I_INIT, NULL, &_init_sig, &_config_req, NULL);
   Init->ift &= ~I_LOCKED;			/* must be not locked! */
 //
 // этап 1 - инициализация переменных и загрузка конфига, если не указан "-r"
@@ -1824,7 +1894,7 @@ void init (void)
       bot_shutdown (_("Cannot create configuration file."), 3);
     fprintf (ConfigFileFile, "#!%s\n# Generated by itself on %s\n", RunPath,
 	     ctime (&Time));
-    ConfigFileIface = Add_Iface (NULL, I_TEMP, NULL, &_cfile_req, NULL);
+    ConfigFileIface = Add_Iface (I_TEMP, NULL, NULL, &_cfile_req, NULL);
     ConfigFileIface->ift = I_TEMP;		/* create interface */
   }
   if (g != FALSE || O_DEFAULTCONF != FALSE)
@@ -1872,6 +1942,12 @@ void init (void)
     dc_die (NULL, "terminated: no interfaces to work");
   if (O_TESTCONF != FALSE)
     dc_die (NULL, NULL);
+  snprintf (new_path, sizeof(new_path), "%s.%s", locale, Charset);
+  setlocale (LC_ALL, new_path);
+#ifdef ENABLE_NLS
+  bindtextdomain (PACKAGE, LOCALEDIR);
+  textdomain (PACKAGE);
+#endif
   /* init SIGINT (restart) and SIGHUP (rehash) handlers */
   act.sa_handler = &sigint_handler;
   sigemptyset (&act.sa_mask);

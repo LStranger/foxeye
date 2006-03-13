@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2005  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2001-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -372,10 +372,10 @@ void RotateWtmp (void)
       fclose (dst);
       unlink (path2);				/* wtmp.gone */
       if (rename (path, path2))			/* wtmp.tmp --> wtmp.gone */
-	Add_Request (I_LOG, "*", F_ERROR, "couldn't make %s!", path2);
+	ERROR ("wtmp: couldn't make %s!", path2);
     }
     else
-      Add_Request (I_LOG, "*", F_ERROR, "cannot rewrite %s!", path2);
+      ERROR ("wtmp: cannot rewrite %s!", path2);
     /* scan for deleted uids and mark these as non-addable */
     for (j = 0; j < LID_MAX ; j++)
       if (GoneBitmap[j] & 1<<W_DEL)
@@ -440,7 +440,7 @@ void RotateWtmp (void)
       }
     }
     else
-      Add_Request (I_LOG, "*", F_ERROR, "cannot open %s!", path);
+      ERROR ("wtmp: cannot open %s!", path);
     /* add events to wtmp.gone in normal order */
     if (dst)
     {
@@ -485,10 +485,10 @@ void RotateWtmp (void)
     snprintf (path2, sizeof(path2), "%s.%d", wfp, i);
     snprintf (path, sizeof(path), "%s.%d", wfp, i-1);
     if (rename (path, path2))
-      Add_Request (I_LOG, "*", F_WARN, "couldn't rotate %s -> %s!", path, path2);
+      WARNING ("wtmp: couldn't rotate %s -> %s!", path, path2);
   }
   /* rotate $Wtmp -> $Wtmp.1 */
   if (rename (wfp, path))
-    Add_Request (I_LOG, "*", F_ERROR, "couldn't rotate %s -> %s!", wfp, path);
+    ERROR ("wtmp: couldn't rotate %s -> %s!", wfp, path);
   FREE (&GoneBitmap);
 }

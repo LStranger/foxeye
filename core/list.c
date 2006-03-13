@@ -163,10 +163,10 @@ static int _addhost (user_hr **hr, const char *uh)
   user_hr *h = *hr;
 
   sz = safe_strlen ((char *)uh) + 1;
-  if (sz < 5)		/* at least *!i@* :) */
+  if (sz < 6)		/* at least *!i@* :) */
     return 0;
-  *hr = safe_calloc (1, sz + sizeof(user_hr *));
-  strfcpy ((*hr)->hostmask, uh, sz);
+  *hr = safe_calloc (1, sz + sizeof(user_hr) - sizeof(h->hostmask));
+  memcpy ((*hr)->hostmask, uh, sz);
   (*hr)->next = h;
   return 1;
 }
@@ -348,7 +348,7 @@ static lid_t __addlid (lid_t id, lid_t start, lid_t end)
       return ID_ME;
   }
   LidsBitmap[i] |= (1<<j);
-  dprint (3, "users:__addlid: %d %d %d --> %d:%d",
+  dprint (4, "users:__addlid: %d %d %d --> %d:%d",
 	  (int)id, (int)start, (int)end, i, j);
   return (i*32 + j + LID_MIN);
 }
@@ -359,7 +359,7 @@ static lid_t __addlid (lid_t id, lid_t start, lid_t end)
 static void __dellid (lid_t id)
 {
   LidsBitmap[(id-LID_MIN)/32] &= ~(1<<((id-LID_MIN)%32));
-  dprint (3, "users:__dellid: %d", (int)id);
+  dprint (4, "users:__dellid: %d", (int)id);
 }
 
 /*--- W --- UFLock write ---*/
@@ -374,17 +374,30 @@ static void _del_lid (lid_t id, int old)
 static int usernick_valid (const char *a)
 {
   register int i = safe_strlen (a);
+  register char s;
 
   if (i == 0 || i > LNAMELEN) return (-1);
-  return match ("{^" SPECIALCHARS RESTRICTEDCHARS "}", a);
+  while (--i)
+    if ((s = *a++) == '@' || s <= ' ' || s == ':' || s == ',')
+      return (-1);
+  return 0;
 }
 
 static int spname_valid (const char *a)
 {
-  register int i = safe_strlen (a);
+  register int t, i = safe_strlen (a);
+  register char s;
 
   if (i == 0 || i > IFNAMEMAX) return (-1);
-  return match ("[" SPECIALCHARS "]{^" RESTRICTEDCHARS "}", a);
+  t = 0;
+  while (--i)
+    if ((s = *a++) == '@')
+      t++;
+    else if (s <= ' ' || s == ':' || s == ',')
+      return (-1);
+  if (t)
+    return 0;
+  return (-1);
 }
 
 /*--- W --- UFLock write ---*/
@@ -635,12 +648,11 @@ int Change_Lname (char *newname, char *oldname)
   i = Insert_Key (&UTree, user->lclname, user, 1);
   rw_unlock (&UFLock);
   if (i < 0)
-    Add_Request (I_LOG, "*", F_ERROR,
-	    "change Lname %s -> %s: hash error, Lname lost!", oldname, newname);
+    ERROR ("change Lname %s -> %s: hash error, Lname lost!", oldname, newname);
   LISTFILEMODIFIED;
   /* rename the DCC CHAT interface if exist */
   Rename_Iface (I_DIRECT, oldname, newname);
-  dprint (1, "changing Lname: %s -> %s", oldname, newname);
+  dprint (2, "changing Lname: %s -> %s", oldname, newname);
   /* run "new-lname" bindtable */
   while ((bind = Check_Bindtable (BT_ChLname, oldname, -1, -1, bind)))
   {
@@ -667,7 +679,7 @@ lid_t GetLID (const char *lname)
   else
     id = ID_REM;
   rw_unlock (&UFLock);
-  dprint (3, "users:GetLID: %s -> %d", lname, (int)id);
+  dprint (4, "users:GetLID: %s -> %d", lname, (int)id);
   return id;
 }
 
@@ -747,7 +759,7 @@ int Get_Hostlist (INTERFACE *iface, const char *name)
 
   if (!name || !*name || !iface)
     return n;
-  dprint (3, "Get_Hostlist: check for %s", name);
+  dprint (4, "Get_Hostlist: check for %s", name);
   u = _findbylname (name);	/* no need write lock here, func is read only */
   if (u == NULL)
     return 0;
@@ -767,31 +779,33 @@ int Get_Hostlist (INTERFACE *iface, const char *name)
  * Thread-safe functions.
  */
 
+#if 0
 /*--- R lock --- UFLock read --- no HLock ---*/
 static clrec_t *_findbymask (const uchar *mask)
 {
   user_hr *hr;
-  char buff[STRING];
-  char *c1 = "";
-  char *c2 = "";
+//  char buff[STRING];
+//  char *c1 = "";
+//  char *c2 = "";
   lid_t lid;
   clrec_t *u;
 
   /* set up the mask */
-  if (!safe_strchr ((char *)mask, '!'))
-  {
-    c1 = "*!";
-    if (!safe_strchr ((char *)mask, '@'))
-      c2 = "*@";
-  }
-  snprintf (buff, sizeof(buff), "%s%s%s", c1, c2, mask);
+//  if (!safe_strchr ((char *)mask, '!'))
+//  {
+//    c1 = "*!";
+//    if (!safe_strchr ((char *)mask, '@'))
+//      c2 = "*@";
+//  }
+//  snprintf (buff, sizeof(buff), "%s%s%s", c1, c2, mask);
   rw_rdlock (&HLock);
   /* find first matched */
   lid = LID_MIN;
   do {
     if ((u = UList[lid - LID_MIN]) && !(u->flag & (U_SPECIAL|U_ALIAS)))
       for (hr = u->host; hr; hr = hr->next)	/* I hope no need to lock? */
-	if (match (buff, hr->hostmask) > 0)
+//	if (match (buff, hr->hostmask) > 0)
+	if (!strcmp ((const char *)mask, hr->hostmask))
 	{
 	  rw_unlock (&HLock);
 	  return u;
@@ -800,6 +814,7 @@ static clrec_t *_findbymask (const uchar *mask)
   rw_unlock (&HLock);
   return NULL;
 }
+#endif
 
 /*--- RW --- UFLock read --- no FLock ---*/
 static lid_t _get_index (const char *field)
@@ -856,15 +871,15 @@ clrec_t *Find_Clientrecord (const uchar *mask, char **lname, userflag *uf,
 			    char *net)
 {
   clrec_t *user = NULL;
-  int wc = Have_Wildcard ((char *)mask) + 1;
+//  int wc = Have_Wildcard ((char *)mask) + 1;
 
   if (!mask || !*mask)
     return NULL;
   /* find the userrecord */
   rw_rdlock (&UFLock);
-  if (wc)
-    user = _findbymask (mask);
-  else				/* if mask is hostmask - find best */
+//  if (wc)
+//    user = _findbymask (mask);
+//  else				/* if mask is hostmask - find best */
     user = _findthebest ((char *)mask, NULL);
   if (user)
   {
@@ -1224,10 +1239,12 @@ userflag Get_Clientflags (const char *lname, const char *serv)
     if (user->flag & U_ALIAS)	/* unaliasing */
       user = user->u.owner;
     pthread_mutex_lock (&user->mutex);
+    uf = Get_Flags (user, serv);
+    pthread_mutex_unlock (&user->mutex);
   }
-  uf = Get_Flags (user, serv);
+  else
+    uf = 0;
   rw_unlock (&UFLock);
-  pthread_mutex_unlock (&user->mutex);
   return uf;
 }
 
@@ -1244,12 +1261,16 @@ int Add_Mask (clrec_t *user, const uchar *mask)
 }
 
 /*--- W --- UFLock and built-in --- no other locks ---*/
-void Delete_Mask (clrec_t *user, const uchar *mask)
+int Delete_Mask (clrec_t *user, const uchar *mask)
 {
-  if (!mask) return;
+  register int x;
+
+  if (!mask) return 0;
   pthread_mutex_unlock (&user->mutex);		/* unlock to avoid conflicts */
   _del_usermask (user, (char *)mask);
+  x = user->host ? 0 : -1;
   pthread_mutex_lock (&user->mutex);
+  return x;
 }
 
 /*--- W --- no locks ---*/
@@ -1484,7 +1505,7 @@ static int _load_listfile (char *filename, int update)
 	}
 	else
 	{
-	  /* TODO: errors logging... */
+	  ERROR ("_load_listfile: could not add new record for name \"%s\"", v);
 	  break;
 	}
 	/* parse the fields and fill user record */
@@ -1974,13 +1995,16 @@ static int dc_chattr (peer_t *dcc, char *args)
 		 _("Channel attributes for %s on %s are now: %s."),
 		 user->lname, Chan, userflagtostr (chr->flag, plus));
   /* send changes to shared bots */
-  if (*Chan && (*gl || *sv))
-    Add_Request (I_DIRECT, "@*", F_SHARE, "\010chattr %s %s%s%s%s|%s%s%s%s %s",
-		 user->lname, *plus ? "+" : "", plus, *minus ? "-" : "", minus,
-		 *gl ? "+" : "", gl, *sv ? "-" : "", sv, Chan);
-  else if (*plus || *minus)
-    Add_Request (I_DIRECT, "@*", F_SHARE, "\010chattr %s %s%s%s%s",
-		 user->lname, *plus ? "+" : "", plus, *minus ? "-" : "", minus);
+  if (!(user->flag & (U_SPECIAL | U_UNSHARED)))	/* specials are not shared */
+  {
+    if (*Chan && (*gl || *sv))
+      Add_Request (I_DIRECT, "@*", F_SHARE, "\010chattr %s %s%s%s%s|%s%s%s%s %s",
+		   user->lname, *plus ? "+" : "", plus, *minus ? "-" : "",
+		   minus, *gl ? "+" : "", gl, *sv ? "-" : "", sv, Chan);
+    else if (*plus || *minus)
+      Add_Request (I_DIRECT, "@*", F_SHARE, "\010chattr %s %s%s%s%s",
+		   user->lname, *plus ? "+" : "", plus, *minus ? "-" : "", minus);
+  }
   pthread_mutex_unlock (&user->mutex);
   return 1;
 }
@@ -2002,7 +2026,8 @@ static int dc__phost (peer_t *dcc, char *args)
   if (!user || strlen (args) < 5)	/* no user or no hostmask */
     return 0;
   _add_usermask (user, args);
-  Add_Request (I_DIRECT, "@*", F_SHARE, "\010+host %s %s", user->lname, args);
+  if (!(user->flag & (U_SPECIAL | U_UNSHARED)))	/* specials are not shared */
+    Add_Request (I_DIRECT, "@*", F_SHARE, "\010+host %s %s", user->lname, args);
   return 1;
 }
 
@@ -2023,7 +2048,8 @@ static int dc__mhost (peer_t *dcc, char *args)
   if (!user || strlen (args) < 5)	/* no user or no hostmask */
     return 0;
   _del_usermask (user, args);
-  Add_Request (I_DIRECT, "@*", F_SHARE, "\010-host %s %s", user->lname, args);
+  if (!(user->flag & (U_SPECIAL | U_UNSHARED)))	/* specials are not shared */
+    Add_Request (I_DIRECT, "@*", F_SHARE, "\010-host %s %s", user->lname, args);
   return 1;
 }
 
@@ -2032,6 +2058,7 @@ static int dc__puser (peer_t *dcc, char *args)
   register int i;
   char *net = args;
   char *lname = args, *mask, *attr;
+  userflag uf;
 
   if (!args)
     return 0;
@@ -2041,7 +2068,10 @@ static int dc__puser (peer_t *dcc, char *args)
     lname = NextWord (args);
     if (lname[0] != '@')	/* only networks may be added with this! */
       return 0;
-    net++;
+    for (attr = net; *attr != ' '; attr++);
+    *attr = 0;
+    if (strchr (++net, '@'))	/* networks may have only one '@' as first char */
+      return 0;
     args = lname;
   }
   else
@@ -2056,38 +2086,44 @@ static int dc__puser (peer_t *dcc, char *args)
     while (*args != ' ') args++;
   else
     args = mask;
-  *args = 0;
+  *args = 0;			/* get next token */
+  if (!net && (net = strrchr (lname, '@')))
+  {
+    if (!_findbylname (++net))	/* check for channel@net */
+    {
+      New_Request (dcc->iface, 0, _("Cannot add name: network does not exist."));
+      return 0;
+    }
+  }
   while (*attr && *attr != ' ') attr++;
   if (*attr)
     *attr = 0;
   else
-    attr = NULL;
-  i = Add_Clientrecord (lname, (uchar *)mask, (net ? U_SPECIAL : 0) +
-			(attr ? strtouserflag (&attr[1]) : 0));
+    attr = NULL;		/* yet another token */
+  uf = attr ? strtouserflag (&attr[1]) : 0;
+  i = Add_Clientrecord (lname, (uchar *)mask, (net ? U_SPECIAL : 0) + uf);
   if (attr)
-    *attr = ' ';
-  if (i && net)
+    *attr = ' ';		/* release last token */
+  if (i && net && net < lname)	/* only when we are adding networks */
   {
     clrec_t *u = Lock_Clientrecord (lname);
 
-    for (attr = net; *attr != ' '; attr++);
-    *attr = 0;
     u->logout = safe_strdup (net);
     Unlock_Clientrecord (u);
-    *attr = ' ';
   }
   if (*mask)
-    *args = ' ';
-  if (i)
-    Add_Request (I_DIRECT, "@*", F_SHARE, "\010+user %s", net ? net : lname);
-  else
+    *args = ' ';		/* release hostmask token */
+  if (!i)			/* error */
     New_Request (dcc->iface, 0, _("Cannot add user: invalid or already exist."));
+  else if (!net && !(uf & U_UNSHARED))	/* specials are not shared */
+    Add_Request (I_DIRECT, "@*", F_SHARE, "\010+name %s", lname);
   return i;
 }
 
 static int dc__muser (peer_t *dcc, char *args)
 {
   clrec_t *user;
+  userflag uf;
 
   rw_wrlock (&UFLock);
   if (!args || !(user = _findbylname (args)))
@@ -2095,9 +2131,11 @@ static int dc__muser (peer_t *dcc, char *args)
     rw_unlock (&UFLock);
     return 0;
   }
+  uf = user->flag;
   _delete_userrecord (user, 1);
   Add_Request (I_LOG, "*", F_USERS, _("Deleted name %s."), args);
-  Add_Request (I_DIRECT, "@*", F_SHARE, "\010-user %s", args);
+  if (!(uf & (U_SPECIAL | U_UNSHARED)))	/* specials are not shared */
+    Add_Request (I_DIRECT, "@*", F_SHARE, "\010-name %s", args);
   return 1;
 }
 
@@ -2133,9 +2171,10 @@ static int dc_passwd (peer_t *dcc, char *args)
     user = user->u.owner;
   pthread_mutex_lock (&user->mutex);
   LISTFILEMODIFIED;
-  i = user_chpass (args, &user->passwd);
-  Add_Request (I_DIRECT, "@*", F_SHARE, "\013%s %s", user->lname,
-	       NONULL(user->passwd));
+  if ((i = user_chpass (args, &user->passwd)) &&
+      !(user->flag & (U_SPECIAL | U_UNSHARED)))	/* specials are not shared */
+    Add_Request (I_DIRECT, "@*", F_SHARE, "\013%s %s", user->lname,
+		 NONULL(user->passwd));
   pthread_mutex_unlock (&user->mutex);
   if (!i)
     New_Request (dcc->iface, 0, "Password changing error!");
@@ -2166,7 +2205,8 @@ static int dc_chpass (peer_t *dcc, char *args)
   else
     return 0;
   LISTFILEMODIFIED;
-  if ((i = user_chpass (args, &user->passwd)))
+  if ((i = user_chpass (args, &user->passwd)) &&
+      !(user->flag & (U_SPECIAL | U_UNSHARED)))	/* specials are not shared */
     Add_Request (I_DIRECT, "@*", F_SHARE, "\013%s %s", lname, NONULL(user->passwd));
   pthread_mutex_unlock (&user->mutex);
   if (!i)
@@ -2189,7 +2229,8 @@ static int dc_nick (peer_t *dcc, char *args)
   register int i;
 
   StrTrim (args);
-  if ((i = Change_Lname (args, oldname)))
+  if ((i = Change_Lname (args, oldname)) &&	/* specials are not shared */
+      !(Get_Clientflags (args, NULL) & (U_SPECIAL | U_UNSHARED)))
     Add_Request (I_DIRECT, "@*", F_SHARE, "\010chln %s %s", oldname, args);
   FREE (&oldname);
   return i;
@@ -2208,7 +2249,7 @@ static int dc_chnick (peer_t *dcc, char *args)
   StrTrim (args);
   i = Change_Lname (newname, oldname);
   *args = ' ';
-  if (i)
+  if (i && !(Get_Clientflags (newname, NULL) & (U_SPECIAL | U_UNSHARED)))
     Add_Request (I_DIRECT, "@*", F_SHARE, "\010chln %s", oldname);
   return i;
 }
@@ -2246,15 +2287,15 @@ char *IFInit_Users (void)
   if (_load_listfile (Listfile, 0))
     return (_("Cannot load userfile!"));
   _savetime = 0;
-  ListfileIface = Add_Iface (NULL, I_FILE, &userfile_signal, NULL, NULL);
+  ListfileIface = Add_Iface (I_FILE, NULL, &userfile_signal, NULL, NULL);
   /* sheduler itself will refresh Listfile every minute so it's all */
   /* get crypt bindtable address */
   BT_Pass = Add_Bindtable ("passwd", B_UNDEF);
   BT_ChLname = Add_Bindtable ("new-lname", B_MASK);
   /* add dcc bindings */
   Add_Binding ("dcc", "chattr", U_HALFOP, U_MASTER, &dc_chattr);
-  Add_Binding ("dcc", "+user", U_MASTER, U_MASTER, &dc__puser);
-  Add_Binding ("dcc", "-user", U_MASTER, -1, &dc__muser);
+  Add_Binding ("dcc", "+name", U_MASTER, U_MASTER, &dc__puser);
+  Add_Binding ("dcc", "-name", U_MASTER, -1, &dc__muser);
   Add_Binding ("dcc", "+host", U_MASTER, U_MASTER, &dc__phost);
   Add_Binding ("dcc", "-host", U_MASTER, U_MASTER, &dc__mhost);
   Add_Binding ("dcc", "passwd", U_ACCESS, -1, &dc_passwd);

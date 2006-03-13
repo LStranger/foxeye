@@ -36,7 +36,7 @@ done
 AC_DEFUN(AC_SET_NODEBUG,
 [
 test "$LDFLAGS" = "" && LDFLAGS="-s"
-test "$CFLAGS" = "" || CFLAGS=`echo "$CFLAGS" | sed 's/[-]g[ ]*//'`
+test "$CFLAGS" = "" || CFLAGS=`echo "$CFLAGS" | sed 's/[-]p\?g[ ]*//g'`
 ])
 
 AC_DEFUN(AC_CHECK_DEBUG,

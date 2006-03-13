@@ -40,11 +40,11 @@ The bot is multithreaded but created threads may run with limitations:
     of bot interface structure, thread must call Set_Iface() or Find_Iface()
     before that and call Unset_Iface() after.
 
-Why SSL?
-    OpenSSL is a library that does cryptographic encoding/decoding.  If you
-  will use it you will have a secure connection between your bots.
+Version control.
+    Any version A.Bxxx must be compatible. It means if something was changed
+  in the core headers then it must be subject for version change.
 
-Why iconv?
+Why I may need iconv?
     Iconv is a library what make a conversion from one charset to other.
   You may need it if you have a number of different character sets in your
   botnet.

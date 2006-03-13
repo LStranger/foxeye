@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2003-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -27,6 +27,8 @@
 #include "init.h"
 #include "sheduler.h"
 
+#define	MAXLOGQUEUE	5000	/* max queue size before logging is aborted */
+
 typedef struct logfile_t
 {
   struct logfile_t *next;
@@ -40,8 +42,9 @@ typedef struct logfile_t
   int rmode;
   int reccount;
   INTERFACE *iface;
-  ssize_t (*add_buf) (struct logfile_t *, char *, size_t);
+  ssize_t (*add_buf) (struct logfile_t *, char *, size_t, size_t);
   int inbuf;
+  bool wantprefix;
   char buf[HUGE_STRING];
 } logfile_t;
 
@@ -50,6 +53,7 @@ static logfile_t *Logfiles = NULL;
 static long int logfile_locks = 16;	/* "logfile-lock-attempts" */
 static char logs_pattern[128] = "%$.1";	/* "logrotate-path" */
 static char logrotate_time[5] = "0000";	/* "logrotate-time" */
+static char log_prefix[16] = "-|- ";	/* "logfile-notice-prefix" */
 
 static char logrotate_min[3] = "";
 static char logrotate_hr[3] = "";
@@ -87,10 +91,11 @@ static int flush_log (logfile_t *log, int force, int needsync)
   return 0;
 }
 
-static ssize_t textlog_add_buf (logfile_t *log, char *text, size_t sz, int ts)
+static ssize_t textlog_add_buf (logfile_t *log, char *text, size_t sz,
+				size_t sp, int ts)
 {
   char tss[8];
-  size_t tsw, sw;
+  size_t tsw, sw, psw;
   int x;
 
   if (ts)
@@ -107,28 +112,43 @@ static ssize_t textlog_add_buf (logfile_t *log, char *text, size_t sz, int ts)
   }
   else
     tsw = 0;
-  if (log->inbuf + tsw + sz + 1 >= sizeof(log->buf))	/* [timestamp]line\n */
+  if (log->inbuf + tsw + sp + sz + 1 >= sizeof(log->buf))
+						/* [timestamp][prefix]line\n */
   {
     if (log->inbuf + tsw >= sizeof(log->buf))
+      sw = psw = 0;
+    else if (log->inbuf + tsw + sp >= sizeof(log->buf))
+    {
+      psw = sizeof(log->buf) - log->inbuf - tsw;
+      memcpy (&log->buf[log->inbuf+tsw], log_prefix, psw);
       sw = 0;
+    }
     else
     {
-      sw = sizeof(log->buf) - log->inbuf - tsw;
-      memcpy (&log->buf[log->inbuf+tsw], text, sw);
+      psw = sp;
+      memcpy (&log->buf[log->inbuf+tsw], log_prefix, psw);
+      sw = sizeof(log->buf) - log->inbuf - sp - tsw;
+      memcpy (&log->buf[log->inbuf+tsw+psw], text, sw);
     }
-    log->inbuf += (tsw + sw);
+    log->inbuf += (tsw + psw + sw);
     x = flush_log (log, 1, 0);
     if (x == EACCES || x == EAGAIN)	/* file locked */
     {
-      log->inbuf -= (tsw + sw);
-      /* TODO: check if file is locked too far ago? */
+      log->inbuf -= (tsw + psw + sw);
+      /* check if file is locked too far ago */
+      if (log->iface->qsize > MAXLOGQUEUE)
+      {
+	if (ts >= 0)
+	  ERROR ("Logfile %s is locked but queue grew to %d, abort logging to it",
+		 log->path, log->iface->qsize);
+	return -1;
+      }
       return 0;
     }
     else if (x)				/* fatal error! */
     {
       if (ts >= 0)			/* ts < 0 means quiet */
-	Add_Request (I_LOG, "*", F_ERROR,
-		     "Couldn't sync logfile %s, abort logging to it", log->path);
+	ERROR ("Couldn't sync logfile %s, abort logging to it", log->path);
       return -1;
     }
     if (ts && tsw < 8)
@@ -138,25 +158,32 @@ static ssize_t textlog_add_buf (logfile_t *log, char *text, size_t sz, int ts)
     }
     else
       tsw = 0;
+    sp -= psw;
+    sz -= sw;
   }
   else
-    sw = 0;
-  memcpy (&log->buf[log->inbuf+tsw], &text[sw], sz - sw);
+    sw = psw = 0;
+  if (log->inbuf + tsw + sp + sz + 1 > sizeof(log->buf)) /* truncate it */
+    sz = sizeof(log->buf) - (log->inbuf + tsw + sp + 1);
+  if (sp)
+    memcpy (&log->buf[log->inbuf+tsw], &log_prefix[psw], sp);
+  if (sz)
+    memcpy (&log->buf[log->inbuf+tsw+sp], &text[sw], sz);
   if (log->inbuf == 0)		/* timestamp for cache-time */
     log->timestamp = Time;
-  log->inbuf += (tsw + sz - sw);
+  log->inbuf += (tsw + sp + sz);
   log->buf[log->inbuf++] = '\n';
-  return sz;
+  return sz + sw;
 }
 
-static ssize_t textlog_add_buf_ts (logfile_t *log, char *text, size_t sz)
+static ssize_t textlog_add_buf_ts (logfile_t *log, char *text, size_t sz, size_t sp)
 {
-  return textlog_add_buf (log, text, sz, 1);
+  return textlog_add_buf (log, text, sz, sp, 1);
 }
 
-static ssize_t textlog_add_buf_nots (logfile_t *log, char *text, size_t sz)
+static ssize_t textlog_add_buf_nots (logfile_t *log, char *text, size_t sz, size_t sp)
 {
-  return textlog_add_buf (log, text, sz, 0);
+  return textlog_add_buf (log, text, sz, sp, 0);
 }
 
 static iftype_t logfile_signal (INTERFACE *iface, ifsig_t sig)
@@ -178,7 +205,7 @@ static iftype_t logfile_signal (INTERFACE *iface, ifsig_t sig)
       FREE (&log->rpath);
     case S_SHUTDOWN:
       if (ShutdownR && *ShutdownR && (log->level & (F_BOOT | F_ERROR | F_WARN)))
-	textlog_add_buf (log, ShutdownR, strlen(ShutdownR), -1);
+	textlog_add_buf (log, ShutdownR, strlen(ShutdownR), strlen(log_prefix), -1);
       if (log->prev)
 	log->prev->next = log->next;
       else
@@ -194,8 +221,7 @@ static iftype_t logfile_signal (INTERFACE *iface, ifsig_t sig)
       break;
     case S_FLUSH:
       flush_log (log, 1, 0);
-    default:
-      break;
+    default: ;
   }
   return 0;
 }
@@ -208,7 +234,10 @@ static int add_to_log (INTERFACE *iface, REQUEST *req)
   log = (logfile_t *)iface->data;
   if (!req || !(req->flag & log->level))
     return REQ_OK;
-  x = log->add_buf (log, req->string, strlen(req->string));
+  if (log->wantprefix != FALSE && (req->flag & F_PREFIXED))
+    x = log->add_buf (log, req->string, strlen(req->string), strlen(log_prefix));
+  else
+    x = log->add_buf (log, req->string, strlen(req->string), 0);
   if (x <= 0)
   {
     if (x < 0)
@@ -274,11 +303,10 @@ static void do_rotate (logfile_t *log)
   struct tm tm;
 
   x = flush_log (log, 1, 0);
-  dprint (3, "logs/logs:do_rotate: start for %s", log->path);
+  dprint (4, "logs/logs:do_rotate: start for %s", log->path);
   if (x)
   {
-    Add_Request (I_LOG, "*", F_ERROR, "Couldn't rotate %s: %s", log->path,
-		 strerror (x));
+    ERROR ("Couldn't rotate %s: %s", log->path, strerror (x));
     return;
   }
   localtime_r (&log->rotatetime, &tm);
@@ -309,7 +337,7 @@ static void do_rotate (logfile_t *log)
     s += strlen (&path[s]);
   }
   path[s] = 0;
-  dprint (3, "logs/logs:do_rotate: made path %s", path);
+  dprint (4, "logs/logs:do_rotate: made path %s", path);
   /* TODO: check if we must make directory */
   unlink (path);
   if (rename (log->path, path))		/* cannot rename! */
@@ -354,12 +382,12 @@ static void do_rotate (logfile_t *log)
     }
     if (errno != EXDEV)			/* couldn't move/copy file */
     {
-      Add_Request (I_LOG, "*", F_ERROR, "Couldn't rotate %s to %s: %s",
-		   log->path, path, strerror (errno));
+      ERROR ("Couldn't rotate %s to %s: %s", log->path, path, strerror (errno));
       log->fd = open_log_file (log->path);
       return;				/* reopen log, don't update time */
     }
   }
+  dprint (2, "logs/logs.c:do_rotate: finished on %s", log->path);
   log->rotatetime = get_rotatetime (-1, log->rmode);
   log->fd = open_log_file (log->path);
 }
@@ -485,9 +513,12 @@ static ScriptFunction (cfg_logfile)
   log->path = safe_strdup (tpath);
   log->rpath = rpath;
   log->fd = fd;
-  log->level = level;
   log->inbuf = 0;
   log->reccount = 0;
+  if ((level & F_PREFIXED) == level) /* only prefixed */
+    log->wantprefix = FALSE;
+  else
+    log->wantprefix = TRUE;
   if (rmode & L_NOTS)
     log->add_buf = &textlog_add_buf_nots;
   else
@@ -497,12 +528,12 @@ static ScriptFunction (cfg_logfile)
     NextWord_Unquoted (mask, args, IFNAMEMAX+1);
   else
     strcpy (mask, "*");
-  log->iface = Add_Iface (mask, I_LOG | I_FILE, &logfile_signal, &add_to_log,
+  log->iface = Add_Iface (I_LOG | I_FILE, mask, &logfile_signal, &add_to_log,
 			  log);
   log->rotatetime = get_rotatetime (log->fd, log->rmode);
   if (log->rotatetime <= lastrotated)
     do_rotate (log);
-  dprint (3, "log:cgf_logfile: success on %s", log->path);
+  dprint (2, "log:cgf_logfile: success on %s", log->path);
   return 1;
 }
 
@@ -522,6 +553,7 @@ static void module_log_regall (void)
   RegisterInteger ("logfile-lock-attempts", &logfile_locks);
   RegisterString ("logrotate-path", logs_pattern, sizeof(logs_pattern), 0);
   RegisterString ("logrotate-time", logrotate_time, sizeof(logrotate_time), 0);
+  RegisterString ("logfile-notice-prefix", log_prefix, sizeof(log_prefix), 0);
   RegisterFunction ("logfile", &cfg_logfile, "[-n] [-y|-m|-w] filename level [service]");
 }
 
@@ -601,6 +633,7 @@ static iftype_t module_log_signal (INTERFACE *iface, ifsig_t sig)
       UnregisterVariable ("logfile-lock-attempts");
       UnregisterVariable ("logrotate-path");
       UnregisterVariable ("logrotate-time");
+      UnregisterVariable ("logfile-notice-prefix");
       UnregisterFunction ("logfile");
       Delete_Help ("logs");
       iface->ift |= I_DIED;
@@ -613,8 +646,7 @@ static iftype_t module_log_signal (INTERFACE *iface, ifsig_t sig)
       /* update logrotation time */
       if (sig == S_FLUSH)
 	logrotate_reset();
-    default:
-      break;
+    default: ;
   }
   return 0;
 }
@@ -628,6 +660,7 @@ Function ModuleInit (char *args)
 {
   struct tm tm;
 
+  CheckVersion;
   Add_Help ("logs");
   module_log_regall();			/* variables and function */
   logrotate_reset();			/* shedule - logs rotation */

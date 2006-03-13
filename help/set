@@ -21,13 +21,14 @@ set locale
 :Locale name for messages and case conversions
 :This variable changes your preferred language for messages, help files\
  and case (upper<->lower) conversions. Affects only [re]boot.
- Default: value of LANG environment variable.
+ Default: locale part of value of LANG environment variable.
 
 set charset
 :%* <charset>
 :Charset name for current locale
 :This variable changes character set name for any character conversions:\
  server, dcc recodings, scripting languages (such as Tcl), etc.
+ Default: charset part of value of LANG environment variable.
 
 set listfile
 :%* <path>

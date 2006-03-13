@@ -33,3 +33,11 @@ set logrotate-time
 :Local time when logs are rotating.
 :This variable defines hour and minutes when logs are being rotated.
  Default: "0000".
+
+set logfile-notice-prefix
+:%* <string>
+:Prefix for channel notices.
+:This string is appended to begin of logged line when logging some notices\
+ such as joining and quitting users, etc. on personal logs (i.e. logs which\
+ may receive any other unprefixable log levels).
+ Default: "-|- ".

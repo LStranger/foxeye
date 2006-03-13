@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2005  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -40,6 +40,7 @@ typedef struct ifi_t
 {
   INTERFACE a;					/* must be first! */
   queue_t *queue;
+  queue_t *pq;
 } ifi_t;
 
 /* since Nick is undeclared for "dispatcher.c"... */
@@ -62,6 +63,8 @@ static INTERFACE *Current;
 static ifi_t *Console = NULL;
 
 static iftype_t if_or = 0;
+
+static FILE *lastdebuglog = NULL;
 
 /* lock for shutdown since it can be called any time */
 /* if LockIface is set then _Inum is implicitly locked for reading */
@@ -93,7 +96,7 @@ void bot_shutdown (char *message, int e)
     else if ((Interface[i]->a.ift & I_CONNECT) &&
 	     !(Interface[i]->a.ift & I_DIED) && Interface[i]->a.IFSignal)
     {
-//      fprintf (stderr, "shutdown %d: 0x%x, name %s\n", i, Interface[i]->ift, NONULL(Interface[i]->name));
+//      DBG ("shutdown %d: 0x%x, name %s\n", i, Interface[i]->a.ift, NONULL(Interface[i]->a.name));
       Interface[i]->a.IFSignal (&Interface[i]->a, sig);
     }
   }
@@ -103,7 +106,7 @@ void bot_shutdown (char *message, int e)
     if ((Interface[i]->a.ift & I_MODULE) && !(Interface[i]->a.ift & I_DIED) &&
 	Interface[i]->a.IFSignal)
     {
-//      fprintf (stderr, "shutdown %d: 0x%x, name %s\n", i, Interface[i]->ift, NONULL(Interface[i]->name));
+//      DBG ("shutdown %d: 0x%x, name %s\n", i, Interface[i]->a.ift, NONULL(Interface[i]->a.name));
       Interface[i]->a.IFSignal (&Interface[i]->a, sig);
     }
   }
@@ -114,9 +117,14 @@ void bot_shutdown (char *message, int e)
       con = Interface[i];
     else if (!(Interface[i]->a.ift & I_DIED) && Interface[i]->a.IFSignal)
     {
-//      fprintf (stderr, "shutdown %d: 0x%x, name %s\n", i, Interface[i]->ift, NONULL(Interface[i]->name));
+//      DBG ("shutdown %d: 0x%x, name %s\n", i, Interface[i]->a.ift, NONULL(Interface[i]->a.name));
       Interface[i]->a.IFSignal (&Interface[i]->a, S_SHUTDOWN);
     }
+  }
+  if (lastdebuglog)
+  {
+    fclose (lastdebuglog);
+    lastdebuglog = NULL;
   }
   /* shutdown the console */
   if (con && con->a.IFSignal)
@@ -187,6 +195,7 @@ static int add2queue (ifi_t *to, REQUEST *req)
     _Qnum++;
   }
   newq->request = req;
+  to->pq = newq;
   if (req->flag & F_QUICK)
   {
     newq->next = to->queue;
@@ -204,7 +213,6 @@ static int add2queue (ifi_t *to, REQUEST *req)
     curq->next = newq;
   }
   to->a.qsize++;
-  to->a.ift |= I_PENDING;
   return 1;
 }
 
@@ -271,19 +279,30 @@ static void vsadd_request (ifi_t *to, iftype_t ift, const char *mask,
   REQUEST *cur = NULL;
   char *ch;
   unsigned int i = 0, n, ii;
+#ifdef HAVE_ICONV
+  conversion_t *conv = NULL;
+  REQUEST *req = NULL; /* will be initialized but make compiler happy */
+  size_t s;
+#endif
 
   if (!ift || !Current)		/* special case */
     return;			/* request to nobody? */
-  n = (flag & F_DEBUG) ? 0 : 1;
+  if (lastdebuglog && (ift & I_LOG) && !(flag & F_DEBUG))
+  {
+    fprintf (lastdebuglog, ":%08x:", flag);
+    vfprintf (lastdebuglog, fmt, ap);
+    fprintf (lastdebuglog, "\n");
+    fflush (lastdebuglog);
+  }
   cur = alloc_request();
   strfcpy (cur->to, NONULL(mask), sizeof(cur->to));
-  cur->mask_if = ift;
+  cur->mask_if = (ift & ~I_PENDING);	/* reset it anyway */
   cur->from = Current;
   cur->flag = flag;
   vsnprintf (cur->string, sizeof(cur->string), fmt, ap);
-  if (n)
+  if (!(flag & F_DEBUG))
   {
-    dprint (4, "dispatcher:vsadd_request: to=\"%s\" flags=0x%x message=\"%s\"",
+    dprint (5, "dispatcher:vsadd_request: to=\"%s\" flags=0x%x message=\"%s\"",
 	    cur->to, flag, cur->string);
   }
   /* check for flags and matching */
@@ -316,33 +335,17 @@ static void vsadd_request (ifi_t *to, iftype_t ift, const char *mask,
 	       match (mask, Interface[i]->a.name) >= 0)
 	n += add2queue (Interface[i], cur);
     }
-  for (ii = 0; n && ii < _Inum; )		/* check for conversions */
-#ifdef HAVE_ICONV
+  ift &= ~I_PENDING;
+  ii = _Inum;
+  for (i = 0; n && i < _Inum; )		/* check for pending reqs */
   {
-    conversion_t *conv = NULL;
-    queue_t *q;
-    REQUEST *req = NULL;
-    size_t s;
-
-    i = ii;
-    ii = _Inum;
-    for ( ; n && i < _Inum; i++)
+    if (Interface[i]->pq)
     {
-      if (!(Interface[i]->a.ift & I_PENDING))
-	continue;
-      for (q = Interface[i]->queue; q; q = q->next)
-	if (q->request == cur)
-	  break;
-      if (!q)
-	Interface[i]->a.ift &= ~I_PENDING;	/* strange flag, erase it */
-      else
+#ifdef HAVE_ICONV
+      if (Interface[i]->a.conv)		/* no conversion, skip it */
       {
-	n--;
-	if (!Interface[i]->a.conv)
-	  Interface[i]->a.ift &= ~I_PENDING;	/* no conversion, erase it */
-	else if (!conv)
+	if (!conv)
 	{
-	  Interface[i]->a.ift &= ~I_PENDING;	/* go-go */
 	  conv = Interface[i]->a.conv;
 	  req = alloc_request();
 	  strfcpy (req->to, NONULL(mask), sizeof(req->to));
@@ -353,26 +356,27 @@ static void vsadd_request (ifi_t *to, iftype_t ift, const char *mask,
 	  s = Undo_Conversion (conv, &ch, sizeof(req->string) - 1, cur->string,
 			       strlen (cur->string));
 	  ch[s] = 0;
-	  q->request = req;
+	  Interface[i]->pq->request = req;
 	}
-	else
-	{
-	  if (conv == Interface[i]->a.conv)
-	  {
-	    Interface[i]->a.ift &= ~I_PENDING;	/* it's ready */
-	    q->request = req;
-	  }
-	  else if (ii == _Inum)		/* ready for next charset */
-	    ii = i;
-	}
+	else if (Interface[i]->a.conv == conv)
+	  Interface[i]->pq->request = req;	/* it's ready */
+	else if (ii > i)
+	  ii = i;			/* different charset */
       }
-    }
-  }
-#else
-    Interface[ii++]->a.ift &= ~I_PENDING;
 #endif
-  if (!n)			/* if no matching interface anyway - sorry */
-    cur->mask_if = 0;
+      Interface[i]->pq = NULL;
+      n--;
+    }
+    Interface[i++]->a.ift &= ~I_PENDING;
+#ifdef HAVE_ICONV
+    if (i == _Inum)
+    {
+      i = ii;
+      ii = _Inum;
+      conv = NULL;
+    }
+#endif
+  }
 }
 
 static int delete_request (queue_t *q)
@@ -470,6 +474,8 @@ int Get_Request (void)
   pthread_mutex_lock (&LockIface);
   i = _get_current();
   pthread_mutex_unlock (&LockIface);
+//  if (lastdebuglog)
+//    fprintf (lastdebuglog, "!%d", i);
   return i;
 }
 
@@ -491,22 +497,25 @@ static unsigned int IF_add (INTERFACE *iface)
   Interface[i]->a.ift = (iface->ift | if_or);
   Interface[i]->a.IFRequest = iface->IFRequest;
   Interface[i]->a.data = iface->data;
+#ifdef HAVE_ICONV
+  Interface[i]->a.conv = NULL;
+#endif
   pthread_mutex_lock (&LockInum);
   if (i == _Inum)
     _Inum++;
   pthread_mutex_unlock (&LockInum);
   if (Interface[i]->a.name)
     if (Insert_Key (&ITree, Interface[i]->a.name, Interface[i], 0))
-      Add_Request (I_LOG, "*", F_ERROR, "interface add: dispatcher tree error");
+      ERROR ("interface add: dispatcher tree error");
   pthread_mutex_unlock (&LockIface);
-  dprint (1, "added iface %u: 0x%x name \"%s\"", i, Interface[i]->a.ift,
-	  Interface[i]->a.name);
+  dprint (2, "added iface %u: 0x%x name \"%s\"", i, Interface[i]->a.ift,
+	  NONULL((char *)Interface[i]->a.name));
   return i;
 }
 
 /* locks on input: (LockIface) */
 INTERFACE *
-Add_Iface (const char *name, iftype_t ift, iftype_t (*sigproc) (INTERFACE*, ifsig_t),
+Add_Iface (iftype_t ift, const char *name, iftype_t (*sigproc) (INTERFACE*, ifsig_t),
 	   int (*reqproc) (INTERFACE *, REQUEST *), void *data)
 {
   INTERFACE new;
@@ -533,12 +542,15 @@ static void _delete_iface (unsigned int r)
   if (Current->prev && Current->prev->IFSignal && /* resume if nested */
       Current->prev->IFSignal (Current->prev, S_CONTINUE) == I_DIED)
     Current->prev->ift |= I_DIED;
-  dprint (1, "deleting iface %u of %u: 0x%x name \"%s\"", r, _Inum,
-	  Current->ift, NONULL((char *)Current->name));
+  dprint (2, "deleting iface %u of %u: name \"%s\"", r, _Inum,
+	  NONULL((char *)Current->name));
   if (Current->name)
     Delete_Key (ITree, Current->name, ((ifi_t *)Current));
   FREE (&Current->name);
   safe_free (&Current->data);
+#ifdef HAVE_ICONV
+  Free_Conversion (Current->conv);
+#endif
   while (delete_request (((ifi_t *)Current)->queue));
   pthread_mutex_lock (&LockInum);
   _Inum--;
@@ -555,9 +567,15 @@ static void iface_run (unsigned int i)
 {
   pthread_mutex_lock (&LockIface);
   /* we are died? OOPS... */
-  Current = (INTERFACE *)Interface[i];
-  while (Current && (Current->ift & I_DIED))
+  if (i < _Inum)
+    Current = (INTERFACE *)Interface[i];
+  while (i < _Inum && (Current->ift & I_DIED))
     _delete_iface (i);
+  if (lastdebuglog)
+  {
+    fprintf (lastdebuglog, "%x", i);
+    fflush (lastdebuglog);
+  }
   /* all rest are died? return now! */
   if (i < _Inum && !(Current->ift & I_LOCKED))
     _get_current();			/* run with LockIface only */
@@ -659,12 +677,22 @@ void dprint (int level, const char *text, ...)
 {
   va_list ap;
 
-  if (level > O_DLEVEL || !Interface)
-    return;
   va_start (ap, text);
-  pthread_mutex_lock (&LockIface);
-  vsadd_request (NULL, I_LOG, "*", F_DEBUG, text, ap);
-  pthread_mutex_unlock (&LockIface);
+  if (lastdebuglog)
+  {
+    fprintf (lastdebuglog, "::");
+    vfprintf (lastdebuglog, text, ap);
+    fprintf (lastdebuglog, "\n");
+    fflush (lastdebuglog);
+  }
+  if (level <= O_DLEVEL && level < 9 && Interface) /* level > 8 is printed only to lastdebuglog */
+  {
+    pthread_mutex_lock (&LockIface);
+    vsadd_request (NULL, I_LOG, "*",
+		   F_DEBUG | (level < 1 ? F_ERROR : level == 1 ? F_WARN : 0),
+		   text, ap);
+    pthread_mutex_unlock (&LockIface);
+  }
   va_end (ap);
 }
 
@@ -717,7 +745,7 @@ INTERFACE *Find_Iface (iftype_t ift, const char *name)
   }
   else if ((l = _find_itree (ift, name, NULL)))	/* find first matched */
     i = l->s.data;
-  dprint (2, "search for iface 0x%x name \"%s\": %s", ift, NONULL(name),
+  dprint (3, "search for iface 0x%x name \"%s\": %s", ift, NONULL(name),
 	  i ? (char *)i->a.name : "<none>");
   if (i)
     return &i->a;
@@ -735,7 +763,7 @@ int Rename_Iface (iftype_t ift, const char *oldname, const char *newname)
     if ((Interface[i]->a.ift & ift) &&
 	!safe_strcmp (Interface[i]->a.name, oldname))
     {
-      dprint (1, "renaming iface %u: \"%s\" --> \"%s\"", i,
+      dprint (2, "renaming iface %u: \"%s\" --> \"%s\"", i,
 	      Interface[i]->a.name, newname);
       if (Interface[i]->a.name)
 	Delete_Key (ITree, Interface[i]->a.name, Interface[i]);
@@ -743,7 +771,7 @@ int Rename_Iface (iftype_t ift, const char *oldname, const char *newname)
       Interface[i]->a.name = safe_strdup (newname);
       if (Interface[i]->a.name &&
 	  Insert_Key (&ITree, Interface[i]->a.name, Interface[i], 0))
-	Add_Request (I_LOG, "*", F_ERROR, "interface add: dispatcher tree error");
+	ERROR ("interface add: dispatcher tree error");
       for (q = Interface[i]->queue; q; q = q->next)
 	if (q->request && !safe_strcmp (q->request->to, oldname))
 	  strfcpy (q->request->to, newname, sizeof(q->request->to));
@@ -779,7 +807,7 @@ static int _b_stub (INTERFACE *iface, REQUEST *req) { return 0; }
 /* start the empty interface that will collect all boot messages */
 static void start_boot (void)
 {
-  Current = Add_Iface ("*", ~I_CONSOLE & ~I_INIT & ~I_DIED & ~I_LOCKED,
+  Current = Add_Iface (~I_CONSOLE & ~I_INIT & ~I_DIED & ~I_LOCKED, "*",
 		       NULL, &_b_stub, NULL);
   _Boot = (ifi_t *)Current;
   if_or = I_LOCKED;
@@ -793,7 +821,7 @@ static void end_boot (void)
 
   if_or = 0;
   Current = (INTERFACE *)_Boot;
-  dprint (3, "end_boot: unlock %u interfaces (but console and init)", _Inum);
+  dprint (4, "end_boot: unlock %u interfaces (but console and init)", _Inum);
   for (i = 0; i < _Inum; i++)
     if (!(Interface[i]->a.ift & (I_CONSOLE | I_INIT)))
       Interface[i]->a.ift &= ~I_LOCKED;
@@ -990,6 +1018,9 @@ int dispatcher (INTERFACE *start_if)
     max = IF_add (start_if);
     Console = Interface[max];		/* start forcing the console */
   }
+  /* start lastdebuglog if defined */
+  if (O_DDLOG)
+    lastdebuglog = fopen ("foxeye.debug", "w");
   /* create init interface - collect all messages */
   start_boot();
   time (&StartTime);

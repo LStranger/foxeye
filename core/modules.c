@@ -72,7 +72,7 @@ ScriptFunction (FE_module)
     if (args[1] == 'l')				/* get list of modules */
     {
       sig[0] = S_REPORT;
-      tmp = Add_Iface (NULL, I_TEMP, NULL, &scr_collect, NULL);
+      tmp = Add_Iface (I_TEMP, NULL, NULL, &scr_collect, NULL);
       ModuleList[0] = 0;
       Set_Iface (tmp);
       ReportFormat = NULL;
@@ -145,8 +145,7 @@ ScriptFunction (FE_module)
     if (!func)
     {
       c = (char *)dlerror();
-      Add_Request (I_LOG, "*", F_ERROR, "cannot load module %s: %s", name,
-		   NONULL(c));
+      ERROR ("cannot load module %s: %s", name, NONULL(c));
       if (modh)
 	dlclose (modh);
       return 0;
@@ -157,25 +156,25 @@ ScriptFunction (FE_module)
 	break;
     if ((func = (Function)ModulesTable[i].func) == NULL)
     {
-      Add_Request (I_LOG, "*", F_ERROR, "cannot start module %s: not found", name);
+      ERROR ("cannot start module %s: not found", name);
       return 0;
     }
 #endif
     /* start the module */
     if ((mods = (iftype_t(*)(INTERFACE *,ifsig_t))func (args)) == NULL)
     {
-      Add_Request (I_LOG, "*", F_ERROR, "module %s: ModuleInit() error", name);
+      ERROR ("module %s: ModuleInit() error", name);
 #ifndef STATIC
       dlclose (modh);
 #endif
       return 0;
     }
 #ifndef STATIC
-    if (!Add_Iface (name, I_MODULE, mods, NULL, modh))
+    if (!Add_Iface (I_MODULE, name, mods, NULL, modh))
     {
       dlclose (modh);
 #else
-    if (!Add_Iface (name, I_MODULE, mods, NULL, NULL))
+    if (!Add_Iface (I_MODULE, name, mods, NULL, NULL))
     {
 #endif
       return 0;
@@ -200,6 +199,6 @@ ScriptFunction (FE_module)
     return 1;
   }
   else					/* unknown command? */
-    Add_Request (I_LOG, "*", F_ERROR, "invalid call: module -%c %s", cmd, args);
+    ERROR ("invalid call: module -%c %s", cmd, args);
   return 0;
 }

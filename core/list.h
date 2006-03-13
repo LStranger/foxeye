@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2005  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -44,7 +44,7 @@ int Grow_Field (clrec_t *, const char *, const char *);
 userflag Get_Flags (clrec_t *, const char *);
 userflag Set_Flags (clrec_t *, const char *, userflag);
 int Add_Mask (clrec_t *, const uchar *);
-void Delete_Mask (clrec_t *, const uchar *);
+int Delete_Mask (clrec_t *, const uchar *);
 void Unlock_Clientrecord (clrec_t *);
 
 lid_t GetLID (const char *);	/* Lname -> LID */

@@ -28,7 +28,8 @@ KICK  "iirrcc--kkiicckk"       MASK
       Script args: op user@host Lname "channel who" comment
 
 TOPC  "iirrcc--ttooppiicc"      MASK
-  (int) void func(???????);
+  (int) void func(unsigned char *_w_h_o, const char *_l_n_a_m_e,
+		  INTERFACE *_c_h_a_n, char *_t_o_p_i_c);
     Used when we got new topic info (on join or topic change).
       Matching: "channel topic" string.
       Script args: nick user@host Lname channel topic

@@ -76,7 +76,7 @@ set irc-umode
  after registering on network.
 
 set irc-privmsg-commands
-:%* <yes|no>
+:%* "yes"|"no"
 :Allow or not using of private messages as commands.
 :This variable defines behavior when someone sends private message to me. If\
  this variable is set to %^yes%^ then it will be parsed and checked for\

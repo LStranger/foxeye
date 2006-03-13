@@ -19,8 +19,8 @@ INCLUDES = -I$(top_srcdir)/tree
 DEFS = @DEFS@ -DLOCALEDIR=\"$(localedir)\" -DMODULESDIR=\"$(pkglibdir)\" \
 	-DHELPDIR=\"$(helpdir)\"
 
-EXTRA_DIST = direct.h foxeye.h init.h.in modules.h protos.h sheduler.h \
-	socket.h list.h wtmp.h formats.default conversion.h
+EXTRA_DIST = direct.h foxeye.h modules.h protos.h sheduler.h socket.h list.h \
+	wtmp.h formats.default conversion.h rwlock_init.h
 
 CLEANFILES = static.h
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2005  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -209,11 +209,10 @@ int Add_Help (const char *name)
 	  (*ht)->helpgr = _get_helpgr (gr);
 	(*ht)->key = key;
 	if (Insert_Key (&((HELPGR *)(*ht)->helpgr)->tree, key, *ht, 1))
-	  Add_Request (I_LOG, "*", F_WARN,
-		       "help: duplicate entry \"%s\" for set \"%s\" ignored",
-		       key, gr == key ? "" : gr);
+	  WARNING ("help: duplicate entry \"%s\" for set \"%s\" ignored", key,
+		   key, gr == key ? "" : gr);
 	else
-	  dprint (1, "help: adding entry for \"%s\" to set \"%s\"", key,
+	  dprint (2, "help: adding entry for \"%s\" to set \"%s\"", key,
 		  gr == key ? "" : gr);
     }
     data = endc;
@@ -249,7 +248,7 @@ void Delete_Help (const char *name)
   {
     next = t->next;
     Delete_Key (((HELPGR *)t->helpgr)->tree, t->key, t);
-    dprint (1, "help: deleting entry for \"%s\" from set \"%s\"", t->key,
+    dprint (2, "help: deleting entry for \"%s\" from set \"%s\"", t->key,
 	    NONULL(((HELPGR *)t->helpgr)->key));
     FREE (&t);
   }
@@ -379,7 +378,7 @@ int Get_Help (const char *fst, const char *sec, INTERFACE *iface, userflag gf,
   HELPGR *h = Help;
   HELP *t;
 
-  dprint (3, "help:Get_Help: call \"%s %s\"", NONULL(fst), NONULL(sec));
+  dprint (4, "help:Get_Help: call \"%s %s\"", NONULL(fst), NONULL(sec));
   if (!fst || !*fst || !safe_strcmp (fst, "*"))
     return _help_all_topics (Help, iface, gf, cf, table, mode);
   if (!h || (table && Check_Bindtable (table, fst, gf, cf, NULL) == NULL))
@@ -395,7 +394,7 @@ int Get_Help (const char *fst, const char *sec, INTERFACE *iface, userflag gf,
   /* no such group? */
   if (!h)
   {
-    Add_Request (I_LOG, "*", F_WARN, "help: set \"%s\" not found", fst);
+    WARNING ("help: set \"%s\" not found", fst);
     if (sec && *sec)
       return _no_such_help (iface, mode);
     /* find common help */
@@ -408,11 +407,11 @@ int Get_Help (const char *fst, const char *sec, INTERFACE *iface, userflag gf,
   FREE (&lct);
   if (!t)
   {
-    Add_Request (I_LOG, "*", F_WARN, "help: topic \"%s\" not found", NONULL(topic));
+    WARNING ("help: topic \"%s\" not found", NONULL(topic));
     if (h != Help)
       return _help_all_topics (h, iface, gf, cf, table, mode);
     return _no_such_help (iface, mode);
   }
-  dprint (2, "help: found entry for \"%s\" in set \"%s\"", topic, NONULL(h->key));
+  dprint (3, "help: found entry for \"%s\" in set \"%s\"", topic, NONULL(h->key));
   return _help_one_topic (t->data, iface, NONULL(prefix), h->key, topic, mode);
 }

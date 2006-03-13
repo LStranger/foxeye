@@ -8,7 +8,7 @@
 # direct.c bindings:
 
 function port
-:port [-b|-d] <1024-65535>
+:port ["-b"|"-d"] <1024-65535>
 :
 :Opens or closes listening port for direct connections. Usage:
  port <x>     opens port x for direct connections
@@ -82,7 +82,7 @@ cstat
  description of current connection state for each connection.
 
 echo
-:%* [on|off]
+:%* ["on"|"off"]
 :
 :Sets whether you want your messages will be echoed back to you on botnet\
  channel. If you set it to %^on%^ then all you say will be displayed to you\
@@ -137,24 +137,24 @@ quit
  be printed out for other party members as reason.
 
 connect
-:%* <network|botnick> [<args>]
+:%* <network|public@network|botnick> [args]
 :
-:Starts connection attempt to network or bot with given name. Optional %_args%_\
- are network specific. Network or botnick must be already defined in Listfile\
- to get this command to work since there is no way to know which protocol we\
- have to use to connect.
+:Starts connection attempt to network, community on connected network or bot\
+ by given name. Optional %_args%_ are network specific. Network or botnick must\
+ be already defined in Listfile to get this command to work since there is no\
+ way to know which protocol we have to use to connect.
 
 disconnect
-:%* <network|botnick>
+:%* <network|public@network|botnick> [reason]
 :
-:Disconnects you from network or bot with given name if you are connected to\
- it.
+:Disconnects you from network, community or bot with given name if you are\
+ connected to it. Optional string may be given as reason of disconnect.
 
 # -----------------------
 # init.c bindings:
 
 binds
-:%* [-l|name|-a [name]]
+:%* ["-l"|name|"-a" [name]]
 :
 :Shows binding status. Modifiers:
    -l    	show list of all tables and number of bindings in each
@@ -162,7 +162,7 @@ binds
    name  	show list of internal bindings in table %_name%_
 
 module
-:%* [-c|-d] modulename [args]
+:%* ["-c"|"-d"] modulename [args]
 :
 :Controls of module state (the same as %^function module%^):
  %*	loads an unloaded module by it's name with optional arguments
@@ -171,7 +171,7 @@ module
  See also %yhelp %*%n %_modulename%_.
 
 status
-:%* [-a|module]
+:%* ["-a"|modulename]
 :
 :Shows condensed information about core and/or modules.
 
@@ -201,11 +201,11 @@ die
 :Terminates the core and all modules.
 
 set
-:%* [variable [value]]
+:%* [variablename [value]]
 :
 :Shows or sets value for variable. If variable name is omitted then shows\
  list of all known variables.
- See also %yhelp %*%n %_variable%_.
+ See also %yhelp %*%n %_variablename%_.
 
 # -----------------------
 # module.c bindings:
@@ -242,16 +242,16 @@ chattr
 :
 :Removes a hostmask from client record %_name%_.
 
-+user
-:%* [-<network>] name [hostmask [flags]]
++name
+:%* [-<network type>] name [hostmask [flags]]
 :
 :Creates a new client record for given %_name%_. If %_hostmask%_ given then\
  adds that hostmask to listfile. The new record will have given %_flags%_\
  or no flags otherwise. You may also add network records with this command,\
- in that case you have to add %_network%_ type before %_name%_ with minus\
+ in that case you have to add %_network type%_ before %_name%_ with minus\
  sign, first character of %_name%_ must be '%^@%^'.
 
--user
+-name
 :%* name
 :
 :Removes the client record from listfile.

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2005  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -281,8 +281,7 @@ static int Sheduler (INTERFACE *ifc, REQUEST *req)
     if (drift < 0 || drift > 120)	/* it seems system time was tuned */
     {
       if (Time)				/* if it's on start then it's ok */
-	Add_Request (I_LOG, "*", F_WARN,
-		     "system time was slipped by %d seconds!", drift);
+	WARNING ("system time was slipped by %d seconds!", drift);
       drift = 1;			/* assume 1 second passed */
     }
     /* decrement floodtimers */
@@ -298,7 +297,7 @@ static int Sheduler (INTERFACE *ifc, REQUEST *req)
       }
     }
     if (j)
-      dprint (1, "Sheduler: removed %u flood timer(s), remained %u/%u",
+      dprint (4, "Sheduler: removed %u flood timer(s), remained %u/%u",
 	      j, _SFnum, MAXTABLESIZE);
     pthread_mutex_lock (&LockShed);
     /* decrement timers */
@@ -336,7 +335,7 @@ static int Sheduler (INTERFACE *ifc, REQUEST *req)
 
       /* update datestamp */
       if (!strftime (DateString, sizeof(DateString), "%e %b %H:%M", &tm))
-	Add_Request (I_LOG, "*", F_WARN, "Cannot form datestamp!");
+	WARNING ("Cannot form datestamp!");
       /* flush all files */
       Add_Request (I_FILE, "*", F_SIGNAL, ifsig);
       /* run Crontable (?TODO: check for missed minutes?) */
@@ -371,7 +370,7 @@ static int Sheduler (INTERFACE *ifc, REQUEST *req)
     i = _STnum;
     pthread_mutex_unlock (&LockShed);
     if (j)
-      dprint (1, "Sheduler: sent %u timer signal(s), remained %u/%u",
+      dprint (4, "Sheduler: sent %u timer signal(s), remained %u/%u",
 	      j, i, MAXTABLESIZE);
     /* TODO: check if we need Wtmp rotation: if (!ifc || tm.tm_mon != wlm) */
   }
@@ -416,6 +415,6 @@ char *IFInit_Sheduler (void)
   Sheduler (NULL, NULL);
   /* create own interface - I_TEMP forever ;) */
   if (!ShedIface)
-    ShedIface = Add_Iface (NULL, I_TEMP, NULL, &Sheduler, NULL);
+    ShedIface = Add_Iface (I_TEMP, NULL, NULL, &Sheduler, NULL);
   return NULL;
 }

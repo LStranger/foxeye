@@ -238,6 +238,9 @@ typedef enum
 #define F_MIN		F_PUBLIC
 #define F_T_MASK	(F_MIN-1)
 
+#define F_PREFIXED (F_USERS | F_CMDS | F_CONN | F_SERV | F_ERROR | F_WARN | \
+		    F_JOIN | F_MODES) /* those must be prefixed in some cases */
+
 /*
  * Note: All fields here are read only until you are sure it is only for you...
  * Note2: request, returned by IFRequest() have not to set only ->from in it

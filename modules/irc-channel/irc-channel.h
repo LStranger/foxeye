@@ -21,8 +21,6 @@
 #define A_AWAY		(1<<1)	/* +a	user is away */
 #define A_WALLOP	(1<<2)	/* +w	can get wallop messages */
 
-#define IS_INSPLIT(a)	(a->nick->split && a->mode == 0)
-
 #define A_LIMIT		(1<<1)	/* +-l	channel modelock flag */
 #define A_KEYSET	(1<<2)	/* +-k	channel modelock flag */
 
@@ -31,6 +29,7 @@
 #define L_NOEXEMPTS	(1<<1)
 #define L_HASHALFOP	(1<<2)
 #define L_HASADMIN	(1<<3)
+#define L_HASREGMODE	(1<<4)
 
 typedef struct
 {
@@ -48,6 +47,8 @@ typedef struct netsplit_t
   time_t at;			/* when started */
   time_t ping;			/* when ping sent */
   NODE *nicks;			/* referenced data is nick_t */
+  NODE *channels;		/* referenced data is ch_t */
+  struct ch_t *lastch;		/* for netjoins */
 } netsplit_t;
 
 typedef struct list_t
@@ -66,6 +67,7 @@ typedef struct link_t
   struct link_t *prevchan;	/* nick->channels => link->prevchan... */
   modeflag mode;
   time_t activity;
+  time_t lmct;			/* last modechange time by me */
   char joined[13];
   short count;
 } link_t;
@@ -101,6 +103,7 @@ typedef struct net_t
 {
   char *name;			/* "@network" */
   INTERFACE *neti;
+  char *(*lc) (char *, const char *, size_t);
   NODE *channels;
   NODE *nicks;
   NODE *lnames;			/* referenced data is last nick_t */
@@ -112,15 +115,19 @@ typedef struct net_t
   char modechars[3];		/* restricted,registered,hidehost */
 } net_t;
 
+ch_t *ircch_find_service (INTERFACE *, net_t **);
 link_t *ircch_find_link (net_t *, char *, ch_t *);
 int ircch_add_mask (list_t **, char *, size_t, char *);
 list_t *ircch_find_mask (list_t *, char *);
 void ircch_remove_mask (list_t **, list_t *);
 
-void ircch_recheck_modes (net_t *, link_t *, userflag, userflag, char *);
+void ircch_recheck_modes (net_t *, link_t *, userflag, userflag, char *, int);
 	/* bindtables: irc-modechg, keychange */
 int ircch_parse_modeline (net_t *, ch_t *, link_t *, char *, userflag, \
-				bindtable_t *, bindtable_t *, int, char **,
-				char *(*lc) (char *, const char *, size_t));
+				bindtable_t *, bindtable_t *, int, char **);
 void ircch_parse_configmodeline (net_t *, ch_t *, char *);
 void ircch_enforcer (net_t *, ch_t *);
+void ircch_expire (net_t *, ch_t *);
+
+void ircch_set_ss (void);
+void ircch_unset_ss (void);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2005  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -18,6 +18,8 @@
 
 #ifndef INIT_C
 
+WHERE const char *_VERSION	INITVAL("@VERSION@");
+
 	/* public part */
 typedef char bool;
 #define ASK		(1<<1)			/* ask-yes, ask-no */
@@ -28,6 +30,7 @@ WHERE bool O_TESTCONF		INITVAL(FALSE);
 WHERE bool O_DEFAULTCONF	INITVAL(FALSE);
 WHERE bool O_GENERATECONF	INITVAL(FALSE);
 WHERE bool O_WAIT		INITVAL(FALSE);
+WHERE bool O_DDLOG		INITVAL(FALSE);
 
 WHERE short O_DLEVEL		INITVAL(0);
 WHERE char *Config		INITVAL(NULL);
