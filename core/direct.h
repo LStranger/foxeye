@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -15,13 +15,11 @@
  *     along with this program; if not, write to the Free Software
  *     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * public structure of all the dcc connections
+ * This file is part of FoxEye's source: direct connections API.
  */
 
 #ifndef _DIRECT_H
 #define _DIRECT_H 1
-
-#include <pthread.h>
 
 typedef enum
 {
@@ -34,6 +32,11 @@ typedef enum
   P_LASTWAIT				/* closed session */
 } _peer_state;
 
+#if 0	/* TODO 0.6x */
+typedef struct connchain_i connchain_i;
+typedef struct connchain_buffer connchain_buffer;
+
+#endif
 typedef struct peer_t
 {
   _peer_state state;
@@ -44,10 +47,14 @@ typedef struct peer_t
   INTERFACE *iface;			/* main interface of this session */
   void (*parse) (struct peer_t *, char *, char *, userflag, userflag, int, int,
 		 bindtable_t *, char *);/* function to parse/broadcast line */
+//TODO 0.6x - delete next two fields
   size_t inbuf;				/* how much bytes are in buf */
   size_t bufpos;
   char start[13];			/* chat-on time */
+//TODO 0.6x - delete next field
   char buf[MB_LEN_MAX*MESSAGEMAX];	/* outgoing message buffer */
+//TODO 0.6x:  connchain_i *connchain;			/* connchain instance */
+//TODO 0.6x:  int isbin;				/* has binary filters (M_RAW mode) */
 } peer_t;
 
 void Chat_Join (INTERFACE *, userflag, int, int, char *); /* wrappers */
@@ -60,9 +67,15 @@ ssize_t Session_Get (peer_t *, char *, size_t);
 void Dcc_Parse (struct peer_t *, char *, char *, userflag, userflag, int, int,
 		bindtable_t *, char *);			/* default parser */
 
-unsigned short Listen_Port (char *, unsigned short, char *,
-			    void (*prehandler) (pthread_t, idx_t),
-			    void (*) (char *, char *, char *, idx_t));
-pthread_t Connect_Host (char *, unsigned short, idx_t *,
-			void (*) (int, void *), void *);
+idx_t Listen_Port (char *, char *, unsigned short *, char *,
+		   void (*) (pthread_t, idx_t, idx_t),
+		   void (*) (char *, char *, char *, idx_t));
+int Connect_Host (char *, unsigned short, pthread_t *, idx_t *,
+		  void (*) (int, void *), void *);
+#if 0	/* TODO 0.6x */
+
+int Connchain_Grow (peer_t *, char);
+ssize_t Connchain_Put (connchain_i *, idx_t, const char *, size_t);
+ssize_t Connchain_Get (connchain_i *, idx_t, const char *, size_t);
+#endif
 #endif

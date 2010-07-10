@@ -1,0 +1,87 @@
+.\" -*-nroff-*-
+.\"
+.\" Copyright (C) 1999-2008  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+.\"
+.\"     This program is free software; you can redistribute it and/or modify
+.\"     it under the terms of the GNU General Public License as published by
+.\"     the Free Software Foundation; either version 2 of the License, or
+.\"     (at your option) any later version.
+.\"
+.\"     This program is distributed in the hope that it will be useful,
+.\"     but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\"     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\"     GNU General Public License for more details.
+.\"
+.\"     You should have received a copy of the GNU General Public License
+.\"     along with this program; if not, write to the Free Software
+.\"     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+.\"
+.\" This file is part of FoxEye's source: FoxEye manual file
+.\"
+.TH "FoxEye" 1 "@GENDATE@" "@PACKAGE@ @VERSION@" "FoxEye manual" 
+.SH NAME
+.PP
+FoxEye - the universal network client.
+.SH SYNOPSIS
+.PP
+.B foxeye
+[-n \fInick\fP] [-cdmt] \fIfile\fP
+.PP
+.B foxeye
+-cr [-n \fInick\fP] [-dm] [-g \fIfile\fP]
+.PP
+.B foxeye
+-[h|v]
+.SH DESCRIPTION
+.PP
+FoxEye was created first as a IRC (Internet Relay Chat) network bot - the
+network daemon which controls functionality and protection of IRC channels.
+It enters to IRC network as user, joins the channel and tries don't leave
+it until crash or terminate.  But now it is multipurpose modularised client
+or service for networks: IRC, ICQ, etc.
+.SH OPTIONS
+.TP 10
+.IP "\fIfile\fP"
+config file to use (no defaults).
+.IP "\fB-c\fP"
+Don't detach console (chat simulation mode).
+.IP "\fB-d[d]\fP"
+Increase a debug log level by one (maximum debug level is 5).
+.IP "\fB-g\fP \fIfile\fP"
+Generate new config file \fIfile\fP
+.IP "\fB-h\fP"
+Display help message and exit.
+.IP "\fB-m\fP"
+Make an empty listfile.
+.IP "\fB-n\fP \fInick\fP"
+Set default nick to \fInick\fP
+.IP "\fB-r\fP"
+Reset parameters (don't use the config file statements).
+.IP "\fB-t\fP"
+Test the configuration and exit.
+.IP "\fB-v\fP"
+Display version information and exit.
+.SH ENVIRONMENT
+.PP
+.IP "HOME"
+Full path of the user's home directory.
+.\".SH FILES
+.\".SH DIAGNOSTICS
+.SH NO WARRANTIES
+.PP
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+.SH SEE ALSO
+.PP
+.BR ircd (8),
+.BR RFC2810 ,
+.BR RFC2811 ,
+.BR RFC2812 ,
+.BR RFC2813 .
+The GNU General Public License.
+.SH AUTHOR
+.PP
+Andriy Gritsenko. (1999-2008)
+.\".SH BUGS

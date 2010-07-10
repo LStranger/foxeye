@@ -8,4 +8,6 @@ AC_OUTPUT(Makefile \
         core/Makefile \
 	core/init.h \
 	intl/Makefile \
-	po/Makefile.in)
+	ui/Makefile \
+	po/Makefile.in \
+	doc/foxeye.1)

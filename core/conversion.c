@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2003-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -15,7 +15,7 @@
  *     along with this program; if not, write to the Free Software
  *     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * charset conversion definitions
+ * This file is part of FoxEye's source: charset conversion layer.
  */
 
 #include "foxeye.h"
@@ -25,7 +25,6 @@
 #include "conversion.h"
 
 #include <iconv.h>
-#include <pthread.h>
 #include <errno.h>
 
 #include "init.h"
@@ -45,21 +44,26 @@ static conversion_t *Conversions = NULL; /* first is internal */
 
 static conversion_t *_get_conversion (const char *charset)
 {
-  conversion_t *conv;
+  conversion_t *conv, *last = NULL;
 
   if (charset == NULL) /* for me assume it's internal charset */
     conv = Conversions;
   else /* scan Conversions tree */
-    for (conv = Conversions; conv; conv = conv->next)
-      if (!strcasecmp (conv->charset, charset))
+    for (conv = Conversions; conv; conv = last->next)
+    {
+      last = conv;
+      if (!safe_strcasecmp (conv->charset, charset))
 	break;
+    }
   if (conv)
     return conv;
   conv = safe_malloc (sizeof(conversion_t));
-  conv->next = Conversions;
-  if (conv->next)
-    conv->next->prev = conv;
-  Conversions = conv;
+  conv->next = NULL;
+  conv->prev = last;
+  if (conv->prev)	/* it's not first */
+    conv->prev->next = conv;
+  else			/* for internal */
+    Conversions = conv;
   conv->inuse = 0;
   conv->charset = safe_strdup (charset);
   conv->cdin = conv->cdout = (iconv_t)(-1);
@@ -86,14 +90,15 @@ conversion_t *Get_Conversion (const char *charset)
     if (*Charset && (cd = iconv_open (Charset, "ascii")) != (iconv_t)(-1))
     {
       iconv_close (cd);
-      _get_conversion (Charset);
+      conv = _get_conversion (Charset);
     }
     else
-      _get_conversion (CHARSET_8BIT);	/* Charset doesn't exist */
+      conv = _get_conversion (CHARSET_8BIT);	/* Charset doesn't exist */
   }
   conv = _get_conversion (charset);
   inuse = conv->inuse++;
   pthread_mutex_unlock (&ConvLock);
+  DBG ("Get_Conversion: %s", conv->charset);
   if (conv == Conversions)
     return NULL;
   else if (inuse)
@@ -126,6 +131,13 @@ void Free_Conversion (conversion_t *conv)
   if (conv == NULL)
     return;
   pthread_mutex_lock (&ConvLock);
+  if (!Conversions)
+  {
+    pthread_mutex_unlock (&ConvLock);
+    ERROR ("Free_Conversion: called while not initialized yet!");
+    return;
+  }
+  DBG ("Free_Conversion: %s(%d)", conv->charset, conv->inuse);
   if (conv->inuse)
     conv->inuse--;
   if (conv->inuse == 0 && conv != Conversions &&
@@ -143,6 +155,23 @@ void Free_Conversion (conversion_t *conv)
     FREE (&conv);
   }
   pthread_mutex_unlock (&ConvLock);
+}
+
+conversion_t *Clone_Conversion (conversion_t *conv)
+{
+  pthread_mutex_lock (&ConvLock);
+  if (conv != NULL)
+    conv->inuse++;
+  else if (!Conversions)
+    ERROR ("Clone_Conversion: called while not initialized yet!");
+  pthread_mutex_unlock (&ConvLock);
+  DBG ("Clone_Conversion: %s", conv ? conv->charset : "");
+  return conv;
+}
+
+const char *Conversion_Charset (conversion_t *conv)
+{
+  return conv ? conv->charset : Conversions->charset;
 }
 
 /*
@@ -206,6 +235,25 @@ size_t Undo_Conversion (conversion_t *conv, char **buf, size_t bufsize,
 			 (const unsigned char *)str, len);
 }
 
+void Status_Encodings (INTERFACE *iface)
+{
+  conversion_t *conv;
+
+  /* do all cycle with lock set since New_Request() should never lock it */
+  pthread_mutex_unlock (&ConvLock);
+  if ((conv = Conversions))
+  {
+    /* there is no reason to count Conversions->inuse since it will be 0
+       after few interfaces are deleted (see dispatcher.c) */
+    New_Request (iface, 0, "Conversions: internal charset %s.",
+		 conv->charset, conv->inuse);
+    while ((conv = conv->next))
+      New_Request (iface, 0, "Conversions: charset %s, used %d times.",
+		   conv->charset, conv->inuse);
+  }
+  pthread_mutex_unlock (&ConvLock);
+}
+
 #endif
 
 #if 0
@@ -235,136 +283,6 @@ conversion_t *conv_set_internal(conversion_t **old, const char *);
 						    field=MyMalloc(sz+1);\
 						    memcpy(field,buff,sz);\
 						    field[sz]=0;} while(0)
-
-void conv_report(aClient *, char *);
-
-/*
- * sends list of all charsets and use of it, including listen ports
- * it's answer for /stats e command
-*/
-void conv_report(aClient *sptr, char *to)
-{
-  conversion_t *conv;
-
-  if (!internal)
-    return; /* it's impossible, I think! --LoSt */
-  sendto_one(sptr, ":%s %d %s :Internal charset: %s",
-	     ME, RPL_STATSDEBUG, to, internal->charset);
-  for (conv = Conversions; conv; conv = conv->next)
-    sendto_one(sptr, ":%s %d %s :Charset %s: %d",
-	       ME, RPL_STATSDEBUG, to, conv->charset, conv->inuse);
-}
-
-/*
- * converts null-terminated string src to upper case string
- * output buffer dst with size ds must be enough for null-terminated string
- * else string will be truncated
- * returns length of output null-terminated string (with null char)
- * if dst == NULL or ds == 0 then returns 0
-*/
-size_t rfcstrtoupper(char *dst, char *src, size_t ds)
-{
-    size_t sout = 0, ss;
-
-    if (dst == NULL || ds == 0)
-	return 0;
-    ds--;
-    if (src && *src)
-    {
-	if (Force8bit) /* if string needs conversion to 8bit charset */
-	{
-	    conversion_t *conv;
-	    size_t processed, rest;
-	    char *ch;
-	    char buf[100]; /* hope it's enough for one pass ;) */
-
-	    ss = strlen(src);
-	    conv = conv_get_conversion(CHARSET_8BIT); /* it must be already created --LoSt */
-	    while (ss && ds)
-	    {
-		ch = buf;
-		rest = sizeof(buf);
-		/* use iconv() since conv_* doesn't do that we want */
-		iconv(conv->cdout, (const char **)&src, &ss, &ch, &rest);
-		processed = ch - buf;
-		for (ch = buf; ch < &buf[processed]; ch++)
-		{
-		    if (*ch >= 0x7b && *ch <= 0x7d) /* RFC2812 */
-			*ch = (*ch & ~0x20);
-		    else if (*ch == 0x5e)
-			*ch = 0x7e;
-		    else
-			*ch = toupper(*(unsigned char *)ch);
-		}
-		rest = ds;
-		ch = buf;
-		iconv(conv->cdin, (const char **)&ch, &processed, &dst, &ds);
-		sout += (rest - ds);
-		/* there still may be unconvertable chars in buffer! */
-		if (rest == ds)
-		    break;
-	    }
-	    conv_free_conversion(conv);
-	}
-	else
-#ifdef IRCD_CHANGE_LOCALE
-	if (UseUnicode && MB_CUR_MAX > 1) /* if multibyte encoding */
-	{
-	    wchar_t wc;
-	    int len;
-	    register char *ch;
-	    char c[MB_LEN_MAX];
-
-	    for (ch = (unsigned char *)src, ss = strlen(ch); *ch; )
-	    {
-		len = mbtowc(&wc, ch, ss);
-		if (len < 1)
-		{
-		    ss--;
-		    if ((--ds) == 0)
-			break; /* no room for it? */
-		    *dst++ = *ch++;
-		    sout++;
-		    continue;
-		}
-		ss -= len;
-		ch += len;
-		if (wc >= 0x7b && wc <= 0x7d) /* RFC2812 */
-		    wc &= ~0x20;
-		else if (wc == 0x5e)
-		    wc = 0x7e;
-		else
-		    wc = toupper(wc);
-		len = wctomb(c, wc); /* first get the size of lowercase mbchar */
-		if (len < 1)
-		    continue; /* tolower() returned unknown char? ignore it */
-		if (len >= ds)
-		    break; /* oops, out of output size! */
-		memcpy(dst, c, len); /* really convert it */
-		ds -= len; /* it's at least 1 now */
-		dst += len;
-		sout += len;
-	    }
-	}
-	else
-#endif
-	{ /* string in internal single-byte encoding the same as locale */
-	    register char ch;
-
-	    for (ch = *src++; ch && ds; ch = *src++, sout++, ds--)
-	    {
-		if (ch >= 0x7b && ch <= 0x7d) /* RFC2812 */
-		    *dst++ = (ch & ~0x20);
-		else if (ch == 0x5e)
-		    *dst++ = 0x7e;
-		else
-		    *dst++ = toupper((unsigned char)ch);
-	    }
-	}
-    }
-    *dst = 0;
-    return (sout + 1);
-}
 
 size_t unistrcut (char *line, size_t len, size_t maxchars)
 {

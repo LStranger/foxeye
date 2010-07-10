@@ -1,0 +1,207 @@
+# Syntax is follows: line started with capital letter or dash contains
+#   bindtable name inside double quotation marks;
+# line(s) next to stated above contain function declaration;
+# line started with '    Used' ends function declaration and begins function
+#   description.
+
+# This file is a part of FoxEye project.
+# Copyright (C) 2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+
+ Core bindtables:
+ ----------------
+
+DCC   "ddcccc"            UCOMPL
+  int func(peer_t *_f_r_o_m, char *_a_r_g_s);
+    Used when user enters the command on partyline. Partyline member
+    identified with session _f_r_o_m. Arguments _a_r_g_s to command are
+    stripped from leading spaces.
+      Matching: first word of partyline command without leading '.'.
+      Script args: Lname Dcc-idx args
+
+CHAT  "cchhaatt"           MASK
+  (int) void func(peer_t *_f_r_o_m, char *_m_s_g);
+    Used when somebody says anything (text _m_s_g) on the partyline/botnet.
+    Partyline member identified with session _f_r_o_m.
+      Matching: full text line.
+      Script args: Lname BotChannel msg
+
+ACT   "cchhaatt-aacctt"       MASK
+  (int) void func(peer_t *_f_r_o_m, char *_m_s_g);
+    Used when somebody does an action (text _m_s_g) on the partyline/botnet.
+    Partyline member identified with session _f_r_o_m.
+      Matching: full text line.  (any channel userflags are ignored)
+      Script args: Lname BotChannel msg
+
+FILT  "iinn--ffiilltteerr"      MASK
+  (int) void func(peer_t *_f_r_o_m, char *_m_s_g, size_t _m_s_g_l_e_n);
+    Used for filtering text _m_s_g on the partyline before parsing. All
+    filters matched user (identified by _f_r_o_m) flags and text mask will
+    be applied. Null-terminated text at area _m_s_g no longer than _m_s_g_l_e_n
+    can be rewritten by internal binding.
+      Matching: full text line.  (any channel userflags are ignored)
+      Script args: Dcc-idx msg
+      Bind result: new text line.
+
+-     "oouutt--ffiilltteerr"     MASK
+  (int) void func(peer_t *_t_o, char *_m_s_g, size_t _m_s_g_l_e_n);
+    Used for filtering text _m_s_g before sending to partyline user. All
+    filters matched user (identified by _t_o) flags and text mask will be
+    applied. Null-terminated text at area _m_s_g no longer than _m_s_g_l_e_n can
+    be rewritten.
+      Matching: full text line.  (any channel userflags are ignored)
+      Script args: Dcc-idx msg
+      Bind result: new text line.
+
+CHON  "cchhaatt--oonn"        MASK
+  (int) void func(peer_t *_w_h_o);
+    Used when somebody _w_h_o enters a DCC CHAT partyline.
+      Matching: Lname.
+      Script args: Lname Dcc-idx
+
+CHOF  "cchhaatt--ooffff"       MASK
+  (int) void func(peer_t *_w_h_o);
+    Used when somebody _w_h_o "logoff" from DCC CHAT partyline.
+      Matching: Lname.
+      Script args: Lname Dcc-idx
+
+CHJN  "cchhaatt--jjooiinn"      MASK
+  (int) void func(INTERFACE *_i_f_a_c_e, int _b_c_h_a_n, char *_h_o_s_t);
+    Used when somebody _i_f_a_c_e (coming from _h_o_s_t) joins a botnet channel
+    _b_c_h_a_n.
+      Matching: bchan.  (userflags are ignored)
+      Script args: botname uname bchan dccuserchar Dcc-idx host
+
+CHPT  "cchhaatt--ppaarrtt"      MASK
+  (int) void func(INTERFACE *_i_f_a_c_e, int _b_c_h_a_n);
+    Used when somebody _i_f_a_c_e parts a botnet channel _b_c_h_a_n.
+      Matching: bchan.  (userflags are ignored)
+      Script args: botname uname Dcc-idx bchan
+
+-     "ppaasssswwdd"         UNIQMASK
+  (int) void func(const char *_p_a_s_s, char **_c_r_y_p_t_e_d);
+    Used for translation plain-text _p_a_s_s password to encripted form
+    pointed by _c_r_y_p_t_e_d. If previous value of _c_r_y_p_t_e_d is not NULL then
+    it may be used as prototype for generated password.
+      Matching: full passphrase.  (userflags are ignored)
+
+NKCH  "nneeww--llnnaammee"      MASK
+  (int) void func(char *_n_e_w_l_n, char *_o_l_d_l_n);
+    Used when user Lname _o_l_d_l_n changed to Lname _n_e_w_l_n.
+      Matching: old Lname.  (userflags are ignored)
+      Script args: oldln newln
+
+LOAD  "llooaadd"           MASK
+  (int) void func(char *_m_o_d, char *_a_r_g_s);
+    Used when module with name _m_o_d was succesfully loaded with arguments
+    _a_r_g_s.
+      Matching: module name with arguments.
+      Script args: mod
+
+UNLD  "uunnllooaadd"         MASK
+  (int) void func(char *_m_o_d);
+    Used when module with name _m_o_d was terminated.
+      Matching: module name.
+      Script args: mod
+
+-     "llooggiinn"          MASK
+  (int) void func(char *_w_h_o, char *_i_d_e_n_t, char *_h_o_s_t, idx_t _i_d_x,
+		  char _b_u_f[SHORT_STRING], char **_m_s_g);
+    Used when someone with Lname _w_h_o is about to enter telnet with bot.
+    The binding is always called from thread but dispatcher is locked so
+    first thing you must to do is call Unset_Iface(). If first char in
+    _b_u_f isn't 0 then you are called from irc module on DCC CHAT. The
+    binding makes password checking and creates the interface if there
+    was no errors. Else it returns error message _m_s_g. Parameters
+    _i_d_e_n_t, and _h_o_s_t are coming from connection socket _i_d_x. Buffer _b_u_f
+    may be used by binding. Note: the binding must be thread-safe!
+    Don't use it please, until you know how it works!!!
+      Matching: network type.  (any channel userflags are ignored)
+
+-     "ccoonnnneecctt"        MASK
+  int func (const char *_l_i_n_k, char *_a_r_g_s);
+    Used on "connect" command to network/server/channel/bot _l_i_n_k with
+    optional parameters _a_r_g_s. Note that channel has the same type as
+    it's network but binding for connect channel must have any channel
+    userflag instead of some global userflags.
+      Matching: link's network type.
+
+-     "rreeggiisstteerr"       MASK
+  int func(const char *_n_a_m_e, void *_v_a_r, size_t _s_i_z_e);
+    Used when any module attempts to register any variable _v_a_r (_s_i_z_e is
+    1 for bool, 0 for long int, 2 for read-only null-terminated string
+    or >2 for regular string) with symbolic name _n_a_m_e.
+      Matching: none
+
+-     "uunnrreeggiisstteerr"     MASK
+  int func(const char *_n_a_m_e);
+    Used when any module attempts to unregister any variable _v_a_r with
+    symbolic name _n_a_m_e.
+      Matching: none
+
+-     "ffuunnccttiioonn"       MASK
+  int func(const char *_n_a_m_e, int (* _f_n) (char *));
+    Used when any module attempts to register any function _f_n with
+    symbolic name _n_a_m_e.
+      Matching: none
+
+-     "uunnffuunnccttiioonn"     MASK
+  int func(const char *_n_a_m_e);
+    Used when any module attempts to unregister any function with
+    symbolic name _n_a_m_e.
+      Matching: none
+
+-     "ssccrriipptt"         UNIQMASK
+  int func (char *_n_a_m_e);
+    Used when config parser attempts to load script file _n_a_m_e.
+      Matching: filename.
+
+-     "iissoonn"           UNIQ
+  int func (const char *_n_e_t, const char *_p_u_b_l_i_c, const char *_l_n_a_m_e,
+	    const char **_n_a_m_e);
+    Used by Lname_IsOn() function for calling network-specific procedure
+    for community _p_u_b_l_i_c on the network _n_e_t. If _p_u_b_l_i_c is NULL then
+    check should be performed for network itself and else _p_u_b_l_i_c is
+    composite name. See description of the Lname_IsOn() function for
+    more details.
+      Matching: network type.
+
+-     "iinnssppeecctt--cclliieenntt" UNIQ
+  (int) modeflag func (const char *_n_e_t, const char *_p_u_b_l_i_c,
+		       const char *_n_a_m_e, const char **_l_n_a_m_e,
+		       const char **_h_o_s_t, time_t *_i_d_l_e, short *_c_n_t);
+    Used by Inspect_Client() function for calling network-specific
+    procedure for community _p_u_b_l_i_c on the network _n_e_t. If _p_u_b_l_i_c is NULL
+    then check should be performed for network itself and else _p_u_b_l_i_c is
+    composite name. See description of the Inspect_Client() function for
+    more details.
+      Matching: network type.
+
+-     "ssss--**"           UNIQ
+  int func(peer_t *_w_h_o, INTERFACE *_w_h_e_r_e, char *_a_r_g_s);
+    Used when user _w_h_o enters server-specific command on user interface.
+    Other side (I_SERVICE or I_CLIENT) is specified by _w_h_e_r_e. Arguments
+    _a_r_g_s to command are stripped from leading spaces. "**" in the name
+    means network type (i.e. "irc", etc.). That's similar to and is
+    extension of "ddcccc" bindtable.
+      Matching: first word of command without leading '.'.
+
+-     "ttiimmee--sshhiifftt"     MASK
+  (int) void func(int _d_e_l_t_a);
+    Used when system time slipped (due to time correction or freezing).
+    Binding gets value of time shift _d_e_l_t_a in seconds.
+      Matching: none.
+
+-     "ccoonnnncchhaaiinn--ggrrooww" MATCHCASE
+  int func(peer_t *_p_e_e_r, ssize_t (**_r_e_c_v)(connchain_i *, idx_t,
+			    const char *, size_t, connchain_buffer **),
+	   ssize_t (**_s_e_n_d)(connchain_i *, idx_t, const char *, size_t,
+			    connchain_buffer **), connchain_buffer **_b_u_f);
+    Used when Connchain_Grow() function is called. It tries to setup
+    connection chain link for some _p_e_e_r, remembers _p_e_e_r for notification
+    in case when module that handles this link is terminated. Pointers
+    _r_e_c_v and _s_e_n_d are handlers for receiving and sending data thru the
+    link respectively, _b_u_f is pointer where this function have to store
+    link instance's own buffer structure, this pointer will be passed to
+    _r_e_c_v and _s_e_n_d handlers later. Returns 1 if setup was successful or 0
+    otherwise.
+      Matching: connchain flag char.

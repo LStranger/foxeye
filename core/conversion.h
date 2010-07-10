@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2005-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -15,7 +15,7 @@
  *     along with this program; if not, write to the Free Software
  *     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * charset conversion definitions
+ * This file is part of FoxEye's source: charset conversion API
  */
 
 #ifndef	_CONVERSION_H
@@ -24,6 +24,8 @@
 
 conversion_t *Get_Conversion (const char *);
 void Free_Conversion (conversion_t *);
+conversion_t *Clone_Conversion (conversion_t *);
+const char *Conversion_Charset (conversion_t *);
 size_t Do_Conversion (conversion_t *, char **, size_t, const char *, size_t);
 size_t Undo_Conversion (conversion_t *, char **, size_t, const char *, size_t);
 //size_t unistrcut (char *, size_t, int);

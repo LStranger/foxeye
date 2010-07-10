@@ -15,12 +15,10 @@
  *     along with this program; if not, write to the Free Software
  *     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * wtmp file functions.
+ * This file is part of FoxEye's source: wtmp file layer.
  */
 
 #include "foxeye.h"
-
-#include <pthread.h>
 
 #include "init.h"
 #include "wtmp.h"
@@ -132,15 +130,19 @@ short Event (const char *ev)
  * returns: -1 if file does not exist, number of found entries otherwise
  */
 static int _scan_wtmp (const char *path, wtmp_t *wtmp, int wn,
-		       lid_t myid[], size_t *idn, short event, lid_t fid)
+		lid_t myid[], size_t *idn, short event, lid_t fid, time_t upto)
 {
   FILE *fp;
   wtmp_t buff[64];
   size_t i, k, n;
+  struct stat st;
   int x = 0;
 
+  DBG ("_scan_wtmp:%s:%d:[%lu]=%hd:%hd:%hd", path, wn, (unsigned long)*idn, myid[0], event, fid);
   if (wn == 0)
     return 0;
+  if (stat (path, &st) || st.st_mtime < upto)
+    return -1;		/* it's too old to check */
   fp = fopen (path, "rb");
   if (!fp)
     return -1;
@@ -158,10 +160,13 @@ static int _scan_wtmp (const char *path, wtmp_t *wtmp, int wn,
       k = sizeof(buff) / sizeof(wtmp_t);
     }
     i = fread (buff, sizeof(wtmp_t), k, fp);
-    fseek (fp, -sizeof(wtmp_t) * k, SEEK_CUR);
+    DBG ("_scan_wtmp: %u by %u: read %u records", k, (unsigned int)sizeof(wtmp_t), i);
+    fseek (fp, -sizeof(wtmp_t) * i, SEEK_CUR);
     k = 0;
     for (; i > 0 && wn; )
     {
+      if (buff[i-1].time < upto)
+	break;
       i--;
       for (n = *idn; n; )
       {
@@ -176,6 +181,7 @@ static int _scan_wtmp (const char *path, wtmp_t *wtmp, int wn,
 	}
 	else if (buff[i].uid == myid[n])
 	{
+	  DBG ("_scan_wtmp: found: event %hd, from %hd, time %lu", buff[i].event, buff[i].fuid, buff[i].time);
 	  if (buff[i].event == W_CHG)	/* something joined, add to myids */
 	  {
 	    if (*idn < MYIDS_MAX)
@@ -200,16 +206,18 @@ static int _scan_wtmp (const char *path, wtmp_t *wtmp, int wn,
 	}
       }
     }
-    if (wn == 0 || *idn == 0)
+    if (wn == 0 || *idn == 0 || i > 0)
       break;
   }
   fclose (fp);
+  if (x == 0 && i != 0)
+    return -1;
   return x;
 }
 
 /* finds last matched event
    returns 0 if no error and fills array wtmp */
-int FindEvent (wtmp_t *wtmp, const char *lname, short event, lid_t fid)
+int FindEvent (wtmp_t *wtmp, const char *lname, short event, lid_t fid, time_t upto)
 {
   lid_t myid[MYIDS_MAX]; /* I hope it's enough */
   size_t idn;
@@ -227,7 +235,7 @@ int FindEvent (wtmp_t *wtmp, const char *lname, short event, lid_t fid)
   memset (wtmp, 0, sizeof(wtmp_t));
   idn = 1;
   /* scan Wtmp first */
-  i = _scan_wtmp (wp, wtmp, 1, myid, &idn, event, fid);
+  i = _scan_wtmp (wp, wtmp, 1, myid, &idn, event, fid, upto);
   if (i < 0)
     return -1;
   /* if not found - scan Wtmp.1  ...  Wtmp.$wtmps */
@@ -235,14 +243,14 @@ int FindEvent (wtmp_t *wtmp, const char *lname, short event, lid_t fid)
     for ( ; i < WTMPS_MAX && !wtmp->time; i++)
     {
       snprintf (path, sizeof(path), "%s.%d", wp, i + 1);
-      if (_scan_wtmp (path, wtmp, 1, myid, &idn, event, fid))
+      if (_scan_wtmp (path, wtmp, 1, myid, &idn, event, fid, upto))
 	break;
     }
   /* if not found - scan Wtmp.old */
   if (!wtmp->time)
   {
     snprintf (path, sizeof(path), "%s." WTMP_GONE_EXT, wp);
-    _scan_wtmp (path, wtmp, 1, myid, &idn, event, fid);
+    _scan_wtmp (path, wtmp, 1, myid, &idn, event, fid, upto);
   }
   return 0;
 }

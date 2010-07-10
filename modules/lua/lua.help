@@ -1,0 +1,17 @@
+# first section is usage
+# second section is that config maker will put into config
+# third section is full help
+
+module lua
+:%*
+:
+:This module provides support for scripts that are written in Lua programming\
+ language.
+
+lua
+:%* text
+:
+:Tries to interpret and execute Lua %_text%_ command. If error found then\
+ shows interpreter message about error. If %_text%_ was executed without\
+ errors and evaluated chunk has returned any result then shows number of\
+ results returned, type of first returned result, and string value of it.

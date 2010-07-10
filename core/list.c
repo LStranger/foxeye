@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -15,7 +15,7 @@
  *     along with this program; if not, write to the Free Software
  *     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * Here is userrecords control and upgrade.
+ * This file is part of FoxEye's source: all Listfile layer.
  */
 
 #include "foxeye.h"
@@ -25,10 +25,6 @@
 #include "init.h"
 #include "tree.h"
 #include "direct.h"
-
-#ifndef HAVE_RWLOCK_INIT
-# include "rwlock_init.h"
-#endif
 
 typedef struct user_chr
 {
@@ -78,6 +74,9 @@ struct USERRECORD
   pthread_mutex_t mutex;
 };
 
+static const clrec_t CONSOLEUSER = { 0, -1, NULL, NULL, 0, 0, NULL, NULL, NULL,
+		{ NULL }, NULL, NULL, NULL, 0, NULL, PTHREAD_MUTEX_INITIALIZER };
+
 static NODE *UTree = NULL;		/* list of USERRECORDs */
 static clrec_t *UList[LID_MAX-LID_MIN+1];
 
@@ -85,9 +84,14 @@ static bindtable_t *BT_ChLname;
 
 static time_t _savetime = 0;
 
-#define LISTFILEMODIFIED if (!_savetime) _savetime = Time;
+//#define LISTFILEMODIFIED if (!_savetime) _savetime = Time;
+#define LISTFILEMODIFIED _savetime = Time
 
 static char _Userflags[] = USERFLAG;
+
+/* for statistics: number of records and memory usage */
+static size_t _R_r = 0, _R_s = 0, _R_d = 0, _R_i = 0; /* regular, services, bans, ignores */
+static size_t _R_h = 0, _R_n = 0, _R_f =0; /* hosts, names, chans+fields */
 
 /* ----------------------------------------------------------------------------
  * userflag <-> string conversions
@@ -99,6 +103,8 @@ char *userflagtostr (userflag uf, char *flstr)
   register char *str = flstr;
   register userflag ufmask = 1;
 
+  if (uf & U_NEGATE)
+    *str++ = '-';
   while (*fl)
   {
     if (uf & ufmask)
@@ -110,16 +116,29 @@ char *userflagtostr (userflag uf, char *flstr)
   return flstr;
 }
 
-static userflag strtouserflag (const char *str)
+userflag strtouserflag (register const char *ptr, char **endptr)
 {
-  register userflag uf = 0;
+  register userflag uf;
   register char *ch;
 
-  for (; *str; str++)
-    if ((ch = strchr (_Userflags, *str)))
+  while (*ptr == ' ') ptr++;
+  if (*ptr == '-')
+  {
+    uf = U_NEGATE;
+    ptr++;
+  }
+  else
+    uf = 0;
+  for (; *ptr; ptr++)
+    if ((ch = strchr (_Userflags, *ptr)))
       uf |= 1<<(ch-_Userflags);
+    else
+      break;
+  if (endptr)
+    *endptr = (char *)ptr;
   return uf;
 }
+
 
 /* ----------------------------------------------------------------------------
  * Async-unsafe functions. Lock only when to change. Part I: internal
@@ -152,6 +171,8 @@ static char **Field = NULL;		/* list of fields and channels */
 static lid_t _Fnum = 0;
 static lid_t _Falloc = 0;
 
+#define strlena(x) (x ? (strlen(x)+1) : 0)
+
 /*
  * Usersfile manipulation functions
  */
@@ -165,7 +186,8 @@ static int _addhost (user_hr **hr, const char *uh)
   sz = safe_strlen ((char *)uh) + 1;
   if (sz < 6)		/* at least *!i@* :) */
     return 0;
-  *hr = safe_calloc (1, sz + sizeof(user_hr) - sizeof(h->hostmask));
+  *hr = safe_malloc (sz + sizeof(user_hr) - sizeof(h->hostmask));
+  _R_h += sz + sizeof(user_hr) - sizeof(h->hostmask);
   memcpy ((*hr)->hostmask, uh, sz);
   (*hr)->next = h;
   return 1;
@@ -177,6 +199,7 @@ static void _delhost (user_hr **hr)
   user_hr *h = *hr;
 
   *hr = h->next;
+  _R_h -= safe_strlen (h->hostmask) + 1 + sizeof(user_hr) - sizeof(h->hostmask);
   FREE (&h);
 }
 
@@ -185,7 +208,7 @@ static clrec_t *_findbylname (const char *lname)
 {
   char lclname[NAMEMAX+1];
 
-  safe_strlower (lclname, lname, sizeof(lclname));
+  unistrlower (lclname, lname, sizeof(lclname));
   return Find_Key (UTree, lclname);
 }
 
@@ -196,7 +219,9 @@ static clrec_t *_findthebest (const char *mask, clrec_t *prefer)
   user_hr *hr;
   int n, p = 0, matched = 0;
   lid_t lid;
+  char lcmask[HOSTMASKLEN+1];
 
+  unistrlower (lcmask, mask, sizeof(lcmask));  
   rw_rdlock (&HLock);
   lid = LID_MIN;
   do {
@@ -204,7 +229,7 @@ static clrec_t *_findthebest (const char *mask, clrec_t *prefer)
     /* pseudo-users hosts are not masks */
       for (hr = u->host; hr; hr = hr->next)
       {
-	n = match ((char *)hr->hostmask, mask);
+	n = match ((char *)hr->hostmask, lcmask);
 	/* find max */
 	if (n > matched)
 	{
@@ -230,7 +255,7 @@ static int _add_usermask (clrec_t *user, const char *mask)
   int r;
   char lcmask[HOSTMASKLEN+1];
 
-  safe_strlower (lcmask, mask, sizeof(lcmask));  
+  unistrlower (lcmask, mask, sizeof(lcmask));  
   /* check for aliases */
   if (user->flag & U_ALIAS)	/* no need lock since threads has R/O access */
     user = user->u.owner;
@@ -238,7 +263,10 @@ static int _add_usermask (clrec_t *user, const char *mask)
   for (hr = user->host; hr; hr = hr->next)
   {
     if (match (hr->hostmask, lcmask) > 0)
+    {
+      rw_unlock (&HLock);
       return 0;			/* this mask is more common, nothing to do */
+    }
   }
   /* check if any my masks are matched this and erase it */
   for (h = &user->host; *h; )
@@ -264,7 +292,7 @@ static int _del_usermask (clrec_t *user, const char *mask)
   int i = 0;
   char lcmask[HOSTMASKLEN+1];
 
-  safe_strlower (lcmask, mask, sizeof(lcmask));  
+  unistrlower (lcmask, mask, sizeof(lcmask));  
   /* check for aliases */
   if (user->flag & U_ALIAS)
     user = user->u.owner;
@@ -313,38 +341,40 @@ static lid_t __addlid (lid_t id, lid_t start, lid_t end)
   register int i, j, im, jm;
 
   i = (start-LID_MIN)/32;
-  if (id != ID_ANY)
-    j = (start-LID_MIN)%32;
-  else if (start < 0)			/* bans grows down */
+  j = (start-LID_MIN)%32;
+  if (id != ID_ANY);			/* fixed id */
+  else if (start > end)			/* bans grows down */
   {
-    j = i;
+    while (j >= 0 && (LidsBitmap[i] & (1<<j))) j--;
     im = (end-LID_MIN)/32;
     jm = (end-LID_MIN)%32;
-    while (i >= im && ~(LidsBitmap[i]) == 0) i--;
-    if (i < 0)
-      return ID_ME;
-    if (i == j)
-      j = (start-LID_MIN)%32;
-    else
-      j = 31;
-    while (j >= 0 && (LidsBitmap[i] & (1<<j))) j--;
-    if (j < 0 || (i == im && j < jm))
+    if (j < 0)
+    {
+      do i--; while (i >= im && ~(LidsBitmap[i]) == 0);
+      if (i >= im)
+      {
+	j = 31;
+	while (j >= 0 && (LidsBitmap[i] & (1<<j))) j--;
+      }
+    }
+    if (j < 0 || i < im || (i == im && j < jm))
       return ID_ME;
   }
   else					/* all other grows up */
   {
-    j = i;
+    while (j < 32 && (LidsBitmap[i] & (1<<j))) j++;
     im = (end-LID_MIN)/32;
     jm = (end-LID_MIN)%32;
-    while (i <= im && ~(LidsBitmap[i]) == 0) i++;
-    if (i > im)
-      return ID_ME;
-    if (i == j)
-      j = (start-LID_MIN)%32;
-    else
-      j = 0;
-    while (j < 32 && (LidsBitmap[i] & (1<<j))) j++;
-    if (j == 32 || (i == im && j > jm))
+    if (j == 32)
+    {
+      do i++; while (i <= im && ~(LidsBitmap[i]) == 0);
+      if (i <= im)
+      {
+	j = 0;
+	while (j < 32 && (LidsBitmap[i] & (1<<j))) j++;
+      }
+    }
+    if (j == 32 || i > im || (i == im && j > jm))
       return ID_ME;
   }
   LidsBitmap[i] |= (1<<j);
@@ -374,7 +404,7 @@ static void _del_lid (lid_t id, int old)
 static int usernick_valid (const char *a)
 {
   register int i = safe_strlen (a);
-  register char s;
+  register unsigned char s;
 
   if (i == 0 || i > LNAMELEN) return (-1);
   while (--i)
@@ -386,7 +416,7 @@ static int usernick_valid (const char *a)
 static int spname_valid (const char *a)
 {
   register int t, i = safe_strlen (a);
-  register char s;
+  register unsigned char s;
 
   if (i == 0 || i > IFNAMEMAX) return (-1);
   t = 0;
@@ -395,9 +425,9 @@ static int spname_valid (const char *a)
       t++;
     else if (s <= ' ' || s == ':' || s == ',')
       return (-1);
-  if (t)
-    return 0;
-  return (-1);
+//  if (t)
+//    return 0;
+  return t;
 }
 
 /*--- W --- UFLock write ---*/
@@ -406,37 +436,49 @@ static clrec_t *_add_userrecord (const char *name, userflag uf, lid_t id)
   clrec_t *user = NULL;
   int i;
 
-  if (!(name || id < ID_REM) || _findbylname (name))
+  DBG ("_add_userrecord/%c(0x%x):%s:%hd",
+       (uf & U_SPECIAL) ? 'S' : (id > ID_ME && id < ID_ANY) ? 'I' : 'N',
+       (int)uf, name, id);
+  if (name && _findbylname (name))	/* already exists */
     i = -1;
-  else if (uf & U_SPECIAL)
+  else if (uf & U_SPECIAL)		/* special and composite names */
     i = spname_valid (name);
-  else if (name)
+  else if (name)			/* normal names */
     i = usernick_valid (name);
-  else
+  else					/* bans and other nonamed */
     i = 0;
-  if (!i)
+  if (i == 1 && name[0] == '@')		/* illegal special name */
+    return NULL;
+  else if (i >= 0)
   {
     user = safe_calloc (1, sizeof(clrec_t));
     /* set fields */
+//    if (i && name[0] == '@' &&		/* it's special, see load_userfile() */
+//	strrchr (name, '@') == name)
+//      name++;
     user->lname = safe_strdup (name);
     i = safe_strlen (name);
     user->lclname = safe_malloc (i+1);	/* never NULL */
-    safe_strlower (user->lclname, name, i+1);
+    unistrlower (user->lclname, name, i+1);
+    if (i)
+      i += i + 2;
+    else
+      i = 1;
     user->flag = uf;
     if (!(uf & U_SPECIAL))
       user->flag |= U_ANY;
     if (id != ID_ANY)			/* specified id */
       user->uid = __addlid (id, id, id);
-    else if (!name)			/* ban */
-      user->uid = __addlid (id, ID_REM, LID_MIN);
-    else if (uf & U_SPECIAL)		/* special client record */
-      user->uid = __addlid (id, ID_ME+1, ID_ANY-1);
-    else				/* regular user */
+    else if (name)			/* regular/special user */
       user->uid = __addlid (id, ID_ANY+1, LID_MAX);
+    else if (uf & U_IGNORED)		/* unnamed ignore */
+      user->uid = __addlid (id, ID_ME+1, ID_ANY-1);
+    else				/* ban/except/invite/deop */
+      user->uid = __addlid (id, ID_REM, LID_MIN);
     if (id == ID_ME || user->uid != ID_ME)
     {
-      if (name)
-	i = Insert_Key (&UTree, user->lclname, user, 1);
+      if (name && Insert_Key (&UTree, user->lclname, user, 1) < 0)
+        i = -1;
       _add_lid (user->uid, user);
     }
     else
@@ -454,6 +496,15 @@ static clrec_t *_add_userrecord (const char *name, userflag uf, lid_t id)
     return NULL;
   }
   pthread_mutex_init (&user->mutex, NULL);
+  if (id < ID_REM)
+    _R_d++;
+  else if (!name)
+    _R_i++;
+  else if (uf & U_SPECIAL)
+    _R_s++;
+  else
+    _R_r++;
+  _R_n += i;
   LISTFILEMODIFIED;
   return user;
 }
@@ -465,6 +516,7 @@ static void _delete_userrecord (clrec_t *user, int to_unlock)
 {
   user_chr *chr;
   user_fr *f;
+  size_t _f;
 
   if (!user)
   {
@@ -477,20 +529,34 @@ static void _delete_userrecord (clrec_t *user, int to_unlock)
   if (!(user->flag & U_ALIAS))
     _del_lid (user->uid, 1);
   Delete_Key (UTree, user->lclname, user); /* delete from hash */
-  pthread_mutex_unlock (&user->mutex);	/* it's unavaiable now */
+  pthread_mutex_unlock (&user->mutex);	/* it's unavailable now */
   pthread_mutex_destroy (&user->mutex);
+  _f = safe_strlen (user->lname);
+  _R_n -= 2 * _f + 1 + (_f ? 1 : 0);
+  if (user->uid < ID_REM)
+    _R_d--;
+  else if (!user->lname)
+    _R_i--;
+  else if (user->flag & U_SPECIAL)
+    _R_s--;
+  else
+    _R_r--;
   if (to_unlock)			/* no locks need now */
     rw_unlock (&UFLock);
   while (user->host)
     _delhost (&user->host);
   user->progress = 0;
+  _f = 0;
   for (chr = user->channels; chr; )
   {
+    _f += strlena (chr->greeting) + sizeof(user_chr);
     FREE (&chr->greeting);
     user->channels = chr->next;
     FREE (&chr);
     chr = user->channels;
   }
+  _f += strlena (user->passwd) + strlena (user->charset) +
+	strlena (user->login) + strlena (user->logout);
   FREE (&user->lname);
   FREE (&user->lclname);
   FREE (&user->passwd);
@@ -498,13 +564,20 @@ static void _delete_userrecord (clrec_t *user, int to_unlock)
   FREE (&user->login);
   FREE (&user->logout);
   if (!(user->flag & U_ALIAS))
+  {
+    _f += strlena (user->u.info);
     FREE (&user->u.info);
+  }
   while ((f = user->fields))
   {
+    _f += strlena (f->value) + sizeof(user_fr);
     FREE (&f->value);
     user->fields = f->next;
     FREE (&f);
   }
+  pthread_mutex_lock (&FLock);
+  _R_f -= _f;
+  pthread_mutex_unlock (&FLock);
   FREE (&user);
   LISTFILEMODIFIED;
 }
@@ -513,15 +586,11 @@ static void _delete_userrecord (clrec_t *user, int to_unlock)
 static void _add_aliases (clrec_t *owner, char *list)
 {
   char n[LNAMELEN+1];
-  register char *c;
   clrec_t *ur;
 
   while (*list)
   {
-    strfcpy (n, list, sizeof(n));
-    list = NextWord (list);
-    for (c = n; *c && *c != ' '; c++);
-    *c = 0;
+    list = NextWord_Unquoted (n, list, sizeof(n));
     if (_findbylname (n))
       continue;
     ur = _add_userrecord (n, U_ALIAS, owner->uid);
@@ -560,8 +629,17 @@ int Add_Clientrecord (const char *name, const uchar *mask, userflag uf)
   /* create the structure */
   if (name && !name[0])
     name = NULL;
+//  if (!name &&			/* check for flags allowed for empty name */
+//      !(uf & (U_DENY | U_ACCESS | U_INVITE | U_DEOP | U_QUIET | U_IGNORED)))
+  if (!name && match ((char *)mask, "*@*") < 0)
+  {
+    ERROR ("Add_Clientrecord: invalid hostmask pattern %s ignored.", mask);
+    mask = NULL;
+  }
+  if (!name && !mask)		/* empty name has to have valid mask */
+    return 0;
   rw_wrlock (&UFLock);
-  user = _add_userrecord (name, uf, name ? ID_ANY : ID_REM - 1); /* client/ban */
+  user = _add_userrecord (name, uf, ID_ANY); /* client/ban */
   if (!user)
   {
     rw_unlock (&UFLock);
@@ -569,13 +647,20 @@ int Add_Clientrecord (const char *name, const uchar *mask, userflag uf)
   }
   user->created = Time;
   if (mask)			/* don't lock it, it's unreachable yet */
-    _add_usermask (user, (char *)mask);
+//  {
+//    if (match ((char *)mask, "*") < 0)
+//      ERROR ("Add_Clientrecord: invalid hostmask pattern %s ignored.", mask);
+//    else
+      _add_usermask (user, (char *)mask);
+//  }
   rw_unlock (&UFLock);
   if (uf)
-    Add_Request (I_LOG, "*", F_USERS, _("Added name %s with flag(s) %s."),
+    Add_Request (I_LOG, "*", mask ? (F_USERS | F_AHEAD) : F_USERS,
+		 _("Added name %s with flag(s) %s."),
 		 name, userflagtostr (uf, flags));
   else
-    Add_Request (I_LOG, "*", F_USERS, _("Added name %s."), name);
+    Add_Request (I_LOG, "*", mask ? (F_USERS | F_AHEAD) : F_USERS,
+		 _("Added name %s."), name);
   /* all OK */
   return 1;
 }
@@ -625,18 +710,21 @@ int Change_Lname (char *newname, char *oldname)
   clrec_t *user;
   binding_t *bind = NULL;
   int i;
+  INTERFACE *iface;
 
   /* check if oldname exist */
   rw_wrlock (&UFLock);
   user = _findbylname (oldname);
   /* check if newname is valid */
-  if (!user || usernick_valid (newname) < 0 || _findbylname (newname))
+  if (!user || (user->flag & U_SPECIAL) ||
+      usernick_valid (newname) < 0 || _findbylname (newname))
   {
     rw_unlock (&UFLock);
     return 0;
   }
   /* rename user record */
   Delete_Key (UTree, user->lclname, user);
+  _R_n -= 2 * safe_strlen (user->lname);
   FREE (&user->lclname);
   pthread_mutex_lock (&user->mutex);
   FREE (&user->lname);
@@ -644,14 +732,19 @@ int Change_Lname (char *newname, char *oldname)
   pthread_mutex_unlock (&user->mutex);
   i = safe_strlen (newname);
   user->lclname = safe_malloc (i+1);
-  safe_strlower (user->lclname, newname, i+1);
+  unistrlower (user->lclname, newname, i+1);
   i = Insert_Key (&UTree, user->lclname, user, 1);
+  _R_n += 2 * i;
   rw_unlock (&UFLock);
   if (i < 0)
     ERROR ("change Lname %s -> %s: hash error, Lname lost!", oldname, newname);
   LISTFILEMODIFIED;
   /* rename the DCC CHAT interface if exist */
-  Rename_Iface (I_DIRECT, oldname, newname);
+  if ((iface = Find_Iface (I_DIRECT, oldname)))
+  {
+    Rename_Iface (iface, newname);
+    Unset_Iface();
+  }
   dprint (2, "changing Lname: %s -> %s", oldname, newname);
   /* run "new-lname" bindtable */
   while ((bind = Check_Bindtable (BT_ChLname, oldname, -1, -1, bind)))
@@ -715,7 +808,7 @@ int Get_Clientlist (INTERFACE *iface, userflag uf, const char *fn, char *mask)
 
   if (!mask || !*mask || !uf || !iface)
     return 0;
-  safe_strlower (lcmask, mask, sizeof(lcmask));  
+  unistrlower (lcmask, mask, sizeof(lcmask));  
   n = 0;
   len = 0;
   lid = LID_MIN;
@@ -779,54 +872,17 @@ int Get_Hostlist (INTERFACE *iface, const char *name)
  * Thread-safe functions.
  */
 
-#if 0
-/*--- R lock --- UFLock read --- no HLock ---*/
-static clrec_t *_findbymask (const uchar *mask)
-{
-  user_hr *hr;
-//  char buff[STRING];
-//  char *c1 = "";
-//  char *c2 = "";
-  lid_t lid;
-  clrec_t *u;
-
-  /* set up the mask */
-//  if (!safe_strchr ((char *)mask, '!'))
-//  {
-//    c1 = "*!";
-//    if (!safe_strchr ((char *)mask, '@'))
-//      c2 = "*@";
-//  }
-//  snprintf (buff, sizeof(buff), "%s%s%s", c1, c2, mask);
-  rw_rdlock (&HLock);
-  /* find first matched */
-  lid = LID_MIN;
-  do {
-    if ((u = UList[lid - LID_MIN]) && !(u->flag & (U_SPECIAL|U_ALIAS)))
-      for (hr = u->host; hr; hr = hr->next)	/* I hope no need to lock? */
-//	if (match (buff, hr->hostmask) > 0)
-	if (!strcmp ((const char *)mask, hr->hostmask))
-	{
-	  rw_unlock (&HLock);
-	  return u;
-	}
-  } while (lid++ != LID_MAX);
-  rw_unlock (&HLock);
-  return NULL;
-}
-#endif
-
 /*--- RW --- UFLock read --- no FLock ---*/
-static lid_t _get_index (const char *field)
+static lid_t _get_index (const char *field, int sp)
 {
   lid_t i;
 
   if (!*field)
     return R_CONSOLE;
-  else if (strchr (SPECIALCHARS, *field))
+  else if (sp)
   {
     clrec_t *ur = _findbylname (field);
-    if (ur)
+    if (ur && !ur->progress)		/* it might wait updating */
       return ur->uid;
     else
       return R_NO;
@@ -871,16 +927,12 @@ clrec_t *Find_Clientrecord (const uchar *mask, char **lname, userflag *uf,
 			    char *net)
 {
   clrec_t *user = NULL;
-//  int wc = Have_Wildcard ((char *)mask) + 1;
 
   if (!mask || !*mask)
     return NULL;
   /* find the userrecord */
   rw_rdlock (&UFLock);
-//  if (wc)
-//    user = _findbymask (mask);
-//  else				/* if mask is hostmask - find best */
-    user = _findthebest ((char *)mask, NULL);
+  user = _findthebest ((char *)mask, NULL);
   if (user)
   {
     pthread_mutex_lock (&user->mutex);
@@ -888,10 +940,10 @@ clrec_t *Find_Clientrecord (const uchar *mask, char **lname, userflag *uf,
       *lname = user->lname;
     if (uf)
     {
-      if (net != NULL && *net == '@')
+      if (net != NULL)
       {
 	register user_chr *c;
-	register lid_t i = _get_index (net);
+	register lid_t i = _get_index (net, 1);
 
 	for (c = user->channels; c; c = c->next)
 	  if (c->cid == i)
@@ -941,6 +993,7 @@ char *Get_Field (clrec_t *user, const char *field, time_t *ctime)
   lid_t i;
   user_fr *f;
   user_chr *c;
+  register char *fn;
 
   if (field == NULL)
   {
@@ -948,18 +1001,23 @@ char *Get_Field (clrec_t *user, const char *field, time_t *ctime)
       *ctime = user->created;
     return user->lname;
   }
-  i = _get_index (field);			/* OOPS!!! unlocked access!!! */
-  if (i == R_CONSOLE || i > FIELDSMAX)		/* channel */
+  if ((fn = strrchr (field, '@')) || !*field)	/* try service first */
   {
+    if (fn == field)
+      i = _get_index (&field[1], 1);
+    else
+      i = _get_index (field, 1);
     for (c = user->channels; c; c = c->next)
       if (c->cid == i)
       {
 	if (ctime)
 	  *ctime = c->expire;
+	DBG ("Get_Field:%s:%s[%d]=%s", user->lname, field, i, c->greeting);
 	return (c->greeting);
       }
     return NULL;
   }
+  i = _get_index (field, 0);			/* OOPS!!! unlocked access!!! */
   switch (i)
   {
     case R_NO:
@@ -982,14 +1040,18 @@ char *Get_Field (clrec_t *user, const char *field, time_t *ctime)
   return NULL;
 }
 
-static user_chr *_add_channel (user_chr **chr, lid_t i)
+/*--- W --- no locks --- no FLock ---*/
+static user_chr **_add_channel (user_chr **chr, lid_t i)
 {
   register user_chr *c = safe_calloc (1, sizeof(user_chr));
 
-  c->next = *chr;
+  while (*chr) chr = &(*chr)->next;
+  pthread_mutex_lock (&FLock);
+  _R_f += sizeof(user_chr);
+  pthread_mutex_unlock (&FLock);
   *chr = c;
   c->cid = i;
-  return c;
+  return chr;
 }
 
 /*
@@ -1004,19 +1066,29 @@ int Set_Field (clrec_t *user, const char *field, const char *val)
   user_fr *f;
   user_chr *chr;
   char **c;
+  register char *fn;
 
   /* we cannot modify Lname with this! */
   if (field == NULL)
     return 0;
-  i = _get_index (field);
-  chr = NULL;
+  DBG ("Set_Field: %s=%s", field, val);
+//  chr = NULL;
   c = NULL;
-  if (i == R_CONSOLE || i > FIELDSMAX)		/* channel */
+  if ((fn = strrchr (field, '@')) || !*field)	/* try service first */
   {
+    if (fn == field)				/* special name */
+      i = _get_index (&field[1], 1);
+    else					/* composite name */
+      i = _get_index (field, 1);
+    if (i == R_NO)				/* unknown service */
+    {
+      ERROR ("Service \"%s\" not found, field value lost.", field);
+      return 0;      
+    }
     for (chr = user->channels; chr; chr = chr->next)
       if (chr->cid == i)
 	break;
-    if (!val && !*val && chr && !chr->flag)
+    if (!user->progress && !val && chr && !chr->flag)
     {
       register user_chr *cc = user->channels;
 
@@ -1026,16 +1098,20 @@ int Set_Field (clrec_t *user, const char *field, const char *val)
 	user->channels = cc->next;
       else
 	cc->next = chr->next;
+      pthread_mutex_lock (&FLock);
+      _R_f -= strlena (chr->greeting) + sizeof(user_chr);
+      pthread_mutex_unlock (&FLock);
       FREE (&chr->greeting);
       FREE (&chr);
       return 1;
     }
     if (!chr)
-      chr = _add_channel (&user->channels, i);
+      chr = *(_add_channel (&user->channels, i));
     if (chr)
       c = &chr->greeting;
+    DBG ("Set_Field: added channel: 0x%x, head=0x%x", chr, user->channels);
   }
-  else switch (i)
+  else switch ((i = _get_index (field, 0)))	/* it's not service */
   {
     case R_PASSWD:
       c = &user->passwd;
@@ -1071,6 +1147,9 @@ int Set_Field (clrec_t *user, const char *field, const char *val)
 	    user->fields = f->next;
 	  else
 	    ff->next = f->next;
+	  pthread_mutex_lock (&FLock);
+	  _R_f -= strlena (f->value) + sizeof(user_fr);
+	  pthread_mutex_unlock (&FLock);
 	  FREE (&f->value);
 	  FREE (&f);
 	  return 1;
@@ -1078,17 +1157,20 @@ int Set_Field (clrec_t *user, const char *field, const char *val)
 	c = &f->value;
       }
   }
-  if (!c && val && *val)		/* create new field */
+  if (!c && val)			/* create new field */
   {
     pthread_mutex_lock (&FLock);
-    if (i == R_NO && _Fnum < FIELDSMAX && !strchr (SPECIALCHARS, *field))
+//    if (i == R_NO && _Fnum < FIELDSMAX && !strchr (SPECIALCHARS, *field))
+    if (i == R_NO && _Fnum < FIELDSMAX)
     {
       if (_Fnum == _Falloc)
       {
 	_Falloc += 16;
 	safe_realloc ((void **)&Field, (_Falloc) * (sizeof(char *)));
+	_R_f += 16 * sizeof(char *);
       }
       Field[_Fnum] = safe_strdup (field);
+      _R_f += strlena (field);
       i = _Fnum++;
     }
     pthread_mutex_unlock (&FLock);
@@ -1099,12 +1181,18 @@ int Set_Field (clrec_t *user, const char *field, const char *val)
       {
 	while (f->next) f = f->next;
 	f->next = safe_calloc (1, sizeof(user_fr));
+	pthread_mutex_lock (&FLock);
+	_R_f += sizeof(user_fr);
+	pthread_mutex_unlock (&FLock);
 	f->next->id = i;
 	c = &f->next->value;
       }
       else
       {
 	f = user->fields = safe_calloc (1, sizeof(user_fr));
+	pthread_mutex_lock (&FLock);
+	_R_f += sizeof(user_fr);
+	pthread_mutex_unlock (&FLock);
 	f->id = i;
 	c = &f->value;
       }
@@ -1112,6 +1200,10 @@ int Set_Field (clrec_t *user, const char *field, const char *val)
   }
   if (!c)
     return 0;
+  if (val && !*val) val = NULL;	/* sanity */
+  pthread_mutex_lock (&FLock);
+  _R_f += strlena (val) - strlena (*c);
+  pthread_mutex_unlock (&FLock);
   FREE (c);
   *c = safe_strdup (val);
   LISTFILEMODIFIED;		/* cannot use mutex but value isn't critical */
@@ -1207,22 +1299,25 @@ userflag Get_Flags (clrec_t *user, const char *serv)
   if (!user)
     return 0;
   if (!serv)
-    uf = user->flag;
-  else if (strchr (SPECIALCHARS, *serv))
+    return user->flag;
+//  else if (strchr (SPECIALCHARS, *serv))
+//  else
   {
-    register lid_t i = _get_index (serv);
+    register lid_t i = _get_index (serv, 1);
     register user_chr *c = user->channels;
 
     for (; c; c = c->next)
       if (c->cid == i)
 	break;
-    if (*serv == '@')
+    if (!strchr (serv, '@'))		/* local link/service name */
       uf = (user->flag & U_GLOBALS) | (c ? c->flag : 0);
-    else
+    else if (c)
       uf = c->flag;
+    else
+      uf = 0;
   }
-  else
-    uf = 0;
+//  else
+//    uf = 0;
   return uf;
 }
 
@@ -1254,6 +1349,11 @@ int Add_Mask (clrec_t *user, const uchar *mask)
   int i = 0;
 
   if (!user || !mask) return 0;
+  if (match ((char *)mask, "*") < 0)
+  {
+    ERROR ("Add_Mask: invalid hostmask pattern %s ignored.", mask);
+    return 0;
+  }
   pthread_mutex_unlock (&user->mutex);		/* unlock to avoid conflicts */
   i = _add_usermask (user, (char *)mask);
   pthread_mutex_lock (&user->mutex);
@@ -1273,15 +1373,15 @@ int Delete_Mask (clrec_t *user, const uchar *mask)
   return x;
 }
 
-/*--- W --- no locks ---*/
+/*--- R --- no locks ---*/
 static unsigned int _scan_lids (lid_t start, lid_t end)
 {
   register int i, j;
   int k;
   register unsigned int n = 0;
 
-  i = start/32 - LID_MIN/32;
-  k = (end+1)/32 - LID_MIN/32;
+  i = (start-LID_MIN)/32;
+  k = (end-LID_MIN+1)/32;
   for (; i < k; i++)
   {
     for (j = 0; j < 32; j++)
@@ -1291,16 +1391,28 @@ static unsigned int _scan_lids (lid_t start, lid_t end)
   return n;
 }
 
-/*--- W --- no locks ---*/
+/*--- R --- no locks ---*/
 void Status_Clients (INTERFACE *iface)
 {
-  unsigned int a, c, d;
-  
-  a = _scan_lids ((LID_MIN/32)*32, ID_REM-1);
-  c = _scan_lids (ID_ME+1, ID_ANY-1);
-  d = _scan_lids (ID_ANY+1, LID_MAX);
-  New_Request (iface, 0, "Listfile: %u bans, %u servers, %u users. Total: %u names",
-	       a, c, d, a+c+d);
+  long int r, s, d, i, h, n, f;
+
+  pthread_mutex_lock (&FLock);
+  r = _R_r, s = _R_s, d = _R_d, i = _R_i;
+  h = _R_h, n = _R_n, f = _R_f;
+  pthread_mutex_unlock (&FLock);
+  New_Request (iface, 0,
+	       "Listfile: %ld regular, %ld specials, %ld bans, %ld ignores. Total %ld names.",
+	       r, s, d, i, (long int)(r+s+d+i));
+  New_Request (iface, 0,
+	       "Listfile memory usage: records %ld, hosts %ld, subfields %ld bytes.",
+	       (long int)(n + (r+s+d) * sizeof(clrec_t)), h, f);
+  d -= _scan_lids (LID_MIN, ID_REM);
+  i -= _scan_lids (ID_ME+1, ID_ANY-1);
+  r -= _scan_lids (ID_ANY+1, LID_MAX);
+  r += s;
+  if (d || i || r)
+    ERROR ("Listfile: difference (loss) in bit map%s%.0ld%s%.0ld%s%.0ld",
+	   d ? ", bans:" : "", d, i ? ", ignores:" : "", i, r ? ", names:" : "", r);
 }
 
 /* ----------------------------------------------------------------------------
@@ -1343,6 +1455,175 @@ static FILE *_check_listfile (char *filename, char *buff, size_t s)
 }
 
 /*
+ * since we can have references to another clientrecord in any clientrecord
+ * and these referenced may point to clientrecord that isn't loaded yet,
+ * we have to manage it with some clienrecord-ahead list, see functions below
+ *
+ * tree is something like:  r1:a.first => next   => next...
+ *			       x.name	  x.chr     x.chr
+ *			    r2:a.first => ..................
+ */
+
+typedef struct _cral_t {
+  struct _cral_t *next;		/* next name or next chr in row */
+  union {
+    struct _cral_t *first;	/* first link in chain of this name */
+    pthread_mutex_t *mutex;
+  } a;
+  union {
+    char *name;			/* name for row */
+    user_chr **chr;		/* chr in row */
+  } x;
+} _cral_t;
+
+typedef struct _cral_bl {
+  struct _cral_bl *next;
+  _cral_t x[32];
+} _cral_bl;
+
+static _cral_t *FirstCRAL = NULL;
+static _cral_t *FreeCRAL = NULL;
+
+static _cral_bl *FirstCRALBL = NULL;
+static _cral_bl *LastCRALBL = NULL;
+
+/* returns first in row */
+static _cral_t **_cral_find (char *name)
+{
+  _cral_t **cral;
+
+  for (cral = &FirstCRAL; *cral; cral = &(*cral)->next)
+    if (!strcmp ((*cral)->x.name, name))
+      break;
+    else
+      DBG ("list:_cral_find: %s != %s", (*cral)->x.name, name);
+  DBG ("list:_cral_find(%s)->0x%x", name, *cral);
+  return cral;
+}
+
+/* return one free _cral_t from array of free ones */
+static _cral_t *_cral_get (void)
+{
+  register _cral_t *cral;
+
+  if (!FreeCRAL)
+  {
+    register _cral_bl *bl = safe_malloc (sizeof(_cral_bl));
+    register int i = 32;
+
+    cral = FreeCRAL = &bl->x[0];
+    while (--i)
+    {
+      cral->next = &cral[1];
+      cral++;
+    }
+    cral->next = NULL;
+    if (LastCRALBL)
+      LastCRALBL->next = bl;
+    else
+      FirstCRALBL = bl;
+    LastCRALBL = bl;
+    bl->next = NULL;
+  }
+  cral = FreeCRAL;
+  FreeCRAL = cral->next;
+  DBG ("list:_cral_get: 0x%08x", cral);
+  return cral;
+}
+
+/*--- W --- *mutex --- no FLock ---*/
+static user_chr *_cral_add (char *name, user_chr **chr, char *greeting,
+			    pthread_mutex_t *mutex)
+{
+  _cral_t **cral = _cral_find (name);
+  _cral_t *tmp;
+
+//  if (!safe_strchr (SPECIALCHARS, name[0]))
+//    return NULL;
+  if (!*cral)
+  {
+    *cral = _cral_get();
+    (*cral)->next = NULL;
+    (*cral)->a.first = NULL;
+    (*cral)->x.name = safe_strdup (name);
+    DBG ("list:_cral_add: created new row for %s: 0x%x, newhead=0x%x", *cral, FirstCRAL);
+  }
+  tmp = _cral_get();
+  tmp->next = (*cral)->a.first;
+  (*cral)->a.first = tmp;
+  DBG ("list:_cral_add: added channel %s:%s, 0x%x->0x%x", name, greeting, tmp->next, tmp);
+  tmp->x.chr = chr = _add_channel (chr, R_NO);
+  (*chr)->greeting = safe_strdup (greeting);
+  pthread_mutex_lock (&FLock);
+  _R_f += strlena (greeting);
+  pthread_mutex_unlock (&FLock);
+  tmp->a.mutex = mutex;
+  return *chr;
+}
+
+/*--- W --- *mutex --- no built-ins with exception for *mutex ---*/
+static void _cral_check (char *name, lid_t cid, pthread_mutex_t *mutex)
+{
+  _cral_t **cral = _cral_find (name);
+  _cral_t *head;
+
+  if (!*cral)
+    return;
+  head = *cral;
+  *cral = head->next;			/* delete row from main chain */
+  head->next = head->a.first;		/* create free chain from current */
+  FREE (&head->x.name);
+  for (cral = &head->a.first; *cral; cral = &(*cral)->next)
+  {
+    if ((*cral)->a.mutex != mutex)
+      pthread_mutex_lock ((*cral)->a.mutex);
+    (*(*cral)->x.chr)->cid = cid;
+    if ((*cral)->a.mutex != mutex)
+      pthread_mutex_unlock ((*cral)->a.mutex);
+    DBG ("list:_cral_check: chr=0x%x", *(*cral)->x.chr);
+  }
+  *cral = FreeCRAL;			/* add freed chain info FreeCRAL */
+  FreeCRAL = head;
+  DBG ("list:_cral_check: out channel %s(id=%hu), newhead=0x%x", name, cid, FirstCRAL);
+}
+
+/*--- W --- no locks --- no built-ins ---*/
+static int _cral_clear (void)
+{
+  _cral_bl *bl, *next;
+  _cral_t *cral, *head;
+  int r = 0;
+
+  /* cycle 1: free all _cral_t's */
+  for (head = FirstCRAL; head; head = head->next)
+  {
+    DBG ("list:_cral_clear: clearing %s(0x%x)", head->x.name, head);
+    FREE (&head->x.name);
+    for (cral = head->a.first; cral; cral = cral->next)
+    {
+      user_chr *c;
+
+      pthread_mutex_lock (cral->a.mutex);
+      c = *cral->x.chr;
+      *cral->x.chr = c->next;
+      pthread_mutex_unlock (cral->a.mutex);
+      r += strlena (c->greeting) + sizeof(user_chr);
+      FREE (&c->greeting);
+      FREE (&c);
+    }
+  }
+  /* cycle 2: free all blocks */
+  for (bl = FirstCRALBL; bl; bl = next)
+  {
+    next = bl->next;
+    FREE (&bl);
+  }
+  FirstCRALBL = LastCRALBL = NULL;
+  FirstCRAL = FreeCRAL = NULL;
+  return r;
+}
+
+/*
  * load mode:
  *	reset all
  * update mode: (users that have U_UNSHARED flag and special will be skipped)
@@ -1360,7 +1641,8 @@ static int _load_listfile (char *filename, int update)
   FILE *fp;
   char *c, *v, *cc = NULL;
   unsigned int _a, _u, _r, _k;			/* add, update, remove, keep */
-  lid_t lid;
+  int _f = 0;
+  lid_t lid;					/* temporal everywhere below */
 
   if (O_MAKEFILES)
     return 0;
@@ -1403,21 +1685,43 @@ static int _load_listfile (char *filename, int update)
 	while (*c && *c != ' ') c++;
 	*c = 0;				/* break a field and value */
 	c = &buff[1];
-	_next_field (&c);
-	Set_Field (ur, &buff[1], v); /* set the field */
-	if (*c)				/* check if field is console/channel */
+	_next_field (&c);		/* c points after first ':' now */
+	if (*c)				/* check if field is console/service */
 	{
-	  lid_t i = _get_index (&buff[1]);	/* parse */
 	  user_chr *ch;
 
-	  for (ch = ur->channels; ch && ch->cid != i; ch = ch->next);
+	  if (buff[1] == '@')			/* parse */
+	    lid = _get_index (&buff[2], 1);
+	  else
+	    lid = _get_index (&buff[1], 1);
+	  DBG ("_load_listfile: subrecord %s, lid=%d", &buff[1], (int)lid);
+	  if (lid != R_NO)			/* try to find and add it */
+	  {
+	    for (ch = ur->channels; ch && ch->cid != lid; ch = ch->next)
+	      DBG ("_load_listfile: cid=%d != lid=%d", (int)ch->cid, (int)lid);
+	    if (!ch)
+	      ch = *(_add_channel (&ur->channels, lid));
+	    pthread_mutex_lock (&FLock);
+	    _R_f += strlena (v) - strlena (ch->greeting);
+	    pthread_mutex_unlock (&FLock);
+	    FREE (&ch->greeting);
+	    ch->greeting = safe_strdup (v);
+	  }
+	  else /* if no such service added yet then add it to "ahead" list */
+	    ch = _cral_add (&buff[1], &ur->channels, v, &ur->mutex);
 	  if (!ch)
+	  {
+	    ERROR ("_load_listfile: unknown subrecord %s(%d) for \"%s\"",
+		   &buff[1], (int)lid, ur->lname);
 	    break;
-	  ch->flag = strtouserflag (_next_field (&c));
+	  }
+	  ch->flag = strtouserflag (_next_field (&c), NULL);
 	  ch->expire = (time_t) strtol (c, NULL, 10);
+	  break;
 	}
 	else if (!strcasecmp (&buff[1], "alias"))
 	  _add_aliases (ur, v);
+	Set_Field (ur, &buff[1], v);		/* set the field */
 	break;
       case '\\':			/* skip if next char if one of "#+\" */
 	if (strchr ("#+\\", buff[1]))
@@ -1427,11 +1731,13 @@ static int _load_listfile (char *filename, int update)
 	if (ur)
 	{
 	  ur->progress = 0;		/* finish updating of previous */
+	  _cral_check (ur->lname, ur->uid, &ur->mutex); /* check "ahead" list */
 	  pthread_mutex_unlock (&ur->mutex);
 	}
 	if (!strcmp (buff, ":::::::::"))	/* it is EOF */
 	{
 	  lid = LID_MIN;
+	  _f -= _cral_clear(); 			/* clear "ahead" list */
 	  do {
 	    if ((ur = UList[lid - LID_MIN]) != NULL && ur->progress)
 	    {
@@ -1444,12 +1750,16 @@ static int _load_listfile (char *filename, int update)
 		ur->progress = 0;
 	    }
 	  } while (lid++ != LID_MAX);
-	  LISTFILEMODIFIED;
+	  if (_r)
+	    LISTFILEMODIFIED;
 	  rw_unlock (&UFLock);
 	  Add_Request (I_LOG, "*", F_BOOT,
-		"Loaded %s: %u records added, %u updated, %u removed, %u keeped.",
+		"Loaded %s: %u records added, %u updated, %u removed, %u kept.",
 		filename, _a, _u, _r, _k);
 	  fclose (fp);
+	  pthread_mutex_lock (&FLock);
+	  _R_f += _f;
+	  pthread_mutex_unlock (&FLock);
 	  return 0;
 	}
 	/* only owner has Lname "", all other NULL or non-empty */
@@ -1460,13 +1770,18 @@ static int _load_listfile (char *filename, int update)
 	  *c++ = 0;						/* 1 */
 	}
 	else
+	{
 	/* find the user and empty it */
+	  if (*c == '@')	/* if it's service name */
+	    c++;
+	  DBG ("_load_listfile: starting parsing user line %s", c);
 	  ur = _findbylname (_next_field (&c));			/* 1 */
+	}
 	cc = _next_field (&c);					/* 2 */
+	lid = (lid_t) strtol (_next_field (&c), NULL, 10);	/* 3 */
 	if (ur)
 	{
 	  user_hr *hr;
-	  lid_t uid;
 
 	  pthread_mutex_lock (&ur->mutex);
 	  if (update && (ur->flag & (U_UNSHARED|U_SPECIAL)))
@@ -1477,28 +1792,40 @@ static int _load_listfile (char *filename, int update)
 	    _k++;
 	    break;
 	  }
-	  _u++;
+	  if (ur->progress)
+	    _u++;
+	  else
+	  {
+	    WARNING ("_load_listfile: duplicate record name \"%s\" ignored", v);
+	    break;
+	  }
 	  _del_aliases (ur);		/* remove all aliases */
-	  uid = ur->uid;
-	  ur->uid = (lid_t) strtol (_next_field (&c), NULL, 10);/* 3 */
-	  if (uid != ur->uid)		/* hmmm, UIDs was renumbered? */
-	    NewEvent (W_CHG, uid, ur->uid, 0);	/* uid -> ur->uid */
-	  /* Lid can be erased by init so force it */
-	  LidsBitmap[(ur->uid-LID_MIN)/32] |= 1<<((ur->uid-LID_MIN)%32);
-	  UList[ur->uid-LID_MIN] = ur;
+	  if (lid != ur->uid)		/* hmmm, UIDs was renumbered? */
+	    NewEvent (W_CHG, ur->uid, lid, 0);	/* ur->uid -> lid */
+	  /* force updating of Lid tables */
+	  LidsBitmap[(ur->uid-LID_MIN)/32] &= ~(1<<((ur->uid-LID_MIN)%32));
+	  LidsBitmap[(lid-LID_MIN)/32] |= 1<<((lid-LID_MIN)%32);
+	  UList[ur->uid-LID_MIN] = NULL;
+	  UList[lid-LID_MIN] = ur;
+	  /* TODO: check if it changes LID group (ban/service/normal) */
 	  rw_wrlock (&HLock);
 	  while (ur->host)
 	  {
 	    hr = ur->host;
 	    ur->host = hr->next;
+	    _R_h -= safe_strlen (hr->hostmask) + 1 + sizeof(user_hr) -
+		    sizeof(hr->hostmask);
 	    FREE (&hr);
 	  }
 	  rw_unlock (&HLock);
+	  ur->flag = strtouserflag (_next_field (&c), NULL);	/* 4 */
+	  if (spname_valid (v) > 0)
+	    ur->flag |= U_SPECIAL;
 	}
 	/* or create new user record */
-	else if ((ur = _add_userrecord (v,			/* 3 */
-				spname_valid (v) < 0 ? 0 : U_SPECIAL,
-				(lid_t) strtol (_next_field (&c), NULL, 10))))
+	else if ((ur = _add_userrecord ((*v == '@') ? &v[1] : v,
+				strtouserflag (_next_field (&c), NULL) | /* 4 */
+				((spname_valid (v) > 0) ? U_SPECIAL : 0), lid)))
 	{
 	  _a++;
 	  pthread_mutex_lock (&ur->mutex);
@@ -1509,28 +1836,32 @@ static int _load_listfile (char *filename, int update)
 	  break;
 	}
 	/* parse the fields and fill user record */
+	_f -= strlena (ur->passwd) + strlena (ur->u.info);
 	FREE (&ur->passwd);
-	FREE (&ur->u.info);
 	ur->passwd = safe_strdup (cc);
-	ur->flag = strtouserflag (_next_field (&c));		/* 4 */
-	if (strchr (SPECIALCHARS, v[0]))
-	  ur->flag |= U_SPECIAL;
+	FREE (&ur->u.info);
 	ur->u.info = safe_strdup (_next_field (&c));		/* 5 */
+	_f += strlena (ur->passwd) + strlena (ur->u.info);
 	if (!update)		/* rest ignored when update */
 	{
 	  user_chr *chr;
 	  user_fr *fr;
 
+	  _f -= strlena (ur->charset) + strlena (ur->login) +
+		strlena (ur->logout);
 	  FREE (&ur->charset);
-	  FREE (&ur->login);
-	  FREE (&ur->logout);
 	  ur->charset = safe_strdup (_next_field (&c));		/* 6 */
+	  FREE (&ur->login);
 	  ur->login = safe_strdup (_next_field (&c));		/* 7 */
+	  FREE (&ur->logout);
 	  ur->logout = safe_strdup (_next_field (&c));		/* 8 */
+	  _f += strlena (ur->charset) + strlena (ur->login) +
+		strlena (ur->logout);
 	  while (ur->channels)
 	  {
 	    chr = ur->channels;
 	    ur->channels = chr->next;
+	    _f -= strlena (chr->greeting) + sizeof(user_chr);
 	    FREE (&chr->greeting);
 	    FREE (&chr);
 	  }
@@ -1538,6 +1869,7 @@ static int _load_listfile (char *filename, int update)
 	  {
 	    fr = ur->fields;
 	    ur->fields = fr->next;
+	    _f -= strlena (fr->value) + sizeof(user_fr);
 	    FREE (&fr->value);
 	    FREE (&fr);
 	  }
@@ -1558,13 +1890,25 @@ static int _load_listfile (char *filename, int update)
     }
   }
   if (ur)
+  {
+    _cral_check (ur->lname, ur->uid, &ur->mutex); /* check "ahead" list */
     pthread_mutex_unlock (&ur->mutex);	/* finish updating of previous */
+  }
+  _f -= _cral_clear(); /* clear "ahead" list, some may be lost, unavoidable */
+  lid = LID_MIN;
+  do {
+    if ((ur = UList[lid - LID_MIN]))
+      ur->progress = 0;			/* keep all records in current state */
+  } while (lid++ != LID_MAX);
   LISTFILEMODIFIED;
   rw_unlock (&UFLock);
   Add_Request (I_LOG, "*", F_BOOT,
 	       "Unexpected EOF at %s: %u records added, %u updated, %u keeped.",
 	       filename, _a, _u, _k);
   fclose (fp);
+  pthread_mutex_lock (&FLock);
+  _R_f += _f;
+  pthread_mutex_unlock (&FLock);
   return -1;
 }
 
@@ -1572,6 +1916,14 @@ static int _load_listfile (char *filename, int update)
 int Merge_Listfile (char *path)
 {
   return _load_listfile (path, 1);
+}
+
+static int _nonamed_record_is_invalid (clrec_t *ur)
+{
+  /* TODO: validate record - nonamed has to have host and at least one
+     of flags U_DENY | U_ACCESS | U_INVITE | U_DEOP | U_QUIET | U_IGNORED
+     on at least one subrecord */
+  return 0;
 }
 
 static int _write_listfile (char *str, FILE *fp)
@@ -1593,16 +1945,20 @@ static int _save_listfile (char *filename, int quiet)
   char buff[HUGE_STRING];
   char ffn[LONG_STRING];
   char f[64];				/* I hope it's enough for 19 flags :) */
+  struct stat st;
   int i = 0;
-  unsigned int _r, _b, _s;		/* regular, bot, special */
+  int _r, _s, _d, _i;		/* regular, special, ban, ignore */
   lid_t lid;
 
   filename = (char *)expand_path (ffn, filename, sizeof(ffn));
-  snprintf (buff, sizeof(buff), "%s~", filename);
-  unlink (buff);
-  rename (filename, buff);			/* creating backup */
+  if (!stat (filename, &st))
+  {
+    snprintf (buff, sizeof(buff), "%s~", filename);
+    unlink (buff);
+    rename (filename, buff);			/* creating backup */
+  }
   fp = fopen (filename, "w");
-  _r = _b = _s = 0;
+  _r = _s = _d = _i = 0;
   if (fp)
   {
     _savetime = 0;
@@ -1610,16 +1966,20 @@ static int _save_listfile (char *filename, int quiet)
     lid = LID_MIN;
     do
     {
-      if (!(ur = UList[lid - LID_MIN]) || (ur->flag & U_ALIAS))
+      if (!(ur = UList[lid - LID_MIN]) || (ur->flag & U_ALIAS) ||
+	  _nonamed_record_is_invalid (ur))
 	continue;
-      if (ur->flag & U_SPECIAL)
+      if (ur->uid < ID_REM)
+	_d++;
+      else if (!ur->lname)
+	_i++;
+      else if (ur->flag & U_SPECIAL)
 	_s++;
-      else if (ur->flag & U_BOT)
-	_b++;
       else if (ur->uid)
 	_r++;
-      snprintf (buff, sizeof(buff), "%s%s:%s:%d:%s:%s:%s:%s:%s:%lu\n",
+      snprintf (buff, sizeof(buff), "%s%s%s:%s:%d:%s:%s:%s:%s:%s:%lu\n",
 		(ur->lname && strchr ("#+\\", ur->lname[0])) ? "\\" : "",
+		((ur->flag & U_SPECIAL) && !strchr (ur->lname, '@')) ? "@" : "",
 		NONULL(ur->lname), NONULL(ur->passwd), (int) ur->uid,
 		userflagtostr (ur->flag, f), NONULL(ur->u.info),
 		NONULL(ur->charset), NONULL(ur->login), NONULL(ur->logout),
@@ -1632,15 +1992,22 @@ static int _save_listfile (char *filename, int quiet)
       }
       for (chr = ur->channels; chr && i; chr = chr->next)
       {
-	if (chr->expire)		/* common or channel permanent ban */
-	  snprintf (buff, sizeof(buff), " %s:%s:%lu %s\n",
-		    (chr->cid == R_CONSOLE && UList[chr->cid]) ? "" : UList[chr->cid]->lname,
-		    userflagtostr (chr->flag, f), (unsigned long)chr->expire,
-		    NONULL(chr->greeting));
-	else				/* console or channel record */
-	  snprintf (buff, sizeof(buff), " %s:%s: %s\n",
-		    (chr->cid == R_CONSOLE && UList[chr->cid]) ? "" : UList[chr->cid]->lname,
-		    userflagtostr (chr->flag, f), NONULL(chr->greeting));
+	register clrec_t *sur = UList[chr->cid-LID_MIN];
+
+	if (chr->cid == R_CONSOLE)
+	  sur = NULL;				/* it's NULL but for any case */
+	else if (!sur || !(sur->flag & U_SPECIAL)) /* drop invalid subrecords */
+	{
+	  DBG ("dropped unknown service %d(%s) subrecord from \"%s\": %s",
+	       chr->cid, sur ? sur->lname : "",
+	       NONULL(ur->lname), NONULL(chr->greeting));
+	  continue;
+	}
+	snprintf (buff, sizeof(buff), " %s%s:%s:%.0lu %s\n",
+		  (sur && !safe_strchr(sur->lname, '@')) ? "@" : "",
+		  sur ? sur->lname : "",
+		  userflagtostr (chr->flag, f), (unsigned long)chr->expire,
+		  NONULL(chr->greeting));
 	i = _write_listfile (buff, fp);
       }
       for (fr = ur->fields; fr && i; fr = fr->next)
@@ -1649,7 +2016,8 @@ static int _save_listfile (char *filename, int quiet)
 	i = _write_listfile (buff, fp);
       }
     } while (lid++ != LID_MAX);
-    if (i) fwrite (":::::::::\n", 1, 10, fp);	/* empty record - checking */
+    if (i)
+      i = _write_listfile (":::::::::\n", fp);	/* empty record - for check */
     fclose (fp);
   }
   if (!i)
@@ -1657,20 +2025,38 @@ static int _save_listfile (char *filename, int quiet)
     unlink (filename);				/* error - file corrupted */
     snprintf (buff, sizeof(buff), "%s~", filename);
     rename (buff, filename);			/* restoring from backup */
+    ERROR ("Error on saving listfile, keeping old one.");
     return (-1);
   }
   Add_Request (I_LOG, "*", F_BOOT,
-	       "Saved %s: %u regular, %u bots, and %u special records.",
-	       filename, _r, _b, _s);
+	       "Saved %s: %d bans, %d regular, and %d special records.",
+	       filename, _d, _r, _s);
+  pthread_mutex_lock (&FLock);
+  _i -= _R_i;
+  _d -= _R_d;
+  _r -= _R_r;
+  _s -= _R_s;
+  pthread_mutex_unlock (&FLock);
+  if (_i || _d || _r ||  _s)
+    ERROR ("_save_listfile: difference in userrecords%s%.0d%s%.0d%s%.0d%s%.0d",
+	   _i ? ", ignores=" : "", _i, _d ? ", bans=" : "", _d,
+	   _r ? ", regular=" : "", _r, _s ? ", special=" : "", _s);
   return 0;
 }
 
 static iftype_t userfile_signal (INTERFACE *iface, ifsig_t signal)
 {
+  INTERFACE *tmp;
+  char buff[STRING];
+
   switch (signal)
   {
     case S_REPORT:
-      /* oops, still in progress??? TODO! */
+      printl (buff, sizeof(buff), ReportFormat, 0,
+	      NULL, NULL, "Listfile", NULL, 0, 0, 0, Listfile);
+      tmp = Set_Iface (iface);
+      New_Request (tmp, F_REPORT, "%s", buff);
+      Unset_Iface();
       break;
     case S_TIMEOUT:
       if (_savetime && Time - _savetime >= cache_time)
@@ -1682,8 +2068,9 @@ static iftype_t userfile_signal (INTERFACE *iface, ifsig_t signal)
     case S_CONTINUE:
       break;
     case S_TERMINATE:
-    default:
+    case S_SHUTDOWN:
       iface->ift |= I_DIED;
+    default:
       if (_savetime)
 	_save_listfile (Listfile, signal == S_SHUTDOWN ? 1 : 0);
   }
@@ -1696,41 +2083,29 @@ static iftype_t userfile_signal (INTERFACE *iface, ifsig_t signal)
  * int func(peer_t *from, char *args)
  */
 
-static void parse_chattr (register char *text, userflag *toset, userflag *tounset)
+static void parse_chattr (char *text, userflag *toset, userflag *tounset)
 {
-  int plus = 0;
   char here;
-  char *last = NULL;
   userflag todo;
 
-  while (*text)
+  text += strcspn (text, "+- |");	/* skip initial garbage */
+  FOREVER
   {
-    text += strspn (text, "+- |");
-    here = *text;
-    *text = 0;
-    if (last)
-    {
-      if (plus == 1)
-      {
-	todo = strtouserflag (last);
-	*toset |= todo;
-	*tounset &= ~todo;
-      }
-      else if (plus)
-      {
-	todo = strtouserflag (last);
-	*tounset |= todo;
-	*toset &= ~todo;
-      }
-    }
-    *text++ = here;
+    here = *text++;
     if (here == '+')
-      plus = 1;
+    {
+      todo = strtouserflag (text, &text);
+      *toset |= todo;
+      *tounset &= ~todo;
+    }
     else if (here == '-')
-      plus = -1;
+    {
+      todo = strtouserflag (text, &text);
+      *tounset |= todo;
+      *toset &= ~todo;
+    }
     else
-      return;
-    last = text;
+      break;
   }
 }
 
@@ -1743,7 +2118,7 @@ static void check_perm (userflag to, userflag by, userflag ufmask,
     return;
   if (!(by & U_OWNER))			/* master or below */
   {
-    ufmask |= (U_OWNER | U_MASTER | U_SPEAK | U_UNSHARED);
+    ufmask |= (U_OWNER | U_MASTER | U_SPEAK | U_UNSHARED | U_IGNORED);
     testuf = U_OWNER | U_MASTER;
   }
   else
@@ -1752,16 +2127,16 @@ static void check_perm (userflag to, userflag by, userflag ufmask,
   {
     ufmask |= (U_HALFOP | U_OP | U_AUTO | U_VOICE | U_QUIET | U_INVITE);
     testuf |= U_OP | U_HALFOP;
-  }
-  if (!(by & U_OP))			/* halfop */
-  {
-    ufmask |= (U_FRIEND | U_DEOP | U_BOT);
-    testuf |= U_BOT;
-  }
-  if ((to & testuf) || !(by & U_HALFOP))
-  {
-    *toset = *tounset = 0;		/* seniority! */
-    return;
+    if (!(by & U_OP))			/* halfop */
+    {
+      ufmask |= (U_FRIEND | U_DEOP);
+      testuf |= U_SPECIAL;
+      if ((to & testuf) || !(by & U_HALFOP))
+      {
+	*toset = *tounset = 0;		/* seniority! */
+	return;
+      }
+    }
   }
   testuf = *toset & ~ufmask;		/* what is not permitted */
   if (testuf & U_OWNER)			/* some dependencies */
@@ -1788,6 +2163,7 @@ static void check_perm (userflag to, userflag by, userflag ufmask,
  * chattr +a-b|+x-y [#chan]	1	1a	2/0
  * chattr +a-b |+x-y [#chan]	1	2a	3/0
  */
+BINDING_TYPE_dcc (dc_chattr);
 static int dc_chattr (peer_t *dcc, char *args)
 {
   userflag ufp, ufm;
@@ -1797,7 +2173,8 @@ static int dc_chattr (peer_t *dcc, char *args)
   char plus[64+4];			/* I hope it enough for 2*21 flags :) */
   char Chan[IFNAMEMAX+1];
   char *minus;
-  clrec_t *user, *who;
+  clrec_t *user;
+  const clrec_t *who;
   register user_chr *chr;
 
   if (!args)
@@ -1806,6 +2183,8 @@ static int dc_chattr (peer_t *dcc, char *args)
   if (gl)
     *gl = 0;
   user = _findbylname (args);		/* find the user */
+  if (dcc->iface->ift & I_CONSOLE)
+    who = &CONSOLEUSER;
   if (user)
     who = _findbylname (dcc->iface->name); /* find me */
   if (user && (user->flag & U_ALIAS))	/* unaliasing */
@@ -1820,6 +2199,7 @@ static int dc_chattr (peer_t *dcc, char *args)
     *gl = ' ';
   args = NextWord (args);
   StrTrim (args);			/* break ending spaces */
+  DBG ("list.c:dc_chattr:arg1:%s", args);
   gl = args;				/* try to find arguments */
   args = sv = NextWord (args);		/* (<g>) *(|<l>)?( +<s>)? */
   if (*sv && *sv == '|')
@@ -1830,10 +2210,10 @@ static int dc_chattr (peer_t *dcc, char *args)
     sv = args;
   *Chan = 0;
   if (user->flag & U_SPECIAL)		/* only owners may change that */
-    id = _get_index (user->lname);
-  else if (*args && strchr (SPECIALCHARS, *args))
+    id = _get_index (user->lname, 1);
+  else if (*args/* && strchr (SPECIALCHARS, *args)*/)
   {
-    id = _get_index (args);		/* so we trying to change subflag? */
+    id = _get_index (args, 1);		/* so we trying to change subflag? */
     if (id == R_NO)
     {
       pthread_mutex_unlock (&user->mutex);
@@ -1848,7 +2228,7 @@ static int dc_chattr (peer_t *dcc, char *args)
     if (chr)
     {
       NextWord_Unquoted (Chan, NextWord (chr->greeting), sizeof(Chan));
-      id = _get_index (Chan);
+      id = _get_index (Chan, 1);
     }
     else
       id = R_NO;
@@ -1863,10 +2243,12 @@ static int dc_chattr (peer_t *dcc, char *args)
   }
   else
     cf = (uf & U_GLOBALS);				/* globals */
-  if (user->flag & U_SPECIAL)		/* only owners may change that */
+  DBG ("list.c:dc_chattr:caller perm=0x%08x/0x%08x, id=%hd", uf, cf, id);
+  if (user->flag & U_SPECIAL)
   {
-    uf = ((uf | cf) & U_OWNER);
-    cf = 0;
+    if (!((uf | cf) & U_OWNER))		/* only owners may change that */
+      uf = 0;
+    cf = 0;				/* special usually have not subs */
   }
   if ((uf == 0 && cf == 0))		/* no permissions to do anything */
   {
@@ -1884,8 +2266,10 @@ static int dc_chattr (peer_t *dcc, char *args)
   if (sv != args || !*args)		/* global attributes */
   {
     parse_chattr (gl, &ufp, &ufm);
+    DBG ("list.c:dc_chattr:arg2:%s:0x%08x/0x%08x", gl, ufp, ufm);
     /* check permissions - any flag may be global/direct */
     check_perm (user->flag, uf, 0, &ufp, &ufm);
+    DBG ("list.c:dc_chattr:0x%08x/0x%08x->0x%08x/0x%08x", user->flag, uf, ufp, ufm);
     if (ufp || ufm)
     {
       /* set userflags */
@@ -1923,6 +2307,7 @@ static int dc_chattr (peer_t *dcc, char *args)
 	  Add_Request (I_DIRECT, user->lname, F_T_NOTICE,
 		       _("WOW, you are %s now..."), minus);
       }
+      LISTFILEMODIFIED;
     }
     New_Request (dcc->iface, 0,
 		 _("Global attributes for %s are now: %s."), user->lname,
@@ -1945,16 +2330,18 @@ static int dc_chattr (peer_t *dcc, char *args)
   if (cf)			/* don't do checks if not permitted anyway */
   {
     parse_chattr (sv, &ufp, &ufm);
+    DBG ("list.c:dc_chattr:arg3:%s:0x%08x/0x%08x", sv, ufp, ufm);
     for (chr = user->channels; chr && chr->cid != id; chr = chr->next);
-    /* check permissions - U_BOT is global only attribute */
-    check_perm (chr ? chr->flag : 0, cf, U_BOT, &ufp, &ufm);
+    /* check permissions - U_SPECIAL is global only attribute */
+    check_perm (chr ? chr->flag : 0, cf, U_SPECIAL, &ufp, &ufm);
+    DBG ("list.c:dc_chattr:0x%08x/0x%08x->0x%08x/0x%08x", chr ? chr->flag : 0, cf, ufp, ufm);
   }
   else
     chr = NULL;			/* even don't show it! */
   if (cf && (ufp || ufm))
   {
     if (!chr)			/* create the channel record */
-      chr = _add_channel (&user->channels, id);
+      chr = *(_add_channel (&user->channels, id));
     chr->flag |= ufp;		/* set userflags */
     chr->flag &= ~ufm;
     userflagtostr (ufp, gl);
@@ -1971,7 +2358,7 @@ static int dc_chattr (peer_t *dcc, char *args)
       args = _("half op");
     else
       args = NULL;
-    if (args);
+    if (args)
       Add_Request (I_DIRECT, user->lname, F_T_NOTICE,
 		   _("OOPS, you are not %s on %s anymore..."), args, Chan);
     if (ufp & U_OWNER)
@@ -1984,16 +2371,13 @@ static int dc_chattr (peer_t *dcc, char *args)
       args = _("half op");
     else
       args = NULL;
-    if (args);
+    if (args)
       Add_Request (I_DIRECT, user->lname, F_T_NOTICE,
 		   _("WOW, you are %s on %s now..."), args, Chan);
+    LISTFILEMODIFIED;
   }
   else
     sv = gl;			/* reset to empty line */
-  if (*Chan && chr)
-    New_Request (dcc->iface, 0,
-		 _("Channel attributes for %s on %s are now: %s."),
-		 user->lname, Chan, userflagtostr (chr->flag, plus));
   /* send changes to shared bots */
   if (!(user->flag & (U_SPECIAL | U_UNSHARED)))	/* specials are not shared */
   {
@@ -2005,10 +2389,15 @@ static int dc_chattr (peer_t *dcc, char *args)
       Add_Request (I_DIRECT, "@*", F_SHARE, "\010chattr %s %s%s%s%s",
 		   user->lname, *plus ? "+" : "", plus, *minus ? "-" : "", minus);
   }
+  if (*Chan && chr)
+    New_Request (dcc->iface, 0,
+		 _("Channel attributes for %s on %s are now: %s."),
+		 user->lname, Chan, userflagtostr (chr->flag, plus));
   pthread_mutex_unlock (&user->mutex);
   return 1;
 }
 
+BINDING_TYPE_dcc (dc__phost);
 static int dc__phost (peer_t *dcc, char *args)
 {
   clrec_t *user;
@@ -2022,15 +2411,21 @@ static int dc__phost (peer_t *dcc, char *args)
   *args = 0;
   user = _findbylname (lname);
   *args = ' ';
-  args = NextWord (args);
-  if (!user || strlen (args) < 5)	/* no user or no hostmask */
+  if (!user)				/* no user */
     return 0;
+  args = NextWord (args);
+  if (strlen (args) < 5 || match (args, "*") < 0) /* validation of hostmask */
+  {
+    New_Request (dcc->iface, 0, "Invalid hostmask pattern: %s", args);
+    return 0;
+  }
   _add_usermask (user, args);
   if (!(user->flag & (U_SPECIAL | U_UNSHARED)))	/* specials are not shared */
     Add_Request (I_DIRECT, "@*", F_SHARE, "\010+host %s %s", user->lname, args);
   return 1;
 }
 
+BINDING_TYPE_dcc (dc__mhost);
 static int dc__mhost (peer_t *dcc, char *args)
 {
   clrec_t *user;
@@ -2053,6 +2448,7 @@ static int dc__mhost (peer_t *dcc, char *args)
   return 1;
 }
 
+BINDING_TYPE_dcc (dc__puser);
 static int dc__puser (peer_t *dcc, char *args)
 {
   register int i;
@@ -2066,13 +2462,14 @@ static int dc__puser (peer_t *dcc, char *args)
   if (*net == '-' && net[1] != ' ')
   {
     lname = NextWord (args);
-    if (lname[0] != '@')	/* only networks may be added with this! */
-      return 0;
-    for (attr = net; *attr != ' '; attr++);
-    *attr = 0;
-    if (strchr (++net, '@'))	/* networks may have only one '@' as first char */
+//    if (lname[0] != '@')	/* only networks may be added with this! */
+//      return 0;
+    for (attr = lname; *attr && *attr != ' ' && *attr != '@'; attr++);
+    if (*attr == '@')		/* networks should not have '@' in name */
       return 0;
     args = lname;
+    for (attr = ++net; *attr != ' '; attr++);
+    *attr = 0;			/* get the token */
   }
   else
   {
@@ -2100,14 +2497,18 @@ static int dc__puser (peer_t *dcc, char *args)
     *attr = 0;
   else
     attr = NULL;		/* yet another token */
-  uf = attr ? strtouserflag (&attr[1]) : 0;
-  i = Add_Clientrecord (lname, (uchar *)mask, (net ? U_SPECIAL : 0) + uf);
+  uf = attr ? strtouserflag (&attr[1], NULL) : 0;
+  i = Add_Clientrecord (lname, (strlen (mask) > 4) ? (uchar *)mask : NULL,
+			(net ? U_SPECIAL : 0) | uf);	/* validate host */
   if (attr)
     *attr = ' ';		/* release last token */
   if (i && net && net < lname)	/* only when we are adding networks */
   {
     clrec_t *u = Lock_Clientrecord (lname);
 
+    pthread_mutex_lock (&FLock);
+    _R_f += safe_strlen (net) + 1;
+    pthread_mutex_unlock (&FLock);
     u->logout = safe_strdup (net);
     Unlock_Clientrecord (u);
   }
@@ -2120,6 +2521,7 @@ static int dc__puser (peer_t *dcc, char *args)
   return i;
 }
 
+BINDING_TYPE_dcc (dc__muser);
 static int dc__muser (peer_t *dcc, char *args)
 {
   clrec_t *user;
@@ -2145,20 +2547,27 @@ static int user_chpass (const char *pass, char **crypted)
 {
   char *spass = NULL;			/* generate a new passwd */
   register binding_t *bind = NULL, *bind2 = NULL;
+  int i;
 
   while ((bind2 = Check_Bindtable (BT_Pass, "*", -1, -1, bind)))
     bind = bind2;
   if (bind->name)			/* find the last algorithm :) */
     return 0;
+  i = 0 - strlena (*crypted);
   FREE (crypted);
   if (pass && *pass)
   {
     bind->func (pass, &spass);
+    i += strlena (spass);
     *crypted = safe_strdup (spass);
   }
+  pthread_mutex_lock (&FLock);
+  _R_f += i;
+  pthread_mutex_unlock (&FLock);
   return 1;
 }
 
+BINDING_TYPE_dcc (dc_passwd);
 static int dc_passwd (peer_t *dcc, char *args)
 {
   register clrec_t *user;
@@ -2184,6 +2593,7 @@ static int dc_passwd (peer_t *dcc, char *args)
   return (-1);
 }
 
+BINDING_TYPE_dcc (dc_chpass);
 static int dc_chpass (peer_t *dcc, char *args)
 {
   register clrec_t *user;
@@ -2223,6 +2633,7 @@ static int dc_chpass (peer_t *dcc, char *args)
   return (-1);
 }
 
+BINDING_TYPE_dcc (dc_nick);
 static int dc_nick (peer_t *dcc, char *args)
 {
   char *oldname = safe_strdup (dcc->iface->name);
@@ -2236,6 +2647,7 @@ static int dc_nick (peer_t *dcc, char *args)
   return i;
 }
 
+BINDING_TYPE_dcc (dc_chnick);
 static int dc_chnick (peer_t *dcc, char *args)
 {
   char *oldname = args;
@@ -2254,6 +2666,7 @@ static int dc_chnick (peer_t *dcc, char *args)
   return i;
 }
 
+BINDING_TYPE_dcc (dc_reload);
 static int dc_reload (peer_t *dcc, char *args)
 {
   /* can use Listfile variable - I hope iface locked now */
@@ -2262,6 +2675,7 @@ static int dc_reload (peer_t *dcc, char *args)
   return 1;
 }
 
+BINDING_TYPE_dcc (dc_save);
 static int dc_save (peer_t *dcc, char *args)
 {
   /* can use Listfile variable - I hope iface locked now */
@@ -2270,12 +2684,41 @@ static int dc_save (peer_t *dcc, char *args)
   return 1;
 }
 
+static void _catch_undeleted (void *ptr)
+{
+  ERROR ("list.c:_catch_undeleted: not empty record found: %s",
+	 ((clrec_t *)ptr)->lclname);
+  _delete_userrecord (ptr, 0);
+}
+
 static INTERFACE *ListfileIface = NULL;
 
 char *IFInit_Users (void)
 {
+  /* do cleanup if this was restart */
   if (ListfileIface)
+  {
+    clrec_t *ur;
+    lid_t lid = LID_MIN;
+    register int i, _f;
+
     userfile_signal (ListfileIface, S_TERMINATE);
+    do {
+      if ((ur = UList[lid - LID_MIN]) != NULL)
+	_delete_userrecord (ur, 0);
+    } while (lid++ != LID_MAX);
+    rwlock_destroy (&UFLock);
+    rwlock_destroy (&HLock);
+    /* I hope it's all correct and UTree is empty */
+    Destroy_Tree (&UTree, _catch_undeleted);
+    _f = _R_f - _Falloc * sizeof(char *);
+    for (i = 0; i < _Fnum; i++)
+      _f -= strlena (Field[i]);
+    /* check if our statistics went to 0 */
+    if (_R_r || _R_s || _R_d || _R_i || _R_h || _R_n || _f)
+      WARNING ("list: bad cleanup: %d/%d/%d/%d/%d/%d/%d", _R_r, _R_s, _R_d,
+	       _R_i, _R_h, _R_n, _f);
+  }
   rwlock_init (&UFLock, USYNC_THREAD, NULL);
   rwlock_init (&HLock, USYNC_THREAD, NULL);
   /* empty userlist and LIDs bitmap */
@@ -2293,16 +2736,16 @@ char *IFInit_Users (void)
   BT_Pass = Add_Bindtable ("passwd", B_UNDEF);
   BT_ChLname = Add_Bindtable ("new-lname", B_MASK);
   /* add dcc bindings */
-  Add_Binding ("dcc", "chattr", U_HALFOP, U_MASTER, &dc_chattr);
-  Add_Binding ("dcc", "+name", U_MASTER, U_MASTER, &dc__puser);
-  Add_Binding ("dcc", "-name", U_MASTER, -1, &dc__muser);
-  Add_Binding ("dcc", "+host", U_MASTER, U_MASTER, &dc__phost);
-  Add_Binding ("dcc", "-host", U_MASTER, U_MASTER, &dc__mhost);
-  Add_Binding ("dcc", "passwd", U_ACCESS, -1, &dc_passwd);
-  Add_Binding ("dcc", "chpass", U_MASTER, U_MASTER, &dc_chpass);
-  Add_Binding ("dcc", "lname", U_ACCESS, -1, &dc_nick);
-  Add_Binding ("dcc", "chln", U_MASTER, -1, &dc_chnick);
-  Add_Binding ("dcc", "reload", U_MASTER, -1, &dc_reload);
-  Add_Binding ("dcc", "save", U_MASTER, -1, &dc_save);
+  Add_Binding ("dcc", "chattr", U_HALFOP, U_MASTER, &dc_chattr, NULL);
+  Add_Binding ("dcc", "+name", U_MASTER, U_MASTER, &dc__puser, NULL);
+  Add_Binding ("dcc", "-name", U_MASTER, U_NONE, &dc__muser, NULL);
+  Add_Binding ("dcc", "+host", U_MASTER, U_MASTER, &dc__phost, NULL);
+  Add_Binding ("dcc", "-host", U_MASTER, U_MASTER, &dc__mhost, NULL);
+  Add_Binding ("dcc", "passwd", U_ACCESS, U_NONE, &dc_passwd, NULL);
+  Add_Binding ("dcc", "chpass", U_MASTER, U_MASTER, &dc_chpass, NULL);
+  Add_Binding ("dcc", "lname", U_ACCESS, U_NONE, &dc_nick, NULL);
+  Add_Binding ("dcc", "chln", U_MASTER, U_NONE, &dc_chnick, NULL);
+  Add_Binding ("dcc", "reload", U_MASTER, U_NONE, &dc_reload, NULL);
+  Add_Binding ("dcc", "save", U_MASTER, U_NONE, &dc_save, NULL);
   return (NULL);
 }

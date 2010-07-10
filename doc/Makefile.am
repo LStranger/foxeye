@@ -3,12 +3,8 @@
 
 docdir = ${prefix}/share/doc/$(PACKAGE)-$(VERSION)
 
-doc_DATA = help.format userflag.txt
+doc_DATA = help.format userflag.txt HOWTO.module HOWTO.bot
 
 man_MANS = foxeye.1
 
-EXTRA_DIST = $(doc_DATA) $(man_MANS) tech.txt module.template.c foxeye.sgml \
-	modules.api
-
-foxeye.1: foxeye.sgml
-	@SGML2TXT@ $< > $@
+EXTRA_DIST = $(doc_DATA) tech.txt module.template.c modules.api README.ru

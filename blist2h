@@ -1,0 +1,32 @@
+#!/bin/sh
+# Copyright (C) 2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+# This file is part of FoxEye project.
+# It is only for CVS repository and will be deleted from distribution.
+
+# use it as ./blist2h < bt.list > bt.h
+
+IFS='
+'
+while read line; do
+    case "${line}" in
+	"    Used"\ *)
+	    tag=
+	    ;;
+	[-A-Z]*\ \"*)
+	    tag=`echo ${line} | sed -e 's/^[^"]*"//' -e 's/.//g' \
+			-e 's/[^-a-z0-9].*$//' -e 's/-/_/g'`
+	    echo "#define BINDING_TYPE_${tag}(func) static\\"
+	    ;;
+	*)
+	    if test -n "$tag"; then
+		if (echo "$line" | grep -q "); *$"); then
+		    echo "$line" | sed -e 's/^ *([a-z]*)/ /' -e 's/_.//g' \
+			-e 's/;//'
+		else
+		    echo "$line" | sed -e 's/^ *([a-z]*)/ /' -e 's/_.//g' \
+			-e 's/$/\\/'
+		fi
+	    fi
+	    ;;
+    esac
+done

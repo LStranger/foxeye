@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2005-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -23,7 +23,6 @@
 #include "foxeye.h"
 
 #include <ctype.h>
-#include <pthread.h>
 
 #include "tree.h"
 #include "wtmp.h"
@@ -35,44 +34,44 @@
 extern long int ircch_enforcer_time;		/* from irc-channel.c */
 extern bool ircch_ignore_ident_prefix;
 extern long int ircch_ban_keep;
-extern long int ircch_exempt_keep;
-extern long int ircch_invite_keep;
-extern long int ircch_greet_time;
+//extern long int ircch_exempt_keep;
+//extern long int ircch_invite_keep;
 extern long int ircch_mode_timeout;
+extern char ircch_default_kick_reason[];
 
 #define	MODECHARSMAX	32	/* long int capable */
-#define	MODECHARSFIX	2	/* channel's specials, see net_t structure */
+#define	MODECHARSFIX	2	/* channel's specials, see IRC structure */
 
 typedef struct
 {
   uchar mc[MODECHARSMAX];	/* chars of modes */
   uchar mcf[MODECHARSFIX];	/* references to above for specials */
   uchar admin, anonymous, halfop;
-} mch_t;
+} m_c;
 
 typedef struct
 {
   size_t changes, pos, apos;
-  char modechars[MODECHARSMAX];
   const char *cmd;
+  char modechars[MODECHARSMAX];
   char mchg[STRING];
   char args[STRING];
 } modebuf_t;
 
-static mch_t *ModeChars = NULL;			
+static m_c *ModeChars = NULL;
 
 /* TODO: extra channel modes:
     Rizon: MNOZ
     irchighway: AKMNOS
     ChatSpike: a,fruzACGKL,MNOQSTV */
 
-static void _make_modechars (char *modechars, net_t *net)
+static void _make_modechars (char *modechars, IRC *net)
 {
   unsigned long int i, m;
 
   if (!ModeChars)
   {
-    ModeChars = safe_calloc (1, sizeof(mch_t));
+    ModeChars = safe_calloc (1, sizeof(m_c));
     for (i = 0; i < MODECHARSFIX; i++)
       ModeChars->mcf[i] = MODECHARSMAX;
     for (m = 1, i = 0; i < MODECHARSMAX && m; m += m, i++)
@@ -93,6 +92,12 @@ static void _make_modechars (char *modechars, net_t *net)
 	ModeChars->mc[i] = 'o';
       else if (m == A_VOICE)
 	ModeChars->mc[i] = 'v';
+      else if (m == A_DENIED)
+	ModeChars->mc[i] = 'b';
+      else if (m == A_INVITED)
+	ModeChars->mc[i] = 'I';
+      else if (m == A_EXEMPT)
+	ModeChars->mc[i] = 'e';
       else if (m == A_INVITEONLY)
 	ModeChars->mc[i] = 'i';
       else if (m == A_MODERATED)
@@ -130,9 +135,9 @@ static void _make_modechars (char *modechars, net_t *net)
       modechars[ModeChars->mcf[i]] = net->modechars[i];
 }
 
-static link_t *_find_me_op (net_t *net, ch_t *ch)
+static LINK *_find_me_op (IRC *net, CHANNEL *ch)
 {
-  link_t *me;
+  LINK *me;
 
   if (!ch)
     return NULL;
@@ -146,14 +151,14 @@ static link_t *_find_me_op (net_t *net, ch_t *ch)
 
 /* sf is global (G) plus server (S) flags, cf is channel (C) flags
    (S) are U_DENY,U_ACCESS,U_OP,U_HALFOP,U_AUTO,U_DEOP, all other are (G) */
-static userflag _make_rf (net_t *net, userflag sf, userflag cf)
+static userflag _make_rf (IRC *net, const userflag sf, const userflag cf)
 {
   userflag rf, tf;
 
   rf = cf & (U_DENY | U_ACCESS);		/* channel access group prior */
   if (!rf)
     rf = sf & (U_DENY | U_ACCESS);
-  rf |= (cf | sf) & (U_FRIEND | U_OWNER | U_BOT);	/* just OR these */
+  rf |= (cf | sf) & (U_FRIEND | U_OWNER | U_SPECIAL | U_IGNORED); /* just OR these */
   if (!(net->features & L_HASADMIN))
   {
     tf = U_HALFOP | U_OP | U_DEOP;
@@ -169,6 +174,7 @@ static userflag _make_rf (net_t *net, userflag sf, userflag cf)
     rf |= cf & (tf | U_AUTO);
   else
     rf |= sf & (tf | U_AUTO);
+  DBG ("irc-channel:chmanagement.c:_make_rf: 0x%08x:0x%08x=>0x%08x", sf, cf, rf);
   return rf;
 }
 
@@ -190,7 +196,10 @@ static char *_make_mask (char *mask, char *uh, size_t s)
   }
   while (m < &mask[s-3] && *c)
   {
-    *m++ = *c;
+    if (*c == '[' || *c == '{' || *c == '*')	/* mask all match() chars */
+      *m++ = '?';
+    else
+      *m++ = *c;
     if (*c++ == '@')
       break;
   }
@@ -205,6 +214,7 @@ static char *_make_mask (char *mask, char *uh, size_t s)
   }
   if (n == 0)					/* numeric host? */
   {
+    c = uh;
     while (m < &mask[s-3] && *c && n < 3)
     {
       *m++ = *c++;
@@ -249,12 +259,18 @@ static char *_make_literal_mask (char *mask, char *uh, size_t s)
     c += 2;
   }
   while (m < &mask[s-1] && *c)
-    *m++ = *c;
+  {
+    if (*c == '[' || *c == '{' || *c == '*')	/* mask all match() chars */
+      *m++ = '?';
+    else
+      *m++ = *c;
+    c++;
+  }
   *m = 0;
   return mask;
 }
 
-static void _flush_mode (net_t *net, ch_t *chan, modebuf_t *mbuf)
+static void _flush_mode (IRC *net, CHANNEL *chan, modebuf_t *mbuf)
 {
   char *c;
 
@@ -264,6 +280,7 @@ static void _flush_mode (net_t *net, ch_t *chan, modebuf_t *mbuf)
   if (c) *c = 0;
   mbuf->mchg[mbuf->pos] = 0;
   mbuf->args[mbuf->apos] = 0;
+  DBG("_flush_mode:%s %s %s %s", mbuf->cmd, chan->chi->name, mbuf->mchg, mbuf->args);
   New_Request (net->neti, 0, "%s %s %s %s", mbuf->cmd, chan->chi->name,
 	       mbuf->mchg, mbuf->args);
   if (c) *c = '@';
@@ -271,12 +288,14 @@ static void _flush_mode (net_t *net, ch_t *chan, modebuf_t *mbuf)
   mbuf->changes = mbuf->pos = mbuf->apos = 0;
 }
 
-static void _push_mode (net_t *net, link_t *target, modebuf_t *mbuf,
+static void _push_mode (IRC *net, LINK *target, modebuf_t *mbuf,
 			modeflag mch, int add, char *mask)
 {
-  const char CMD_MODE[] = "MODE";
+  char *CMD_MODE = "MODE";
   size_t i, m;
 
+  if (!_find_me_op (net, target->chan))
+    return; /* I'm not op there */
   for (m = 0; m < MODECHARSMAX && !(mch & (1<<m)); m++);
   if (m == MODECHARSMAX || mbuf->modechars[m] == 0)
     return; /* oops, illegal mode! */
@@ -325,13 +344,15 @@ static void _push_mode (net_t *net, link_t *target, modebuf_t *mbuf,
   mbuf->apos += i;
 }
 
-static void _push_kick (net_t *net, link_t *target, modebuf_t *mbuf,
+static void _push_kick (IRC *net, LINK *target, modebuf_t *mbuf,
 		        char *reason)
 {
-  const char CMD_KICK[] = "KICK";
+  char *CMD_KICK = "KICK";
   char *c;
   size_t i, m;
 
+  if (!_find_me_op (net, target->chan))
+    return; /* I'm not op there */
   if (mbuf->cmd != CMD_KICK || mbuf->changes == net->maxtargets)
   {
     _flush_mode (net, target->chan, mbuf);
@@ -355,14 +376,14 @@ static void _push_kick (net_t *net, link_t *target, modebuf_t *mbuf,
     memcpy (&mbuf->args[1], reason, i);
     mbuf->apos = i + 1;
   }
-  if (mbuf->mchg)
+  if (mbuf->pos)
     mbuf->mchg[mbuf->pos++] = ',';
   memcpy (&mbuf->mchg[mbuf->pos], target->nick->host, m);
   mbuf->pos += m;
   mbuf->changes++;
 }
 
-static void _kickban_user (net_t *net, link_t *target, modebuf_t *mbuf,
+static void _kickban_user (IRC *net, LINK *target, modebuf_t *mbuf,
 			   char *reason)
 {
   char mask[HOSTMASKLEN];
@@ -372,12 +393,11 @@ static void _kickban_user (net_t *net, link_t *target, modebuf_t *mbuf,
   _push_kick (net, target, mbuf, reason ? reason : "you are banned");
 }
 
-static void _recheck_modes (net_t *net, link_t *target, userflag rf,
+static void _recheck_modes (IRC *net, LINK *target, userflag rf,
 			    userflag cf, modebuf_t *mbuf, int firstjoined)
 {
   clrec_t *cl;
   char *greeting, *c;
-  wtmp_t wtmp;
 
   /* check server/channel user's op/voice status to take */
   if ((target->mode & A_ADMIN) &&			/* is an admin */
@@ -408,12 +428,13 @@ static void _recheck_modes (net_t *net, link_t *target, userflag rf,
 	    ((rf & U_VOICE) && (cf & U_VOICE))))	/* +autovoice */
     _push_mode (net, target, mbuf, A_VOICE, 1, NULL);	/* autovoice */
   /* greeting user if it is first joined after enough absence */
+  DBG ("chmanagement:checking for greeting:%d:%c:%s:%c:%s", firstjoined,
+	(cf&U_SPEAK) ? '+' : '-', target->nick->lname,
+	(target->chan->id==ID_REM) ? '-' : '+', target->chan->chi->name);
   if (firstjoined && (cf & U_SPEAK) && target->nick->lname &&
-      target->chan->id != ID_REM && ircch_greet_time > 0)
+      target->chan->id != ID_REM)
   {
-    if ((!FindEvent (&wtmp, target->nick->lname, W_ANY, target->chan->id) ||
-	 Time - wtmp.time > ircch_greet_time) &&
-	(cl = Lock_Clientrecord (target->nick->lname)))
+    if ((cl = Lock_Clientrecord (target->nick->lname)))
     {
       greeting = safe_strdup (Get_Field (cl, target->chan->chi->name, NULL));
       Unlock_Clientrecord (cl);
@@ -427,19 +448,19 @@ static void _recheck_modes (net_t *net, link_t *target, userflag rf,
 	  *c = '!';
 	FREE (&greeting);
       }
+      else DBG ("chmanagement:no greeting found");
     }
   }
 }
 
-void ircch_recheck_modes (net_t *net, link_t *target, userflag sf, userflag cf,
+void ircch_recheck_modes (IRC *net, LINK *target, userflag sf, userflag cf,
 			  char *info, int x)
 {
-  link_t *me;
   userflag rf;
   modebuf_t mbuf;
 
-  if (!target || !(me = _find_me_op (net, target->chan)))
-    return;		/* I have not any permissions to operate */
+  if (!target)
+    return;		/* I cannot have any permissions to operate */
   if (Time - target->lmct < (unsigned long int)ircch_mode_timeout)
     return;		/* don't push too fast modechanges, it will abuse */
   _make_modechars (mbuf.modechars, net);
@@ -456,27 +477,27 @@ void ircch_recheck_modes (net_t *net, link_t *target, userflag sf, userflag cf,
   _flush_mode (net, target->chan, &mbuf);
 }
 
-static void _ircch_expire_exempts (net_t *net, ch_t *ch, modebuf_t *mbuf)
+static void _ircch_expire_exempts (IRC *net, CHANNEL *ch, modebuf_t *mbuf)
 {
-  time_t t;
-  list_t *list, *list2;
+//  time_t t;
+  LIST *list, *list2;
   clrec_t *cl;
   userflag uf, cf;
 
   /* check exceptions and remove all expired if no matched bans left */
-  if (ircch_exempt_keep > 0)
-  {
-    t = Time - ircch_exempt_keep * 60;
+//  if (ircch_exempt_keep > 0)
+//  {
+//    t = Time - ircch_exempt_keep * 60;
     for (list = ch->exempts; list; list = list->next)
     {
-      if (list->since > t)
-	continue;
+//      if (list->since > t)
+//	continue;
       for (list2 = ch->bans; list2; list2 = list2->next)
 	if (match (list2->what, list->what) > 0)	/* there is a ban... */
 	  break;
       if (list2)
 	continue;					/* ...so keep it */
-      if ((cl = Find_Clientrecord (list->what, NULL, &uf, net->name)))
+      if ((cl = Find_Clientrecord (list->what, NULL, &uf, &net->name[1])))
       {
 	cf = Get_Flags (cl, ch->chi->name);
 	Unlock_Clientrecord (cl);
@@ -488,32 +509,32 @@ static void _ircch_expire_exempts (net_t *net, ch_t *ch, modebuf_t *mbuf)
 		   list->what, ch->chi->name);
       _push_mode (net, ch->nicks, mbuf, A_EXEMPT, 0, list->what);
     }
-  }
+//  }
 }
 
 /* do channel mode change parsing, origin may be NULL if it came from server */
-int ircch_parse_modeline (net_t *net, ch_t *chan, link_t *origin, char *prefix,
+int ircch_parse_modeline (IRC *net, CHANNEL *chan, LINK *origin, char *prefix,
 			  userflag uf, bindtable_t *mbt, bindtable_t *kbt,
 			  int parc, char **parv)
 {
-  link_t *me, *target;
+  LINK *me, *target;
   char *pstr, *schr;
-  list_t **list;
+  LIST **list;
   binding_t *bind;
   char mf, mc;
   userflag ocf, orf, trf, gcf;
   modeflag mch;
-  int nextpar;
+  int nextpar, nignpar;
   clrec_t *cr;
   char buf[STRING];
   modebuf_t mbuf;
 
-  nextpar = 0;
+  nextpar = nignpar = 0;
   me = _find_me_op (net, chan);
   _make_modechars (mbuf.modechars, net);
   mbuf.changes = mbuf.pos = mbuf.apos = 0;
   mbuf.cmd = NULL;
-  if (origin)
+  if (origin && origin->nick->lname)
     orf = _make_rf (net, uf,
 		    (ocf = Get_Clientflags (origin->nick->lname, chan->chi->name)));
   else
@@ -524,6 +545,7 @@ int ircch_parse_modeline (net_t *net, ch_t *chan, link_t *origin, char *prefix,
   {
     pstr = parv[nextpar++];
     mf = 0;
+    DBG ("ircch_parse_modeline: parameter %s #%d/%d", pstr, nextpar, parc);
     while (*pstr)
     {
       mc = *pstr++;
@@ -588,7 +610,7 @@ int ircch_parse_modeline (net_t *net, ch_t *chan, link_t *origin, char *prefix,
 	  }
 	  else
 	    schr = NULL;
-	  if (schr)
+	  if (mch && schr)
 	  {
 	    if (net->lc)
 	    {
@@ -601,9 +623,11 @@ int ircch_parse_modeline (net_t *net, ch_t *chan, link_t *origin, char *prefix,
       }
       if (mc == mf)
 	continue;
-      else if (!mf || !list || !mch)
+      nignpar++;			/* modechanges counter */
+      if (!mf || !mch)
       {
 	/* bad modechange! */
+	WARNING ("ircch_parse_modeline: invalid char '%c' ignored", mc);
 	continue;
       }
       snprintf (buf, sizeof(buf), "%s %c%c%s%s", chan->chi->name, mf, mc,
@@ -624,12 +648,13 @@ int ircch_parse_modeline (net_t *net, ch_t *chan, link_t *origin, char *prefix,
 	  _push_mode (net, target, &mbuf, mch, 0, schr);
 	if (mf == '-')
 	{
-	  list_t *item;
+	  LIST *item;
 
 	  if ((item = ircch_find_mask (*list, schr)))
 	    ircch_remove_mask (list, item);
 	  /* if ban was removed then remove all matched dynamic exceptions */
-	  if (mc == 'b' && (Get_Clientflags (chan->chi->name, NULL) & U_NOAUTH))
+	  if (mc == 'b' &&
+	      !(Get_Clientflags (chan->chi->name, NULL) & U_NOAUTH))
 	    _ircch_expire_exempts (net, chan, &mbuf);
 	  continue;
 	}
@@ -682,7 +707,8 @@ int ircch_parse_modeline (net_t *net, ch_t *chan, link_t *origin, char *prefix,
 	  cr = Lock_Clientrecord (chan->chi->name);
 	  if (cr)			/* oops, key changed! memorize it! */
 	  {
-	    WARNING ("Key for channel %s was changed!", chan->chi->name);
+	    Add_Request (I_LOG, "*", F_WARN, "Key for channel %s was changed!",
+			 chan->chi->name);
 	    Set_Field (cr, "passwd", chan->key);
 	    Unlock_Clientrecord (cr);
 	  }
@@ -696,14 +722,31 @@ int ircch_parse_modeline (net_t *net, ch_t *chan, link_t *origin, char *prefix,
 	}
 	else if (schr)			/* modechange for [schr] on channel */
 	{
+	  if (!target)
+	  {
+	    ERROR ("ircch_parse_modeline: not found target %s for %c%c in %s!",
+		   schr, mf, mc, chan->chi->name);
+	    continue;
+	  }
 	  if (mf == '-')
 	    target->mode &= ~mch;
 	  else
 	    target->mode |= mch;
+	  if (target->nick->split)
+	  {
+	    dprint (4, "ircch_parse_modeline: possible netjoined %s(%s)",
+		    prefix, target->nick->split->servers);
+	    if (!strcmp (NextWord(target->nick->split->servers), prefix))
+	      nignpar--;		/* target is returning from netsplit */
+	  }
 	  if (!(orf & U_MASTER))	/* masters may change modes */
 	  {
-	    trf = _make_rf (net, Get_Clientflags (target->nick->lname, NULL),
-			    Get_Clientflags (target->nick->lname, chan->chi->name));
+	    if (target->nick->lname)
+	      trf = _make_rf (net,
+			Get_Clientflags (target->nick->lname, &net->name[1]),
+			Get_Clientflags (target->nick->lname, chan->chi->name));
+	    else
+	      trf = 0;
 	    if (mf == '-' && (mch & (A_OP | A_HALFOP)) && (gcf & U_MASTER) &&
 		!(gcf & U_DEOP) && !(trf & U_DEOP) &&
 		(trf & (U_OP | U_HALFOP | U_FRIEND))) /* protect ops/friends */
@@ -724,10 +767,10 @@ int ircch_parse_modeline (net_t *net, ch_t *chan, link_t *origin, char *prefix,
     }
   }
   _flush_mode (net, chan, &mbuf);
-  return nextpar;
+  return nignpar;
 }
 
-void ircch_parse_configmodeline (net_t *net, ch_t *chan, char *mode)
+void ircch_parse_configmodeline (IRC *net, CHANNEL *chan, char *mode)
 {
   char mf, mc;
   modeflag mch;
@@ -779,12 +822,12 @@ void ircch_parse_configmodeline (net_t *net, ch_t *chan, char *mode)
     chan->limit = 0;
 }
 
-void ircch_enforcer (net_t *net, ch_t *chan)
+void ircch_enforcer (IRC *net, CHANNEL *chan)
 {
-  link_t *link;
+  LINK *link;
   clrec_t *clr;
   userflag rf, cf;
-  list_t *ban, *ex;
+  LIST *ban, *ex;
   modebuf_t mbuf;
 
   mbuf.changes = mbuf.pos = mbuf.apos = 0;
@@ -793,9 +836,9 @@ void ircch_enforcer (net_t *net, ch_t *chan)
   for (link = chan->nicks; link; link = link->prevnick)
     if (!(link->mode & (A_ADMIN | A_OP | A_HALFOP)) || !(cf & U_FRIEND))
     {
-      if ((clr = Lock_Clientrecord (link->nick->lname)))
+      if (link->nick->lname && (clr = Lock_Clientrecord (link->nick->lname)))
       {
-	rf = _make_rf (net, Get_Flags (clr, net->neti->name),
+	rf = _make_rf (net, Get_Flags (clr, &net->name[1]),
 		       Get_Flags (clr, chan->chi->name));
 	Unlock_Clientrecord (clr);
       }
@@ -803,7 +846,7 @@ void ircch_enforcer (net_t *net, ch_t *chan)
 	rf = 0;
       if (rf & (U_FRIEND | U_MASTER | U_OP | U_HALFOP))
 	continue;
-      for (ban = chan->bans, ex = NULL; ban; ban = ban->next);
+      for (ban = chan->bans, ex = NULL; ban; ban = ban->next)
 	if (match (ban->what, link->nick->host) > 0)
 	{
 	  for (ex = chan->exempts; ex; ex = ex->next)
@@ -819,10 +862,10 @@ void ircch_enforcer (net_t *net, ch_t *chan)
   _flush_mode (net, chan, &mbuf);
 }
 
-static void _ircch_expire_bans (net_t *net, ch_t *ch, modebuf_t *mbuf)
+static void _ircch_expire_bans (IRC *net, CHANNEL *ch, modebuf_t *mbuf)
 {
   time_t t;
-  list_t *list;
+  LIST *list;
   clrec_t *cl;
   userflag uf, cf;
 
@@ -834,7 +877,7 @@ static void _ircch_expire_bans (net_t *net, ch_t *ch, modebuf_t *mbuf)
     {
       if (list->since > t)
 	continue;
-      if ((cl = Find_Clientrecord (list->what, NULL, &uf, net->name)))
+      if ((cl = Find_Clientrecord (list->what, NULL, &uf, &net->name[1])))
       {
 	cf = Get_Flags (cl, ch->chi->name);
 	Unlock_Clientrecord (cl);
@@ -849,11 +892,11 @@ static void _ircch_expire_bans (net_t *net, ch_t *ch, modebuf_t *mbuf)
   }
 }
 
-void ircch_expire (net_t *net, ch_t *ch)
+void ircch_expire (IRC *net, CHANNEL *ch)
 {
   modebuf_t mbuf;
 
-  if (!(Get_Clientflags (ch->chi->name, NULL) & U_NOAUTH))	/* +dynamic */
+  if ((Get_Clientflags (ch->chi->name, NULL) & U_NOAUTH))	/* -dynamic */
     return;
   mbuf.changes = mbuf.pos = mbuf.apos = 0;
   mbuf.cmd = NULL;
@@ -872,11 +915,12 @@ void ircch_expire (net_t *net, ch_t *ch)
  */
 
 		/* .adduser [!]nick [lname] */
+BINDING_TYPE_ss_ (ssirc_adduser);
 static int ssirc_adduser (peer_t *who, INTERFACE *where, char *args)
 {
-  net_t *net;
+  IRC *net;
   char *c, *as;
-  link_t *link;
+  LINK *link;
   clrec_t *u;
   int i;
   userflag tf;
@@ -884,7 +928,9 @@ static int ssirc_adduser (peer_t *who, INTERFACE *where, char *args)
   char mask[HOSTMASKLEN+1];
 
   /* find and check target */
-  ircch_find_service (where, &net);
+  if (!where)
+    return 0;
+  ircch_find_service (where->name, &net);
   if (!net || !args)
     return 0;
   if (args[0] == '!')
@@ -908,6 +954,7 @@ static int ssirc_adduser (peer_t *who, INTERFACE *where, char *args)
   }
   else
     link = ircch_find_link (net, &args[i], NULL);
+  /* TODO: _ircch_recheck_link() */
   if (link && link->nick->lname)
   {
     New_Request (who->iface, 0, _("adduser: %s is already known as %s."),
@@ -955,18 +1002,21 @@ static int ssirc_adduser (peer_t *who, INTERFACE *where, char *args)
 }
 
 		/* .deluser [!]nick */
+BINDING_TYPE_ss_ (ssirc_deluser);
 static int ssirc_deluser (peer_t *who, INTERFACE *where, char *args)
 {
-  net_t *net;
-  link_t *link;
-  ch_t *ch;
+  IRC *net;
+  LINK *link;
+  CHANNEL *ch;
   clrec_t *u;
   int i;
   userflag tf;
   char mask[HOSTMASKLEN+1];
 
   /* find and check target */
-  ch = ircch_find_service (where, &net);
+  if (!where)
+    return 0;
+  ch = ircch_find_service (where->name, &net);
   if (!net || !args)
     return 0;
   if (args[0] == '!')
@@ -980,6 +1030,7 @@ static int ssirc_deluser (peer_t *who, INTERFACE *where, char *args)
   }
   else
     link = ircch_find_link (net, &args[i], ch);
+  /* TODO: _ircch_recheck_link() */
   if (!link)
   {
     New_Request (who->iface, 0, _("Could not find nick %s."), &args[i]);
@@ -1021,6 +1072,8 @@ static int ssirc_deluser (peer_t *who, INTERFACE *where, char *args)
   return 1;	/* nothing more, all rest will be done on next users's event */
 }
 
+#define ischannelname(a) strchr (CHANNFIRSTCHAR, a[0])
+
 static int _ssirc_say (peer_t *who, INTERFACE *where, char *args, flag_t type)
 {
   char target[IFNAMEMAX+1];
@@ -1028,7 +1081,7 @@ static int _ssirc_say (peer_t *who, INTERFACE *where, char *args, flag_t type)
 
   if (!args)
     return 0;
-  if (strchr ("#&!+", args[0]))
+  if (ischannelname (args))
   {
     args = NextWord_Unquoted (target, args, sizeof(target));
     if (!strchr (target, '@') && !(c = strrchr (where->name, '@')))
@@ -1048,18 +1101,21 @@ static int _ssirc_say (peer_t *who, INTERFACE *where, char *args, flag_t type)
 }
 
 		/* .say [channel[@net]] text... */
+BINDING_TYPE_ss_ (ssirc_say);
 static int ssirc_say (peer_t *who, INTERFACE *where, char *args)
 {
   return _ssirc_say (who, where, args, F_T_MESSAGE);
 }
 
 		/* .act [channel[@net]] text... */
+BINDING_TYPE_ss_ (ssirc_act);
 static int ssirc_act (peer_t *who, INTERFACE *where, char *args)
 {
   return _ssirc_say (who, where, args, F_T_ACTION);
 }
 
 		/* .notice target[@net] text... */
+BINDING_TYPE_ss_ (ssirc_notice);
 static int ssirc_notice (peer_t *who, INTERFACE *where, char *args)
 {
   char target[IFNAMEMAX+1];
@@ -1075,11 +1131,12 @@ static int ssirc_notice (peer_t *who, INTERFACE *where, char *args)
   }
   if (c)
     strfcat (target, c, sizeof(target));
-  Add_Request (I_SERVICE, target, F_T_NOTICE, "%s", args);
+  Add_Request (I_CLIENT, target, F_T_NOTICE, "%s", args);
   return 1;
 }
 
 		/* .ctcp target[@net] text... */
+BINDING_TYPE_ss_ (ssirc_ctcp);
 static int ssirc_ctcp (peer_t *who, INTERFACE *where, char *args)
 {
   char target[IFNAMEMAX+1];
@@ -1099,60 +1156,399 @@ static int ssirc_ctcp (peer_t *who, INTERFACE *where, char *args)
   for (c = cmd; c < &cmd[sizeof(cmd)-1] && *args && *args != ' '; args++)
     *c++ = toupper (((uchar *)args)[0]);
   *c = 0;
-  Add_Request (I_SERVICE, target, F_T_CTCP, "%s%s", cmd, args);
+  Add_Request (I_CLIENT, target, F_T_CTCP, "%s%s", cmd, args);
   return 1;
 }
 
 		/* .topic [channel[@net]] text... */
+BINDING_TYPE_ss_ (ssirc_topic);
 static int ssirc_topic (peer_t *who, INTERFACE *where, char *args)
 {
   char target[IFNAMEMAX+1];
-  char net[IFNAMEMAX+1];
-  char *c = NULL;
+  char *c = NULL; /* "@net" */
 
   if (!args)
     args = "";
-  if (strchr ("#&!+", args[0]))
+  if (ischannelname (args))
   {
     args = NextWord_Unquoted (target, args, sizeof(target));
-    if ((c = strrchr (target, '@')))
-    {
-      strfcpy (net, c, sizeof(net));
+    if ((c = strrchr (target, '@')))		/* check for chan@net first */
       *c = 0;
-      c = net;
-    }
-    else if (!(c = strrchr (where->name, '@')))
+    else if (!(c = strrchr (where->name, '@')))	/* else check for chan */
       return 0;					/* cannot determine network */
   }
-  else if (!(c = strrchr (where->name, '@')))
+  else if (!(c = strrchr (where->name, '@')))	/* check for current network */
     return 0;					/* cannot determine network */
   else if (c - (char *)where->name >= sizeof(target))
     strfcpy (target, where->name, sizeof(target)); /* it's impossible! */
-  else
+  else						/* get chan name from where */
     strfcpy (target, where->name, (c - (char *)where->name) + 1);
-  Add_Request (I_SERVICE, c, 0, "TOPIC %s :%s", target, args);
+  Add_Request (I_SERVICE, &c[1], 0, "TOPIC %s :%s", target, args);
+  return 1;
+}
+
+static CHANNEL *_ssirc_find_target (peer_t *who, INTERFACE *where, char **args,
+				 IRC **net, char *b, size_t s, LINK **me)
+{
+  register char *tgt = *args;
+  CHANNEL *ch;
+
+  DBG ("_ssirc_find_target:%s:%s:%s", who->iface->name, where->name, tgt);
+  if (tgt == NULL)
+    return NULL;
+  if (tgt[0] && ischannelname (tgt))
+  {
+    *args = NextWord_Unquoted (b, tgt, s);
+    if (strchr (b, '@'));			/* check for chan@net first */
+    else if (where && (tgt = strrchr (where->name, '@'))) /* check for chan */
+      strfcat (b, tgt, s);
+    else
+      return NULL;				/* cannot determine network */
+    tgt = b;
+  }
+  else if (!where)
+    return NULL;
+  else
+    tgt = where->name;
+  if (!(ch = ircch_find_service (tgt, net)) || !*net)
+  {
+    New_Request (who->iface, 0, _("%s isn't IRC channel!"), tgt);
+    return NULL;
+  }
+  if (me)
+    *me = _find_me_op (*net, ch);
+  return ch;
+}
+
+		/* .kick [channel[@net]] nick [reason...] */
+BINDING_TYPE_ss_ (ssirc_kick);
+static int ssirc_kick (peer_t *who, INTERFACE *where, char *args)
+{
+  IRC *net;
+  CHANNEL *ch;
+  LINK *me, *tlink;
+  char target[IFNAMEMAX+1];
+  char lct[IFNAMEMAX+1];
+  char *reason, *tgt;
+  userflag uf, tf;
+  modebuf_t mbuf;
+
+  ch = _ssirc_find_target (who, where, &args, &net, target, sizeof(target), &me);
+  if (!ch)
+    return 0;
+  else if (!me)
+  {
+    New_Request (who->iface, 0, _("No operator priveleges on %s."),
+		 where->name);
+    return -1;
+  }
+  _make_modechars (mbuf.modechars, net);
+  mbuf.changes = mbuf.pos = mbuf.apos = 0;
+  mbuf.cmd = NULL;
+  /* TODO: work with nicks list too */
+  reason = NextWord_Unquoted (target, args, sizeof(target));
+  if (net->lc)				/* determine and check target */
+    net->lc ((tgt = lct), target, sizeof(lct));
+  else
+    tgt = target;
+  if (!(tlink = ircch_find_link (net, tgt, ch)))
+  {
+    New_Request (who->iface, 0, _("%s isn't on IRC channel %s for me!"),
+		 args, where->name);
+    return 0;
+  }
+  /* TODO: _ircch_recheck_link() */
+  if (tlink->nick->lname)		/* check seniority */
+  {
+    uf = _make_rf (net, Get_Clientflags (who->iface->name, &net->name[1]),
+		   Get_Clientflags (who->iface->name, ch->chi->name));
+    tf = _make_rf (net, Get_Clientflags (tlink->nick->lname, &net->name[1]),
+		   Get_Clientflags (tlink->nick->lname, ch->chi->name));
+    if ((!(uf & U_MASTER) && (tf & U_MASTER)) ||
+	(!(uf & U_OP) && (tf & U_OP)) ||
+	(!(uf & U_HALFOP) && (tf & U_HALFOP)))
+    {
+      New_Request (who->iface, 0, _("Permission denied."));
+      return -1;
+    }
+  }
+  _push_kick (net, tlink, &mbuf, *reason ? reason : ircch_default_kick_reason);
+  _flush_mode (net, ch, &mbuf);
+  return 1;
+}
+
+		/* .kickban [channel[@net]] [-|@]nick [reason...] */
+BINDING_TYPE_ss_ (ssirc_kickban);
+static int ssirc_kickban (peer_t *who, INTERFACE *where, char *args)
+{
+  IRC *net;
+  CHANNEL *ch;
+  LINK *me, *tlink;
+  char target[IFNAMEMAX+1];
+#if IFNAMEMAX > HOSTMASKLEN
+  char lct[IFNAMEMAX+1];
+#else
+  char lct[HOSTMASKLEN+1];
+#endif
+  char *reason, *tgt;
+  char flag;
+  userflag uf, tf;
+  modebuf_t mbuf;
+
+  ch = _ssirc_find_target (who, where, &args, &net, target, sizeof(target), &me);
+  if (!ch)
+    return 0;
+  else if (!me)
+  {
+    New_Request (who->iface, 0, _("No operator priveleges on %s."),
+		 where->name);
+    return -1;
+  }
+  if (*args == '-' || *args == '@')	/* eggdrop-style masking */
+    flag = *args++;
+  else
+    flag = 0;
+  _make_modechars (mbuf.modechars, net);
+  mbuf.changes = mbuf.pos = mbuf.apos = 0;
+  mbuf.cmd = NULL;
+  /* TODO: work with nicks list too */
+  reason = NextWord_Unquoted (target, args, sizeof(target));
+  if (net->lc)				/* determine and check target */
+    net->lc ((tgt = lct), target, sizeof(lct));
+  else
+    tgt = target;
+  if (!(tlink = ircch_find_link (net, tgt, ch)))
+  {
+    New_Request (who->iface, 0, _("%s isn't on IRC channel %s for me!"),
+		 args, where->name);
+    return 0;
+  }
+  /* TODO: _ircch_recheck_link() */
+  if (tlink->nick->lname)		/* check seniority */
+  {
+    uf = _make_rf (net, Get_Clientflags (who->iface->name, &net->name[1]),
+		   Get_Clientflags (who->iface->name, ch->chi->name));
+    tf = _make_rf (net, Get_Clientflags (tlink->nick->lname, &net->name[1]),
+		   Get_Clientflags (tlink->nick->lname, ch->chi->name));
+    if ((!(uf & U_MASTER) && (tf & U_MASTER)) ||
+	(!(uf & U_OP) && (tf & U_OP)) ||
+	(!(uf & U_HALFOP) && (tf & U_HALFOP)))
+    {
+      New_Request (who->iface, 0, _("Permission denied."));
+      return -1;
+    }
+  }
+  if (flag == 0)
+    _make_mask (lct, tlink->nick->host, sizeof(lct));
+  else if (flag == '-')
+    _make_literal_mask (lct, tlink->nick->host, sizeof(lct));
+  else /* '@' */
+    snprintf (lct, sizeof(lct), "*!*%s", strchr (tlink->nick->host, '@'));
+  _push_mode (net, tlink, &mbuf, A_DENIED, 1, lct);
+  _push_kick (net, tlink, &mbuf, *reason ? reason : ircch_default_kick_reason);
+  _flush_mode (net, ch, &mbuf);
+  return 1;
+}
+
+static int _ssirc_setmode (peer_t *who, INTERFACE *where, char *args,
+			    modeflag mf, int set)
+{
+  IRC *net;
+  CHANNEL *ch;
+  LINK *me, *tlink;
+  char target[IFNAMEMAX+1];
+#if IFNAMEMAX > HOSTMASKLEN
+  char lct[IFNAMEMAX+1];
+#else
+  char lct[HOSTMASKLEN+1];
+#endif
+  char *tgt;
+  modebuf_t mbuf;
+
+  args = NextWord_Unquoted (target, args, sizeof(target));
+  ch = _ssirc_find_target (who, where, &args, &net, lct, sizeof(lct), &me);
+  if (!ch)
+    return 0;
+  else if (!me)
+  {
+    New_Request (who->iface, 0, _("No operator priveleges on %s."),
+		 where->name);
+    return -1;
+  }
+  _make_modechars (mbuf.modechars, net);
+  mbuf.changes = mbuf.pos = mbuf.apos = 0;
+  mbuf.cmd = NULL;
+  /* TODO: work with nicks list too */
+  if (net->lc)				/* determine and check target */
+    net->lc ((tgt = lct), target, sizeof(lct));
+  else
+    tgt = target;
+  if (!(tlink = ircch_find_link (net, tgt, ch)))
+  {
+    New_Request (who->iface, 0, _("%s isn't on IRC channel %s for me!"),
+		 args, where->name);
+    return 0;
+  }
+  /* TODO: make some eggdrop-style assumptions for giving flags? */
+  _push_mode (net, tlink, &mbuf, mf, set, NULL);
+  _flush_mode (net, ch, &mbuf);
+  return 1;
+}
+
+		/* .voice nick [channel[@net]] */
+BINDING_TYPE_ss_ (ssirc_voice);
+static int ssirc_voice (peer_t *who, INTERFACE *where, char *args)
+{
+  return _ssirc_setmode (who, where, args, A_VOICE, 1);
+}
+
+		/* .devoice nick [channel[@net]] */
+BINDING_TYPE_ss_ (ssirc_devoice);
+static int ssirc_devoice (peer_t *who, INTERFACE *where, char *args)
+{
+  return _ssirc_setmode (who, where, args, A_VOICE, 0);
+}
+
+		/* .op nick [channel[@net]] */
+BINDING_TYPE_ss_ (ssirc_op);
+static int ssirc_op (peer_t *who, INTERFACE *where, char *args)
+{
+  return _ssirc_setmode (who, where, args, A_OP, 1);
+}
+
+		/* .deop nick [channel[@net]] */
+BINDING_TYPE_ss_ (ssirc_deop);
+static int ssirc_deop (peer_t *who, INTERFACE *where, char *args)
+{
+  return _ssirc_setmode (who, where, args, A_OP, 0);
+}
+
+		/* .hop nick [channel[@net]] */
+BINDING_TYPE_ss_ (ssirc_hop);
+static int ssirc_hop (peer_t *who, INTERFACE *where, char *args)
+{
+  return _ssirc_setmode (who, where, args, A_HALFOP, 1);
+}
+
+		/* .dehop nick [channel[@net]] */
+BINDING_TYPE_ss_ (ssirc_dehop);
+static int ssirc_dehop (peer_t *who, INTERFACE *where, char *args)
+{
+  return _ssirc_setmode (who, where, args, A_HALFOP, 0);
+}
+
+/* TODO: move it where it must be, i.e. to network-independent management mod. */
+		/* .greeting [channel[@net]] [--lname] [text|"none"] */
+BINDING_TYPE_ss_ (ssirc_greeting);
+static int ssirc_greeting (peer_t *who, INTERFACE *where, char *args)
+{
+  IRC *net;
+  CHANNEL *ch;
+  char buf[IFNAMEMAX+1];
+  char *tgt;
+  clrec_t *u;
+  userflag uf, tf;
+
+  if (!args)
+    args = "";		/* handle empty enter */
+  ch = _ssirc_find_target (who, where, &args, &net, buf, sizeof(buf), NULL);
+  if (!ch)
+    return 0;
+  if (args[0] == '-' && args[1] == '-')
+  {
+    DBG ("irc-channel:ssirc_greeting: check perm: %s@%s/%s", who->iface->name, &net->name[1], ch->chi->name);
+    uf = _make_rf (net, Get_Clientflags (who->iface->name, &net->name[1]),
+		   Get_Clientflags (who->iface->name, ch->chi->name));
+    if (uf & U_MASTER)
+    {
+      args += 2;
+      args = NextWord_Unquoted (buf, args, sizeof(buf));
+      u = Lock_Clientrecord (buf);
+      if (!u)				/* Lname does not exist */
+      {
+	New_Request (who->iface, 0, _("No such client name: %s"), buf);
+	return 0;
+      }
+      tf = _make_rf (net, Get_Flags (u, &net->name[1]),
+		     Get_Flags (u, ch->chi->name));
+      Unlock_Clientrecord (u);
+      /* master may see/change only own or not-masters greeting */
+      if ((tf & (U_MASTER | U_OWNER)) && !(uf & U_OWNER) &&
+	  safe_strcasecmp (buf, who->iface->name))
+      {
+	New_Request (who->iface, 0, _("Permission denied."));
+	return 0;
+      }
+      tgt = buf;
+    }
+    else
+      tgt = who->iface->name;
+  }
+  else
+    tgt = who->iface->name;
+  if (!*args)
+  {
+    char *c;
+
+    u = Lock_Clientrecord (tgt);
+    if (u)
+    {
+      c = safe_strdup (Get_Field (u, ch->chi->name, NULL));
+      Unlock_Clientrecord (u);
+    }
+    else				/* hmm, how it may be? */
+      c = NULL;
+    if (c == NULL)
+      New_Request (who->iface, 0, _("No greeting is set on %s for %s."),
+		   ch->chi->name, tgt);
+    else
+      New_Request (who->iface, 0, _("Greeting on %s for %s is: %s"),
+		   ch->chi->name, tgt, c);
+    FREE (&c);
+    return 1;
+  }
+  if (!strcmp (args, "NONE"))
+  {
+    u = Lock_Clientrecord (tgt);
+    if (u)
+    {
+      Set_Field (u, ch->chi->name, NULL);
+      Unlock_Clientrecord (u);
+      New_Request (who->iface, 0, _("Greeting on %s for %s reset."),
+		   ch->chi->name, tgt);
+    }
+    else
+      WARNING ("ssirc_greeting: unknown error with Lname %s", tgt);
+    return 1;
+  }
+  u = Lock_Clientrecord (tgt);
+  if (!u)
+  {
+    WARNING ("ssirc_greeting: unknown error with Lname %s", tgt);
+    return -1;
+  }
+  Set_Field (u, ch->chi->name, args);
+  Unlock_Clientrecord (u);
+  New_Request (who->iface, 0, _("Greeting on %s for %s set to: %s"),
+	       ch->chi->name, tgt, args);
   return 1;
 }
 
 /*
-  {"reset",		"m|m",	(Function) cmd_reset,		NULL},
+?  {"reset",		"m|m",	(Function) cmd_reset,		NULL},
+		// .enforce [channel[@net]]
   {"resetbans",		"o|o",	(Function) cmd_resetbans,	NULL},
   {"resetexempts",	"o|o",	(Function) cmd_resetexempts,	NULL},
   {"resetinvites",	"o|o",	(Function) cmd_resetinvites,	NULL},
+  ^^^^^^^^^^^^^^^^^^=3="enforce" ? [chan[@net]]
 ?  {"msg",		"S",	(Function) cmd_msg,		NULL},
-  {"voice",		"h|h",	(Function) cmd_voice,		NULL},
-  {"devoice",		"h|h",	(Function) cmd_devoice,		NULL},
-  {"op",		"o|o",	(Function) cmd_op,		NULL},
-  {"deop",		"o|o",	(Function) cmd_deop,		NULL},
-  hop/dehop
+		// .invite [channel[@net]] nick
   {"invite",		"h|h",	(Function) cmd_invite,		NULL},
-  {"kick",		"o|o",	(Function) cmd_kick,		NULL},
-  {"kickban",		"o|o",	(Function) cmd_kickban,		NULL},
 */
 
 void ircch_set_ss (void)
 {
-#define NB(a,b,c) Add_Binding ("ss-irc", #a, b, c, &ssirc_##a)
+#define NB(a,b,c) Add_Binding ("ss-irc", #a, b, c, &ssirc_##a, NULL)
   NB (adduser,	U_MASTER, U_MASTER);
   NB (deluser,	U_MASTER, U_MASTER);
   NB (say,	U_SPEAK, U_SPEAK);
@@ -1160,12 +1556,21 @@ void ircch_set_ss (void)
   NB (ctcp,	U_SPEAK, U_SPEAK);
   NB (notice,	U_SPEAK, U_SPEAK);
   NB (topic,	U_SPEAK, U_SPEAK);
+  NB (kick,	U_OP, U_OP);
+  NB (kickban,	U_OP, U_OP);
+  NB (voice,	U_HALFOP, U_HALFOP);
+  NB (devoice,	U_HALFOP, U_HALFOP);
+  NB (op,	U_OP, U_OP);
+  NB (deop,	U_OP, U_OP);
+  NB (hop,	U_OP, U_OP);
+  NB (dehop,	U_OP, U_OP);
+  NB (greeting,	0, 0);
 #undef NB
 }
 
 void ircch_unset_ss (void)
 {
-#define NB(a) Delete_Binding ("ss-irc", &ssirc_##a)
+#define NB(a) Delete_Binding ("ss-irc", &ssirc_##a, NULL)
   NB (adduser);
   NB (deluser);
   NB (say);
@@ -1173,5 +1578,14 @@ void ircch_unset_ss (void)
   NB (ctcp);
   NB (notice);
   NB (topic);
+  NB (kick);
+  NB (kickban);
+  NB (voice);
+  NB (devoice);
+  NB (op);
+  NB (deop);
+  NB (hop);
+  NB (dehop);
+  NB (greeting);
 #undef NB
 }

@@ -14,6 +14,8 @@
  *     You should have received a copy of the GNU General Public License
  *     along with this program; if not, write to the Free Software
  *     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * The FoxEye "logs" module: all module source file.
  */
 
 #include "foxeye.h"
@@ -38,6 +40,7 @@ typedef struct logfile_t
   int fd;
   flag_t level;
   time_t timestamp;
+  time_t lastmsg;
   time_t rotatetime;
   int rmode;
   int reccount;
@@ -148,7 +151,11 @@ static ssize_t textlog_add_buf (logfile_t *log, char *text, size_t sz,
     else if (x)				/* fatal error! */
     {
       if (ts >= 0)			/* ts < 0 means quiet */
-	ERROR ("Couldn't sync logfile %s, abort logging to it", log->path);
+      {
+	strerror_r (x, log->buf, sizeof(log->buf));
+	ERROR ("Couldn't sync logfile %s (%s), abort logging to it.",
+	       log->path, log->buf);
+      }
       return -1;
     }
     if (ts && tsw < 8)
@@ -171,6 +178,7 @@ static ssize_t textlog_add_buf (logfile_t *log, char *text, size_t sz,
     memcpy (&log->buf[log->inbuf+tsw+sp], &text[sw], sz);
   if (log->inbuf == 0)		/* timestamp for cache-time */
     log->timestamp = Time;
+  log->lastmsg = Time;
   log->inbuf += (tsw + sp + sz);
   log->buf[log->inbuf++] = '\n';
   return sz + sw;
@@ -185,6 +193,8 @@ static ssize_t textlog_add_buf_nots (logfile_t *log, char *text, size_t sz, size
 {
   return textlog_add_buf (log, text, sz, sp, 0);
 }
+
+#define open_log_file(path) open (path, O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP)
 
 static iftype_t logfile_signal (INTERFACE *iface, ifsig_t sig)
 {
@@ -221,6 +231,8 @@ static iftype_t logfile_signal (INTERFACE *iface, ifsig_t sig)
       break;
     case S_FLUSH:
       flush_log (log, 1, 0);
+      close (log->fd);
+      log->fd = open_log_file (log->path);
     default: ;
   }
   return 0;
@@ -249,8 +261,6 @@ static int add_to_log (INTERFACE *iface, REQUEST *req)
   log->reccount = 0;
   return REQ_OK;
 }
-
-#define open_log_file(path) open (path, O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP)
 
 #define L_DAYL 0
 #define L_WEEK 1
@@ -309,7 +319,13 @@ static void do_rotate (logfile_t *log)
     ERROR ("Couldn't rotate %s: %s", log->path, strerror (x));
     return;
   }
-  localtime_r (&log->rotatetime, &tm);
+  if (lseek (log->fd, 0, SEEK_END) == 0) /* we will not rotate empty file */
+  {
+    dprint (2, "logs/logs.c:do_rotate: nothing to do on %s", log->path);
+    log->rotatetime = get_rotatetime (-1, log->rmode);
+    return;
+  }
+  localtime_r (&log->lastmsg, &tm);
   close (log->fd);
   log->fd = -1;			/* if we get any error let's don't fall */
   /* make rotate path */
@@ -318,15 +334,23 @@ static void do_rotate (logfile_t *log)
   for (c2 = c = rpath; *c; )
   {
     c2 = strchr (c2, '%');
-    if (c2 && c2[1] != '$')
+    if (c2 && c2[1] != '$')		/* skip strftime substitutions */
+    {
+      c2++;
+      if (*c2) c2++;
       continue;
+    }
     if (c2)
       *c2 = 0;
     if (strchr (c, '%'))		/* we need substitutions */
+    {
       s += strftime (&path[s], sizeof(path) - s, c, &tm);
+      DBG ("logs:do_rotate: +subpath \"%s\" = \"%s\"", c, path);
+    }
     else if (strlen (c))		/* constant string here */
     {
       strfcpy (&path[s], c, sizeof(path) - s);
+      DBG ("logs:do_rotate: +subpath \"%s\" = \"%s\"", c, path);
       s += strlen (&path[s]);
     }
     if (!c2)
@@ -334,6 +358,7 @@ static void do_rotate (logfile_t *log)
     *c2 = '%';				/* restore it */
     c = c2 = &c2[2];			/* go to next part */
     strfcpy (&path[s], log->path, sizeof(path) - s);
+    DBG ("logs:do_rotate: +subpath \"%%$\" = \"%s\"", path);
     s += strlen (&path[s]);
   }
   path[s] = 0;
@@ -437,6 +462,7 @@ static ScriptFunction (cfg_logfile)
   logfile_t *log;
   char *rpath = NULL;
   const char *tpath;
+  struct stat st;
   char path[PATH_MAX];
 #if PATH_MAX > IFNAMEMAX
   char mask[PATH_MAX];
@@ -530,6 +556,8 @@ static ScriptFunction (cfg_logfile)
     strcpy (mask, "*");
   log->iface = Add_Iface (I_LOG | I_FILE, mask, &logfile_signal, &add_to_log,
 			  log);
+  fstat (fd, &st);	/* if's impossible to get an error here? */
+  log->lastmsg = st.st_mtime;
   log->rotatetime = get_rotatetime (log->fd, log->rmode);
   if (log->rotatetime <= lastrotated)
     do_rotate (log);
@@ -543,17 +571,17 @@ static void module_log_regall (void)
 
   /* register module itself */
   Add_Request (I_INIT, "*", F_REPORT, "module logs");
-  /* register logfiles */
-  for (log = Logfiles; log; log = log->next)
-    Add_Request (I_INIT, "*", F_REPORT, "logfile %s%s%s %s %s",
-		 (log->add_buf == &textlog_add_buf_nots) ? "-n " : "",
-		 log->rmode ? ((log->rmode < 2) ? "-w " : (log->rmode == 2) ? "-m " : "-y ") : "",
-		 log->path, logfile_printlevel (log->level), log->iface->name);
   /* register all variables */
   RegisterInteger ("logfile-lock-attempts", &logfile_locks);
   RegisterString ("logrotate-path", logs_pattern, sizeof(logs_pattern), 0);
   RegisterString ("logrotate-time", logrotate_time, sizeof(logrotate_time), 0);
   RegisterString ("logfile-notice-prefix", log_prefix, sizeof(log_prefix), 0);
+  /* register logfiles - only when all variables are set */
+  for (log = Logfiles; log; log = log->next)
+    Add_Request (I_INIT, "*", F_REPORT, "logfile %s%s%s %s %s",
+		 (log->add_buf == &textlog_add_buf_nots) ? "-n " : "",
+		 log->rmode ? ((log->rmode < 2) ? "-w " : (log->rmode == 2) ? "-m " : "-y ") : "",
+		 log->path, logfile_printlevel (log->level), log->iface->name);
   RegisterFunction ("logfile", &cfg_logfile, "[-n] [-y|-m|-w] filename level [service]");
 }
 

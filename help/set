@@ -9,12 +9,14 @@ set nick
 :Name of bot to use on the botnet
 :This is a name of bot to use on the botnet. Also it is default nickname\
  for connection to servers.
+ No default.
 
 set my-hostname
 :%* <string>
 :Network DNS name used to identify itself on servers
 :If your machine has multiple hostnames and you would like to use a\
  particular one then set this variable to preferred host.
+ Default: ""
 
 set locale
 :%* <locale name>
@@ -68,6 +70,7 @@ set motd
 :MOTD (message of the day) is message that is usually shown to user when\
  he/she logins to partyline. This variable points to a file which contains\
  text of MOTD in %^printl%^() format (see documentation for details).
+ Default: $prefix/motd
 
 set cache-time
 :%* <seconds>
@@ -98,6 +101,7 @@ set formatsfile
 :Formats are directives which defines how different events will be logged\
  into logfiles or user interface (see documentation for details). This\
  variable points to a file where these formats are saved.
+ Default: ""
 
 set replace-unknown-char
 :%* <char>
@@ -106,6 +110,15 @@ set replace-unknown-char
  if these characters cannot be converted. If set empty then unconvertable\
  characters will be silently omitted.
  Default: "?".
+
+set dcc-port-range
+:%* <port> [- <end port>]
+:Port range for direct client connections.
+:This variable defines default port range for direct client connections,\
+ i.e. on which port we will open listeners for sending files, chats, etc.\
+ if none defined in the module wanting direct client connection. Empty\
+ value means all users port range (1024 - 65535) is available.
+ Default: ""
 
 fset dcc_lost
 :

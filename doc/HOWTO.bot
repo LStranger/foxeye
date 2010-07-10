@@ -1,0 +1,120 @@
+	Part I. HOWTO run a bot.
+
+    1. Getting started.
+
+    I hope you have the FoxEye installed and if not then compile and
+install it somewhere. I also hope you have installed the foxeye executable
+somewhere where your shell can find it for execute or else you should type
+full path to it in the commands below.
+    I also hope you have selected working directory for your bot where it
+will place few files. Create it with command mkdir if it does not exist
+yet. Read mkdir manual if you don't know how that command works. I also
+hope you have selected file name for your bot executable config. Let say,
+your working directory is ~/mybot and file name is MyBot.
+    If you ready then type:
+
+cd ~/mybot ; foxeye -crmg MyBot
+
+    If you see prompt 'set name []: ' then our congratulations, you've
+started it! Bot will ask you if you want to change some defaults. You can
+safely skip most of questions by pressing 'Enter' when you see prompt, bot
+will leave defaults for the variables, they are in the square brackets
+right before prompt. If you want details then you can press '?' on any
+prompt and you'll get some description for what you can do.
+    First of all you HAVE to set default own nickname for your bot (that
+you see in the most first prompt). For example, Observer_AB.
+    When you are asked to add port then answer desired port for your
+incoming telnet sessions. Let say it is 23456. Press just 'Enter' when
+you are asked to add port again, it will skip to next question.
+    When you are asked to add module then add next three modules: "irc",
+"irc-channel", "irc-ctcp". You can add some other later if you want.
+After loading each module you will get prompt to change defaults for
+variables from that module.
+    After last ask for module you will see some boot messages and prompt
+on empty line. Congratulations, it worked well! Next job is to create
+your own user record so you can login to your bot later. See an example
+below and type your real data instead. First parameter for command .+name
+is your desired login name, second is hostmask from where you will login
+to bot, third is flags set, leave it as it is in example.
+
+.+name vasyapupkin *!vasya@homenet.home.net afhomns
+
+    Next thing that you need is to set some password for you because you
+never can login without password.
+
+.chpass vasyapupkin 1234567
+
+    Now you are ready to restart the bot so type:
+
+.die
+
+    Congratulations again, you just created your config and listfile
+succesfully and can go to the next stage:
+
+
+    2. Adding a network.
+
+    Read your generated config (MyBot) and change anything you would like
+to change but forgot when were asked then start your bot:
+
+./MyBot
+
+    You started a bot so let connect to it! Type a command in your shell
+(yes, it's what you've added hostmask *!vasya@homenet.home.net for):
+
+telnet homenet.home.net 23456
+
+(see reasons for all those parameters above)
+
+    You'll see prompt asking your login name. Type yours vasyapupkin and
+you'll be asked for your password so you'll type it too. If everything
+went well then you see no error messages and cursor just on next line
+after password prompt. Here you can enter your commands to bot. First
+thing is to create record for network where we want to connect. Look at
+this example and type your real data instead - set desired name for your
+network and server you want connect to. You can also add port with slash
+(i.e. 'host.org/7770' for example) if you want to use some port other than
+default one from settings.
+
+.+name -irc mircnet irc.mircnet.com a*
+
+    Now join you newly described network:
+
+.connect mircnet
+
+    After bot's restart it will reconnect to it automatically so there is
+no bothering to do that ever. Let's check if it really connected - type
+in your IRC client connected to this network (see above about nickname):
+
+/whois Observer_AB
+
+    You should see some info about your bot so it's safe do type (in telnet
+session)
+
+.quit
+
+    and after that type (in your IRC client)
+
+/dcc chat Observer_AB
+
+    You should get asked for your password. If bot tells you that you have
+no access then check if your mask entered above matches your mask in IRC.
+If it does not match then you can either change your host/ident in IRC or
+telnet into bot again, add additional mask with command .+host  then .quit
+and retry to enter DCC CHAT.
+    If you got to this point then it seems that everything is OK, we got to
+network so our bot is ready to join some channel in the network:
+
+
+    3. Joining a channel.
+
+    Assuming you are in chat with bot so we can add some channel for the
+network mircnet and connect to it:
+
+.+name #mychannel@mircnet - as
+
+.connect #mychannel@mircnet
+
+    You should see bot's succesfully joined the channel and ready to greet
+everyone, enjoy it. This HOWTO ends now, you can learn everything else by
+typing .help and so on. :)

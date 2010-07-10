@@ -1,0 +1,4 @@
+DOMAIN = $(PACKAGE)
+XGETTEXT_OPTIONS = --keyword=_ --keyword=N_
+top_builddir = ..
+subdir = po

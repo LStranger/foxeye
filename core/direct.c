@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -15,11 +15,9 @@
  *     along with this program; if not, write to the Free Software
  *     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * This file contains main DCC interface.  Bindtables: passwd dcc upload
- *              login chat out-filter in-filter chat-on chat-off chat-join
- *              chat-part
- * CTCP CHAT and CTCP DCC handled here for reasons don't duplicate listen
- *		port code and include Dcc_Send() in main API
+ * This file is part of FoxEye's source: direct connections interface.
+ *      Bindtables: passwd dcc upload login chat out-filter in-filter
+ *      chat-on chat-off chat-join chat-part
  */
 
 #include "foxeye.h"
@@ -52,6 +50,38 @@ typedef struct
   bindtable_t *ssbt;			/* network-specitic bindtable */
 } session_t;
 
+#if 0   /* TODO 0.6x */
+struct connchain_i			/* internal use only */
+{
+  ssize_t (*recv) (connchain_i *, idx_t, const char *, size_t, connchain_buffer **);
+  ssize_t (*send) (connchain_i *, idx_t, const char *, size_t, connchain_buffer **);
+  connchain_buffer *in;			/* instance specific buffers */
+  connchain_buffer *out;
+  connchain_i *next;			/* for collector and chain */
+}
+
+/* type of binding for "connchain-grow" bindtable:
+   int setup_connchain (peer_t *peer,
+    ssize_t (**recv) (connchain_i *, idx_t, const char *, size_t, connchain_buffer **),
+    ssize_t (**send) (connchain_i *, idx_t, const char *, size_t, connchain_buffer **),
+    connchain_buffer **in, connchain_buffer **out);
+   where peer is used for notification of peer in case when module that
+   handles the link is terminated; recv, send, in, and out are pointers
+   to connchain_i internal structure so setup_connchain() can setup it.
+   returns 1 on success or 0 on fail.
+ */	    
+
+struct connchain_buffer			/* local buffer type for raw socket */
+{
+  size_t inbuf;                         /* how much bytes are in buf */
+  size_t bufpos;			/* where is first char */
+  char buf[MB_LEN_MAX*MESSAGEMAX];      /* outgoing message buffer */
+  connchain_buffer *next;		/* next buffer ptr */
+}
+
+ALLOCATABLE_TYPE (connchain_buffer, peerbuf, next)
+
+#endif
 static bindtable_t *BT_Crypt;
 static bindtable_t *BT_Dcc;
 static bindtable_t *BT_Chat;
@@ -128,8 +158,7 @@ static void _chat_join (session_t *dcc)
   if (dcc->alias)
   {
     snprintf (ch, sizeof(ch), ":%d:%d", DccIdx(dcc), dcc->botnet);
-    FREE (&dcc->alias->name);
-    dcc->alias->name = safe_strdup (ch);
+    Rename_Iface (dcc->alias, ch);
   }
 }
 
@@ -180,8 +209,7 @@ static void _chat_part (session_t *dcc)
   if (dcc->alias)
   {
     snprintf (ch, sizeof(ch), ":%d", DccIdx(dcc));
-    FREE (&dcc->alias->name);
-    dcc->alias->name = safe_strdup (ch);
+    Rename_Iface (dcc->alias, ch);
   }
   Chat_Part (dcc->s.iface, dcc->botnet, DccIdx(dcc),
 	     dcc->s.state != P_LASTWAIT ? NULL : dcc->s.inbuf ? dcc->s.buf : _("no reason."));
@@ -270,22 +298,27 @@ static void setconsole (session_t *dcc)
     dcc->botnet = botch;
     if (dcc->log)
     {
-      FREE (&dcc->log->name);
-      dcc->log->name = safe_strdup (chan);
+      Rename_Iface (dcc->log, chan);
       /* now get network name and "ss-*" bindtable */
       if (dcc->log->name && (line = strrchr (dcc->log->name, '@')))
 	line++;
       else
 	line = dcc->log->name;
-      snprintf (chan, sizeof(chan), "@%s", NONULL(line));
-      if ((user = Lock_Clientrecord (chan)))
+//      snprintf (chan, sizeof(chan), "@%s", NONULL(line));
+//      if ((user = Lock_Clientrecord (chan)))
+      if ((user = Lock_Clientrecord (line)))
       {
-	dcc->netname = dcc->log->name;
-	if ((line = Get_Field (user, ".logout", NULL)))
+	if (Get_Flags (user, NULL) & U_SPECIAL)
 	{
-	  snprintf (chan, sizeof(chan), "irc-%s", line);
-	  dcc->ssbt = Add_Bindtable (chan, B_UNIQ);
+	  dcc->netname = dcc->log->name;
+	  if ((line = Get_Field (user, ".logout", NULL)))
+	  {
+	    snprintf (chan, sizeof(chan), "ss-%s", line);
+	    dcc->ssbt = Add_Bindtable (chan, B_UNIQ);
+	  }
 	}
+	else
+	  dcc->netname = NULL;
 	Unlock_Clientrecord (user);
       }
       else
@@ -344,7 +377,7 @@ static void _died_iface (INTERFACE *iface, char *buf, size_t s)
     return;
   iface = dcc->s.iface;				/* to the right one! */
   iface->ift |= I_DIED;
-  iface->ift &= ~I_DIRECT;
+  // iface->ift &= ~I_DIRECT;
   dcc->s.state = P_LASTWAIT;
   if (dcc->log)					/* down log interface */
   {
@@ -366,11 +399,11 @@ static void _died_iface (INTERFACE *iface, char *buf, size_t s)
   /* %L - login nick, %@ - hostname */
   printl (buf, s, format_dcc_lost, 0, NULL,
 	  SocketDomain (dcc->s.socket, NULL), iface->name, NULL, 0, 0, 0, NULL);
-  LOG_CONN (buf);
+  LOG_CONN ("%s", buf);
   NoCheckFlood (&dcc->floodcnt);		/* remove all flood timers */
   if (dcc->s.state == P_LOGIN)			/* if it was fresh connection */
     return;
-  NewEvent (W_END, GetLID (iface->name), ID_ME, 0); /* log to Wtmp */
+  NewEvent (W_END, ID_ME, GetLID (iface->name), 0); /* log to Wtmp */
   /* now run "chat-part" and "chat-off" bindings... */
   if (dcc->log)
     cf = Get_Clientflags (iface->name, dcc->log->name);
@@ -389,33 +422,68 @@ static void _died_iface (INTERFACE *iface, char *buf, size_t s)
 
 ssize_t Session_Put (peer_t *dcc, char *line, size_t sz)
 {
-  ssize_t i = 0;
+  ssize_t i = 0, ii = dcc->bufpos;
   binding_t *bind;
 
   if (dcc->inbuf &&
       (i = WriteSocket (dcc->socket, dcc->buf, &dcc->bufpos, &dcc->inbuf, M_RAW)) < 0)
-    return i;
+    return E_ERRNO;
   if (i)
-    dprint (5, "put to peer %s: \"%.*s\"", dcc->iface->name, i, dcc->buf);
+    dprint (5, "put to peer %s: \"%-*.*s\"", dcc->iface->name, i, i, &dcc->buf[ii]);
   if (dcc->inbuf > 0 || sz == 0)		/* cannot put message to buf */
     return 0;
-  if (sz > sizeof(dcc->buf) - 1)		/* we cannot overwrite buffer */
-    sz = sizeof(dcc->buf) - 1;
-  if (line != dcc->buf)
-    memmove (dcc->buf, line, sz);
-  i = sz;
+  if ((dcc->iface->ift & I_TELNET) && memchr (line, '\377', sz)) /* RFC854 */
+  {
+    char *c;
+
+    if (line >= dcc->buf && line < &dcc->buf[sizeof(dcc->buf)])
+    {
+      c = safe_malloc (sz + 1);			/* crossed areas? buffer it! */
+      memcpy (c, line, sz);
+      c[sz] = 0;
+    }
+    else
+      c = line;
+    for (i = 0, ii = 0; i < sizeof(dcc->buf) - 1 && ii < sz; )
+    {
+      if (c[ii] == '\377')			/* IAC */
+      {
+	if (i == sizeof(dcc->buf) - 2)		/* not enough space for that */
+	  break;
+	dcc->buf[i++] = '\377';
+      }
+      dcc->buf[i++] = c[ii++];
+    }
+    if (c != line)
+      FREE (&c);
+  }
+  else
+  {
+    if (sz > sizeof(dcc->buf) - 1)		/* we cannot overwrite buffer */
+      sz = sizeof(dcc->buf) - 1;
+    if (line != dcc->buf)
+      memmove (dcc->buf, line, sz);
+    i = sz;
+  }
   dcc->buf[i] = 0;				/* for bindings */
   /* run "out-filter" bindings... */
   bind = NULL;
   do
   {
     bind = Check_Bindtable (BT_Outfilter, dcc->buf, dcc->uf, 0, bind);
-    if (bind && !bind->name)
+    if (bind)
     {
-      bind->func (dcc, dcc->buf, sizeof(dcc->buf) - 1);
+      if (bind->name)
+      {
+	RunBinding (bind, NULL, NULL, NULL, DccIdx(dcc), dcc->buf);
+	strfcpy (dcc->buf, BindResult, sizeof(dcc->buf) - 1);
+      }
+      else
+	bind->func (dcc, dcc->buf, sizeof(dcc->buf) - 1);
       i = strlen (dcc->buf);
     }
   } while (i && bind);
+  dcc->bufpos = 0;
   if (!i)
     return sz;					/* assume it's done */
   if (i > sizeof(dcc->buf) - 2)			/* for CR+LF */
@@ -423,11 +491,62 @@ ssize_t Session_Put (peer_t *dcc, char *line, size_t sz)
   dcc->buf[i] = '\r';
   dcc->buf[i+1] = '\n';
   dcc->inbuf = i + 2;
-  dcc->bufpos = 0;
   i = WriteSocket (dcc->socket, dcc->buf, &dcc->bufpos, &dcc->inbuf, M_RAW);
   if (i > 0)
-    dprint (5, "put to peer %s: \"%.*s\"", dcc->iface->name, i, dcc->buf);
-  return (i < 0) ? i : sz;
+    dprint (5, "put to peer %s: \"%-*.*s\"", dcc->iface->name, i, i, dcc->buf);
+  return (i < 0) ? E_ERRNO : sz;
+}
+
+static inline void _session_try_add (peer_t *dcc, char ch1, char ch2, char ch3)
+{
+  if (dcc && dcc->inbuf <= sizeof(dcc->buf) - 3) /* not enough free space */
+  {
+    dcc->buf[dcc->inbuf++] = ch1;
+    dcc->buf[dcc->inbuf++] = ch2;
+    dcc->buf[dcc->inbuf++] = ch3;
+  }
+}
+
+static size_t _do_rfc854_input (iftype_t ift, peer_t *dcc, char *line, size_t sw)
+{
+  register size_t x, y;
+  register unsigned char ch;
+
+  if (!(ift & I_TELNET) || !memchr (line, '\377', sw)) /* RFC854 */
+    return sw;
+  for (x = 0, y = 0; y < sw; x++)
+  {
+    if (line[x] == '\377')
+    {
+      if (y == --sw)	/* bogus! */
+	break;
+      ch = line[++x];
+      if (ch == 255)
+      {
+	line[y++] = ch;	/* IAC IAC - it's data */
+	continue;
+      }
+      sw--;
+      if (ch >= 251)	/* WILL WON'T DO DON'T */
+      {
+	if (y == sw)	/* bogus! */
+	  break;
+	if (line[++x] == 1);/* ECHO will be always ignored */
+	else if (ch == 251)	/* on WILL send DON'T */
+	  _session_try_add (dcc, 255, 254, line[x]);
+	else if (ch == 253)	/* on DO send WON'T */
+	  _session_try_add (dcc, 255, 252, line[x]);
+	sw--;
+      }
+      else if (ch == 246)	/* Are You There? -> "Y\r\n" */
+	_session_try_add (dcc, 'Y', '\r', '\n');
+    }
+    else if (x != y)
+      line[y++] = line[x];
+    else
+      y++;
+  }
+  return sw;
 }
 
 ssize_t Session_Get (peer_t *dcc, char *line, size_t sz)
@@ -438,14 +557,8 @@ ssize_t Session_Get (peer_t *dcc, char *line, size_t sz)
   sw = ReadSocket (line, dcc->socket, sz, M_TEXT);
   if (sw > 0)
   {
-    dprint (5, "got from peer %s: \"%.*s\"", dcc->iface->name, sw, line);
-    /* TODO: see RFC854 ;) */
-    if ((dcc->iface->ift & I_TELNET) && !safe_strncmp (line, "\377\376\001", 3))
-    {
-      sw -= 3;
-      memmove (line, &line[3], sw);	/* ignore TELNET response */
-      line[sw] = 0;
-    }
+    dprint (5, "got from peer %s: \"%-*.*s\"", dcc->iface->name, sw, sw, line);
+    sw = _do_rfc854_input (dcc->iface->ift, dcc, line, sw);
     dcc->last_input = Time;		/* timestamp for idle */
     /* run "in-filter" bindings... */
     bind = NULL;
@@ -456,13 +569,13 @@ ssize_t Session_Get (peer_t *dcc, char *line, size_t sz)
       {
 	if (bind->name)
 	{
-	  if (RunBinding (bind, NULL, NULL, NULL, DccIdx(dcc), line))
-	    strfcpy (line, BindResult, sz);
+	  RunBinding (bind, NULL, NULL, NULL, DccIdx(dcc), line);
+	  strfcpy (line, BindResult, sz);
 	}
 	else
 	  bind->func (dcc, line, sz);
       }
-    } while (bind);
+    } while (bind && *line);
     sw = strlen (line);
   }
   return sw;
@@ -527,7 +640,7 @@ void Dcc_Parse (peer_t *dcc, char *name, char *cmd, userflag gf, userflag cf,
       else
 	bind->func (dcc, cmd);
     snprintf (to, sizeof(to), ":*:%d", botch);
-    Add_Request (I_DCCALIAS, to, F_BOTNET, cmd);
+    Add_Request (I_DCCALIAS, to, F_T_MESSAGE, "%s", cmd);
   }
 }
 
@@ -576,7 +689,7 @@ static int dcc_request (INTERFACE *iface, REQUEST *req)
     _chat_join (dcc);
     LOG_CONN (_("Logged in: %s."), name);
     /* log to Wtmp */
-    NewEvent (W_START, GetLID (name), ID_ME, 0);
+    NewEvent (W_START, ID_ME, GetLID (name), 0);
   }
   /* check if this is mine but echo disabled */
   if (req)
@@ -596,12 +709,16 @@ static int dcc_request (INTERFACE *iface, REQUEST *req)
 	!dcc->s.inbuf &&		/* nothing to send yet */
 	req)				/* there is a request */
     {
+      DBG ("process request: type 0x%x, flag 0x%x, to %s, starts %.10s",
+	   req->mask_if, req->flag, req->to, req->string);
       /* for logs... formatted, just add timestamp */
       if (req->mask_if & I_LOG)
       {
 	if (req->flag & dcc->loglev)
 	  printl (dcc->s.buf, sizeof(dcc->s.buf) - 1, "[%t] %*", 0,
 		  NULL, NULL, NULL, NULL, 0, 0, 0, req->string);
+	else
+	  dcc->s.buf[0] = 0;
 	req = NULL;
       }
       /* flush command - see the users.c, ignore commands for non-bots */
@@ -666,7 +783,7 @@ static int dcc_request (INTERFACE *iface, REQUEST *req)
     _died_iface (iface, buf, sizeof(buf));
     return REQ_OK;
   }
-  if (!sw)
+  if (!sw)				/* ignore empty input too */
     return REQ_OK;
   /* check the "dcc" flood... need just ignore or break connection? TODO? */
   if (CheckFlood (&dcc->floodcnt, flood_dcc) > 0)
@@ -719,10 +836,11 @@ static iftype_t dcc_signal (INTERFACE *iface, ifsig_t signal)
       switch (dcc->s.state)
       {
         case P_LOGIN:
-	  /* %@ - hostname, %L - Lname, %* - state */
+	  /* %@ - hostname, %L and %N - Lname, %* - state */
 	  printl (buf, sizeof(buf), ReportFormat, 0,
-		  NULL, SocketDomain (dcc->s.socket, NULL), dcc->s.iface->name,
-		  NULL, 0, 0, 0, "logging in");
+		  dcc->s.iface->name, SocketDomain (dcc->s.socket, NULL),
+		  dcc->s.iface->name, NULL, (uint32_t)dcc->s.socket + 1, 0,
+		  0, "logging in");
 	  break;
 	default:
 	  idle = Time - dcc->s.last_input;
@@ -731,7 +849,7 @@ static iftype_t dcc_signal (INTERFACE *iface, ifsig_t signal)
 	  {
 	    desc = safe_malloc (strlen (dcc->s.dname) + 7);
 	    strcpy (desc, "away: ");
-	    strcpy (&desc[7], dcc->s.dname);
+	    strcpy (&desc[6], dcc->s.dname);
 	  }
 	  else
 	    desc = NULL;
@@ -740,7 +858,7 @@ static iftype_t dcc_signal (INTERFACE *iface, ifsig_t signal)
 	  /* %@ - hostname, %L - Lname, %# - start time, %I - socket number,
 	     %P - port, %- - idle time, %* - state */
 	  printl (buf, sizeof(buf), ReportFormat, 0,
-		  NULL, dom, c, dcc->s.start, (uint32_t)dcc->s.socket, p,
+		  c, dom, c, dcc->s.start, (uint32_t)dcc->s.socket + 1, p,
 		  idle, (dcc->s.iface->ift & I_LOCKED) ? "chat off" : desc);
 	  FREE (&desc);
       }
@@ -840,6 +958,7 @@ int Check_Passwd (const char *pass, char *encrypted)
 
 /* called from threads and dispatcher is locked! */
 /* buf is Lname if this is CTCP CHAT answer or empty string */
+BINDING_TYPE_login (get_chat);
 static void get_chat (char *name, char *ident, char *host, idx_t socket,
 		      char buf[SHORT_STRING], char **msg)
 {
@@ -948,7 +1067,8 @@ static void get_chat (char *name, char *ident, char *host, idx_t socket,
   {
     dprint (5, "enabling echo for user");
     memcpy (dcc->s.buf, "\377\374\001\r\n", 5);		/* IAC WON'T ECHO */
-    dcc->s.inbuf = 5;
+    dcc->s.inbuf = 5;					/* set it manually */
+    dcc->s.bufpos = 0;
     i |= I_TELNET;
   }
   else
@@ -957,14 +1077,16 @@ static void get_chat (char *name, char *ident, char *host, idx_t socket,
   Set_Iface (NULL);
   strfcpy (dcc->s.start, DateString, sizeof(dcc->s.start));
   dcc->s.iface = Add_Iface (i, name, &dcc_signal, &dcc_request, (void *)dcc);
-#ifdef HAVE_ICONV
-  dcc->s.iface->conv = Get_Conversion (host);
-#endif
   /* try to create the alias for scripts :) */
   dcc->alias = Add_Iface (I_DCCALIAS, NULL, &dccalias_signal, &dcc_request,
 			  (void *)dcc);
   /* the same for logs */
   dcc->log = Add_Iface (I_LOG, NULL, &dcclog_signal, &dcc_request, (void *)dcc);
+#ifdef HAVE_ICONV
+  dcc->s.iface->conv = Get_Conversion (host);
+  dcc->alias->conv = Clone_Conversion (dcc->s.iface->conv);
+  dcc->log->conv = Clone_Conversion (dcc->s.iface->conv);
+#endif
   Unset_Iface();
   FREE (&name);
 #ifdef HAVE_ICONV
@@ -979,10 +1101,10 @@ static void get_chat (char *name, char *ident, char *host, idx_t socket,
  *   client is NULL since it's listening port
  *   ident, host, and socket are from connection
  */
-static void session_handler (char *ident, char *host, idx_t socket, int botsonly)
+static char *session_handler_main (char *ident, char *host, idx_t socket,
+				   int botsonly, char buf[SHORT_STRING],
+				   char client[NAMEMAX+1])
 {
-  char buf[SHORT_STRING];
-  char client[NAMEMAX+1];
   userflag uf;
   binding_t *bind;
   size_t sz, sp;
@@ -998,16 +1120,11 @@ static void session_handler (char *ident, char *host, idx_t socket, int botsonly
     Set_Iface (NULL);
     bind = Check_Bindtable (BT_Login, "*", uf, 0, NULL);
     Unset_Iface();
-    if (!(bind && (!botsonly || (uf & U_BOT))))
-    {
-      Add_Request (I_LOG, "*", F_CONN,
-		   _("Connection from %s dropped: not allowed."), host);
-      KillSocket (&socket);
-      return;
-    }
+    if (!(bind && (!botsonly || (uf & U_SPECIAL))))
+      return ("not allowed");
   }
   /* get Lname of user */
-  strfcpy (buf, "\r\nFoxEye network node\r\n\r\nlogin: ", sizeof(buf));
+  strfcpy (buf, "\r\nFoxEye network node\r\n\r\nlogin: ", SHORT_STRING);
   sz = strlen (buf);
   sp = 0;
   time (&t);
@@ -1017,19 +1134,16 @@ static void session_handler (char *ident, char *host, idx_t socket, int botsonly
   while (sz && (get = WriteSocket (socket, buf, &sp, &sz, M_POLL)) >= 0)
     if (time(NULL) > t) break;
   if (get > 0)
-    while (!(get = ReadSocket (client, socket, sizeof(client), M_POLL)))
+    while (!(get = ReadSocket (client, socket, NAMEMAX+1, M_POLL)))
       if (time(NULL) > t) break;
+  if (get > 0)
+    get = _do_rfc854_input (I_TELNET, NULL, client, get); /* RFC854 */
   if (get <= 0)
-  {
-    Add_Request (I_LOG, "*", F_CONN,
-		 _("Connection from %s lost while logging in."), host);
-    KillSocket (&socket);
-    return;
-  }
+    return ("connection lost");
   /* check of allowance */
   uf = Match_Client (host, ident, client);
   /* for services we have to check network type */
-  if ((uf & (U_BOT|U_SPECIAL)) && (clr = Lock_Clientrecord (client)))
+  if ((uf & U_SPECIAL) && (clr = Lock_Clientrecord (client)))
   {
     msg = safe_strdup (Get_Field (clr, ".logout", NULL));
     Unlock_Clientrecord (clr);
@@ -1039,7 +1153,7 @@ static void session_handler (char *ident, char *host, idx_t socket, int botsonly
   Set_Iface (NULL);
   bind = Check_Bindtable (BT_Login, msg ? msg : "*", uf, 0, NULL);
   FREE (&msg);
-  if (bind && !bind->name && (!botsonly || (uf & U_BOT))) /* allowed to logon */
+  if (bind && !bind->name && (!botsonly || (uf & U_SPECIAL))) /* allowed to logon */
   {
     buf[0] = 0;
     bind->func (client, ident, host, socket, buf, &msg); /* it will unlock dispatcher */
@@ -1047,12 +1161,24 @@ static void session_handler (char *ident, char *host, idx_t socket, int botsonly
   else
   {
     Unset_Iface();
-    msg = "no access";
+    msg = "not allowed";
   }
+  return msg;
+}
+
+static void session_handler (char *ident, char *host, idx_t socket, int botsonly)
+{
+  char buf[SHORT_STRING];
+  char client[NAMEMAX+1];
+  size_t sz, sp;
+  register char *msg;
+
+  msg = session_handler_main (ident, host, socket, botsonly, buf, client);
   if (msg)					/* was error on connection */
   {
     unsigned short p;
 
+    LOG_CONN (_("Connection from %s terminated: %s"), host, msg);
     snprintf (buf, sizeof(buf), "Access denied: %s\r\n", msg);
     sz = strlen (buf);
     sp = 0;
@@ -1064,7 +1190,7 @@ static void session_handler (char *ident, char *host, idx_t socket, int botsonly
 	    NULL, host, client, NULL, 0, p, 0, msg);
     Unset_Iface();
     /* cannot create connection */
-    LOG_CONN (buf);
+    LOG_CONN ("%s", buf);
     KillSocket (&socket);
   }
 }
@@ -1087,7 +1213,7 @@ typedef struct
   idx_t socket;
   idx_t id;
   pthread_t th;
-  void (*prehandler) (pthread_t, idx_t);
+  void (*prehandler) (pthread_t, idx_t, idx_t);
   void (*handler) (char *, char *, char *, idx_t);
 } accept_t;
 
@@ -1105,7 +1231,7 @@ static iftype_t port_signal (INTERFACE *iface, ifsig_t signal)
       snprintf (msg, sizeof(msg), _("listening on port %hu"), acptr->lport);
       printl (buf, sizeof(buf), ReportFormat, 0,
 	      NULL, SocketDomain (acptr->socket, NULL), NULL, NULL,
-	      (uint32_t)acptr->socket, acptr->lport, 0, msg);
+	      (uint32_t)acptr->socket + 1, acptr->lport, 0, msg);
       tmp = Set_Iface (iface);
       New_Request (tmp, F_REPORT, "%s", buf);
       Unset_Iface();
@@ -1184,13 +1310,14 @@ static void *_accept_port (void *input_data)
 	*ident = 0;
     }
   } /* ident is checked */
+  DBG ("_accept_port: killing ident socket");
   KillSocket (&acptr->id);
   /* %* - ident, %@ - hostname, %L - Lname, %P - port */
   Set_Iface (NULL);
   printl (buf, sizeof(buf), format_dcc_input_connection, 0, NULL, domain,
 	  acptr->client, NULL, 0, p, 0, ident[0] ? ident : _("((unknown))"));
   Unset_Iface();
-  LOG_CONN (buf);
+  LOG_CONN ("%s", buf);
   /* we have ident now so call handler and exit */
   acptr->handler (acptr->client, ident, domain, acptr->socket);
   pthread_cleanup_pop (1);
@@ -1211,16 +1338,16 @@ static void *_listen_port (void *input_data)
   pthread_setcancelstate (PTHREAD_CANCEL_DISABLE, NULL);
   iface = Add_Iface (I_LISTEN | I_CONNECT, acptr->confline ? acptr->confline : buf,
 		     &port_signal, NULL, acptr);
-  while (acptr->socket >= 0)
+  while (acptr->socket >= 0)			/* ends by KillSocket() */
   {
-    /* TODO: check timeout for M_LINP */
     if ((new_idx = AnswerSocket (acptr->socket)) == E_AGAIN)
       continue;
     else if (new_idx < 0)
     {
-      /* print error message */
-      LOG_CONN (_("Listening socket died."));
-      KillSocket (&acptr->socket);	/* die now */
+      LOG_CONN (_("Listening socket died."));	/* print error message */
+      if (acptr->prehandler)			/* notify caller */
+	acptr->prehandler ((pthread_t)0, acptr->socket, -1);
+      KillSocket (&acptr->socket);		/* die now */
       break;
     }
     child = safe_malloc (sizeof(accept_t));
@@ -1232,21 +1359,23 @@ static void *_listen_port (void *input_data)
 	    acptr->socket, acptr->client ? "terminated" : "continue", new_idx);
     if (pthread_create (&th, NULL, &_accept_port, child))
     {
-      KillSocket (&new_idx);
+      KillSocket (&child->socket);
       FREE (&child);
     }
     else
     {
+      if (acptr->prehandler)
+	acptr->prehandler (th, acptr->socket, child->socket);
+      else
+	pthread_detach (th);		/* since it's not joinable */
       if (acptr->client)		/* it's client connection so die now */
 	KillSocket (&acptr->socket);
-      if (acptr->prehandler)
-	acptr->prehandler (th, acptr->socket);
     }
   }
   /* terminated - destroy all */
   FREE (&acptr->confline);
   Set_Iface (iface);
-  iface->ift |= I_DIED;
+  iface->ift |= I_FINWAIT; /* let know dispatcher that we must be finished */
   Unset_Iface();
   /* we don't need to free acptr since dispatcher will do it for us */
   return NULL;
@@ -1255,25 +1384,27 @@ static void *_listen_port (void *input_data)
 
 /*
  * Global function for listening port.
- * Returns: 0 if no listening or port number of process.
+ * Returns: -1 if no listening or listen socket ID on success.
  */
-unsigned short Listen_Port (char *client, unsigned short port, char *confline,
-			    void (*prehandler) (pthread_t, idx_t),
-			    void (*handler) (char *, char *, char *, idx_t))
+static idx_t
+Listen_Port_main (char *client, char *host, unsigned short port, char *confline,
+		  void (*prehandler) (pthread_t, idx_t, idx_t),
+		  void (*handler) (char *, char *, char *, idx_t))
 {
   accept_t *acptr;
   idx_t p;
+  int n = -1;
   
   if (!handler ||			/* stupidity check ;) */
       (port && port < 1024))		/* don't try system ports! */
-    return 0;
+    return -1;
   p = GetSocket();
   /* check for two more sockets - accepted and ident check */
   if (p < 0 || p >= SOCKETMAX - 2 ||
-      SetupSocket (p, M_LIST, *hostname ? hostname : NULL, port) < 0)
+      (n = SetupSocket (p, M_LIST, (host && *host) ? host : NULL, port)) < 0)
   {
     KillSocket (&p);
-    return 0;
+    return (idx_t)n;
   }
   acptr = safe_malloc (sizeof(accept_t));
   acptr->client = safe_strdup (client);
@@ -1289,10 +1420,45 @@ unsigned short Listen_Port (char *client, unsigned short port, char *confline,
     FREE (&acptr->client);
     FREE (&acptr->confline);
     FREE (&acptr);
-    return 0;
+    return -1;
   }
-  return port;
+  return p;
 }
+
+static void _assign_port_range (unsigned short *ps, unsigned short *pe)
+{
+  *ps = *pe = 0;
+  sscanf (dcc_port_range, "%hu - %hu", ps, pe);
+  if (*ps < 1024)
+    *ps = 1024;
+  if (*pe < *ps)
+    *pe = *ps;
+}
+
+idx_t Listen_Port (char *client, char *host, unsigned short *sport, char *confline,
+		   void (*prehandler) (pthread_t, idx_t, idx_t),
+		   void (*handler) (char *, char *, char *, idx_t))
+{
+  unsigned short port, pe;
+  idx_t idx;
+
+  if (*sport)
+    port = pe = *sport;
+  else
+    _assign_port_range (&port, &pe);
+  while (port <= pe)
+  {
+    idx = Listen_Port_main (client, host, port, confline, prehandler, handler);
+    dprint (4, "Listen_Port: %s:%hu: returned %d", host, port, (int)idx);
+    if (idx >= 0)
+    {
+      *sport = port;
+      return idx;
+    }
+    port++;
+  }
+  return -1;
+}  
 
 typedef struct
 {
@@ -1320,12 +1486,14 @@ static void *_connect_host (void *input_data)
     i = SetupSocket (*cptr->idx, M_RAW, cptr->host, cptr->port);
   if (i == 0)
     dprint (4, "direct:_connect_host: connected to %s at port %hu: new socket %d",
-	    cptr->host, cptr->port, *cptr->idx);
+	    cptr->host, cptr->port, (int)*cptr->idx);
   else
   {
-    Add_Request (I_LOG, "*", F_CONN,
-		 "Could not make connection to %s at port %hu: error %d",
-		 cptr->host, cptr->port, -i);
+    char buf[SHORT_STRING];
+
+    LOG_CONN ("Could not make connection to %s at port %hu (socket %d): %s",
+	      cptr->host, cptr->port, (int)*cptr->idx,
+	      SocketError (i, buf, sizeof(buf)));
     KillSocket (cptr->idx);
   }
   cptr->handler (i, cptr->id);
@@ -1334,11 +1502,10 @@ static void *_connect_host (void *input_data)
 }
 #undef cptr
 
-pthread_t Connect_Host (char *host, unsigned short port, idx_t *idx,
-			void (*handler) (int, void *), void *id)
+int Connect_Host (char *host, unsigned short port, pthread_t *th, idx_t *idx,
+		  void (*handler) (int, void *), void *id)
 {
   connect_t *cptr;
-  pthread_t th;
 
   if (!handler || !host || !port)	/* stupidity check ;) */
     return 0;
@@ -1348,13 +1515,13 @@ pthread_t Connect_Host (char *host, unsigned short port, idx_t *idx,
   cptr->idx = idx;
   cptr->handler = handler;
   cptr->id = id;
-  if (pthread_create (&th, NULL, &_connect_host, cptr))
+  if (pthread_create (th, NULL, &_connect_host, cptr))
   {
     FREE (&cptr->host);
     FREE (&cptr);
-    return (pthread_t)0;
+    return 0;
   }
-  return th;
+  return 1;
 }
 
 /*
@@ -1363,34 +1530,35 @@ pthread_t Connect_Host (char *host, unsigned short port, idx_t *idx,
  * int func(session_t *from, char *args)
  */
 
-static void _say_current (peer_t *dcc, char *msg)
+static void _say_current (peer_t *dcc, const char *msg)
 {
   New_Request (dcc->iface, 0, _("Now: %s"), NONULL(msg));
 }
 
 		/* .away [<message>] */
+BINDING_TYPE_dcc (dc_away);
 static int dc_away (peer_t *dcc, char *args)
 {
   char ch[16];
 
+  /* reset away message */
+  FREE (&dcc->dname);
   if (args)
-  {
-    /* set away message */
-    FREE (&dcc->dname);
     dcc->dname = safe_strdup (args);
-    if (IS_SESSION(dcc) && ((session_t *)dcc)->botnet < 0)
-      return -1;
-    /* send notify to botnet */
-    snprintf (ch, sizeof(ch), ":*:%d",
-	      IS_SESSION(dcc) ? ((session_t *)dcc)->botnet : 0);
+  if (IS_SESSION(dcc) && ((session_t *)dcc)->botnet < 0)
+    return -1;
+  /* send notify to botnet */
+  snprintf (ch, sizeof(ch), ":*:%d",
+	    IS_SESSION(dcc) ? ((session_t *)dcc)->botnet : 0);
+  if (args)
     Add_Request (I_DCCALIAS, ch, F_T_NOTICE, _("now away: %s"), args);
-  }
   else
-    _say_current (dcc, dcc->dname);
-  return -1;	/* no log it */
+    Add_Request (I_DCCALIAS, ch, F_T_NOTICE, _("returned to life."));
+  return -1;	/* don't log it */
 }
 
 		/* .me <message> */
+BINDING_TYPE_dcc (dc_me);
 static int dc_me (peer_t *dcc, char *args)
 {
   binding_t *bind = NULL;
@@ -1412,27 +1580,12 @@ static int dc_me (peer_t *dcc, char *args)
     return -1;
   snprintf (ch, sizeof(ch), ":*:%d",
 	    IS_SESSION(dcc) ? ((session_t *)dcc)->botnet : 0);
-  Add_Request (I_DCCALIAS, ch, F_T_ACTION | F_BOTNET, "%s", args);
-  return -1;	/* no log it */
-}
-
-		/* .back */
-static int dc_back (peer_t *dcc, char *args)
-{
-  char ch[16];
-
-  /* free away message */
-  FREE (&dcc->dname);
-  if (IS_SESSION(dcc) && ((session_t *)dcc)->botnet < 0)
-    return -1;
-  /* send notify to botnet */
-  snprintf (ch, sizeof(ch), ":*:%u",
-	    IS_SESSION(dcc) ? ((session_t *)dcc)->botnet : 0);
-  Add_Request (I_DCCALIAS, ch, F_T_NOTICE, _("returned to life."));
+  Add_Request (I_DCCALIAS, ch, F_T_ACTION, "%s", args);
   return -1;	/* no log it */
 }
 
 		/* .boot <nick on botnet> */
+BINDING_TYPE_dcc (dc_boot);
 static int dc_boot (peer_t *dcc, char *args)
 {
   INTERFACE *uif = NULL;
@@ -1461,12 +1614,12 @@ static int dc_boot (peer_t *dcc, char *args)
     msg = NULL;
   if (msg)
   {
-    New_Request (dcc->iface, 0, msg);
+    New_Request (dcc->iface, 0, "%s", msg);
     return -1;	/* no log it */
   }
   Add_Request (I_LOG, "*", F_T_NOTICE | F_CONN, _("%s booted by %s."),
 	       args, dcc->iface->name);
-  uif->IFSignal (uif, S_TERMINATE);
+  uif->ift |= uif->IFSignal (uif, S_TERMINATE);
   return 1;
 }
 
@@ -1483,28 +1636,73 @@ _set_console_parms (session_t *dcc, clrec_t *user, char *fl, char *chan, int bot
   dprint (4, "dcc:_set_console_parms: %s", cons);
 }
 
+#ifdef HAVE_ICONV
+		/* .charset [<charset name>] */
+BINDING_TYPE_dcc (dc_charset);
+static int dc_charset (peer_t *dcc, char *args)
+{
+  conversion_t *conv;
+  const char *charset;
+  clrec_t *u;
+
+  if (args)
+  {
+    conv = Get_Conversion (args);
+    charset = Conversion_Charset (conv);
+    if (conv != dcc->iface->conv)	/* changed */
+    {
+      Free_Conversion (dcc->iface->conv);
+      dcc->iface->conv = conv;
+      if (IS_SESSION(dcc) && ((session_t *)dcc)->alias)
+      {
+	Free_Conversion (((session_t *)dcc)->alias->conv);
+	((session_t *)dcc)->alias->conv = Clone_Conversion (conv);
+      }
+      if (IS_SESSION(dcc) && ((session_t *)dcc)->log)
+      {
+	Free_Conversion (((session_t *)dcc)->log->conv);
+	((session_t *)dcc)->log->conv = Clone_Conversion (conv);
+      }
+      if ((u = Lock_Clientrecord (dcc->iface->name)))
+      {
+	Set_Field (u, "charset", charset);
+	Unlock_Clientrecord (u);
+      }
+    }
+    else
+      Free_Conversion (conv);		/* not changed */
+  }
+  else
+    charset = Conversion_Charset (dcc->iface->conv);
+  _say_current (dcc, charset ? charset : "NONE");
+  return 1;
+}
+#endif
+
+#define session ((session_t *)dcc)
 		/* .chat [<botnet channel #>] */
-static int dc_chat (session_t *dcc, char *args)
+BINDING_TYPE_dcc (dc_chat);
+static int dc_chat (peer_t *dcc, char *args)
 {
   char consfl[64];
-  char chan[128] = "*";
+  char chan[128] = "";
   int botch = atoi (NONULL(args));
   clrec_t *user;
 
-  if (!IS_SESSION(dcc))			/* aliens can have only channel 0 */
+  if (!IS_SESSION(session))			/* aliens can have only channel 0 */
     return 0;
-  else if (botch == dcc->botnet)
+  else if (botch == session->botnet)
     return 1;
-  _chat_part (dcc);
-  user = Lock_Clientrecord (dcc->s.iface->name);
+  _chat_part (session);
+  user = Lock_Clientrecord (session->s.iface->name);
   consfl[0] = 0;
   if (user)
   {
     register char *c = Get_Field (user, "", NULL);
     sscanf (NONULL(c), "%63s %127s", consfl, chan);
-    _set_console_parms (dcc, user, consfl, chan, botch);
+    _set_console_parms (session, user, consfl, chan, botch);
   }
-  _chat_join (dcc);
+  _chat_join (session);
   return 1;
 }
 
@@ -1513,7 +1711,7 @@ static void _console_fl (session_t *dcc, char *plus, char *minus, char *ch)
   char flags[64];
   char *cons = flags;
   register char *fl = flags;
-  char chan[128];
+  char chan[128];			/* channel from config */
   clrec_t *user;
   register int it = 0;
 
@@ -1523,19 +1721,18 @@ static void _console_fl (session_t *dcc, char *plus, char *minus, char *ch)
   if (!user)
     return;				/* hmm, could it be? */
   cons = Get_Field (user, "", NULL);	/* default color to mirc */
-  if (!ch && cons)
-  {
-    sscanf (cons, "%*s %127s", chan);	/* channel wasn't defined so get it */
-    ch = chan;
-  }
+  if (cons)
+    sscanf (cons, "%63s %127s", flags, chan);
   else
+    chan[0] = 0;
+  if (!ch)
+    ch = chan;
+  if (!cons)				/* it's strange fairly but use it */
+    cons = getconsole (dcc, flags, sizeof(flags));
+  while (*cons && *cons != ' ')
   {
-    getconsole (dcc, flags, sizeof(flags));
-    ch = "*";
-  }
-  while (cons && *cons && *cons != ' ')
-  {
-    if (!strchr (minus, *cons) && (strchr (_Flags, *cons) || *cons == '+'))
+    if (!strchr (minus, *cons) && (strchr (_Flags, *cons) ||
+	*cons == '%' || *cons == '$' || *cons == '#' || *cons == '+'))
       *fl++ = *cons;
     else
       it++;
@@ -1553,18 +1750,19 @@ static void _console_fl (session_t *dcc, char *plus, char *minus, char *ch)
     }
     plus++;
   }
-  if (it)
+  if (it || safe_strcmp (ch, chan))
     _set_console_parms (dcc, user, flags, ch, dcc->botnet);
   else
     Unlock_Clientrecord (user);
 }
 
 		/* .color [off|mono|ansi|mirc] */
-static int dc_color (session_t *dcc, char *args)
+BINDING_TYPE_dcc (dc_color);
+static int dc_color (peer_t *dcc, char *args)
 {
-  flag_t fl = dcc->loglev & (F_COLORCONV | F_COLOR);
+  flag_t fl = session->loglev & (F_COLORCONV | F_COLOR);
 
-  if (!IS_SESSION(dcc))			/* aliens cannot change this */
+  if (!IS_SESSION(session))			/* aliens cannot change this */
     return 0;
   if (!args)
   {
@@ -1579,25 +1777,26 @@ static int dc_color (session_t *dcc, char *args)
     }
     else if (fl & F_COLORCONV)
       msg = "mono";
-    _say_current (&dcc->s, msg);
+    _say_current (&session->s, msg);
   }
   else
   {
     if (!strcmp (args, "mirc"))
-      _console_fl (dcc, "", "#$%", NULL);
+      _console_fl (session, "", "#$%", NULL);
     else if (!strcmp (args, "mono"))
-      _console_fl (dcc, "#", "$%", NULL);
+      _console_fl (session, "#", "$%", NULL);
     else if (!strcmp (args, "ansi"))
-      _console_fl (dcc, "%", "#$", NULL);
+      _console_fl (session, "%", "#$", NULL);
     else if (!strcmp (args, "off"))
-      _console_fl (dcc, "$", "#%", NULL);
+      _console_fl (session, "$", "#%", NULL);
     else return 0;
   }
   return 1;
 }
 
 		/* .console [<channel>] [+-<mode>] */
-static int dc_console (session_t *dcc, char *args)
+BINDING_TYPE_dcc (dc_console);
+static int dc_console (peer_t *dcc, char *args)
 {
   char msg[MESSAGEMAX];
   char cl[128];
@@ -1607,7 +1806,7 @@ static int dc_console (session_t *dcc, char *args)
   flag_t f, fl;
   int i = 0;
 
-  if (!IS_SESSION(dcc))			/* you cannot change console logging */
+  if (!IS_SESSION(session))		/* you cannot change console logging */
     return 0;
   if (args)
   {
@@ -1618,17 +1817,24 @@ static int dc_console (session_t *dcc, char *args)
       if (*cc)
       {
 	*cc = 0;
-	/* no such channel? */
 	strfcpy (msg, args, sizeof(msg));
 	*cc = ' ';
 	cc = msg;
       }
+      else
+	cc = args;
       if (!Find_Iface (I_SERVICE, cc) || Unset_Iface())
+      {
+	New_Request (session->s.iface, 0, _("No such active service found: %s"),
+		     cc);
 	return -1;
+      }
       args = NextWord (args);
     }
-    else if (dcc->log && dcc->log->name)
-      cc = dcc->log->name;
+    else if (*args == '*')		/* reset channel */
+      args = NextWord (args);
+    else if (session->log && session->log->name)
+      cc = session->log->name;
     pm[1] = cl[0] = cl[64] = 0;
     for (; *args; args++)
     {
@@ -1645,11 +1851,11 @@ static int dc_console (session_t *dcc, char *args)
 	  strfcat (&cl[64], pm, 64);
       }
     }
-    _console_fl (dcc, cl, &cl[64], cc);
+    _console_fl (session, cl, &cl[64], cc);
   }
-  fl = dcc->loglev & (F_PRIV | F_CMDS | F_CONN | F_SERV | F_WALL | F_USERS | F_DEBUG | F_ERROR | F_WARN | F_PUBLIC | F_JOIN | F_MODES);
-  if (dcc->log && dcc->log->name && (fl & (F_PUBLIC | F_JOIN | F_MODES)))
-    cc = dcc->log->name;
+  fl = session->loglev & (F_PRIV | F_CMDS | F_CONN | F_SERV | F_WALL | F_USERS | F_DEBUG | F_BOOT | F_ERROR | F_WARN | F_PUBLIC | F_JOIN | F_MODES | F_BOTNET);
+  if (session->log && session->log->name && (fl & (F_PUBLIC | F_JOIN | F_MODES)))
+    cc = session->log->name;
   else
     cc = "";
   /* reset result */
@@ -1657,7 +1863,7 @@ static int dc_console (session_t *dcc, char *args)
   /* check for channel */
   if (!cc)
     cc = "";
-  for (f = 1, ch = _Flags; *ch; ch++, f += f)
+  for (f = F_MIN, ch = _Flags; *ch; ch++, f += f)
   {
     if (fl & f)
     {
@@ -1702,7 +1908,10 @@ static int dc_console (session_t *dcc, char *args)
 	case F_JOIN:
 	  m2 = _("joins/parts");
 	  break;
-	default:
+	case F_BOTNET:
+	  m2 = _("botnet notices");
+	  break;
+	default: /* F_MODES */
           m2 = _("mode changes");
       }
       if (*m1)
@@ -1720,11 +1929,11 @@ static int dc_console (session_t *dcc, char *args)
     }
   }
   if (*cc && *cl)
-    New_Request (dcc->s.iface, 0, "%s: %s%s%s %s %s", _("Your console logs"),
+    New_Request (session->s.iface, 0, "%s: %s%s%s %s %s", _("Your console logs"),
 		 *msg ? msg : "", *msg ? _(", and ") : "", cl,
 		 _("on the channel"), cc);
   else
-    New_Request (dcc->s.iface, 0, "%s: %s", _("Your console logs"),
+    New_Request (session->s.iface, 0, "%s: %s", _("Your console logs"),
 		 *msg ? msg : "none");
   return 1;
 }
@@ -1737,71 +1946,89 @@ static void _report_req (iftype_t iface, char *who)
 }
 
 		/* .cstat */
+BINDING_TYPE_dcc (dc_cstat);
 static int dc_cstat (peer_t *dcc, char *args)
 {
   char b[SHORT_STRING];
 
   printl (b, sizeof(b), format_cstat_head, 0, NULL, NULL, NULL, NULL, 0, 0, 0, NULL);
-  New_Request (dcc->iface, 0, b);
+  New_Request (dcc->iface, 0, "%s", b);
   ReportFormat = format_cstat;
   _report_req (I_CONNECT, "*");
   return 1;
 }
 
 		/* .echo [on|off] */
-static int dc_echo (session_t *dcc, char *args)
+BINDING_TYPE_dcc (dc_echo);
+static int dc_echo (peer_t *dcc, char *args)
 {
-  flag_t fl = dcc->loglev & F_ECHO;
+  flag_t fl = session->loglev & F_ECHO;
 
-  if (!IS_SESSION(dcc))			/* aliens cannot on/off echo ;) */
+  if (!IS_SESSION(session))		/* aliens cannot on/off echo ;) */
     return 0;
   if (args)
   {
     if (!strcmp (args, "on"))
     {
       if (!fl)
-	_console_fl (dcc, "+", NULL, NULL);
+	_console_fl (session, "+", NULL, NULL);
     }
     else if (!strcmp (args, "off"))
     {
       if (fl)
-	_console_fl (dcc, NULL, "+", NULL);
+	_console_fl (session, NULL, "+", NULL);
     }
     else
       return -1;
-    fl = dcc->loglev & F_ECHO;
+    fl = session->loglev & F_ECHO;
   }
   if (fl)
-    _say_current (&dcc->s, "on");
+    _say_current (&session->s, "on");
   else
-    _say_current (&dcc->s, "off");
+    _say_current (&session->s, "off");
   return 1;
 }
 
 		/* .help [<what need>] */
+BINDING_TYPE_dcc (dc_help);
 static int dc_help (peer_t *dcc, char *args)
 {
   char *sec = NextWord (args);
   char *fst = args;
-  userflag df = Get_Clientflags (dcc->iface->name, NULL);
+  bindtable_t *ssbt;
+  userflag df;
 
+  df = (IS_SESSION(session) && session->log && session->log->name) ?
+	Get_Clientflags (session->s.iface->name, session->log->name) : 0;
   if (args)
   {
     while (*args && *args != ' ') args++;
     *args = 0;
   }
+  DBG ("dc_help for %s on %c%s", fst, session->ssbt ? '*' : '!', session->netname);
+  if ((!sec || !*sec) && session->netname && session->ssbt &&
+      (!fst || Check_Bindtable (session->ssbt, fst, session->s.uf, df, NULL)))
+    ssbt = session->ssbt;
+  else
+    ssbt = NULL;
   /* usage - not required if no arguments */
-  if (args && !Get_Help (fst, sec, dcc->iface, dcc->uf, df,
-			 BT_Dcc, _("Usage: "), 0))
+  if (args && !(ssbt && Get_Help (NULL, fst, session->s.iface,
+				  session->s.uf, df, ssbt, _("Usage: "), -1)) &&
+      !Get_Help (fst, sec, session->s.iface, session->s.uf, df, BT_Dcc,
+		 _("Usage: "), 0))
     return -1;
   /* full help */
-  Get_Help (fst, sec, dcc->iface, dcc->uf, df, BT_Dcc, NULL, 2);
+  if (ssbt)
+    Get_Help (NULL, fst ? fst : "*", session->s.iface, session->s.uf, df, ssbt, NULL, 2);
+  if (!ssbt || !fst)
+    Get_Help (fst, sec, session->s.iface, session->s.uf, df, BT_Dcc, NULL, 2);
   if (sec && *sec)
     *args = ' ';
   return 1;			/* return 1 because usage at least displayed */
 }
 
 		/* .motd */
+BINDING_TYPE_dcc (dc_motd);
 static int dc_motd (peer_t *dcc, char *args)
 {
   char msg[HUGE_STRING];
@@ -1827,24 +2054,22 @@ static int dc_motd (peer_t *dcc, char *args)
     end = strchr (c, '\n');
     if (end)
       *end++ = 0;
-    New_Request (dcc->iface, 0, c);
+    New_Request (dcc->iface, 0, "%s", c);
   }
   return 1;
 }
 
 		/* .simul <Lname> <message|command> */
+BINDING_TYPE_dcc (dc_simul);
 static int dc_simul (peer_t *dcc, char *args)
 {
   session_t *ud;
   INTERFACE *iface;
   char name[IFNAMEMAX+1];
-  char *c;
 
   if (!args)
     return 0;
-  strfcpy (name, args, sizeof(name));
-  for (c = name; *c && *c != ' '; c++);
-  *c = 0;
+  args = NextWord_Unquoted (name, args, sizeof(name));
   iface = Find_Iface (I_DIRECT, name);
   if (!iface)
   {
@@ -1855,8 +2080,7 @@ static int dc_simul (peer_t *dcc, char *args)
   {
     ud = (session_t *)iface->data;
     Set_Iface (iface);
-    args = NextWord (args);
-    ud->s.parse (&ud->s, c, args, ud->s.uf, 0, DccIdx(ud), ud->botnet, ud->ssbt,
+    ud->s.parse (&ud->s, name, args, ud->s.uf, 0, DccIdx(ud), ud->botnet, ud->ssbt,
 		 ud->netname);
     Unset_Iface();		/* from Set_Iface() */
   }
@@ -1868,6 +2092,7 @@ static int dc_simul (peer_t *dcc, char *args)
 }
 
 		/* .who [<service>] */
+BINDING_TYPE_dcc (dc_who);
 static int dc_who (peer_t *dcc, char *args)
 {
   char b[SHORT_STRING];
@@ -1882,7 +2107,7 @@ static int dc_who (peer_t *dcc, char *args)
     printl (b, sizeof(b), format_who_head, 0, NULL, NULL, NULL, NULL, 0, 0, 0, NULL);
     ReportFormat = format_who;
   }
-  New_Request (dcc->iface, 0, b);
+  New_Request (dcc->iface, 0, "%s", b);
   ReportMask = -1;
   if (args)
     _report_req (I_SERVICE, args);
@@ -1892,18 +2117,19 @@ static int dc_who (peer_t *dcc, char *args)
 }
 
 		/* .w [channel] */
-static int dc_w (session_t *dcc, char *args)
+BINDING_TYPE_dcc (dc_w);
+static int dc_w (peer_t *dcc, char *args)
 {
   char b[SHORT_STRING];
 
   printl (b, sizeof(b), format_w_head, 0, NULL, NULL, NULL, NULL, 0, 0, 0, NULL);
-  New_Request (dcc->s.iface, 0, b);
+  New_Request (session->s.iface, 0, "%s", b);
   if (args)
     snprintf (b, sizeof(b), ":*:%s", args);
-  else if (!IS_SESSION(dcc))
+  else if (!IS_SESSION(session))
     strcpy (b, ":*:0");
   else
-    snprintf (b, sizeof(b), ":*:%d", dcc->botnet);
+    snprintf (b, sizeof(b), ":*:%d", session->botnet);
   ReportFormat = format_w;
   _report_req (I_DCCALIAS, b);
   if (args)
@@ -1912,6 +2138,7 @@ static int dc_w (session_t *dcc, char *args)
 }
 
 		/* .quit [<message>] */
+BINDING_TYPE_dcc (dc_quit);
 static int dc_quit (peer_t *dcc, char *args)
 {
   strfcpy (dcc->buf, NONULL(args), sizeof(dcc->buf));
@@ -1923,9 +2150,10 @@ static int dc_quit (peer_t *dcc, char *args)
 }
 
 		/* .connect <network|channel|bot> [<args>] */
+BINDING_TYPE_dcc (dc_connect);
 static int dc_connect (peer_t *dcc, char *args)
 {
-  char netname[IFNAMEMAX+2];
+  char netname[IFNAMEMAX+1];
   char *snet;
   clrec_t *netw;
   char *nt;
@@ -1933,36 +2161,47 @@ static int dc_connect (peer_t *dcc, char *args)
   userflag uf = 0;
 
   /* find the network and it type as @net->info */
-  netname[0] = '@';
-  args = NextWord_Unquoted (&netname[1], args, sizeof(netname)-1);
-  snet = strrchr (&netname[1], '@'); /* network if it's channel */
-  /* try as network at first then as channel and as bot at last */
-  if ((snet || !((uf = Get_Clientflags (netname, NULL)) & U_SPECIAL) ||
-      (netw = Lock_Clientrecord (netname)) == NULL) &&
-      (!snet || (netw = Lock_Clientrecord (snet)) == NULL) &&
-      (!((uf = Get_Clientflags (&netname[1], NULL)) & U_BOT) ||
-      (netw = Lock_Clientrecord (&netname[1])) == NULL))
+//  netname[0] = '@';
+//  args = NextWord_Unquoted (&netname[1], args, sizeof(netname)-1);
+//  snet = strrchr (&netname[1], '@'); /* network if it's channel */
+  args = NextWord_Unquoted (netname, args, sizeof(netname));
+  if ((snet = strrchr (netname, '@'))) /* network if it's channel */
+    snet++;
+  else
+    snet = netname;
+  /* try as network/bot at first then as channel */
+  if (!((uf = Get_Clientflags (snet, NULL)) & U_SPECIAL) ||
+      !(netw = Lock_Clientrecord (snet)))
+//  if (!((uf = Get_Clientflags (netname, NULL)) & U_SPECIAL) ||
+//      ((snet || (netw = Lock_Clientrecord (netname)) == NULL) &&
+//       (!snet || (netw = Lock_Clientrecord (&snet[1])) == NULL)))
+//  if ((snet || !((uf = Get_Clientflags (netname, NULL)) & U_SPECIAL) ||
+//      (netw = Lock_Clientrecord (netname)) == NULL) &&
+//      (!snet || (netw = Lock_Clientrecord (&snet[1])) == NULL) &&
+//      (!((uf = Get_Clientflags (netname, NULL)) & U_BOT) ||
+//      (netw = Lock_Clientrecord (netname)) == NULL))
     return 0;
   /* find the connect type in BT_Connect */
   nt = Get_Field (netw, ".logout", NULL);
   if (!nt)
     bind = NULL;
-  else if (snet) /* a channel */
+  else if (snet != netname) /* a channel (network service) */
     bind = Check_Bindtable (BT_Connect, nt, 0, U_SPECIAL, NULL);
-  else /* a network */
+  else /* a network/bot (local service) */
     bind = Check_Bindtable (BT_Connect, nt, uf, 0, NULL);
   Unlock_Clientrecord (netw);
   /* try to call connect function */
   if (!bind || bind->name)
   {
     New_Request (dcc->iface, 0, _("I don't know how to connect to %s."),
-		 &netname[1]);
+		 netname);
     return -1; /* no log it */
   }
-  return bind->func (&netname[1], args);
+  return bind->func (netname, args);
 }
 
 		/* .disconnect <network|channel|bot> [<reason>] */
+BINDING_TYPE_dcc (dc_disconnect);
 static int dc_disconnect (peer_t *dcc, char *args)
 {
   INTERFACE *cif;
@@ -1983,17 +2222,19 @@ static int dc_disconnect (peer_t *dcc, char *args)
   }
   if (*args)
     ShutdownR = args;
-  cif->IFSignal (cif, S_TERMINATE);
+  cif->ift |= cif->IFSignal (cif, S_TERMINATE);
   ShutdownR = NULL;
   return 1;
 }
 
 static void _dc_init_bindings (void)
 {
-#define NB(a,b) Add_Binding ("dcc", #a, b, -1, &dc_##a)
+#define NB(a,b) Add_Binding ("dcc", #a, b, U_NONE, &dc_##a, NULL)
   NB (away, U_ACCESS);
-  NB (back, U_ACCESS);
   NB (boot, U_OP);
+#ifdef HAVE_ICONV
+  NB (charset, 0);
+#endif
   NB (chat, U_ACCESS);
   NB (color, 0);
   NB (console, U_ACCESS);
@@ -2019,7 +2260,8 @@ static char __crlph[] = "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM123
  * Internal passwd bindings:
  * void func(char *pass, char **crypted)
  */
-static void IntCrypt (char *pass, char **cr)
+BINDING_TYPE_passwd (IntCrypt);
+static void IntCrypt (const char *pass, char **cr)
 {
   register char *c = *cr;
   register unsigned int i;
@@ -2048,24 +2290,288 @@ static void IntCrypt (char *pass, char **cr)
  * void func(peer_t *to, char *msg, size_t msglen)
  */
 
+#define __FGSET	(1<<6)
+#define __BGSET	(1<<7)
+#define __BOLD	(1<<8)
+#define __BLINK	(1<<9)
+#define __REV	(1<<10)
+#define __UL	(1<<11)
+
+#define ADD_COLORSTRING(a) *s++ = '\033', *s++ = '[', *s++ = a, *s++ = 'm'
+
+static size_t _reset_colormode (register char *s, register int colormode)
+{
+  register size_t i = 4;
+
+  *s++ = '\033';
+  *s++ = '[';
+  *s++ = '0';
+  if (colormode & (__FGSET | __BGSET))	/* foregrond or background color */
+  {
+    if (colormode & __FGSET)
+    {
+      *s++ = ';';
+      *s++ = '3';
+      *s++ = '0' + (colormode & 7);		/* foregrond color */
+      i += 3;
+    }
+    if (colormode & __BGSET)
+    {
+      *s++ = ';';
+      *s++ = '4';
+      *s++ = '0' + ((colormode >> 3) & 7);	/* backgrond color */
+      i += 3;
+    }
+  }
+  else if (colormode & __REV)
+  {
+    *s++ = ';';
+    *s++ = '7';
+    i += 2;
+  }
+  if (colormode & __BOLD)
+  {
+    *s++ = ';';
+    *s++ = '1';
+    i += 2;
+  }
+  if (colormode & __BLINK)
+  {
+    *s++ = ';';
+    *s++ = '5';
+    i += 2;
+  }
+  if (colormode & __UL)
+  {
+    *s++ = ';';
+    *s++ = '4';
+    i += 2;
+  }
+  *s = 'm';
+  return i;
+}
+
+int mirccolors[] = {__BOLD|7, 0, 4, 2, 1, 3, 5, __BOLD|1, __BOLD|3, __BOLD|2,
+		    6, __BOLD|6, __BOLD|4, __BOLD|5, __BOLD|0, 7};
+
+BINDING_TYPE_out_filter (ConvertColors);
+static void ConvertColors (peer_t *dcc, char *msg, size_t msglen)
+{
+  unsigned char buff[HUGE_STRING];
+  register unsigned char *c, *s;
+  register flag_t fl;
+  int colormode;
+
+  if (!IS_SESSION(session))
+    return;
+  colormode = 0;
+  fl = (session->loglev & (F_COLOR | F_COLORCONV));
+  msg[msglen-1] = 0;
+  if (fl == F_COLOR)			/* mirc color - don't convert */
+    return;
+  for (c = msg, s = buff; *c && s < &buff[sizeof(buff)-17]; c++)
+    switch (*c)
+    {
+      case '\002':		/* start/stop bold */
+	if (fl)				/* ansi or mono */
+	{
+	  colormode ^= __BOLD;
+	  if (colormode & __BOLD)
+	    ADD_COLORSTRING ('1');
+	  else
+	    s += _reset_colormode (s, colormode);
+	}
+	break;
+      case '\003':		/* mirc colors */
+	if ((c[1] >= '0' && c[1] <= '9') ||
+	    (c[1] == ',' && c[2] >= '0' && c[2] <= '9'))
+	{
+	  register int colorcode;
+
+	  colormode &= (__BLINK | __UL);
+	  if (c[1] != ',')			/* foreground */
+	  {
+	    c++;
+	    if (*c == '0' && c[1] >= '0' && c[1] <= '9')
+	      colorcode = *(++c) - '0';
+	    else if (*c == '1' && c[1] >= '0' && c[1] < '6')
+	      colorcode = *(++c) - '0' + 10;
+	    else
+	      colorcode = *c - '0';
+	    if (fl)				/* ansi or mono */
+	    {
+	      if (fl & F_COLOR)			/* ansi */
+		colormode |= __FGSET;
+	      colormode |= mirccolors[colorcode];
+	    }
+	  }
+	  if (c[1] == ',' && c[2] >= '0' && c[2] <= '9')
+	  {
+	    c += 2;
+	    if (*c == '0' && c[1] >= '0' && c[1] <= '9')
+	      colorcode = *(++c) - '0';
+	    else if (*c == '1' && c[1] >= '0' && c[1] < '6')
+	      colorcode = *(++c) - '0' + 10;
+	    else
+	      colorcode = *c - '0';
+	    if (fl & F_COLOR)			/* ansi */
+	      colormode |= __BGSET + ((mirccolors[colorcode] & ~__BOLD) << 3);
+	    else if (fl)			/* mono */
+	    {
+	      if (mirccolors[colorcode] & __BOLD)
+		  colormode |= __REV;
+	    }
+	  }
+	  if (fl) s += _reset_colormode (s, colormode);
+	}
+	else
+	{
+	  if (colormode & (__FGSET | __BGSET))
+	  {
+	    colormode &= (__BLINK | __UL);
+	    s += _reset_colormode (s, colormode);
+	  }
+	}
+	break;
+      case '\006':		/* start/stop blink */
+	if (fl)				/* ansi or mono */
+	{
+	  colormode ^= __BLINK;
+	  if (colormode & __BLINK)
+	    ADD_COLORSTRING ('5');
+	  else
+	    s += _reset_colormode (s, colormode);
+	}
+	break;
+      case '\017':		/* stop all colors */
+	if (fl)				/* ansi or mono */
+	{
+	  colormode = 0;
+	  ADD_COLORSTRING ('0');
+	}
+	break;
+//      case '\005':		/* start/stop alternate chars */
+//      case '\022':		/* ROM char */
+//	break;
+//      case '\011':		/* HT */
+//      case '\007':		/* bell */
+//	*s++ = *c;
+//	break;
+      case '\023':		/* just space */
+	*s++ = ' ';
+	break;
+      case '\026':		/* start/stop reverse */
+	if (fl)				/* ansi or mono */
+	{
+	  colormode ^= __REV;
+	  if (colormode & __REV)
+	    ADD_COLORSTRING ('7');
+	  else
+	    s += _reset_colormode (s, colormode);
+	}
+	break;
+      case '\037':		/* start/stop underline */
+	if (fl)				/* ansi or mono */
+	{
+	  colormode ^= __UL;
+	  if (colormode & __UL)
+	    ADD_COLORSTRING ('4');
+	  else
+	    s += _reset_colormode (s, colormode);
+	}
+	break;
+      case '\011':		/* HT */
+      case '\007' :		/* bell */
+      case '\r' :		/* CR */
+      case '\n' :		/* LF */
+	*s++ = *c;
+	break;
+      default:			/* supress rest of control codes */
+	if (*c > '\037')
+	  *s++ = *c;
+    }
+  if (colormode)		/* has ansi or mono color codes */
+  {
+    if (s > &buff[msglen-8])
+      s = &buff[msglen-8];
+    memcpy (s, "\033[0;10m", 8);
+  }
+  else
+    *s = 0;
+  strfcpy (msg, buff, msglen);
+}
+
 /* Config/scripts functions... */
 static int _dellistenport (char *pn)
 {
-  char sig[sizeof(ifsig_t)] = {S_TERMINATE};
   INTERFACE *pi;
 
   if (!(pi = Find_Iface (I_LISTEN, pn)))
     return 0;
-  New_Request (pi, F_SIGNAL, sig);
   Unset_Iface();
+  if (pi->IFSignal)
+    pi->ift |= pi->IFSignal (pi, S_TERMINATE);
+  else
+  {
+    ERROR ("_dellistenport: no signal function for \"%s\"", pn);
+    pi->ift |= I_DIED;
+  }
   return 1;
+}
+
+typedef struct
+{
+  unsigned short port;
+  userflag u;
+  int cnt;
+  tid_t tid;
+} _port_retrier;
+
+static iftype_t _port_retrier_s (INTERFACE *iface, ifsig_t signal)
+{
+  _port_retrier *r;
+  idx_t socket;
+
+  switch (signal)
+  {
+    case S_SHUTDOWN:
+    case S_TERMINATE:
+      KillTimer (((_port_retrier *)iface->data)->tid);
+      return I_DIED;
+    case S_TIMEOUT:
+      r = (_port_retrier *)iface->data;
+      if (r->u & U_ANY)
+	socket = Listen_Port (NULL, hostname, &r->port, iface->name, NULL, &session_handler_any);
+      else
+	socket = Listen_Port (NULL, hostname, &r->port, iface->name, NULL, &session_handler_bots);
+      if (socket >= 0)
+      {
+	LOG_CONN (_("Listening on port %hu%s."), r->port,
+		  (r->u & U_ANY) ? "" : _(" for bots"));
+	return I_DIED;			/* it done... */
+      }
+      else if (--r->cnt == 0)
+      {
+	LOG_CONN (_("Too many retries to listen port %hu%s, aborted."),
+		  r->port, (r->u & U_ANY) ? "" : _(" for bots"));
+	return I_DIED;			/* it done... */
+      }
+      r->tid = NewTimer (iface->ift, iface->name, S_TIMEOUT, 10, 0, 0, 0);
+      LOG_CONN (_("Could not open listening port %hu%s, retrying in 10 seconds."),
+		r->port, (r->u & U_ANY) ? "" : _(" for bots"));
+      break;
+    default: ;
+  }
+  return 0;
 }
 
 ScriptFunction (FE_port)	/* to config - see thrdcc_signal() */
 {
   unsigned short port;
+  idx_t socket;
+  INTERFACE *tmp;
   static char msg[SHORT_STRING];
-  userflag u = U_ANY | U_BOT;
+  userflag u = U_ANY | U_SPECIAL;
 
   if (!args || !*args)
     return 0;
@@ -2085,20 +2591,37 @@ ScriptFunction (FE_port)	/* to config - see thrdcc_signal() */
   if (u == 0)
     return _dellistenport (msg);
   /* check if already exist */
-  if (Find_Iface (I_LISTEN, msg))
+  if ((tmp = Find_Iface (I_LISTEN, msg)))
   {
+    tmp->ift &= ~I_FINWAIT;		/* abort terminating on restart */
     Unset_Iface();
     LOG_CONN (_("Already listening on port %hu!"), port);
     return port;
   }
   if (u & U_ANY)
-    port = Listen_Port (NULL, port, msg, NULL, &session_handler_any);
+    socket = Listen_Port (NULL, hostname, &port, msg, NULL, &session_handler_any);
   else
-    port = Listen_Port (NULL, port, msg, NULL, &session_handler_bots);
-  if (port == 0)
+    socket = Listen_Port (NULL, hostname, &port, msg, NULL, &session_handler_bots);
+  if (socket < 0)
   {
-    snprintf (msg, sizeof(msg), _("Cannot open listening port on %hu%s!"),
+    /* check if we are called from init() */
+    if (Set_Iface (NULL) == NULL)
+    {
+      INTERFACE *i;
+      register _port_retrier *x = safe_malloc (sizeof(_port_retrier));
+
+      x->port = port;
+      x->u = u;
+      x->cnt = 0;
+      i = Add_Iface (I_TEMP, msg, _port_retrier_s, NULL, x);
+      x->tid = NewTimer (i->ift, i->name, S_TIMEOUT, 10, 0, 0, 0);
+      snprintf (msg, sizeof(msg),
+		_("Could not open listening port %hu%s, retrying in 10 seconds."),
+		port, (u & U_ANY) ? "" : _(" for bots"));
+    }
+    else snprintf (msg, sizeof(msg), _("Cannot open listening port on %hu%s!"),
 	      port, (u & U_ANY) ? "" : _(" for bots"));
+    Unset_Iface();
     BindResult = msg;
     return 0;
   }
@@ -2115,11 +2638,12 @@ char *IFInit_DCC (void)
   BT_Dcc = Add_Bindtable ("dcc", B_UCOMPL);		/* these tables have bindings */
   _dc_init_bindings();
   BT_Crypt = Add_Bindtable ("passwd", B_UNIQMASK);
-  Add_Binding ("passwd", "$1*", 0, 0, (Function)&IntCrypt);
+  Add_Binding ("passwd", "$1*", 0, 0, (Function)&IntCrypt, NULL);
   BT_Login = Add_Bindtable ("login", B_MASK);
-  Add_Binding ("login", "*", U_ACCESS, -1, (Function)&get_chat);
+  Add_Binding ("login", "*", U_ACCESS, U_NONE, (Function)&get_chat, NULL);
   BT_Chaton = Add_Bindtable ("chat-on", B_MASK);	/* rest are empty */
   BT_Outfilter = Add_Bindtable ("out-filter", B_MASK);
+  Add_Binding ("out-filter", "*", 0, 0, (Function)&ConvertColors, NULL);
   BT_Chat = Add_Bindtable ("chat", B_MASK);
   BT_Infilter = Add_Bindtable ("in-filter", B_MASK);
   BT_Chatoff = Add_Bindtable ("chat-off", B_MASK);

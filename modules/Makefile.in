@@ -2,7 +2,7 @@
 # Makefile for base modules directory for recursive compilation.
 #
 # This file is part of FoxEye distribution.
-# Copiright (C) 1999-2001 Andrej Gritsenko <andrej@rep.kiev.ua>
+# Copiright (C) 1999-2008 Andrej Gritsenko <andrej@rep.kiev.ua>
 
 SHELL = @SHELL@
 
@@ -20,12 +20,13 @@ all: static
 
 clean:
 	@for x in */; do $(MAKE) -C $$x -f ../Makefile.mods clean ;done
-	rm -f *.o core *~ ${top_srcdir}/core/static.h
+	rm -f *.o core *~ ${top_srcdir}/core/static.h install-sh
 
 distclean: clean
 	rm -f Makefile Makefile.mods
 
 modules install install-strip uninstall:
+	@test -f install-sh || @LN_S@ ../install-sh .
 	@if test "x$(LD_MODS)" = "x"; then \
 	set fnord $(MAKEFLAGS); amf=$$2; \
 	for subdir in */; do \

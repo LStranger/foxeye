@@ -5,165 +5,268 @@
 module irc-channel
 :%*
 :
+:Base channel support for IRC networks: joining/parting channel, autojoin,\
+ autorejoin, users' statistics, main control (permanent bans/exceptions),\
+ logging, netsplit/netjoin detection, some channel interactions.
+
+identify
+:%* password
+:Allows you to identify yourself as owner of nick %_%N%_.
 :
 
 set irc-netsplit-log-timeout
 :%* <seconds>
-:
-:
+:Netsplit collection timeout for logging.
+:This variable determines how long we will collect netsplit data before it\
+ will be logged. Used for grouping users who got netsplit.
  Default: 3.
 
 set irc-netjoin-log-timeout
 :%* <seconds>
-:
-:
- Default: 6.
+:Netjoin collection timeout for logging.
+:This variable determines how long we will collect netjoin data before it\
+ will be decided that users who don't returned yet are lost in netsplit.
+ Default: 20.
 
 set irc-netsplit-keep
 :%* <seconds>
-:
-:
+:Netsplit keep timeout for logging.
+:This variable determines how log we will keep list of users who got netsplit.\
+ After this timeout data will be dropped and users will be reported as lost in\
+ netsplit.
  Default: 21600.
 
 set irc-join-on-invite
 :%* ["ask-"]<"yes"|"no">
-:
-:
+:Should we join a channel when got invite?
+:This variable defines behavior what we should do when we are invited to join\
+ some channel. If it is set to yes then we will join the channel where we are\
+ invited. Otherwise invite will be ignored.
  Default: ask-no.
 
 set irc-enforcer-time
 :%* <seconds>
-:
-:
+:Bans enforcer delay.
+:This variable defines delay after mode change onto channel and before we will\
+ kick users who must be removed from channel.
  Default: 4.
 
 set irc-ban-keep
 :%* <minutes>
-:
-:
+:Dynamic bans keeping time.
+:This variable defines how long dynamic ban will be set on the channel before\
+ we unset it. Unsetting is useful to avoid overloading maximum channel modes\
+ (it's limited so if we add too many bans onto channel then we will get\
+ message that we cannot set mode at some moment).
  Default: 120.
-
-set irc-exempt-keep
-:%* <minutes>
-:
-:
- Default: 60.
-
-set irc-invite-keep
-:%* <minutes>
-:
-:
- Default: 60.
 
 set irc-mode-timeout
 :%* <seconds>
-:
-:
- Default: 30
+:Our mode changes for the same user timeout.
+:This variable is used when we changed mode of some user on the channel but\
+ someone (possibly network services) changed it back. It defines how much\
+ minimum timeout is between our modechanges (so any changes before this\
+ timeout will be tolerated). That timeout is useful to avoid abusive mode\
+ change flood.
+ Default: 4.
 
 set irc-greet-time
 :%* <seconds>
-:
-:
+:Greeting timeout.
+:This variable is used when someone joining the channel. It defines minimum\
+ timeout between greetings to avoid greetings flood and to don't greet the\
+ same user again if he/she was reconnected the network.
  Default: 120.
 
 set irc-ignore-ident-prefix
-:% <"yes"|"no">
-:
-:
+:%* <yes|no>
+:Should we ignore ident prefix for non-idented users?
+:This variable defines if we should ignore ident prefix (^ or ~) in host mask.
  Default: yes.
+
+set irc-default-kick-reason
+:%* <string>
+:Default reason for command "kick".
+:This variable defines which reason must me send to IRC server if none was\
+ written in command %ckick%n.
+ Default: "requested".
 
 fset irc-join
 :
 :
-:Used when... Macros: %%.
- Default: "%%y%%N%%n(%%@) has joined %%#"
+:Used when someone joins some IRC channel. Macros: %%N, %%@, %%L, %%#.
+ Default: "%%y%%N%%n(%%@) has joined %%#".
 
 fset irc-part
 :
 :
-:Used when... Macros: %%.
- Default: "%%b%%N%%b(%%@) has left %%# (%%*)"
+:Used when someone leaves some IRC channel. Macros: %%N, %%@, %%L, %%#,\
+ %%* (message).
+ Default: "%%^%%N%%^(%%@) has left %%# (%%*)".
 
 fset irc-nickchange
 :
 :
-:Used when... Macros: %%.
- Default: "%%b%%N%%b is now known as %%y%%*%%n"
+:Used when someone on IRC network changed their nick to another. Macros:\
+ %%N (old nick), %%@, %%L, %%* (new nick).
+ Default: "%%^%%N%%^ is now known as %%y%%*%%n".
 
 fset irc-quit
 :
 :
-:Used when... Macros: %%.
- Default: "%%b%%N%%b(%%@) has quit %%# (%%*)"
+:Used when someone quits IRC network. Macros: %%N, %%@, %%L, %%# (network),\
+ %%* (reason).
+ Default: "%%^%%N%%^(%%@) has quit %%# (%%*)".
 
 fset irc-lost-in-netsplit
 :
 :
-:Used when... Macros: %%.
- Default: "%%b%%N%%b has lost in netsplit (%%*)"
+:Used when there was a netsplit on IRC network and some users didn't returned\
+ to the channel after netsplit is over. Macros: %%N, %%@, %%L, %%# (network),
+ \%%* (netsplit servers pair).
+ Default: "%%^%%N%%^ has lost in netsplit (%%*)".
 
 fset irc-kick
 :
 :
-:Used when... Macros: %%.
- Default: "%%b%%N%%b has kicked %%L from %%# (%%*)"
+:Used when one user (possibly network services) has kicked another user from\
+ IRC channel. Macros: %%N, %%@, %%L (target), %%#, %%* (reason).
+ Default: "%%^%%N%%^ has kicked %%L from %%# (%%*)".
 
 fset irc-modechange
 :
 :
-:Used when... Macros: %%.
- Default: "mode/%%# (%%*) by %%b%%N%%b"
+:Used when someone changed mode of some IRC channel. Macros: %%N, %%@, %%L,\
+ %%#, %%* (mode change line).
+ Default: "mode/%%# (%%*) by %%^%%N%%^".
 
 fset irc-netsplit
 :
 :
-:Used when... Macros: %%.
- Default: "netsplit (%%*), quits: %%N"
+:Used when network split (disconnect between servers) has been detected on\
+ IRC network and some user(s) quit the network. Macros: %%N (nicklist), %%#,\
+ %%* (netsplit servers pair).
+ Default: "netsplit (%%*), quits: %%N".
 
 fset irc-netjoin
 :
 :
-:Used when... Macros: %%.
- Default: "netsplit of %%* over, joins: %%N"
+:Used when network join (reconnect of server after network split) has been\
+ detected on IRC network and some user(s) join the IRC channel. Macros:\
+ %%N (nicklist), %%#, %%* (joined server), %%- (time of split).
+ Default: "netsplit of %%* is over, joins: %%N".
 
 fset irc-topic
 :
 :
-:Used when... Macros: %%.
- Default: "%%N %%?*changed?unset? the topic of %%#%%?* to: %%*??"
+:Used when someone changed topic of some IRC channel. Macros: %%N, %%@, %%L,\
+ %%#, %%* (topic).
+ Default: "%%N %%?*changed?unset? the topic of %%#%%?* to: %%*??".
 
 ss-irc adduser
-:adduser ["!"]<nick> [lname]
+:adduser ["!"]nick [lname]
 :
-:
+:Adds current hostmask of user %_nick%_ to client record %_lname%_. If there\
+ isn't client record of %_lname%_ then adds new client record with no flags.\
+ If %_lname%_ is omitted then use %_nick%_ as client record name. If %_nick%_\
+ is prepended with exclamation sign then form hostmask literally, otherwise\
+ form hostmask from some assumes.
 
 ss-irc deluser
-:deluser ["!"]<nick>
+:deluser ["!"]nick
 :
-:
+:Deletes current hostmask from client record of user who has currently nick\
+ %_nick%_ on the IRC network. If there is no hostmasks left then deletes\
+ client record of that user. If %_nick%_ is prepended with exclamation sign\
+ then form hostmask literally, otherwise form hostmask from some assumes.
 
 ss-irc say
-:say [channel["@"net]] <text>
+:say [channel["@"net]] text
 :
-:
+:Sends some message %_text%_ to some IRC channel.
 
 ss-irc act
-:act [channel["@"net]] <text>
+:act [channel["@"net]] text
 :
-:
+:Sends some CTCP ACTION %_text%_ to some IRC channel.
 
 ss-irc ctcp
-:ctcp target["@"net] <text>
+:ctcp target["@"net] text
 :
-:
+:Sends some CTCP %_text%_ to some %_target%_ (channel or nick) on IRC\
+ network. First word of %_text%_ is converted to upper case before sending.
 
 ss-irc notice
-:notice target["@"net] <text>
+:notice target["@"net] text
 :
-:
+:Sends some NOTICE %_text%_ to some %_target%_ (channel or nick) on IRC\
+ network.
 
 ss-irc topic
-:topic [channel["@"net]] <text>
+:topic [channel["@"net]] text
 :
+:Changes (unsets if %_text%_ is empty) topic of some IRC channel to %_text%_.
+
+ss-irc kick
+:kick [channel["@"net]] nick [reason]
 :
+:Kicks user %_nick%_ from current channel with some %_reason%_ if bot have\
+ enough priveleges to do that. If %_reason%_ is omitted then kicks with\
+ reason from variable %circ-default-kick-reason%n.
+
+ss-irc kickban
+:kickban [channel["@"net]] ["-"|"@"]nick [reason]
+:
+:Sets ban and kicks user %_nick%_ from current channel with some %_reason%_\
+ if bot have enough priveleges to do that. If %_reason%_ is omitted then\
+ kicks with reason from variable %circ-default-kick-reason%n. Mask is formed\
+ from current hostmask for %_nick%_ and may be modified by prefix "%^-%^" or\
+ "%^@%^" as follows:
+   no prefix    *!ident@*.host.net
+   prefix "-"   *!ident@site.host.net
+   prefix "@"   *!*@site.host.net
+
+ss-irc voice
+:voice nick [channel["@"net]]
+:
+:Sets mode +v for %_nick%_ on some IRC channel if bot have enough priveleges\
+ to do that.
+
+ss-irc devoice
+:devoice nick [channel["@"net]]
+:
+:Removes mode +v for %_nick%_ on some IRC channel if bot have enough\
+ priveleges to do that.
+
+ss-irc op
+:op nick [channel["@"net]]
+:
+:Sets mode +o for %_nick%_ on some IRC channel if bot have enough priveleges\
+ to do that.
+
+ss-irc deop
+:deop nick [channel["@"net]]
+:
+:Removes mode +o for %_nick%_ on some IRC channel if bot have enough\
+ priveleges to do that.
+
+ss-irc hop
+:hop nick [channel["@"net]]
+:
+:Sets mode +h for %_nick%_ on some IRC channel if bot have enough priveleges\
+ to do that and network has that mode.
+
+ss-irc dehop
+:dehop nick [channel["@"net]]
+:
+:Removes mode +h for %_nick%_ on some IRC channel if bot have enough\
+ priveleges to do that.
+
+ss-irc greeting
+:greeting [channel["@"net]] [--lname] [text|"none"]
+:
+:Changes text of greeting for any channel on any network. Value "%^none%^"\
+ removes greeting for that channel. You can omit network or channel name\
+ if you have set default channel with command %cconsole%n. If you have enough\
+ permissions (master or above) then you can change greeting for others with\
+ this command too.

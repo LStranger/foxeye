@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -14,6 +14,8 @@
  *     You should have received a copy of the GNU General Public License
  *     along with this program; if not, write to the Free Software
  *     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * This file is part of FoxEye's source: variables and functions API.
  */
 
 #ifndef INIT_C
@@ -69,7 +71,9 @@ char *IFInit_Sheduler (void);
 void Status_Interfaces (INTERFACE *);		/* for .status (dispatcher.c) */
 void Status_Sheduler (INTERFACE *);		/* the same (sheduler.c) */
 void Status_Clients (INTERFACE *);		/* the same (list.c) */
-//void Status_Encodings (INTERFACE *);		/* the same (conversion.c) */
+#ifdef HAVE_ICONV
+void Status_Encodings (INTERFACE *);		/* the same (conversion.c) */
+#endif
 
 #ifndef DISPATCHER_C
 # define Command(a,b,c)		int b(const char *);
@@ -101,6 +105,7 @@ String  ("my-hostname", hostname, "")
 String  ("locale", locale, "")
 String	("charset", Charset, "")		/* used by couple of modules */
 String  ("listfile", Listfile, "listfile")
+String	("dcc-port-range", dcc_port_range, "")
 Integer	("connection-timeout", dcc_timeout, 120)
 Integer ("ident-timeout", ident_timeout, 60)
 Flood   (dcc, 20, 5)

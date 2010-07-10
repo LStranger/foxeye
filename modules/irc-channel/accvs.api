@@ -1,6 +1,6 @@
 
-Module "irc-channel":
----------------------
+ Module "irc-channel":
+ ---------------------
 
 join=>part|kick|quit join=>netsplit=>netjoin join=>netsplit=>quit
 
@@ -54,3 +54,4 @@ REJN  "iirrcc--nneettjjooiinn"    MASK
 -     "kkeeyycchhaannggee"      MASK
   (int) void func(char *_p_u_b_l_i_c, unsigned char *_w_h_o, const char *_l_n_a_m_e,
 		  userflag _c_f, char *_k_e_y);
+    Used not yet.

@@ -1,0 +1,41 @@
+#00001	31.08.2006  04.10.2006	.chattr doesn't working
+#00002	31.08.2006  01.09.2006	_ircch_quited() doesn't called
+#00003	31.08.2006  04.10.2006	.console doesn't change target
+#00004	04.09.2006  10.09.2006	OOPS on SIGTERM
+#00005	05.09.2006  14.09.2006	irc split detection does not work
+#00006	05.09.2006  10.09.2006	nick are not lowcased to cyrillic
+#00007	25.09.2006  29.09.2006	irc_rpl_isupport() doesn't work
+#00008	28.10.2006  29.10.2006	wtmp polled on each message
+#00009	28.10.2006  fixed	strange logging on disconnect non-connected net
+#00010	29.10.2006  02.11.2006	.topic does nothing for the server
+#00011	29.10.2006  02.11.2006	service added with id > ID_ANY? it must not?
+#00012	06.08.2007  01.10.2008	on '.connect irc' searched for "rc" and failed
+#00013	16.08.2007  15.06.2010	.restart then .die -> SIGSEGV
+#00014	16.08.2007  ???		deadcycle in irc-channel.c:1041
+#00015	19.08.2007  15.06.2010	@irc deleted from listfile after .rehash
+#00016	16.09.2008  01.10.2008	bad split detection?
+#00017	01.10.2008  02.10.2008	.greetings --nick ... does not work
+#00018	15.10.2008  ???		tree error -> Out of memory! (see debug11)
+#00019	16.10.2008  06.07.2010	generated conf: # Нет сведений об этом.
+#00020	16.10.2008  07.07.2010	add module [name]: lua - all vars asked again!
+#00021	16.10.2008  fixed	.die in console - nothing appropriate???
+#00022	28.04.2010  fixed	greeting on JOIN just after PART?
+#00023	09.06.2010  10.06.2010	listfile save: since first change instead of last
+#00024	09.06.2010  14.06.2010	lot of "socket blah-blah" after .die
+#00025	09.06.2010  10.06.2010	'.console *' does not reset channel
+#00026	09.06.2010  10.06.2010	it does conversion for not-matching targets
+#00027	09.06.2010  14.06.2010	no name sent over chat after .quit
+#00028	10.06.2010  12.06.2010	errors: Lua: variable ... with unknown ptr ...
+#00029	13.06.2010  13.06.2010	'.status' outputs malformed version
+#00030	14.06.2010  14.06.2010	'.help away' - bad colors
+#00031	14.06.2010  15.06.2010	init:_add_fn: function "port" already exist
+#00032	15.06.2010		after restart: list: bad cleanup: 0/0/0/0/0/0/4
+#00033	07.07.2010  07.07.2010	module lua does not inserts itself in config
+#00034	07.07.2010  09.07.2010	short help says "yes" since gen. says "on"
+#00035	07.07.2010  left as is	should be a way to enter "?" value on gen.
+#00036	07.07.2010		color codes in console are not supressed
+#00037	08.07.2010		strange adding .+name -user apf *!*@qqqqqqq
+#00038	08.07.2010		.restart on console kills everything
+#00039	08.07.2010  08.07.2010	irc_mode: either strange server or I'm dumb
+#00040	08.07.2010  08.07.2010	foxeye in free(): warning: junk pointer...
+#00042	09.07.2010		mask for banned aren't searched in listfile

@@ -15,16 +15,18 @@
  *     along with this program; if not, write to the Free Software
  *     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * internal functions for message queueing
+ * The FoxEye "irc" module: internal functions declarations
+ *   (used for messages queueing)
  */
 
 /* msgs.c -> irc.c */
 char *irc_mynick (char *);
-void irc_lcs (char *, INTERFACE *, const char *, size_t); /* buf,pmsgout,nick */
+//void irc_lcs (char *, INTERFACE *, const char *, size_t); /* buf,pmsgout,nick */
 
 /* irc.c -> msgs.c */
 int irc_privmsgin (INTERFACE *, char *, char*, char *, int, int, int,
-			char *(*) (char *, const char *, size_t));
+//int irc_privmsgin (INTERFACE *, char *, char*, char *, int, int, int);
+			size_t (*) (char *, const char *, size_t));
 void irc_privmsgout (INTERFACE *, int); /* just run stack */
 int irc_privmsgout_default (INTERFACE *, REQUEST *);
 void irc_privmsgout_cancel (INTERFACE *, char *);

@@ -1,0 +1,50 @@
+	FoxEye's Lua reference manual.
+
+Service here is either network name, channel ("name@service") or internal
+    service (":name").
+Client name here is string "nick@service".
+Lname here is registration name (login name).
+
+ foxeye.bind(table,mask,uflags,func)
+    - adds func into table for mask and uflags; uflags is text string
+      that consists of two parts (global and group) divided by '|' (what
+      means flags are matched if either global or group flags matched
+      alltogether) or by '&' (what means all global and group should be
+      matched); any part of uflags may be prepended with '-' too (what
+      means condition is negated, i.e. flags are matched if none of them
+      are present on client).
+ foxeye.unbind(table[,func])
+    - removes func from table; if func omitted then table cleared from
+      all Lua bindings.
+ nick = foxeye.client.nick(client)
+    - parses client name and returns nick of client.
+ foxeye.log(where,text)
+    - puts text into log flagged as warning with target string $where.
+ foxeye.error(text)
+    - puts text into error log.
+ foxeye.debug(text)
+    - puts text into debug log.
+ net.send(network,message)
+    - sends message to network.
+ net.message(client,text)
+    - sends message to client.
+ net.notice(client,text)
+    - sends notice to client.
+ ver = foxeye.version()
+    - returns FoxEye version string.
+ foxeye.event(type,lname[,value])
+    - stores event of some type (type is unique text string) for lname
+      with optional value.
+ time,value = foxeye.EFind(type,lname[,time])
+    - finds last event of some type for lname; if time is defined then
+      events older than that time will be ignored; returns 0,0 if event
+      was not found.
+ nick = net.ison(service[,lname])
+    - finds nick of lname on service; returns (nil) if lname is offline;
+      if lname is omitted (or nil) then returns own nick on service.
+ time,host,lname = net.check(service[,nick])
+    - checks if nick is currently online on service and returns his/her
+      last activity time, host string and lname; if nick omitted (or nil)
+      then returns when, string and who set the topic on channel.
+
+	Copyright (C) 2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>

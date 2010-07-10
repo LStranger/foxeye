@@ -22,16 +22,28 @@ debug levels (direct sessions may has debug log only if level<3):
 
 listfile (<name> means it can be get via GetField(x,"name")):
 record	lname:<passwd>:uid:flags:<charset>:<info>:<.login>:<.logout>:createtime
-host	+nick!ident@host
-special	 speciallname:flags:expiretime text
+host	+[[nick[!ident]][:passwd]@]host[/port][%connflags]
+special	 @servicename:flags:expiretime text
 other	 name value
 
+concept for LIDs:
+-32768...-1	bans
+0		me
+1...149		ignores (and IDs of named fields)
+150		unused
+151...32767	Lnames (special and regular)
+
 speciallnames records:
-&#+!	channels	<passwd>=+k <info>=chanmodelock
-@	networks	<passwd>=ident <info>=realname <.logout>=network
-	bots		<.logout>=network(i.e."botnet","eggbot",etc.)
+channels	<passwd>=+k <info>=chanmodelock
+networks/bots	<lname>=@lname <.logout>=type(i.e. "irc","eggdrop",etc.)
 
 botnet protocol:
 '\010'cmd...		command "cmd..." (adressed to "@*" with flags F_SHARE)
 '\013'name passwd	change password for lname name (the same as above)
 ch# nick@bot...		message to botnet channel ch# from nick@bot
+nick1@bot1 nick@bot...	message to nick1@bot1 from nick@bot
+
+reserved flags for connchain:
+Z	compressed link (zlib)
+S	SSL listener
+s	SSL outgoing connection

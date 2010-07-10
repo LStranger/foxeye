@@ -10,9 +10,11 @@ cvs:
 	@echo "*** Concatenating config variables into core/foxeye.h"
 	@-rm -f core/foxeye.h
 	@cat core/foxeye.h.in modules/*/accvs.cfg >core/foxeye.h 2>/dev/null || echo -n ""
+	@echo "" >>core/foxeye.h
+	@cat core/accvs.blist modules/*/accvs.api 2>/dev/null | sh blist2h >>core/foxeye.h
 	@echo "*** Concatenating documentation into doc/modules.api"
 	@-rm -f doc/modules.api
-	@cat doc/modules.api.in modules/*/accvs.api >doc/modules.api 2>/dev/null || echo -n ""
+	@cat doc/modules.api.in core/accvs.blist modules/*/accvs.api 2>/dev/null | grep -v '^#' >doc/modules.api
 	@echo "*** Concatenating translations lists into po/POTFILES.in"
 	@cp -f po/POTFILES.in.in po/POTFILES.in
 	@for i in modules/*/accvs.POTFILES; do \
@@ -25,21 +27,25 @@ cvs:
 	    done; \
 	  fi; \
 	done
+	@echo "*** Getting local copy of gettext files"
+	@autopoint > /dev/null
 	@echo "*** Retrieving configure tests needed by configure.in"
-	@aclocal
+	@aclocal -I m4
 	@echo "*** Scanning for include statements"
 	@autoheader
-	@echo "*** Building Makefile templates (step one)"
+	@echo "*** Building Makefile templates"
 	@automake
-	@echo "*** Building Makefile templates (step two)"
+	@echo "*** Building ./configure script"
 	@autoconf
+	@sed 's/ core / /g' < configure > configure.tmp
+	@-rm -f configure && mv configure.tmp configure && chmod +x configure
 	@-rm -f config.cache config.h
+	@rm -rf autom4te*.cache
 	@echo "*** Create date/time stamp"
 	@touch stamp-h.in
 	@echo "*** Finished"
 	@echo "    Don't forget to run ./configure"
 	@echo "    If you haven't done so in a while, run ./configure --help"
-	@rm -rf autom4te*.cache
 	@sleep 1
 
 cvs-clean:

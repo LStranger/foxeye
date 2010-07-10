@@ -49,14 +49,14 @@ set irc-privmsg-keep
  Default: 30.
 
 set irc-default-nick
-:%* <nick>
+:%* <string>
 :Default nick in IRC networks.
 :Used on registering on IRC network if there wasn't defined "%^nick%^" field\
  (list of used nicks) in listfile record for this network.
- Default: value of variable %^nick%^.
+ Default: value of variable %cnick%n.
 
 set irc-default-ident
-:%* <ident>
+:%* <ascii string>
 :Default ident in IRC networks.
 :Used on registering on IRC network. Note that if there is %^identd%^ service\
  on your host then value of %_ident%_ will be ignored by server.
@@ -69,14 +69,15 @@ set irc-default-realname
  Default: your system's real name.
 
 set irc-umode
-:%* <+|-modes>
+:%* <+|-chars>
 :Default umode changes in IRC networks.
 :Your startup user mode is set by server (usually it's "+i") but we may\
  attempt to change it. This variable defines desired changes in user mode\
  after registering on network.
+ Default: ""
 
 set irc-privmsg-commands
-:%* "yes"|"no"
+:%* <yes|no>
 :Allow or not using of private messages as commands.
 :This variable defines behavior when someone sends private message to me. If\
  this variable is set to %^yes%^ then it will be parsed and checked for\
@@ -88,39 +89,39 @@ fset irc-message
 :
 :Used when logging standard message on IRC network. Macros: %%N, %%@, %%L,\
  %%#, %%*.
- Default: "<%%N> %%*"
+ Default: "<%%N> %%*".
 
 fset irc-notice
 :
 :
 :Used when logging notice on IRC network. Macros: %%N, %%@, %%L, %%#, %%*.
- Default: "-%%N- %%*"
+ Default: "-%%N- %%*".
 
 fset irc-ctcp
 :
 :
 :Used when logging CTCP message on IRC network. Macros: %%N, %%@, %%L, %%#,\
  %%*.
- Default: "%%N requested CTCP %%* from %%?#%%#?me?"
+ Default: "%%N requested CTCP %%* from %%?#%%#?me?".
 
 fset irc-ctcp-reply
 :
 :
 :Used when logging CTCP reply on IRC network. Macros: %%N, %%@, %%L, %%#, %%*.
- Default: "CTCP reply from %%N: %%*"
+ Default: "CTCP reply from %%N: %%*".
 
 fset irc-action
 :
 :
 :Used when logging action on IRC network. Macros: %%N, %%@, %%L, %%#, %%*.
- Default: "* %%N %%*"
+ Default: "* %%N %%*".
 
 fset irc-message-command
 :
 :
 :Used when logging private message command on IRC network. Macros: %%N,\
  %%@, %%L, %%#, %%*.
- Default: "%%?#<<?(?%%N%%?#>>?!%%@)? !%%L! %%*"
+ Default: "%%?#<<?(?%%N%%?#>>?!%%@)? !%%L! %%*".
 
 fset irc-ctcp-command
 :

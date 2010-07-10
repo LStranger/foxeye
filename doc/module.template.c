@@ -15,11 +15,12 @@
  *     along with this program; if not, write to the Free Software
  *     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * The FoxEye module template.
+ * This file is a part of FoxEye source documentation. A module template.
  */
 
 #include "foxeye.h"
 #include "modules.h"
+#include "init.h"
 
 /*
  * this function must receive signals:

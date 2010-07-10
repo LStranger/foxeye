@@ -1,0 +1,107 @@
+# first section is usage
+# second section is that config maker will put into config
+# third section is full help
+
+module irc-ctcp
+:%*
+:
+:Basic support for main CTCP DCC (Client-To-Client-Protocol Direct Client\
+ Connection) commands: CHAT and SEND, and also few CTCP commands: CHAT, TIME,\
+ VERSION. Receiving files (i.e. DCC SEND support) includes support for mIRC\
+ extension RESUME/ACCEPT which allows transfer restore after disruption.
+
+set incoming-path
+:%* <path>
+:Path for uploading files
+:This variable specifies the directory where uploaded files will be put. It\
+ used also by users sharing for temporary files. If unset then you cannot\
+ download any files.
+ Default: "~/.foxeye/files".
+
+set dcc-ahead
+:%* [0-32]
+:DCC turbo mode
+:This variable defines how much packets will be send in predictable manner\
+ to speed-up file transfer. It will have effect on fast connections with\
+ inappropriate delay (satellite connections for example). If set it to 0\
+ then DCC files transfer will be in standard (not-turbo) mode.
+ Default: 0.
+
+set dcc-get-maxsize
+:%* <number>
+:Max size of file on DCC get
+:This variable defines maximum size of getting file in bytes. You never can\
+ get file that is longer than this value. Setting it to negative value means\
+ "unlimited" and maximum size will be 4GiB.
+ Default: 1'000'000'000.
+
+set dcc-resume-min
+:%* <number>
+:Minimum size of existing file for resume
+:This variable defines how large file part you have to have to get this file\
+ auto-resumed (mIRC style resume). See also %yhelp set dcc-resume%n.
+ Default: 10'000.
+
+set dcc-resume
+:%* [yes|no|ask-yes|ask-no]
+:Enable or not mIRC style resume
+:This variable determines behavior when anyone send you some file via DCC.\
+ If you set it to %^yes%^ and the same file already exists and is larger than\
+ %cdcc-resume-min%n bytes in size then the file will be resumed for you.\
+ If you set it with %^ask%^ and you have the active user interface then you\
+ will be asked if you wish to resume it. See also %yhelp set dcc-get%n.
+ Default: yes.
+
+set dcc-resume-timeout
+:%* <seconds>
+:Timeout for DCC ACCEPT (in seconds)
+:This variable defines how long we will wait for ACCEPT after we sent RESUME\
+ to remote side. If we don't get ACCEPT in that time then we will abort\
+ our waiting and get file without resume (i.e. reget it from scratch).
+ Default: 30.
+
+set dcc-get
+:%* [yes|no|ask-yes|ask-no]
+:Enable or not DCC SEND requests
+:This variable determines behavior when you get DCC file send request from\
+ anyone. If you set it to %^on%^ then you will have auto-get files. If you\
+ set it to %^off%^ then you will never get files and that request will be\
+ ignored. If you set it with %^ask%^ and you have the active user interface\
+ then you will be asked if you wish to get this file. See also %yhelp set\
+ dcc-get-maxsize%n.
+ Default: yes.
+
+set dcc-accept-chat
+:%* [yes|no|ask-yes|ask-no]
+:Enable or not incoming DCC CHAT requests
+:This variable defines if we should accept incoming DCC CHAT requests from IRC\
+ network. If you set it with %^ask%^ and you have the active user interface\
+ then you will be asked whether you wish to accept that request or not.
+ Default: ask-yes.
+
+set dcc-get-overwrite
+:%* [yes|no|ask-yes|ask-no]
+:Overwrite or not existing files when downloading over IRC
+:This variable defines behavior when we got a DCC SEND request for some file\
+ that already exists. If you set it to %^yes%^ then existing file will be\
+ overwritten, and you set it to %^no%^ then that request will be ignored. And\
+ if you set it with %^ask%^ and you have active user interface then you will\
+ be asked whether you wish to accept that request and overwrite file or not.\
+ This behavior can be extended if you enabled mIRC style resume commands, see\
+ %yhelp set dcc-resume%n for further details.
+ Default: no.
+
+set dcc-allow-ctcp-chat
+:%* [yes|no]
+:Enable or not CTCP "CHAT" command
+:This variable defines if we will allow users to ask for incoming connection\
+ by sending CTCP CHAT command to us. If enabled then we may open listening\
+ port and send CTCP DCC CHAT command to that user.
+ Default: yes.
+
+fset dcc-got-file
+:
+:
+:Used when someone successfully uploaded some file to you. Macros: %%L, %%@,\
+ %%N, %%I, %%* (file name).
+ Default: "DCC GET of %%* from %%N completed.".

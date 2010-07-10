@@ -2,15 +2,16 @@
 # Makefile for module compilation.
 #
 # This file is part of FoxEye distribution.
-# Copiright (C) 1999-2001 Andrej Gritsenko <andrej@rep.kiev.ua>
+# Copiright (C) 1999-2010 Andrej Gritsenko <andrej@rep.kiev.ua>
 
 SHELL = /bin/sh
 FILENAME = $(shell @BASENAME@ `pwd`)
 CFILES = $(wildcard *.c)
 HFILES = $(wildcard *.h)
 HELPFILES = $(wildcard *.help)
+DOCFILES = $(wildcard *.ref)
 OBJS = $(patsubst %.c,%.o,$(CFILES))
-DISTFILES = $(CFILES) $(HFILES) $(HELPFILES)
+DISTFILES = $(CFILES) $(HFILES) $(HELPFILES) $(DOCFILES)
 
 srcdir = @srcdir@
 top_srcdir = ../..
@@ -22,11 +23,16 @@ prefix = @prefix@
 exec_prefix = @exec_prefix@
 pkglibdir = @libdir@/@PACKAGE@
 helpdir = $(pkglibdir)/help
+docdir = ${prefix}/share/doc/@PACKAGE@-@VERSION@
 
 INCLUDES = -I${top_srcdir}/tree -I${top_srcdir}/core
 INSTALL = @INSTALL@ -m 644
 mkinstalldirs = $(SHELL) ${top_srcdir}/mkinstalldirs
 CFLAGS = -c @CFLAGS@ @DEFS@ $(INCLUDES) @CPPFLAGS@
+LDFLAGS = @LDFLAGS@
+MODLIBS = @MODLIBS@
+FILENAMESUB = $(shell echo $(FILENAME) | sed 's/-/_/g')
+EXTRAMODLIBS = $(shell echo `$(MODLIBS); echo $$MODLIBS_$(FILENAMESUB)`)
 
 all static: $(OBJS)
 
@@ -36,10 +42,10 @@ clean:
 	rm -f *.o *.so core *~
 
 $(FILENAME).so: $(OBJS)
-	@LD@ @LDFLAGS@ -o $@ $^
+	@LD@ $(LDFLAGS) -o $@ $^ $(EXTRAMODLIBS)
        
 %.o: %.c $(HFILES) ${top_srcdir}/core/modules.h ${top_srcdir}/core/foxeye.h ${top_srcdir}/core/protos.h
-	@CC@ -o $@ $(CFLAGS) -DMAKING_MODS -D_STATIC_INIT=modinit_`echo $(FILENAME)|sed 's/-/_/'` $<
+	@CC@ -o $@ $(CFLAGS) -D_STATIC_INIT=modinit_$(FILENAMESUB) $<
 
 install-help:
 	$(mkinstalldirs) $(DESTDIR)$(helpdir)
@@ -51,7 +57,16 @@ install-help:
 	    else :; fi \
 	done
 
-install install-strip: modules install-help
+install-docs:
+	$(mkinstalldirs) $(DESTDIR)$(docdir)
+	@list='$(DOCFILES)'; for p in $$list; do \
+	    if test -f $$p; then \
+		echo "   $(DESTDIR)$(docdir)/$$p"; \
+		$(INSTALL) $$p $(DESTDIR)$(docdir)/$$p; \
+	    else :; fi \
+	done
+
+install install-strip: modules install-help install-docs
 	$(mkinstalldirs) $(DESTDIR)$(pkglibdir)
 	@if test -f $(FILENAME).so; then \
 	    echo "   $(DESTDIR)$(pkglibdir)/$(FILENAME).so"; \
@@ -65,7 +80,13 @@ uninstall-help:
 	    rm -f $(DESTDIR)$(helpdir)/$$hp; \
 	done
 
-uninstall: uninstall-help
+uninstall-docs:
+	@list='$(DOCFILES)'; for p in $$list; do \
+	    echo "  rm -f $(DESTDIR)$(docdir)/$$p"; \
+	    rm -f $(DESTDIR)$(docdir)/$$p; \
+	done
+
+uninstall: uninstall-help uninstall-docs
 	@if test -f $(DESTDIR)$(pkglibdir)/$(FILENAME).so; then \
 	    echo "  rm -f $(DESTDIR)$(pkglibdir)/$(FILENAME).so"; \
 	    rm -f $(DESTDIR)$(pkglibdir)/$(FILENAME).so; \

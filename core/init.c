@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -15,28 +15,20 @@
  *     along with this program; if not, write to the Free Software
  *     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * Main bot variables and functions init and scripts registering and export.
+ * This file is part of FoxEye's source: variables and functions registering
+ *   and init; scripts registering and export; config parser; bindtables layer.
  * Bindtables: register unregister function unfunction script
  */
 
 #include "foxeye.h"
 
-#include <pthread.h>
 #include <signal.h>
 #include <ctype.h>
+#include <locale.h>
 
 #include "direct.h"
 #include "tree.h"
 #include "list.h"
-
-#ifndef HAVE_SIGACTION
-# define sigaction sigvec
-#ifndef HAVE_SA_HANDLER
-# define sa_handler sv_handler
-# define sa_mask sv_mask
-# define sa_flags sv_flags
-#endif
-#endif /* HAVE_SIGACTION */
 
 struct bindtable_t
 {
@@ -161,7 +153,7 @@ static bindtable_t *Try_Bindtable (const char *name, int force_add)
 }
 
 binding_t *Add_Binding (const char *table, const char *mask, userflag gf,
-		      userflag cf, Function func)
+		      userflag cf, Function func, const char *name)
 {
   bindtable_t *bt = Try_Bindtable (table, 1);
   binding_t *bind = safe_malloc (sizeof(binding_t));
@@ -174,16 +166,18 @@ binding_t *Add_Binding (const char *table, const char *mask, userflag gf,
       bind->key = NULL;
       bind->gl_uf = gf;
       bind->ch_uf = cf;
-      bind->name = NULL;
+      bind->name = safe_strdup (name);
       bind->func = func;
       bind->prev = bt->lr;
       bt->lr = bind;
-      dprint (2, "binds: added last resort binding to bindtable \"%s\"", table);
+      dprint (2, "binds: added last resort binding to bindtable \"%s\"%s%s",
+	      table, name ? " for interpreter function " : "", NONULL(name));
       return bind;
     }
     if (bt->list.tree && (b = Find_Key (bt->list.tree, mask)))
     {
-      if (b->func == func && b->gl_uf == gf && b->ch_uf == cf)
+      if (b->func == func && b->gl_uf == gf && b->ch_uf == cf &&
+	  !safe_strcmp (b->name, name))
       {
 	FREE (&bind);				/* duplicate binding */
 	return NULL;
@@ -214,7 +208,8 @@ binding_t *Add_Binding (const char *table, const char *mask, userflag gf,
     {
       if (!safe_strcasecmp (b->key, mask))	/* the same mask found! */
       {
-	if (b->func == func && b->gl_uf == gf && b->ch_uf == cf)
+	if (b->func == func && b->gl_uf == gf && b->ch_uf == cf &&
+	    !safe_strcmp (b->name, name))
 	{
 	  FREE (&bind);				/* duplicate binding */
 	  return NULL;
@@ -240,14 +235,14 @@ binding_t *Add_Binding (const char *table, const char *mask, userflag gf,
   }
   bind->gl_uf = gf;
   bind->ch_uf = cf;
-  bind->name = NULL;
+  bind->name = safe_strdup (name);
   bind->func = func;
-  dprint (2, "binds: added binding to bindtable \"%s\" with mask \"%s\"",
-	  table, mask);
+  dprint (2, "binds: added binding to bindtable \"%s\" with mask \"%s\"%s%s",
+	  table, mask, name ? " for interpreter function " : "", NONULL(name));
   return bind;
 }
 
-void Delete_Binding (const char *table, Function func)
+void Delete_Binding (const char *table, Function func, const char *name)
 {
   bindtable_t *bt = Try_Bindtable (table, 0);
   binding_t *bind, *b, *last = NULL, *next;
@@ -256,7 +251,7 @@ void Delete_Binding (const char *table, Function func)
     return;
   for (b = bt->lr; b; )			/* first pass: ckeck last resort */
   {
-    if (b->func == func)
+    if (b->func == func && (!name || !safe_strcmp (b->name, name)))
     {
       if (last)
 	last->prev = bind = b->prev;
@@ -264,6 +259,7 @@ void Delete_Binding (const char *table, Function func)
 	bt->lr = bind = b->prev;
       dprint (2, "binds: deleting last resort binding from bindtable \"%s\"",
 	      table);
+      FREE (&b->name);
       FREE (&b);
       b = bind;
     }
@@ -281,19 +277,21 @@ void Delete_Binding (const char *table, Function func)
     {
       for (b = l->s.data; b; )
       {
-	if (b->func == func)
+	if (b->func == func && (!name || !safe_strcmp (b->name, name)))
 	{
 	  dprint (2, "binds: deleting binding from bindtable \"%s\" with key \"%s\"",
 		  table, b->key);
 	  if (last)			/* it's not first binding - remove */
 	  {
 	    last->prev = bind = b->prev;
+	    FREE (&b->name);
 	    FREE (&b);
 	    b = bind;
 	  }
 	  else if (b->prev)		/* it's first binding - replace */
 	  {
 	    bind = b->prev;
+	    FREE (&b->name);
 	    memcpy (b, bind, sizeof(binding_t));
 	    FREE (&bind);
 	  }
@@ -301,6 +299,7 @@ void Delete_Binding (const char *table, Function func)
 	  {
 	    Delete_Key (bt->list.tree, b->key, b);
 	    FREE (&b->key);
+	    FREE (&b->name);
 	    FREE (&b);
 	    b = l->s.data;			/* next leaf is moved here */
 	  }
@@ -317,19 +316,21 @@ void Delete_Binding (const char *table, Function func)
   {
     for (bind = b, next = NULL; bind; )	/* try descent into it */
     {
-      if (bind->func == func)
+      if (bind->func == func && (!name || !safe_strcmp (b->name, name)))
       {
 	dprint (2, "binds: deleting binding from bindtable \"%s\" with mask \"%s\"",
 		table, bind->key);
 	if (next)			/* it's not first binding */
 	{
 	  next->prev = bind->prev;
+	  FREE (&bind->name);
 	  FREE (&bind);
 	  bind = next->prev;
 	}
 	else if (bind->prev)		/* it's first binding */
 	{
 	  b = bind->prev;
+	  FREE (&bind->name);
 	  FREE (&bind);
 	  if (!last)				/* skip current */
 	    bt->list.bind = b;
@@ -345,6 +346,7 @@ void Delete_Binding (const char *table, Function func)
 	  else
 	    last->next = b;
 	  FREE (&bind->key);
+	  FREE (&bind->name);
 	  FREE (&bind);
 	  bind = b;
 	}
@@ -368,7 +370,8 @@ binding_t *Check_Bindtable (bindtable_t *bt, const char *str, userflag gf,
   binding_t *b;
   char buff[LONG_STRING];
   register char *ch = buff;
-  register const char *s = NONULL(str);
+  register userflag tgf, tcf;
+  register const unsigned char *s = NONULL(str);
   char cc = ' ';
   size_t sz;
 
@@ -392,8 +395,24 @@ binding_t *Check_Bindtable (bindtable_t *bt, const char *str, userflag gf,
   if (bt->type == B_UNIQ)
   {
     b = Find_Key (bt->list.tree, buff);
-    if (b && (b->gl_uf & gf) != b->gl_uf && (b->ch_uf & cf) != b->ch_uf)
-      b = NULL;
+    if (b)
+    {
+      if (b->gl_uf & U_NEGATE)				/* -a */
+	tgf = (b->gl_uf & ~gf);
+      else						/* a */
+	tgf = (b->gl_uf & gf);
+      if (b->ch_uf & U_NEGATE)				/* -b */
+	tcf = (b->ch_uf & ~cf);
+      else						/* b */
+	tcf = (b->ch_uf & cf);
+      if (b->ch_uf & U_AND)
+      {
+	if (tgf != b->gl_uf || tcf != b->ch_uf)		/* [-]a&[-]b */
+	  b = NULL;
+      }
+      else if (tgf != b->gl_uf && tcf != b->ch_uf)	/* [-]a|[-]b */
+	b = NULL;
+    }
   }
   else
   {
@@ -407,7 +426,20 @@ binding_t *Check_Bindtable (bindtable_t *bt, const char *str, userflag gf,
     }
     for (i = 0; b; b = b->next)
     {
-      if ((b->gl_uf & gf) != b->gl_uf && (b->ch_uf & cf) != b->ch_uf)
+      if (b->gl_uf & U_NEGATE)				/* -a */
+	tgf = (b->gl_uf & ~gf);
+      else						/* a */
+	tgf = (b->gl_uf & gf);
+      if (b->ch_uf & U_NEGATE)				/* -b */
+	tcf = (b->ch_uf & ~cf);
+      else						/* b */
+	tcf = (b->ch_uf & cf);
+      if (b->ch_uf & U_AND)
+      {
+	if (tgf != b->gl_uf || tcf != b->ch_uf)		/* [-]a&[-]b */
+	  continue;
+      }
+      else if (tgf != b->gl_uf && tcf != b->ch_uf)	/* [-]a|[-]b */
 	continue;
       switch (bt->type)
       {
@@ -585,6 +617,7 @@ bool Confirm (char *message, bool defl)
     }
     pthread_mutex_unlock (&ct.mutex);
     nanosleep (&tp, NULL);			/* it may be cancelled here */
+    pthread_testcancel();			/* or here - on non-POSIX */
   }
   pthread_cleanup_pop (1);
   return ct.res;
@@ -660,6 +693,32 @@ static char *_quote_expand (char *ptr)
   return _usage;
 }
 
+static void _add_var_to_config (const char *name, void *ptr, size_t s)
+{
+  if (Init)
+  {
+    Set_Iface (Init);			/* flush everything now */
+    while (Get_Request());
+    Unset_Iface();
+  }
+  Get_Help ("set", name, ConfigFileIface, -1, -1, NULL, NULL, 1);
+  if (s > 1)
+    New_Request (ConfigFileIface, F_REPORT, "set %s %s", name,
+		 _quote_expand ((char *)ptr));
+  else if (!s)
+    New_Request (ConfigFileIface, F_REPORT, "set %s %ld", name,
+		 *(long int *)ptr);
+  else if ((*(bool *)ptr & 1) == TRUE)
+    New_Request (ConfigFileIface, F_REPORT, "set %s %son", name,
+		 (*(bool *)ptr & ASK) ? "ask-" : "");
+  else
+    New_Request (ConfigFileIface, F_REPORT, "set %s %soff", name,
+		 (*(bool *)ptr & ASK) ? "ask-" : "");
+  Set_Iface (ConfigFileIface);
+  while (Get_Request());		/* write file */
+  Unset_Iface();
+}
+
 static void Get_ConfigFromConsole (const char *name, void *ptr, size_t s)
 {
   INTERFACE *cons = Find_Iface (I_CONSOLE, NULL);
@@ -684,7 +743,7 @@ static void Get_ConfigFromConsole (const char *name, void *ptr, size_t s)
 	else				/* boolean variable */
 	  New_Request (cons, 0, "%s [%s%s]: ", _usage,
 					(*(bool *)ptr & ASK) ? "ask-" : "",
-					(*(bool *)ptr & 1) ? "on" : "off");
+					(*(bool *)ptr & 1) ? "yes" : "no");
 	Unset_Iface();
 	prompt = 0;
       }
@@ -697,7 +756,7 @@ static void Get_ConfigFromConsole (const char *name, void *ptr, size_t s)
       Unset_Iface();
       if (!strcmp (_usage, "?"))	/* "?" entered - print help */
       {
-	Get_Help ("set", name, cons, -1, -1, NULL, "\n", 2);
+	Get_Help ("set", name, cons, -1, -1, NULL, NULL, 2);
 	prompt = 1;
       }
       else if (_usage[0])
@@ -725,25 +784,10 @@ static void Get_ConfigFromConsole (const char *name, void *ptr, size_t s)
 	break;
       }
     } while (!(cons->ift & I_DIED));
+#if 0
   if (ConfigFileIface)
-  {
-    Get_Help ("set", name, ConfigFileIface, -1, -1, NULL, NULL, 1);
-    if (s > 1)
-      New_Request (ConfigFileIface, F_REPORT, "set %s %s", name,
-		   _quote_expand ((char *)ptr));
-    else if (!s)
-      New_Request (ConfigFileIface, F_REPORT, "set %s %ld", name,
-		   *(long int *)ptr);
-    else if ((*(bool *)ptr & 1) == TRUE)
-      New_Request (ConfigFileIface, F_REPORT, "set %s %son", name,
-		   (*(bool *)ptr & ASK) ? "ask-" : "");
-    else
-      New_Request (ConfigFileIface, F_REPORT, "set %s %soff", name,
-		   (*(bool *)ptr & ASK) ? "ask-" : "");
-    Set_Iface (ConfigFileIface);
-    while (Get_Request());		/* write file */
-    Unset_Iface();
-  }
+    _add_var_to_config (name, ptr, s);
+#endif
 }
 
 static int Start_FunctionFromConsole
@@ -756,7 +800,7 @@ static int Start_FunctionFromConsole
     return 0;
   /* get function parameters */
   Set_Iface (Init);
-  New_Request (cons, 0, "add %s (%s)? []: ", name, msg);
+  New_Request (cons, 0, "add %s? (%s) []: ", name, msg);
   Unset_Iface();
   do
   {
@@ -770,18 +814,24 @@ static int Start_FunctionFromConsole
     if (_usage[0])
       break;
   } while (!(cons->ift & I_DIED));
-  if (!_usage[0] || _usage[0] == '\n')	/* just "Enter" was pressed */
+  if (!_usage[0] || _usage[0] == '\n' )	/* just "Enter" was pressed */
     return 0;
   if (_usage[0] == '?')
-    Get_Help ("function", name, cons, -1, -1, NULL, "\n", 2);
+    Get_Help ("function", name, cons, -1, -1, NULL, NULL, 2);
   /* start - check if valid */
-  else if ((*func) (_usage) != 0 && ConfigFileIface)
+#if 0
+  else if ((*func) (_usage) > 0 && ConfigFileIface)
   {
-    New_Request (ConfigFileIface, F_REPORT, "%s %s", name, _usage);
+    if (_usage[0])
+      New_Request (ConfigFileIface, F_REPORT, "%s %s", name, _usage);
     Set_Iface (ConfigFileIface);
     while (Get_Request());		/* add to config file */
     Unset_Iface();
   }
+#else
+  else
+    (*func) (_usage);
+#endif
   return 1;
 }
 
@@ -820,23 +870,27 @@ static int _add_var (const char *name, void *var, size_t s)
 {
   VarData *data;
 
-  if (O_GENERATECONF != FALSE && s != 2)	/* not read only */
+  if (O_GENERATECONF != FALSE && s != 2)	/* if not read-only */
     Get_ConfigFromConsole (name, var, s);
+  if (ConfigFileFile && s != 2)
+    _add_var_to_config (name, var, s);
   if ((data = Find_Key (VTree, name)))		/* already registered */
   {
     if (data->data != var)
       WARNING ("init: another data already binded to variable \"%s\"", name);
+    else
+      dprint (4, "init:_add_var: retry on %s", name);
     return 0;
   }
   dprint (2, "init:_add_var: %s %u", name, (unsigned int)s);
-  data = safe_calloc (1, sizeof(VarData) + safe_strlen(name));
+  data = calloc (1, sizeof(VarData) + safe_strlen(name));
   data->data = var;
   strcpy (data->name, name);
   data->len = s;
   if (!Insert_Key (&VTree, data->name, data, 1))	/* try unique name */
     return 1;
-  FREE (&data);
-  WARNING ("init:_add_var: variable \"%s\" already exist", name);
+  free (data);
+  ERROR ("init:_add_var: tree error");
   return 0;
 }
 
@@ -880,7 +934,7 @@ static int _del_var (const char *name)
   }
   dprint (2, "init:_del_var: %s", name);
   Delete_Key (VTree, name, data);
-  FREE (&data);
+  free (data);
   return 1;
 }
 
@@ -917,13 +971,21 @@ _add_fn (const char *name, int (*func)(const char *), const char *msg)
     do {
       i = Start_FunctionFromConsole (name, func, msg);
     } while (i);
-  data = safe_calloc (1, sizeof(VarData2) + safe_strlen(name));
+  if ((data = Find_Key (STree, name)))		/* already registered */
+  {
+    if (data->f.n != func)
+      WARNING ("init: another ptr already binded to function \"%s\"", name);
+    else
+      dprint (4, "init:_add_fn: retry on %s", name);
+    return 0;
+  }
+  data = calloc (1, sizeof(VarData2) + safe_strlen(name));
   data->f.n = func;
   strcpy (data->name, name);
   if (!Insert_Key (&STree, data->name, data, 1))	/* try unique */
     return 1;
-  FREE (&data);
-  WARNING ("init:_add_fn: function \"%s\" already exist", name);
+  free (data);
+  ERROR ("init:_add_fn: tree error");
   return 0;
 }
 
@@ -938,7 +1000,7 @@ static int _del_fn (const char *name)
   }
   dprint (2, "init:_del_fn: %s", name);
   Delete_Key (STree, name, data);
-  FREE (&data);
+  free (data);
   return 1;
 }
 
@@ -1031,14 +1093,20 @@ static void _set_floods (void)
 	}
       } while (!(cons->ift & I_DIED));
     }
-    if (ConfigFileIface)
-    {
-      New_Request (ConfigFileIface, F_REPORT, "flood-type %s %hd:%hd", name,
-		   data->f.ld[0], data->f.ld[1]);
-      Set_Iface (ConfigFileIface);
-      while (Get_Request());		/* write file */
-      Unset_Iface();
-    }
+  }
+}
+
+static void _report_floods (void)
+{
+  LEAF *leaf = NULL;
+  VarData2 *data;
+  char *name;
+
+  while ((leaf = Next_Leaf (TTree, leaf, &name)))
+  {
+    data = leaf->s.data;
+    New_Request (ConfigFileIface, F_REPORT, "flood-type %s %hd:%hd", name,
+		 data->f.ld[0], data->f.ld[1]);
   }
 }
 
@@ -1202,9 +1270,6 @@ static ScriptFunction (cfg_set)		/* to config - by registering */
   VarData *data = NULL;
   register char *c;
 
-//  if (args && !*args)
-//    args = NULL;
-//  if (args)
   if (args && *args)
   {
     /* any variable */
@@ -1214,10 +1279,7 @@ static ScriptFunction (cfg_set)		/* to config - by registering */
     data = Find_Key (VTree, var);
     if (!data)
       return 0;
-//    c = NextWord ((char *)args);
     return _set (data, NextWord ((char *)args));
-//    if (*c)				/* is data empty or just "" ? */
-//      return _set (data, c);
   }
   return 0;
 }
@@ -1335,6 +1397,7 @@ int Save_Formats (void)
  */
 
 		/* .set [<variable>[ <value>]] */
+BINDING_TYPE_dcc (dc_set);
 static int dc_set (peer_t *dcc, char *args)
 {
   char var[STRING];
@@ -1403,6 +1466,7 @@ static int dc_set (peer_t *dcc, char *args)
 }
 
 		/* .fset [<format variable>[ <value>]] */
+BINDING_TYPE_dcc (dc_fset);
 static int dc_fset (peer_t *dcc, char *args)
 {
   char var[STRING];
@@ -1462,6 +1526,7 @@ static int dc_fset (peer_t *dcc, char *args)
 }
 
 		/* .status [-a|<module name>] */
+BINDING_TYPE_dcc (dc_status);
 static int dc_status (peer_t *dcc, char *args)
 {
   char ifsig[sizeof(ifsig_t)] = {S_REPORT};
@@ -1472,8 +1537,8 @@ static int dc_status (peer_t *dcc, char *args)
   else if (args && !strcmp (args, "-a"))
     args = "*";
   printl (buff, sizeof(buff),
-_("Universal network client " PACKAGE ", version " VERSION ".\n\
-Operating system %s, hostname %@, started %*."),
+_("Universal network client " PACKAGE ", version " VERSION ".\r\n\
+Running on %s at host %@, started %*."),
 	  0, NULL, hostname, Nick, NULL, 0L, 0, 0, ctime (&StartTime));
   New_Request (dcc->iface, 0, buff);
   if (!args)
@@ -1481,6 +1546,9 @@ Operating system %s, hostname %@, started %*."),
     Status_Interfaces (dcc->iface);
     Status_Sheduler (dcc->iface);
     Status_Clients (dcc->iface);
+#ifdef HAVE_ICONV
+    Status_Encodings (dcc->iface);
+#endif
   }
   else
   {
@@ -1491,6 +1559,7 @@ Operating system %s, hostname %@, started %*."),
 }
 
 		/* .binds [-l|<name>|-a [<name>]] */
+BINDING_TYPE_dcc (dc_binds);
 static int dc_binds (peer_t *dcc, char *args)
 {
   int io;
@@ -1569,19 +1638,23 @@ static int dc_binds (peer_t *dcc, char *args)
       b = bt->list.bind;
     while (b)
     {
-      if (io && b->name)
-	continue;
-      userflagtostr (b->gl_uf, flags);
-      if (b->ch_uf && !(b->ch_uf & U_ANY)) /* if this is set then denied */
+      if (io == 0 || !b->name)
       {
-	strfcat (flags, "|", sizeof(flags));
-	userflagtostr (b->ch_uf, &flags[strlen(flags)]);
+	userflagtostr (b->gl_uf, flags);
+	if (b->ch_uf && !(b->ch_uf & U_ANY)) /* if this is set then denied */
+	{
+	  if (b->ch_uf & U_AND)
+	    strfcat (flags, "&", sizeof(flags));
+	  else
+	    strfcat (flags, "|", sizeof(flags));
+	  userflagtostr (b->ch_uf, &flags[strlen(flags)]);
+	}
+	if (b->name && b->func && b->func ("-", 0, NULL))
+	  New_Request (dcc->iface, 0, "%-23.23s %-7.7s %-15.15s %s", b->key,
+		       flags, BindResult, b->name);
+	else
+	  New_Request (dcc->iface, 0, "%-23.23s %s", b->key, flags);
       }
-      if (b->name && b->func && b->func ("-", 0, NULL))
-	New_Request (dcc->iface, 0, "%-23.23s %-7.7s %-15.15s %s", b->key,
-		     flags, BindResult, b->name);
-      else
-	New_Request (dcc->iface, 0, "%-23.23s %s", b->key, flags);
       if (bt->type == B_UNIQ)
       {
 	if ((l = Next_Leaf (bt->list.tree, l, NULL)))
@@ -1608,19 +1681,23 @@ static int dc_binds (peer_t *dcc, char *args)
       b = bt->list.bind;
     while (b)
     {
-      if (io && b->name)
-	continue;
-      userflagtostr (b->gl_uf, flags);
-      if (b->ch_uf && !(b->ch_uf & U_ANY)) /* if this is set then denied */
+      if (io == 0 || !b->name)
       {
-	strfcat (flags, "|", sizeof(flags));
-	userflagtostr (b->ch_uf, &flags[strlen(flags)]);
+	userflagtostr (b->gl_uf, flags);
+	if (b->ch_uf && !(b->ch_uf & U_ANY)) /* if this is set then denied */
+	{
+	  if (b->ch_uf & U_AND)
+	    strfcat (flags, "&", sizeof(flags));
+	  else
+	    strfcat (flags, "|", sizeof(flags));
+	  userflagtostr (b->ch_uf, &flags[strlen(flags)]);
+	}
+	if (b->name && b->func && b->func ("-", 0, NULL))
+	  New_Request (dcc->iface, 0, "%-23.23s %-7.7s %-15.15s %s", b->key,
+		       flags, BindResult, b->name);
+	else
+	  New_Request (dcc->iface, 0, "%-23.23s %s", b->key, flags);
       }
-      if (b->name && b->func && b->func ("-", 0, NULL))
-	New_Request (dcc->iface, 0, "%-23.23s %-7.7s %-15.15s %s", b->key,
-		     flags, BindResult, b->name);
-      else
-	New_Request (dcc->iface, 0, "%-23.23s %s", b->key, flags);
       if (bt->type == B_UNIQ)
       {
 	if ((l = Next_Leaf (bt->list.tree, l, NULL)))
@@ -1637,6 +1714,7 @@ static int dc_binds (peer_t *dcc, char *args)
 
 		/* .module -l */
 		/* .module [-c|-d] <module name> */
+BINDING_TYPE_dcc (dc_module);
 static int dc_module (peer_t *dcc, char *args)
 {
   if (!args || !*args)
@@ -1649,6 +1727,7 @@ static int dc_module (peer_t *dcc, char *args)
 }
 
 		/* .rehash */
+BINDING_TYPE_dcc (dc_rehash);
 static int dc_rehash (peer_t *dcc, char *args)
 {
   char i[sizeof(ifsig_t)] = {S_FLUSH};
@@ -1656,32 +1735,36 @@ static int dc_rehash (peer_t *dcc, char *args)
   New_Request (dcc->iface, 0, "Rehashing...");
   if (ParseConfig (Config, 0))
     bot_shutdown (BindResult, 3);
-  Add_Request (-1, "*", F_SIGNAL, i);    /* flush all interfaces */
+  Add_Request (-1, "*", F_SIGNAL, i);	/* flush all interfaces */
   return 1;
 }
 
 		/* .restart */
+BINDING_TYPE_dcc (dc_restart);
 static int dc_restart (peer_t *dcc, char *args)
 {
   New_Request (dcc->iface, 0, "Restarting...");
-  init();
-  return -1;	/* don't log it :) */
+//  init();
+  kill (getpid(), SIGINT);
+  return -1;	/* don't log it :) */ /* TODO: decide if we have to log it */
 }
 
 		/* .die [<reason>] */
-static void dc_die (peer_t *dcc, char *args)
+BINDING_TYPE_dcc (dc_die);
+static int dc_die (peer_t *dcc, char *args)
 {
   char message[MESSAGEMAX];
 
   if (dcc)
   {
-    snprintf (message, sizeof(message), _("Killed by %s%c %s"),
-	      dcc->iface->name, (args && *args) ? ':' : '!', NONULL(args));
+    snprintf (message, sizeof(message), _("Terminated by %s%c %s"),
+	      dcc->iface->name, args ? ':' : '.', NONULL(args));
     bot_shutdown (message, 0);
   }
   else
     bot_shutdown (args, 0);
   exit (0);
+  return 0; /* never reached but to avoid warnings... */
 }
 
 /* ----------------------------------------------------------------------------
@@ -1700,12 +1783,12 @@ int Lname_IsOn (const char *pub, const char *lname, const char **name)
   if (!pub)
     return 0;
   if ((c = strrchr (pub, '@'))) /* network community */
-    netw = Lock_Clientrecord (c++);
+    netw = Lock_Clientrecord (++c);
   else /* my link */
     netw = Lock_Clientrecord ((c = pub));
   if (netw)
   {
-    if ((Get_Flags (netw, NULL) & (U_SPECIAL | U_BOT)) &&
+    if ((Get_Flags (netw, NULL) & U_SPECIAL) &&
 	(nt = Get_Field (netw, ".logout", NULL))) /* get network type */
       bind = Check_Bindtable (BT_IsOn, nt, -1, -1, NULL);
     else
@@ -1716,11 +1799,11 @@ int Lname_IsOn (const char *pub, const char *lname, const char **name)
     bind = NULL;
   if (!bind || bind->name)
     return 0;		/* no such network/service */
-  return bind->func (c, pub, lname, name);
+  return bind->func (c, (pub == c) ? NULL : pub, lname, name);
 }
 
 modeflag Inspect_Client (const char *pub, const char *name, const char **lname,
-			 const char **host, time_t *idle)
+			 const char **host, time_t *idle, short *cnt)
 {
   binding_t *bind;
   const char *c, *nt;
@@ -1729,12 +1812,12 @@ modeflag Inspect_Client (const char *pub, const char *name, const char **lname,
   if (!pub)
     return 0;
   if ((c = strrchr (pub, '@'))) /* network community */
-    netw = Lock_Clientrecord (c++);
+    netw = Lock_Clientrecord (++c);
   else /* my link */
     netw = Lock_Clientrecord ((c = pub));
   if (netw)
   {
-    if ((Get_Flags (netw, NULL) & (U_SPECIAL | U_BOT)) &&
+    if ((Get_Flags (netw, NULL) & U_SPECIAL) &&
 	(nt = Get_Field (netw, ".logout", NULL))) /* get network type */
       bind = Check_Bindtable (BT_Inspect, nt, -1, -1, NULL);
     else
@@ -1745,28 +1828,12 @@ modeflag Inspect_Client (const char *pub, const char *name, const char **lname,
     bind = NULL;
   if (!bind || bind->name)
     return 0;		/* no such network/service */
-  return bind->func (c, pub, name, lname, host, idle);
+  return bind->func (c, (pub == c) ? NULL : pub, name, lname, host, idle, cnt);
 }
 
 /* ----------------------------------------------------------------------------
  * main init()
  */
-
-static void sighup_handler (int signo)
-{
-  char i[sizeof(ifsig_t)] = {S_FLUSH};
-
-  Add_Request (I_LOG, "*", F_BOOT, "Got SIGHUP: rehashing...");
-  Add_Request (-1, "*", F_SIGNAL, i);	/* flush all interfaces */
-}
-
-static void sigint_handler (int signo)
-{
-  Set_Iface (NULL);			/* lock the dispatcher */
-  Add_Request (I_LOG, "*", F_BOOT, "Got SIGINT: restarting...");
-  init();				/* restart */
-  Unset_Iface();			/* continue */
-}
 
 static void _init_all (void)
 {
@@ -1799,12 +1866,12 @@ static void _bind_destroy (void *bind)
 void init (void)
 {
   int g = O_GENERATECONF;
-  struct sigaction act;
   char new_path[PATH_MAX+FILENAME_LENGTH+2];
   char *msg;
   char ifsig[sizeof(ifsig_t)] = {S_TERMINATE};
   bindtable_t *bt;
   binding_t *b;
+  INTERFACE *stub;
 
 //
 // этап 0 - инициализация всего, что инициализируется в core
@@ -1824,6 +1891,14 @@ void init (void)
 //  - sockets
 //  - main loop
 //
+  /* it can be recall of init so don't create another */
+  if (!Init)
+  {
+    Init = Add_Iface (I_INIT, NULL, &_init_sig, &_config_req, NULL);
+    Init->ift &= ~I_LOCKED;			/* must be unlocked now! */
+  }
+  stub = Add_Iface (I_TEMP, NULL, NULL, NULL, NULL);
+  Set_Iface (stub);				/* and we want logging */
   /* kill all modules */
   Add_Request (I_MODULE, "*", F_SIGNAL, ifsig);
   /* I think I need to destroy trees ? */
@@ -1856,15 +1931,13 @@ void init (void)
   _add_fn ("script", &cfg_script, NULL);	/* but don't ask */
   _add_fn ("flood-type", &cfg_flood_type, NULL);
   /* init all */
+  Unset_Iface();				/* IFInit_DCC() want this */
   if ((msg = IFInit_DCC()))
     bot_shutdown (msg, 3);
+  Set_Iface (stub);				/* want full logging again */
   /* load help for variables and more */
   Add_Help ("set");
   Add_Help ("main");
-  /* it can be recall of init so don't create another */
-  if (!Init)
-    Init = Add_Iface (I_INIT, NULL, &_init_sig, &_config_req, NULL);
-  Init->ift &= ~I_LOCKED;			/* must be not locked! */
 //
 // этап 1 - инициализация переменных и загрузка конфига, если не указан "-r"
 //
@@ -1886,6 +1959,7 @@ void init (void)
 //          запросить значения всех переменных, в т.ч. из модулей по конфигу
 //
   /* if generation is true, start new config */
+#if 0 // moved
   if (g != FALSE)
   {
     snprintf (new_path, sizeof(new_path), "%s.new", Config);
@@ -1894,73 +1968,116 @@ void init (void)
       bot_shutdown (_("Cannot create configuration file."), 3);
     fprintf (ConfigFileFile, "#!%s\n# Generated by itself on %s\n", RunPath,
 	     ctime (&Time));
+    Unset_Iface();		/* have to change current, see main.c */
     ConfigFileIface = Add_Iface (I_TEMP, NULL, NULL, &_cfile_req, NULL);
-    ConfigFileIface->ift = I_TEMP;		/* create interface */
+    ConfigFileIface->ift = I_TEMP;		/* force flags */
+    Set_Iface (ConfigFileIface);		/* we are now current */
   }
+#endif
   if (g != FALSE || O_DEFAULTCONF != FALSE)
   {
-    /* reregister all, ask, and write to config */
+    /* reregister all and ask, not write to config yet */
     ifsig[0] = S_REG;
     O_GENERATECONF = TRUE;
     Add_Request (-1, "*", F_SIGNAL, ifsig);
     _set_floods ();
     /* ask to include any new scripts */
     while (Start_FunctionFromConsole ("script", &cfg_script, "filename"));
+    O_GENERATECONF = FALSE;
+#if 0 // moved
     /* put all "script" calls to new config */
-    fprintf (ConfigFileFile, "%s\n", _Scripts_List);
-    FREE (&_Scripts_List);
+    if (_Scripts_List)
+    {
+      fprintf (ConfigFileFile, "%s\n", _Scripts_List);
+      FREE (&_Scripts_List);
+    }
+#endif
     /* ending */
+  }
+//
+// постэтап - сохранение нового конфига, если указан "-g"
+//
+  if (g != FALSE)
+  {
+    struct timespec tp;
+
+    /* give a last chance for threads to get to dispatcher! */
+    Unset_Iface();
+    tp.tv_sec = 0;
+    tp.tv_nsec = 10000000L;
+    nanosleep (&tp, NULL);
+    /* 0.5a4: moved here */
+    /* if generation is true, start new config */
+    snprintf (new_path, sizeof(new_path), "%s.new", Config);
+    ConfigFileFile = fopen (new_path, "w+");
+    if (!ConfigFileFile)
+      bot_shutdown (_("Cannot create configuration file."), 3);
+    fprintf (ConfigFileFile, "#!%s\n# Generated by itself on %s\n", RunPath,
+	     ctime (&Time));
+    ConfigFileIface = Add_Iface (I_TEMP, NULL, NULL, &_cfile_req, NULL);
+    ConfigFileIface->ift = I_TEMP;		/* force flags */
+    Set_Iface (ConfigFileIface);		/* it's current again */
+    /* it's time to write to config so signal to register again */
+    ifsig[0] = S_REG;
+    Add_Request (-1, "*", F_SIGNAL, ifsig);
+    Set_Iface (Init);				/* flush everything now */
+    while (Get_Request());
+    Unset_Iface();
+    _report_floods();
+    while (Get_Request());			/* write everything to file */
+    /* put all "script" calls to new config */
+    if (_Scripts_List)
+    {
+      fprintf (ConfigFileFile, "%s\n", _Scripts_List);
+      FREE (&_Scripts_List);
+    }
+    fclose (ConfigFileFile);			/* save new config, mode 0700 */
+    chmod (new_path, S_IRUSR | S_IWUSR | S_IXUSR);
+    unlink (Config);				/* delete old config */
+    rename (new_path, Config);
+    Unset_Iface();				/* see above */
+    Set_Iface (stub);				/* set it current again */
+    ConfigFileIface->ift |= I_DIED;		/* delete interface */
+    ConfigFileFile = NULL;
+    ConfigFileIface = NULL;
   }
   _lock_var ("charset");		/* not changeable anymore */
   if ((msg = IFInit_Users()))		/* try to load listfile */
     bot_shutdown (msg, 3);
   if (!_load_formats())			/* try to load formats */
     Add_Request (I_LOG, "*", F_BOOT, "Loaded formats file \"%s\"", FormatsFile);
-//
-// постэтап - сохранение нового конфига, если указан "-g"
-//
-  if (g != FALSE)
-  {
-    fclose (ConfigFileFile);			/* save new config, mode 0700 */
-    chmod (new_path, S_IRUSR | S_IWUSR | S_IXUSR);
-    unlink (Config);				/* delete old config */
-    rename (new_path, Config);
-    ConfigFileIface->ift |= I_DIED;		/* delete interface */
-    ConfigFileFile = NULL;
-    ConfigFileIface = NULL;
-  }
   /* Init have to get signal S_REG so don't kill it */
-  Init->ift |= I_LOCKED;
-  O_GENERATECONF = FALSE;
+  Init->IFRequest = NULL;
   O_DEFAULTCONF = FALSE;
   /* check if we going to finish:
       - we have no listen interface nor console nor module;
       - we got "-t" - just testing. */
-  if (Find_Iface (I_LISTEN | I_CONSOLE | I_MODULE, NULL))
+  if (Find_Iface (I_LISTEN, NULL))
+    Unset_Iface();
+  else if (Find_Iface (I_CONSOLE, NULL))
+    Unset_Iface();
+  else if (Find_Iface (I_MODULE, NULL))
     Unset_Iface();
   else
     dc_die (NULL, "terminated: no interfaces to work");
   if (O_TESTCONF != FALSE)
     dc_die (NULL, NULL);
   snprintf (new_path, sizeof(new_path), "%s.%s", locale, Charset);
-  setlocale (LC_ALL, new_path);
+  DBG ("trying set locale to %s", new_path);
+  if (setlocale (LC_ALL, new_path) == NULL)
+    ERROR ("init: failed to set locale to %s, reverting to default!", new_path);
 #ifdef ENABLE_NLS
   bindtextdomain (PACKAGE, LOCALEDIR);
   textdomain (PACKAGE);
 #endif
-  /* init SIGINT (restart) and SIGHUP (rehash) handlers */
-  act.sa_handler = &sigint_handler;
-  sigemptyset (&act.sa_mask);
-  act.sa_flags = 0;
-  sigaction (SIGINT, &act, NULL);
-  act.sa_handler = &sighup_handler;
-  sigaction (SIGHUP, &act, NULL);
-  Add_Binding ("dcc", "binds", U_MASTER, U_MASTER, (Function)&dc_binds);
-  Add_Binding ("dcc", "module", U_OWNER, -1, (Function)&dc_module);
-  Add_Binding ("dcc", "status", U_MASTER, -1, (Function)&dc_status);
-  Add_Binding ("dcc", "fset", U_OWNER, -1, (Function)&dc_fset);
-  Add_Binding ("dcc", "rehash", U_MASTER, -1, &dc_rehash);
-  Add_Binding ("dcc", "restart", U_MASTER, -1, &dc_restart);
-  Add_Binding ("dcc", "die", U_OWNER, -1, (Function)&dc_die);
-  Add_Binding ("dcc", "set", U_MASTER, U_MASTER, &dc_set);
+  Add_Binding ("dcc", "binds", U_MASTER, U_MASTER, (Function)&dc_binds, NULL);
+  Add_Binding ("dcc", "module", U_OWNER, U_NONE, (Function)&dc_module, NULL);
+  Add_Binding ("dcc", "status", U_MASTER, U_NONE, (Function)&dc_status, NULL);
+  Add_Binding ("dcc", "fset", U_OWNER, U_NONE, (Function)&dc_fset, NULL);
+  Add_Binding ("dcc", "rehash", U_MASTER, U_NONE, &dc_rehash, NULL);
+  Add_Binding ("dcc", "restart", U_MASTER, U_NONE, &dc_restart, NULL);
+  Add_Binding ("dcc", "die", U_OWNER, U_NONE, &dc_die, NULL);
+  Add_Binding ("dcc", "set", U_MASTER, U_MASTER, &dc_set, NULL);
+  Unset_Iface();				/* out of stub */
+  stub->ift = I_DIED;
 }

@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 1996-8 Michael R. Elkins <me@cs.hmc.edu>
  * Copyright (C) 1999 Thomas Roessler <roessler@guug.de>
- * Copyright (C) 1999-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
  *     along with this program; if not, write to the Free Software
  *     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * All support functions with safeguards. :)
+ * This file is part of FoxEye's source: common functions library.
  */
 
 #include "foxeye.h"
@@ -38,6 +38,7 @@ void *safe_calloc (size_t nmemb, size_t size)
     return NULL;
   if (!(p = calloc (nmemb, size)))
     bot_shutdown (mem_msg, 2);
+  DBG ("safe_calloc(%u*%u)=0x%08x", nmemb, size, p);
   return p;
 }
 
@@ -49,6 +50,7 @@ void *safe_malloc (size_t siz)
     return NULL;
   if ((p = (void *) malloc (siz)) == 0)
     bot_shutdown (mem_msg, 2);
+  DBG ("safe_malloc(%u)=0x%08x", siz, p);
   return p;
 }
 
@@ -58,6 +60,7 @@ void safe_realloc (void **p, size_t siz)
 
   if (siz == 0)
   {
+    DBG ("safe_realloc(0x%08x,0)", *p);
     if (*p)
     {
       free (*p);
@@ -76,12 +79,14 @@ void safe_realloc (void **p, size_t siz)
   if (!r)
     bot_shutdown (mem_msg, 2);
   *p = r;
+  DBG ("safe_realloc(0x%08x,%u)=0x%08x", *p, siz, r);
 }
 
 void safe_free (void **p)
 {
   if (*p)
   {
+    DBG ("safe_free(0x%08x)", *p);
     free (*p);
     *p = NULL;
   }
@@ -99,6 +104,11 @@ char *safe_strdup (const char *s)
   return (p);
 }
 
+/* TODO:
+char *strfcpy (char *dst, const char *src, size_t n)
+char *gettoken (char *str, char **next)
+*/
+
 /* own function instead of ugly strncat() */
 char *strfcat (char *dst, const char *src, size_t n)
 {
@@ -115,202 +125,78 @@ char *strfcat (char *dst, const char *src, size_t n)
   return dst;
 }
 
-/* convert all characters in the string to lowercase */
+#if 0
+/* convert all characters in the string to lowercase in current locale */
 char *safe_strlower (char *dst, const char *src, size_t sz)
 {
   register char *s = dst;
-  register char c;
+  register unsigned char c;
 
   while ((c = *src++) != 0 && sz-- > 1)
     *s++ = tolower (c);
   *s = 0;
   return dst;
 }
-
-char *rfc2812_strlower (char *dst, const char *src, size_t sz)
-{
-  register char *s = dst;
-  register char c;
-
-  while ((c = *src++) != 0 && sz-- > 1)
-  {
-    if (strchr ("[]\\~", c))
-      *s = c ^ 32;
-    else
-      *s = tolower (c);
-    s++;
-  }
-  *s = 0;
-  return dst;
-}
-
-static int compare_stat (struct stat *osb, struct stat *nsb)
-{
-  if (osb->st_dev != nsb->st_dev || osb->st_ino != nsb->st_ino ||
-      osb->st_rdev != nsb->st_rdev)
-  {
-    return -1;
-  }
-
-  return 0;
-}
-
-int safe_symlink (const char *oldpath, const char *newpath)
-{
-  struct stat osb, nsb;
-
-  if(!oldpath || !newpath)
-    return -1;
-
-  if(unlink(newpath) == -1 && errno != ENOENT)
-    return -1;
-
-  if (oldpath[0] == '/')
-  {
-    if (symlink (oldpath, newpath) == -1)
-      return -1;
-  }
-  else
-  {
-    char abs_oldpath[_POSIX_PATH_MAX];
-
-    if ((getcwd (abs_oldpath, sizeof abs_oldpath) == NULL) ||
-	(strlen (abs_oldpath) + 1 + strlen (oldpath) + 1 > sizeof abs_oldpath))
-    return -1;
-
-    strcat (abs_oldpath, "/");
-    strcat (abs_oldpath, oldpath);
-    if (symlink (abs_oldpath, newpath) == -1)
-      return -1;
-  }
-
-  if(stat(oldpath, &osb) == -1 || stat(newpath, &nsb) == -1
-     || compare_stat(&osb, &nsb) == -1)
-  {
-    unlink(newpath);
-    return -1;
-  }
-
-  return 0;
-}
-
-
-int safe_open (const char *path, int flags)
-{
-  struct stat osb, nsb;
-  int fd;
-
-  if ((fd = open (path, flags, 0600)) < 0)
-    return fd;
-
-  /* make sure the file is not symlink */
-  if (lstat (path, &osb) < 0 || fstat (fd, &nsb) < 0 ||
-      compare_stat(&osb, &nsb) == -1)
-  {
-    close (fd);
-    return (-1);
-  }
-
-  return (fd);
-}
+#endif
 
 /*
- * when opening files for writing, make sure the file doesn't already exist
- * to avoid race conditions.
- */
-FILE *safe_fopen (const char *path, const char *mode)
+ * converts null-terminated string src to upper case string
+ * output buffer dst with size ds must be enough for null-terminated string
+ * else string will be truncated
+ * returns length of output null-terminated string (with null char)
+ * if dst == NULL or ds == 0 then returns 0
+*/
+size_t unistrlower (char *dst, const char *src, size_t ds)
 {
-  if (mode[0] == 'w')
+  size_t sout = 0, ss;
+
+  if (dst == NULL || ds == 0)
+    return 0;
+  ds--; /* preserve 1 byte for terminating null char */
+  if (src && *src)
   {
-    int fd;
-    int flags = O_CREAT | O_EXCL;
-
-    if (mode[1] == '+')
-      flags |= O_RDWR;
-    else
-      flags |= O_WRONLY;
-
-    if ((fd = safe_open (path, flags)) < 0)
-      return (NULL);
-
-    return (fdopen (fd, mode));
-  }
-  else
-    return (fopen (path, mode));
-}
-
-/*
- * Read a line from ``fp'' into the dynamically allocated ``s'',
- * increasing ``s'' if necessary. The ending "\n" or "\r\n" is removed.
- * If a line ends with "\", this char and the linefeed is removed,
- * and the next line is read too.
- */
-char *safe_read_line (char *s, size_t *size, FILE *fp, int *line)
-{
-  size_t offset = 0;
-  char *ch;
-
-  if (!s)
-  {
-    s = safe_malloc (STRING);
-    *size = STRING;
-  }
-
-  FOREVER
-  {
-    if (fgets (s + offset, *size - offset, fp) == NULL)
+    if (MB_CUR_MAX > 1) /* if multibyte encoding */
     {
-      safe_free ((void **) &s);
-      return NULL;
-    }
-    if ((ch = safe_strchr (s + offset, '\n')) != NULL)
-    {
-      (*line)++;
-      *ch = 0;
-      if (ch > s && *(ch - 1) == '\r')
-	*--ch = 0;
-      if (ch == s || *(ch - 1) != '\\')
-	return s;
-      offset = ch - s - 1;
+      wchar_t wc;
+      int len;
+      register const char *ch;
+      char c[MB_LEN_MAX];
+
+      for (ch = src, ss = strlen(ch); *ch && ds; )
+      {
+	len = mbtowc(&wc, ch, ss);
+	if (len < 1) /* unrecognized char! TODO: debug warning on it? */
+	{
+	  ss--;
+	  *dst++ = *ch++; /* OK, we just copy it, is it the best way? */
+	  sout++;
+	  ds--;
+	  continue;
+	}
+	ss -= len; /* advance pointer in sourse string */
+	ch += len;
+	wc = tolower(wc);
+	len = wctomb(c, wc); /* first get the size of lowercase mbchar */
+	if (len < 1)
+	  continue; /* tolower() returned unknown char? ignore it */
+	if (len > ds)
+	  break; /* oops, out of output size! */
+	memcpy(dst, c, len); /* really convert it */
+	ds -= len; /* advance pointers in destination string */
+	dst += len;
+	sout += len;
+      }
     }
     else
-    {
-      /* There wasn't room for the line -- increase ``s'' */
-      offset = *size - 1; /* overwrite the terminating 0 */
-      *size += STRING;
-      safe_realloc ((void **) &s, *size);
+    { /* string in internal single-byte encoding the same as locale */
+      register char ch;
+
+      for (ch = *src++; ch && ds; ch = *src++, sout++, ds--)
+	*dst++ = tolower((unsigned char)ch);
     }
   }
-}
-
-char *
-safe_substrcpy (char *dest, const char *beg, const char *end, size_t destlen)
-{
-  size_t len;
-
-  len = end - beg;
-  if (len > destlen - 1)
-    len = destlen - 1;
-  memcpy (dest, beg, len);
-  dest[len] = 0;
-  return dest;
-}
-
-char *safe_substrdup (const char *begin, const char *end)
-{
-  size_t len;
-  char *p;
-
-  len = end - begin;
-  p = safe_malloc (len + 1);
-  memcpy (p, begin, len);
-  p[len] = 0;
-  return p;
-}
-
-char *safe_strpbrk (const char *s, const char *a)
-{
-  return strpbrk (NONULL(s), a);
+  *dst = 0;
+  return (sout + 1);
 }
 
 int safe_strcmp(const char *a, const char *b)
@@ -352,12 +238,13 @@ char *safe_strchr (const char *s, int c)
   return r;
 }
 
+#if 0
 static char Wildcards[] = "~%*{?[";
 #define wildcard(c) strchr (Wildcards, c)
 
 static int match_wildcard (uchar *w, uchar c)
 {
-  register int i = 1;
+  register int i;
   register uchar ec = ']';
 
   if (c) switch (*w)
@@ -380,6 +267,8 @@ static int match_wildcard (uchar *w, uchar c)
 	i = 0;
 	w++;
       }
+      else
+	i = 1;
       do
       {
 	w++;
@@ -519,6 +408,354 @@ int match (const char *mask, const char *text)
   }
   return match_it ((uchar *)mask, (uchar *)text);
 }
+#endif
+
+/* TODO: change matching to * ? [abc] [a-d] [^abc] {exp1,exp2} form */
+static int pattern_size (const char *pattern)
+{
+  register const char *c;
+  register int s;
+
+  c = &pattern[1];
+  switch (*pattern)
+  {
+    case '[':
+      if (*c == '^') c++;		/* it may be first */
+      if (*c == ']') c++;		/* "[]...]" is allowed too */
+      if (*c == '-') c++;		/* '-' may be first literal */
+      while (*c && *c != ']')		/* skip rest up to ']' */
+      {
+        if (*c == '-') c++;		/* it's range so skip both chars */
+	if (*c) c++;
+      }
+      if (!*c++) return (-1);		/* "[..." is error */
+      break;
+    case '{':
+      while (*c && *c != '}')		/* recursively skip up to '}' */
+	if ((s = pattern_size (c)) < 0)
+	  return s;
+	else
+	  c += s;
+      if (!*c++) return (-1);		/* "{..." is error */
+      break;
+    case '\\':
+      if (!*c++) return (-1);		/* "\" is error */
+    default:;				/* all other chars are one-by-one */
+  }
+  return (c - pattern);
+}
+
+static char Wildcards[] = "[?*{";
+#define wildcard(c) strchr (Wildcards, c)
+
+/* it does literal+[pattern+rest(match_it)...] */
+static int match_it (const char *mask, const char **text, const char *pe)
+{
+  register const uchar *m;
+  const char *t, *tc, *te;		/* current char */
+  const uchar *sc, *se;			/* subpattern current/end */
+  int cur, x, n;
+
+  /* starts from literal? check it and set x as match! */
+  x = 0;
+  t = *text;
+  while (*t && !wildcard (*mask) && mask < pe)
+  {
+    if (*mask == '\\')			/* skip quote char */
+      mask++;
+    if (*mask != *t)			/* char isn't equal */
+      break;
+    mask++;
+    t++;
+    x++;
+  }
+  if (mask >= pe)			/* really it cannot be mask>pe */
+  {
+    if (!*pe && *t)			/* end of pattern is reached but text */
+      return (-1);
+    if (x)
+      *text = t;
+    return x;				/* all pattern is consumed */
+  }
+  if (!wildcard (*mask))		/* it's not matched */
+    return (-1);
+  sc = mask;				/* set this wildcard pattern ptrs */
+  se = sc + pattern_size (sc);
+  n = (-1);
+  te = NULL;				/* to avoid compiler warning */
+  while (sc < se)			/* cyclic check one wildcard pattern */
+  {
+    switch (*mask)
+    {
+      case '[':
+	if (*t)
+	{
+	  register uchar c = *t;
+
+	  m = mask;
+	  if (m[1] == '^')
+	  {
+	    cur = 1;				/* mark "reverse match" */
+	    m++;
+	  }
+	  else
+	    cur = 0;
+	  if (m[1] == ']' && c != ']')		/* it may be []...] */
+	    m++;				/* it may be []-...] too */
+	  sc = se - 1;
+	  while (++m < sc)
+	  {
+	    if (*m == c)			/* matched exactly */
+	      break;
+	    else if (m[1] == '-')		/* '-' at begin is literal */
+	    {
+	      if (c > *m && c <= m[2])		/* matched range */
+		break;
+	      m += 2;
+	    }
+	  }
+	  if ((!cur && m < sc) || (cur && m >= sc)) /* it's matched */
+	    tc = t + 1, cur = match_it (se, &tc, pe); /* check rest */
+	  else					/* it's not matched */
+	    cur = (-1);
+	}
+	else					/* must be at least one char */
+	  cur = (-1);
+	sc = se;				/* end of pattern, of course */
+	break;
+      case '?':
+	if (*t)					/* check rest of text */
+	  tc = t + 1, cur = match_it (se, &tc, pe);
+	else					/* must be at least one char */
+	  cur = (-1);
+	sc = se;
+	break;
+      case '*':
+	if ((char *)se == pe)			/* it's last char of pattern */
+	  tc = (t += strlen(t)), cur = 0;	/* it will be consumed all */
+	else if (!*t)
+	  cur = (-1);
+        else while (*t && (tc = t) && (cur = match_it (se, &tc, pe)) < 0)
+	  t++;					/* find matched to rest */
+	if (!*t || cur < 0)			/* cannot do match anymore */
+	  sc = se;
+	else					/* get ready for next try */
+	  t++;					/* (next char is matched '*') */
+	break;
+      default: /* '{' */
+	m = ++sc;				/* skip '{' or ',' in pattern */
+	while (*sc != ',' && sc < (se - 1))
+	  sc += pattern_size (sc);		/* get end of subpattern */
+	tc = t;					/* prepare start pointer */
+	if (*sc == '}')				/* end of subpatterns reached */
+	  cur = (-1);
+	else if ((cur = match_it (m, &tc, sc)) >= 0) /* ok, it's matched */
+	  cur = match_it (se, &tc, pe);		/* it's real match value */
+    }
+    if (cur > n && (*pe || !*tc))		/* matched to part or whole */
+    {
+      n = cur;					/* set max matched counter */
+      te = tc;					/* and advance text ptr */
+    }
+  }
+  if (n < 0)					/* wildcard pattern not matched */
+    return (-1);
+  *text = te;
+  return (x + n);
+}
+
+/* check for matching in shell wildcards style:
+ * returns -1 if no matched, or number of not-wildcards characters matched */
+int match (const char *mask, const char *text)
+{
+  register int cur, ptr = 0;
+
+  if ((!text || !*text) && (!mask || !*mask))	/* empty string are equal */
+    return 0;
+  if (mask)
+  {
+    while (mask[ptr])				/* check whole pattern */
+      if ((cur = pattern_size (&mask[ptr])) < 0)
+	return cur;				/* OOPS! invalid pattern! */
+      else
+	ptr += cur;
+  }
+  if ((mask && *mask == '*' && !mask[1]) ||	/* "*" is equal to anything */
+      (text && *text == '*' && !text[1]))
+    return 0;
+  if (!text || !mask)				/* NULL not matched to smth */
+    return -1;
+  return match_it (mask, &text, &mask[ptr]);	/* do real comparison */
+}
+
+
+#define swildcard(c) (c == '*' || c == '?')
+
+#if 0
+static int smatch_wildcard (uchar w, uchar c)
+{
+  if (w == '*')			/* it's matched to empty string too */
+    return 1;
+  if (c && (w == '?' || w == c))
+    return 1;
+  return 0;
+}
+
+static int smatch_it (uchar *mask, uchar *text)
+{
+  register uchar *m, *t, *mn;
+  uchar *next;
+  int cur, n = -1;
+
+  if (!*mask && !*text)			/* empty strings are equal always */
+    return 0;
+  /* firstly - we check for matching at all */
+  while (*text && *mask && smatch_wildcard (mask, *text))
+  {
+    m = mask;
+    t = text;
+    next = NULL;
+    /* check and skip minimum of matching wildcards */
+    while (*t && swildcard (*m))
+    {
+      if (*m == '?')			/* this is exact matched to one char */
+	t++;
+      else
+	while (smatch_wildcard (*m, *t) && !smatch_wildcard (m[1], *t)) t++;
+      if (!next)			/* set next for skipping */
+	next = t;
+      m++;
+    }
+    mn = t;				/* save pointer for calculate */
+    /* check matched chars */
+    while (*t && *m == *t && !swildcard (*m))
+    {
+      m++;
+      t++;
+    }
+    /* m and t unmatched here or frame ends - try next frame */
+    if ((cur = smatch_it (m, t)) >= 0)
+      cur += (t - mn);			/* sum matched nowildcards */
+    if (cur > n)
+      n = cur;				/* get maximum */
+    /* go to next character - if exact, skip mask too, else only text++ */
+    if (!next || next == text)
+      text++;
+    else
+      text = next;
+    if (*mask == '?')
+      mask++;
+    else if (*mask && !smatch_wildcard (*mask, *text))
+      mask++;
+    if (!swildcard (*mask))		/* all rest are unmatched or EOL */
+      break;
+  }
+  return n;
+}
+
+
+/* check for matching in shell wildcards style but for '*' and '?' only:
+ * returns -1 if no matched, or number of not-wildcards characters matched */
+int simple_match (const char *mask, const char *text)
+{
+  if ((!text || !*text) && (!mask || !*mask))
+    return 0;
+  if ((mask && *mask == '*' && !mask[1]) ||
+      (text && *text == '*' && !text[1]))
+    return 0;
+  if (!text || !mask)
+    return -1;
+  if (!strpbrk (mask, "*?"))
+  {
+    if (strcmp (mask, text))
+      return -1;
+    return (strlen (mask));
+  }
+  return smatch_it ((uchar *)mask, (uchar *)text);
+}
+#endif
+
+static int smatch_it (const char *mask, const char **text, const char *pe)
+{
+  const char *t, *tc, *te;		/* current char */
+  const uchar *sc, *se;			/* subpattern current/end */
+  int cur, x, n;
+
+  /* starts from literal? check it and set x as match! */
+  x = 0;
+  t = *text;
+  while (*t && !swildcard (*mask) && mask < pe)
+  {
+    if (*mask != *t)			/* char isn't equal */
+      break;
+    mask++;
+    t++;
+    x++;
+  }
+  if (mask >= pe)			/* really it cannot be mask>pe */
+  {
+    if (!*pe && *t)			/* end of pattern is reached but text */
+      return (-1);
+    if (x)
+      *text = t;
+    return x;				/* all pattern is consumed */
+  }
+  if (!swildcard (*mask))		/* it's not matched */
+    return (-1);
+  sc = mask;				/* set this wildcard pattern ptrs */
+  se = sc + 1;
+  n = (-1);
+  te = NULL;				/* to avoid compiler warning */
+  while (sc < se)			/* cyclic check one wildcard pattern */
+  {
+    switch (*mask)
+    {
+      case '?':
+	if (*t)					/* check rest of text */
+	  tc = t + 1, cur = smatch_it (se, &tc, pe);
+	else					/* must be at least one char */
+	  cur = (-1);
+	sc = se;
+	break;
+      default: /* '*' */
+	if ((char *)se == pe)			/* it's last char of pattern */
+	  tc = (t += strlen(t)), cur = 0;	/* it will be consumed all */
+	else if (!*t)
+	  cur = (-1);
+        else while (*t && (tc = t) && (cur = smatch_it (se, &tc, pe)) < 0)
+	  t++;					/* find matched to rest */
+	if (!*t || cur < 0)			/* cannot do match anymore */
+	  sc = se;
+	else					/* get ready for next try */
+	  t++;					/* (next char is matched '*') */
+    }
+    if (cur > n && (*pe || !*tc))		/* matched to part or whole */
+    {
+      n = cur;					/* set max matched counter */
+      te = tc;					/* and advance text ptr */
+    }
+  }
+  if (n < 0)					/* wildcard pattern not matched */
+    return (-1);
+  *text = te;
+  return (x + n);
+}
+
+int simple_match (const char *mask, const char *text)
+{
+  register int ptr;
+
+  if ((!text || !*text) && (!mask || !*mask))	/* empty string are equal */
+    return 0;
+  if ((mask && *mask == '*' && !mask[1]) ||	/* "*" is equal to anything */
+      (text && *text == '*' && !text[1]))
+    return 0;
+  if (!text || !mask)				/* NULL not matched to smth */
+    return -1;
+  ptr = strlen (mask);
+  return match_it (mask, &text, &mask[ptr]);	/* do real comparison */
+}
+
 
 char *NextWord (const char *msg)
 {
@@ -773,6 +1010,7 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
 	  n = _try_subst (c, nmax, &DateString[7], nn);
 	  break;
 	case 'n':			/* color stop */
+	  p->color = 0;
 	  if (nn) *c++ = '\003';
 	  t = &fix[1];
 	  break;

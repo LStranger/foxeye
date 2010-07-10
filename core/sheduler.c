@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -15,14 +15,12 @@
  *     along with this program; if not, write to the Free Software
  *     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * This file contains sheduler interface.
+ * This file is part of FoxEye's source: sheduler interface.
  */
 
 #include "foxeye.h"
 #include "sheduler.h"
 #include "init.h"
-
-#include <pthread.h>
 
 #define MAXTABLESIZE 20000	/* can i do it for one second? */
 
@@ -35,6 +33,7 @@ typedef struct
 static shedfloodentry_t *Floodtable = NULL;
 static unsigned int _SFalloc = 0;
 static unsigned int _SFnum = 0;
+static bindtable_t *BT_TimeShift;
 
 /* create new cell in Floodtable */
 int CheckFlood (short *ptr, short floodtype[2])
@@ -121,7 +120,7 @@ typedef struct
   uint16_t month;
   uint16_t weekday;
   iftype_t ift;
-  char *to;
+  const char *to;
   ifsig_t signal;
 } shedentry_t;
 
@@ -130,8 +129,8 @@ static unsigned int _SCalloc = 0;
 static unsigned int _SCnum = 0;
 
 /* create new cell in Crontable */
-void NewShedule (iftype_t ift, char *name, ifsig_t sig,
-		char *min, char *hr, char *ds, char *mn, char *wk)
+void NewShedule (iftype_t ift, const char *name, ifsig_t sig,
+		 char *min, char *hr, char *ds, char *mn, char *wk)
 {
   register shedentry_t *ct;
   uint32_t mask[2];
@@ -164,8 +163,8 @@ void NewShedule (iftype_t ift, char *name, ifsig_t sig,
 }
 
 /* delete cell from Crontable */
-void KillShedule (iftype_t ift, char *name, ifsig_t sig,
-		 char *min, char *hr, char *ds, char *mn, char *wk)
+void KillShedule (iftype_t ift, const char *name, ifsig_t sig,
+		  char *min, char *hr, char *ds, char *mn, char *wk)
 {
   register int i;
   register shedentry_t *ct;
@@ -207,7 +206,7 @@ typedef struct
   unsigned int timer;
   tid_t id;
   iftype_t ift;
-  char *to;
+  const char *to;
   ifsig_t signal;
 } shedtimerentry_t;
 
@@ -217,17 +216,31 @@ static unsigned int _STnum = 0;
 static tid_t _STid = 0;
 
 /* create new cell in Timerstable */
-tid_t NewTimer (iftype_t ift, char *name, ifsig_t sig, unsigned int sec,
+tid_t NewTimer (iftype_t ift, const char *name, ifsig_t sig, unsigned int sec,
 		unsigned int min, unsigned int hr, unsigned int ds)
 {
   register shedtimerentry_t *ct;
   tid_t id;
+  register unsigned int i;
+  unsigned int j;
 
   if (ift == 0 || name == NULL)
     return -1;
   pthread_mutex_lock (&LockShed);
-  if (_STnum >= MAXTABLESIZE)
+  j = (sec + 60*min + 3600*hr + 86400*ds);
+  for (i = 0; i < _STnum; i++)
+  {
+    ct = &Timerstable[i];
+    if (ct->ift == ift && ct->signal == sig && ct->timer == j &&
+	!strcmp (ct->to, name))		/* duplicate signal, reject it */
+      break;
+  }
+  if (i < _STnum || _STnum >= MAXTABLESIZE)
+  {
+    pthread_mutex_unlock (&LockShed);
+    WARNING ("NewTimer: failed for %s +%u sec (entry %u)", name, j, i);
     return -1;
+  }
   if (_STnum >= _STalloc)
   {
     _STalloc += 32;
@@ -237,12 +250,14 @@ tid_t NewTimer (iftype_t ift, char *name, ifsig_t sig, unsigned int sec,
   ct->ift = ift;
   ct->to = name;
   ct->signal = sig;
-  ct->timer = (sec + 60*min + 3600*hr + 86400*ds);
+  ct->timer = j;
   ct->id = id = _STid++;
   if (_STid < 0)
     _STid = 0;				/* never under zero! */
   _STnum++;
   pthread_mutex_unlock (&LockShed);
+  dprint (4, "NewTimer: added for %s +%u sec (id %u)", name, j,
+	  (unsigned int)id);
   return id;
 }
 
@@ -267,21 +282,32 @@ void KillTimer (tid_t tid)
   pthread_mutex_unlock (&LockShed);
 }
 
+static time_t lasttime = 0;
+
 static int Sheduler (INTERFACE *ifc, REQUEST *req)
 {
   register int drift;
-  time_t curtime = time (NULL);
   struct tm tm;
   struct tm tm0;
   register unsigned int i, j = 0;
+  binding_t *bind = NULL;
 
-  if (curtime != Time)
+  if (lasttime != Time)
   {
-    drift = curtime - Time;
-    if (drift < 0 || drift > 120)	/* it seems system time was tuned */
+    drift = Time - lasttime;
+    if (drift < 0 || drift > MAXDRIFT)	/* it seems system time was changed */
     {
-      if (Time)				/* if it's on start then it's ok */
+      if (lasttime)			/* if it's on start then it's ok */
+      {
 	WARNING ("system time was slipped by %d seconds!", drift);
+	while ((bind = Check_Bindtable (BT_TimeShift, "*", -1, -1, bind)))
+	{
+	  if (bind->name)
+	    RunBinding (bind, NULL, NULL, NULL, drift, NULL);
+	  else
+	    bind->func (drift);
+	}
+      }
       drift = 1;			/* assume 1 second passed */
     }
     /* decrement floodtimers */
@@ -303,7 +329,7 @@ static int Sheduler (INTERFACE *ifc, REQUEST *req)
     /* decrement timers */
     for (i = 0, j = 0; i < _STnum; i++)
     {
-      register shedtimerentry_t *ct = &Timerstable[i];
+      register shedtimerentry_t *ct = &Timerstable[i-j];
 
       if (ct->timer > (unsigned int)drift)
 	ct->timer -= drift;
@@ -316,7 +342,7 @@ static int Sheduler (INTERFACE *ifc, REQUEST *req)
 	sig[0] = ct->signal;
 	strfcpy (to, ct->to, sizeof(to));
 	_STnum--;
-	if (i != _STnum)
+	if (i != _STnum)			/* move last entry here */
 	  memcpy (ct, &Timerstable[_STnum], sizeof(shedtimerentry_t));
 	pthread_mutex_unlock (&LockShed);
 	Add_Request (ift, to, F_SIGNAL, sig);
@@ -325,8 +351,8 @@ static int Sheduler (INTERFACE *ifc, REQUEST *req)
       }
     }
     /* update time variables */
-    localtime_r (&Time, &tm0);
-    Time = curtime;
+    localtime_r (&lasttime, &tm0);
+    lasttime = Time;
     localtime_r (&Time, &tm);
     if (!ifc || tm.tm_min != tm0.tm_min)	/* ifc == NULL only on start */
     {
@@ -358,7 +384,7 @@ static int Sheduler (INTERFACE *ifc, REQUEST *req)
 	{
 	  char sig[sizeof(ifsig_t)];
 	  iftype_t ift = ct->ift;
-	  char *to = ct->to;
+	  const char *to = ct->to;
 
 	  sig[0] = ct->signal;
 	  pthread_mutex_unlock (&LockShed);
@@ -411,7 +437,10 @@ char *IFInit_Sheduler (void)
     Crontable = safe_calloc (32, sizeof(shedentry_t));
     _SCalloc = 32;
   }
-  /* init time variables */
+  /* register "time-shift" bindtable */
+  BT_TimeShift = Add_Bindtable ("time-shift", B_MASK);
+  /* init time */
+  time (&Time);
   Sheduler (NULL, NULL);
   /* create own interface - I_TEMP forever ;) */
   if (!ShedIface)

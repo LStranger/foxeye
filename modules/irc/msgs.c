@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2005-2008  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -15,7 +15,7 @@
  *     along with this program; if not, write to the Free Software
  *     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * do queue for private msgs for my IRC client connection
+ * The FoxEye "irc" module: do queue private msgs for my IRC client connection
  */
 
 #include "foxeye.h"
@@ -92,6 +92,7 @@ const char *_pmsgout_send_formats[] = {
   "PRIVMSG %s :\001ACTION %s\001"
 };
 
+/* send one message from stack */
 static void _pmsgout_send (char *to, char *msg, flag_t flag, char *dog)
 {
   register unsigned int i;
@@ -118,6 +119,7 @@ static void _pmsgout_send (char *to, char *msg, flag_t flag, char *dog)
       c = strchr (to, ',');
       if (c)
 	*c = 0;
+      /* TODO: convert recipient to lowercase, it might be #ChaNNel */
       /* %N - mynick, %# - target, %* - message */
       if (*to == '!')		/* special support for "!XXXXXchannel" */
 	snprintf (tocl, sizeof(tocl), "!%s@%s", &to[6], &dog[1]);
@@ -149,10 +151,12 @@ static int _pmsgout_run (INTERFACE *client, REQUEST *req)
   return REQ_OK;
 }
 
+ALLOCATABLE_TYPE (pmsgout_stack, _PMS, next) /* (alloc|free)_pmsgout_stack() */
+
 static INTERFACE *_pmsgout_stack_insert (pmsgout_stack **stack, char *to)
 {
   INTERFACE *client;
-  pmsgout_stack *cur = safe_malloc (sizeof(pmsgout_stack));
+  pmsgout_stack *cur = alloc_pmsgout_stack();
 
   dprint (4, "_pmsgout_stack_insert: adding %s", to);
   client = Add_Iface (I_CLIENT, to, NULL, &_pmsgout_run, NULL);
@@ -175,20 +179,20 @@ static INTERFACE *_pmsgout_stack_insert (pmsgout_stack **stack, char *to)
 static void _pmsgout_stack_remove (pmsgout_stack **stack, pmsgout_stack *cur)
 {
   dprint (4, "_pmsgout_stack_remove: removing %s", cur->client->name);
-  if (cur->prev == cur->next)
-  {
+  if (cur->prev == cur)
     *stack = NULL;
-    return;
-  }
   else if (*stack == cur)
     *stack = cur->next;
   cur->next->prev = cur->prev;
   cur->prev->next = cur->next;
   NoCheckFlood (&cur->msg_flood);
   NoCheckFlood (&cur->ctcp_flood);
-  cur->client->ift |= I_DIED;
+  free_pmsgout_stack (cur);
+  cur->client->ift |= I_DIED;		/* it will free cur too so preserve it */
+  cur->client->data = NULL;
 }
 
+/* ATTENTION: on returned INTERFACE must be called Unset_Iface() after use! */
 static INTERFACE *_pmsgout_get_client (char *net, char *to)
 {
   char lcto[IFNAMEMAX+1];
@@ -211,7 +215,7 @@ void irc_privmsgout (INTERFACE *pmsgout, int pmsg_keep)
   {
     if (Time > cur->last)
     {
-      if (Find_Iface (I_QUERY, cur->client->name))
+      if (Find_Iface (I_QUERY, cur->client->name)) /* keep it while query exists */
 	Unset_Iface();
       else
       {
@@ -231,7 +235,6 @@ void irc_privmsgout (INTERFACE *pmsgout, int pmsg_keep)
 int irc_privmsgout_default (INTERFACE *pmsgout, REQUEST *req)
 {
   INTERFACE *client;
-  char lcto[IFNAMEMAX+1];
   char *dog;
 
   if (!req)
@@ -247,12 +250,8 @@ int irc_privmsgout_default (INTERFACE *pmsgout, REQUEST *req)
     return REQ_OK;
   }
   /* it's to one so let's create client queue interface */
-  *dog = 0;
-  irc_lcs (lcto, pmsgout, req->to, sizeof(lcto));
-  *dog = '@';
-  strfcat (lcto, dog, sizeof(lcto));
-  client = _pmsgout_stack_insert ((pmsgout_stack **)&pmsgout->data, lcto);
-  return REQ_RELAYED;
+  client = _pmsgout_stack_insert ((pmsgout_stack **)&pmsgout->data, req->to);
+  return Relay_Request (I_CLIENT, client->name, req);
 }
 
 /* remove client from stack or destroy all stack if NULL */
@@ -300,13 +299,13 @@ int irc_privmsgout_count (INTERFACE *pmsgout)
  */
 int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
 		   char *msg, int notice, int allow_cmdpmsg, int pmsg_keep,
-		   char *(*lc) (char *, const char *, size_t))
+		   size_t (*lc) (char *, const char *, size_t))
 {
-  char fromnick[HOSTMASKLEN+1];
+  char lcnick[HOSTMASKLEN+1];
   char tocl[IFNAMEMAX+1];
   int msg_type;
-  char *lname, *ft, *c;
-  size_t msglen;
+  char *lname, *ft, *ae; /* ae - at exclamation */
+  size_t msglen = 0;			/* avoiding compiler warning */
   INTERFACE *client;
   clrec_t *clr;
   userflag uf;
@@ -314,18 +313,34 @@ int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
   bindtable_t *btmask;
   int i;
 
-  /* convert sender nick to lower case first */
-  if ((c = strchr (from, '!')))
-    *c = 0;
+  /* convert sender nick to lower case before searching for client */
+  if ((ae = strchr (from, '!')))
+    *ae = 0;
   if (lc)
-    lc (fromnick, from, MBNAMEMAX+1);
+    lc (lcnick, from, MBNAMEMAX+1);
   else
-    strfcpy (fromnick, from, MBNAMEMAX+1);
-  if (c)
-    *c = '!';
-  msglen = strlen (fromnick);
-  safe_strlower (&fromnick[msglen], c, sizeof(fromnick) - msglen);
-  clr = Find_Clientrecord (fromnick, &lname, &uf, pmsgout->name);
+    strfcpy (lcnick, from, MBNAMEMAX+1);
+  /* let's check if it's identified user at first */
+  if (Inspect_Client (&pmsgout->name[1], from, (const char **)&lname, NULL,
+		      NULL, NULL) & A_REGISTERED)
+  {
+    if ((clr = Lock_Clientrecord (lname)))	/* might it be deleted yet? */
+      uf = Get_Flags (clr, &pmsgout->name[1]);
+    else
+      uf = 0;
+  }
+  else
+  {
+    if (ae)
+    {
+      *ae = '!';
+      msglen = strlen (lcnick);
+      unistrlower (&lcnick[msglen], ae, sizeof(lcnick) - msglen);
+    }
+    clr = Find_Clientrecord (lcnick, &lname, &uf, &pmsgout->name[1]);
+    if (ae)
+      lcnick[msglen] = 0;		/* leave only lower case nick there */
+  }
   if (clr)
   {
     lname = safe_strdup (lname);
@@ -333,26 +348,29 @@ int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
   }
   else
     lname = NULL;
-  fromnick[msglen] = 0;
-  /* check type of the message */
-  msg_type = notice ? 1 : 0;
+  msg_type = notice ? 1 : 0;		/* check type of the message */
   msglen = safe_strlen (msg);
   if (*msg == '\001' && msg[msglen-1] == '\001')
   {
     msg_type += 2;
-    if (!notice && !strncmp (msg, "ACTION ", 7))	/* ignore CTCR ACTION */
+    if (!notice && !strncmp (&msg[1], "ACTION ", 7))	/* ignore CTCR ACTION */
       msg_type = 4;
     msglen--;
   }
   dprint (4, "irc_privmsgin: got message from %s to %s of type %d", from, to,
 	  msg_type);
-  /* find the sender or create new pmsgout for it */
-  if (!(client = _pmsgout_get_client (pmsgout->name, fromnick)))
+  if (ae)				/* find/create pmsgout for sender */
+    *ae = 0;				/* pmsgout has to be nick@net */
+  if ((client = _pmsgout_get_client (pmsgout->name, from)))
+    Unset_Iface();
+  else
   {
-    strfcpy (tocl, fromnick, sizeof(tocl));
+    strfcpy (tocl, from, sizeof(tocl));		/* use as temporary buffer */
     strfcat (tocl, pmsgout->name, sizeof(tocl));
     client = _pmsgout_stack_insert ((pmsgout_stack **)&pmsgout->data, tocl);
   }
+  if (ae)
+    *ae = '!';
   ((pmsgout_stack *)client->data)->last = Time + pmsg_keep;
   /* check for flood */
   bind = NULL;
@@ -361,9 +379,10 @@ int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
   while ((bind = Check_Bindtable (BT_Flood, ft, uf, -1, bind)))
   {
     if (bind->name)
-      i = RunBinding (bind, from, lname ? lname : "*", ft, -1, "*");
+      i = RunBinding (bind, client->name, lname ? lname : "*", ft, -1,
+		      to ? to : "*");
     else
-      i = bind->func (from, lname, ft, NULL);
+      i = bind->func (from, lname, ft, to);
     if (i)
       break;
   }
@@ -425,20 +444,22 @@ int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
       {
 	snprintf (tomask, sizeof(tomask), "!%s %s", &to[6], msg);
 	tocl[0] = '!';
-	strfcpy (&tocl[1], &to[6], sizeof(tocl) - 1);
+	/* TODO: use lc() for channel name too */
+	unistrlower (&tocl[1], &to[6], sizeof(tocl) - 1);
       }
       else
       {
 	snprintf (tomask, sizeof(tomask), "%s %s", to, msg);
-	strfcpy (tocl, to, sizeof(tocl));
+	/* TODO: use lc() for channel name too */
+	unistrlower (tocl, to, sizeof(tocl));
       }
       chmask = tomask;
       strfcat (tocl, pmsgout->name, sizeof(tocl));
     }
     else
       chmask = msg;
-    /* check for query for target */
-    if (allow_cmdpmsg && !to && (msg_type == 0 || msg_type == 4))
+    /* check for query for target and pass casual privates */
+    if (!allow_cmdpmsg && !to && (msg_type == 0 || msg_type == 4))
       tmp = Find_Iface (I_QUERY, client->name);
     else
       tmp = NULL;
@@ -459,11 +480,12 @@ int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
       for (bind = NULL; (bind = Check_Bindtable (btmask, chmask, uf, cf, bind)); )
       {
 	if (bind->name)
-	  RunBinding (bind, from, lname ? lname : "*", to ? tocl : NULL, -1, msg);
+	  RunBinding (bind, client->name, lname ? lname : "*",
+		      to ? tocl : NULL, -1, msg);
 	else if (to)
-	  bind->func (client, from, lname, fromnick, tocl, msg);
+	  bind->func (client, from, lname, lcnick, tocl, msg);
 	else
-	  bind->func (client, from, lname, fromnick, msg);
+	  bind->func (client, from, lname, lcnick, msg);
       }
       if (msg_type >= 2)
 	msg[msglen] = 0;
@@ -477,13 +499,14 @@ int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
       if (bind)
       {
 	if (bind->name)
-	  i = RunBinding (bind, from, lname ? lname : "*", to ? tocl : NULL, -1,
+	  i = RunBinding (bind, client->name, lname ? lname : "*",
+			  to ? tocl : NULL, -1,
 			  NextWord(&msg[PmsginTable[msg_type].shift]));
 	else if (to)
-	  i = bind->func (client, from, lname, fromnick, tocl,
+	  i = bind->func (client, from, lname, lcnick, tocl,
 			  NextWord(&msg[PmsginTable[msg_type].shift]));
 	else
-	  i = bind->func (client, from, lname, fromnick,
+	  i = bind->func (client, from, lname, lcnick,
 			  NextWord(&msg[PmsginTable[msg_type].shift]));
       }
       if (msg_type >= 2)
@@ -493,27 +516,27 @@ int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
     if ((i == 0 && PmsginTable[msg_type].format != NULL) ||
 	(i > 0 && PmsginTable[msg_type].cmdformat != NULL))
     {
-      if (c)
-	*c = 0;
+      if (ae)
+	*ae = 0;
       /* %N - nick, %@ - ident@host, %L - lname, %# - target, %* - message */
       if (msg_type >= 2)
 	msg[msglen] = 0;
       if (i)
 	printl (tomask, sizeof(tomask), *PmsginTable[msg_type].cmdformat, 0,
-		from, c ? &c[1] : NULL, lname, to, 0, 0, 0,
+		from, ae ? &ae[1] : NULL, lname, to, 0, 0, 0,
 		&msg[PmsginTable[msg_type].shift]);
       else
 	printl (tomask, sizeof(tomask), *PmsginTable[msg_type].format, 0,
-		from, c ? &c[1] : NULL, lname, to, 0, 0, 0,
+		from, ae ? &ae[1] : NULL, lname, to, 0, 0, 0,
 		&msg[PmsginTable[msg_type].shift]);
       if (msg_type >= 2)
 	msg[msglen] = '\001';
-      if (c)
-	*c = '!';
       if (*tomask)
-	Add_Request (I_LOG, to ? tocl : (char *)client->name,
+	Add_Request (I_LOG, to ? tocl : lcnick,
 		     (i ? F_CMDS : to ? F_PUBLIC : F_PRIV) | msg_type,
 		     "%s", tomask);
+      if (ae)
+	*ae = '!';
     }
     if (to)
       to = ft;	/* next target */
@@ -523,7 +546,8 @@ int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
 }
 
 /* nocheckflood for friends */
-static int irc_ignflood (char *from, char *lname, char *type, char *chan)
+BINDING_TYPE_irc_flood (irc_ignflood);
+static int irc_ignflood (unsigned char *from, char *lname, char *type, char *chan)
 {
   return 1;
 }
@@ -546,7 +570,7 @@ void irc_privmsgreg (void)
   BT_PrivCtcp = Add_Bindtable ("irc-priv-msg-ctcp", B_MATCHCASE);
   BT_PrivCtcr = Add_Bindtable ("irc-priv-notice-ctcp", B_MATCHCASE);
   BT_Flood = Add_Bindtable ("irc-flood", B_MASK);
-  Add_Binding ("irc-flood", "*", U_FRIEND, U_FRIEND, &irc_ignflood);
+  Add_Binding ("irc-flood", "*", U_FRIEND, U_FRIEND, &irc_ignflood, NULL);
   FloodMsg = FloodType ("irc-msgs");	/* register flood, no defaults */
   FloodCtcp = FloodType ("irc-ctcps");
   format_irc_message = SetFormat ("irc_message", "<%N> %*");
@@ -560,5 +584,5 @@ void irc_privmsgreg (void)
 
 void irc_privmsgunreg (void)
 {
-  Delete_Binding ("irc-flood", &irc_ignflood);
+  Delete_Binding ("irc-flood", &irc_ignflood, NULL);
 }

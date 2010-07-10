@@ -9,7 +9,7 @@ Note for SOCKS support:
 
 Catched signals and actions:
 SIGFPE	shutdown the bot
-SIGHUP	flush all
+SIGHUP	flush files/connections
 SIGILL	shutdown the bot
 SIGINT	restart the bot
 SIGPIPE	ignored
@@ -30,7 +30,7 @@ Return codes:
 4	cannot create console interface
 5	cannot fork
 6	bot already running
-7
+7	interface locking error
 8	internal unrecoverable error
 
 The bot is multithreaded but created threads may run with limitations:
@@ -40,6 +40,13 @@ The bot is multithreaded but created threads may run with limitations:
     of bot interface structure, thread must call Set_Iface() or Find_Iface()
     before that and call Unset_Iface() after.
 
+Undocumented options.
+    There is one option switch to foxeye executable: '-D'. If you add this
+  to command line then it'll create new file 'foxeye.debug' where any debug
+  messages will be stored in slightly modified format. This option does not
+  require '-d' option. Meaningful only for developers. There also is some
+  undocumended macro DBG(fmt,...) that writes debug only into this file.
+
 Version control.
     Any version A.Bxxx must be compatible. It means if something was changed
   in the core headers then it must be subject for version change.
@@ -48,6 +55,10 @@ Why I may need iconv?
     Iconv is a library what make a conversion from one charset to other.
   You may need it if you have a number of different character sets in your
   botnet.
+
+Color codes and smile codes.
+    Due to historical reasons text coloring codes scheme is one from mIRC.
+  Smiles are GUI-only feature so there is no smile codes scheme in FoxEye.
 
 What is in the core?
     Core has the code which is common or used by many modules, so it's
@@ -65,3 +76,40 @@ What is in the core?
     - sockets API (socket.c)
     - listfile manager (list.c)
     - eventsfile manager (wtmp.c)
+    - base character transcoding API (conversion.c)
+
+What modules are available?
+    Currently available modules are:
+   logs		- customisable saving and rotating of log files.
+   autolog	- automatic saving of private and public conversations.
+   lua		- support for scripts in Lua language.
+   irc		- common support of connection to IRC network.
+   irc-channel	- base support for channels of IRC network.
+   irc-ctcp	- implementation of some IRC commands including few DCC.
+    Were planned to implement some other modules but they are either pending
+    or unrequested. Feel free to write them or ask someone to implement:
+   botnet	- implementation of network of bots
+   dcc-new	- chat subsystem access for any unregistered user
+   eggdropnet	- implementation of eggdrop's botnet protocol
+   forth	- support for scripts in Forth language
+   fserv	- file downloading service
+   getops	- automatic getting privileges from other bots
+   icq		- client for ICQ network
+   irc-protection - antiflood, antispam and other
+   ircd-rfc1459	- standard (RFC1459) IRC server
+   ircd-rusnet	- RusNet ircd IRC server extensions
+   jabber	- base support for Jabber network
+   login	- "login", "logoff", and "cron" scripts for each chat user
+   md5		- support for md5 encryption
+   modes	- implementation of commands +ban, -ban, and others
+   news		- service for storing news and notifying people about them
+   notes	- service for storing notes from people to other people
+   perl		- support for scripting in Perl language
+   python	- support for scrypting in Python language
+   seen		- implementation of commands whois, find, and seen
+   ssl		- support of SSL for every connection
+   su		- enables change of user on chat subsystem
+   syslog	- support for logging some messages to syslog
+   tcl		- support for scripts in Tcl language
+   ui		- support for generic user interface (text or GUI)
+   ziplink	- support for compressed connections

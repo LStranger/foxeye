@@ -2,11 +2,14 @@ dnl Process this file with autoconf to produce a configure script.
 AC_PREREQ(2.50)
 AC_INIT(core/foxeye.h)
 AM_CONFIG_HEADER(config.h)
-AM_INIT_AUTOMAKE(foxeye, 0.3g)
-
-ALL_LINGUAS="ru uk"
+AM_INIT_AUTOMAKE(foxeye, 0.5a5)
 
 AC_CANONICAL_HOST
+
+AC_USE_SYSTEM_EXTENSIONS
+dnl AC_AIX
+AC_ISC_POSIX
+dnl AC_MINIX
 
 dnl Checks for programs.
 AC_PROG_CC
@@ -17,11 +20,7 @@ AC_PROG_INSTALL
 AC_PROG_RANLIB
 AC_PROG_LN_S
 AC_PATH_PROG(BASENAME, basename)
-AC_CHECK_PROGS(SGML2TXT, "docbook-to-man", test -f \$@ || sgml2txt)
-
-AC_AIX
-AC_ISC_POSIX
-AC_MINIX
+dnl AC_CHECK_PROGS(SGML2TXT, "docbook-to-man", test -f \$@ || sgml2txt)
 
 dnl Checks for C compiler features
 AC_C_CONST
@@ -30,9 +29,18 @@ AC_C_INLINE
 dnl AC_C_BIGENDIAN
 
 ac_default_prefix="${HOME}/${PACKAGE}"
+m4_pattern_allow(LIBOBJ)
 
 LD="${CC}" dnl Linker for the modules
 CPPFLAGS="-D_REENTRANT ${CPPFLAGS}" dnl defaults
+
+dnl checks for options to CFLAGS
+AC_CHECK_LDFLAG(fe_cv_add_wnotrigraphs, -Wno-trigraphs, CFLAGS)
+AC_CHECK_LDFLAG(fe_cv_add_wnolonglong, -Wno-long-long, CFLAGS)
+AC_CHECK_LDFLAG(fe_cv_add_wall, -Wall, CFLAGS)
+AC_CHECK_LDFLAG(fe_cv_add_pipe, -pipe, CFLAGS)
+AC_CHECK_LDFLAG(fe_cv_add_fshortenums, -fshort-enums, CFLAGS)
+AC_CHECK_LDFLAG(fe_cv_add_fnostrictaliasing, -fno-strict-aliasing, CFLAGS)
 
 if test "x$CC" = xgcc; then
     AC_ARG_ENABLE([profile],
@@ -100,8 +108,10 @@ if test "$fe_cv_static" = no; then
 	    fi
 	    ;;
 	solaris*)
-	    LD="ld -G -z text"
-	    LDFLAGS="-Wl,-E ${LDFLAGS}"
+#	    LD="ld -G -z text"
+	    LD="ld -G"
+#	    LDFLAGS="-Wl,-E ${LDFLAGS}"
+	    AC_CHECK_LDFLAG(fe_cv_add_wl_e, [-Wl,-E], LDFLAGS)
 	    ;;
 	sunos*)
 	    LD="ld"
@@ -123,7 +133,7 @@ dnl Checks for libraries and extensions
 AC_SEARCH_LIBS(socket, socket)
 AC_SEARCH_LIBS(connect, nsl)
 AC_SEARCH_LIBS(log, m)
-AC_CHECK_LIB(dns, gethostbyname)
+AC_SEARCH_LIBS(gethostbyname, [dns nsl])
 
 if test "$fe_cv_static" = no; then
     AC_SEARCH_LIBS(dlopen, dl, [AC_DEFINE(HAVE_DLOPEN, 1, [Define to 1 if you have dlopen function])],
@@ -145,7 +155,7 @@ dnl Checks for header files.
 AC_HEADER_DIRENT
 AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS(unistd.h dlfcn.h crypt.h getopt.h limits.h posix1_lim.h)
-AC_CHECK_HEADERS(fcntl.h strings.h stdint.h)
+AC_CHECK_HEADERS(fcntl.h strings.h stdint.h sys/filio.h thread.h)
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_PID_T
@@ -158,17 +168,14 @@ if test "$fe_cv_static" = yes; then
     CFLAGS="${CFLAGS} -DSTATIC"
     LD_MODS="../modules/*/*.o"
     LD="${CC}"
+    AC_CHECK_LDFLAG(fe_cv_add_static, -static, LDFLAGS)
+    if test $fe_cv_add_static = no; then
+	AC_CHECK_LDFLAG(fe_cv_add_Bstatic, -Bstatic, LDFLAGS)
+    fi
 else
     dnl checks for -rdynamic option to LDFLAGS
     AC_CHECK_LDFLAG(fe_cv_add_rdynamic, -rdynamic, LDFLAGS)
 fi
-
-dnl checks for options to CFLAGS
-AC_CHECK_LDFLAG(fe_cv_add_notrigraphs, -Wno-trigraphs, CFLAGS)
-AC_CHECK_LDFLAG(fe_cv_add_nolonglong, -Wno-long-long, CFLAGS)
-AC_CHECK_LDFLAG(fe_cv_add_wall, -Wall, CFLAGS)
-AC_CHECK_LDFLAG(fe_cv_add_pipe, -pipe, CFLAGS)
-AC_CHECK_LDFLAG(fe_cv_add_fshortenums, -fshort-enums, CFLAGS)
 
 dnl Checks for library functions.
 AC_CHECK_FUNCS(rename getrusage getdtablesize clock srand48 bzero sigaction)
@@ -190,16 +197,11 @@ fi
 AC_CACHE_CHECK([whether you need libcrypt], ac_cv_need_libcrypt,
 [
     ac_cv_have_crypt=yes
-    AC_TRY_LINK([], [char *s;
-
-s = crypt ("passwd", "+key+salt");
-], [ac_cv_need_libcrypt=no],
+    AC_TRY_LINK([], [crypt ("","");], [ac_cv_need_libcrypt=no],
 	[save_LIBS="${LIBS}"
 	LIBS="-lcrypt ${LIBS}"
-	AC_TRY_LINK([], [char *s;
-
-s = crypt ("passwd", "+key+salt");
-], [ac_cv_need_libcrypt=yes], [ac_cv_need_libcrypt=no
+	AC_TRY_LINK([], [crypt ("","");], [ac_cv_need_libcrypt=yes],
+	    [ac_cv_need_libcrypt=no
 	    ac_cv_have_crypt=no
 	])
 	LIBS="${save_LIBS}"
@@ -213,12 +215,23 @@ if test "$ac_cv_need_libcrypt" = yes; then
 fi
 
 AC_REPLACE_FUNCS(strcasecmp)
-AC_REPLACE_FUNCS(rwlock_init)
+
+AC_CHECK_FUNC(rwlock_init, [AC_DEFINE(HAVE_RWLOCK_INIT)],
+    [AC_CHECK_FUNCS(pthread_rwlock_init)
+])
+if test "$ac_cv_func_rwlock_init" = no -a "$ac_cv_func_pthread_rwlock_init" = no
+then
+    AC_REPLACE_FUNCS(rwlock_init)
+fi
+
+GENDATE="`LC_TIME=C date +'%B %Y'`"
+AC_SUBST(GENDATE)
 
 AC_SUBST(LD)
 AC_SUBST(LD_MODS)
 AC_SUBST(BASENAME)
 AC_SUBST(EXTRA_HDR)
+AC_SUBST(MODLIBS) dnl see modules/Makefile.mods.in
 
 AM_GNU_GETTEXT
 AC_SYS_LONG_FILE_NAMES

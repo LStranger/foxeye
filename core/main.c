@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -15,10 +15,8 @@
  *     along with this program; if not, write to the Free Software
  *     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * This is main startup file and console interface.
+ * This file is part of FoxEye's source: main startup and console interface.
  */
-
-void unknown (void);
 
 #define MAIN_C 1
 
@@ -29,7 +27,6 @@ void unknown (void);
 #endif
 
 #include <locale.h>
-#include <pthread.h>
 #include <fcntl.h>
 #include <sys/poll.h>
 #include <sys/utsname.h>
@@ -38,16 +35,6 @@ void unknown (void);
 
 #include "init.h"
 #include "direct.h"
-
-/* from direct.c */
-#ifndef HAVE_SIGACTION
-# define sigaction sigvec
-#ifndef HAVE_SA_HANDLER
-# define sa_handler sv_handler
-# define sa_mask sv_mask
-# define sa_flags sv_flags
-#endif
-#endif /* HAVE_SIGACTION */
 
 static int Fifo_Inp[2];		/* console keyboard */
 static int Fifo_Out[2];		/* console display */
@@ -390,7 +377,7 @@ static void print_version (void)
 
   uname (&buf);
   printf (version_string);
-  printf (_("Copyright (C) 1999-2005 Andriy Gritsenko.\n\n\
+  printf (_("Copyright (C) 1999-2010 Andriy Gritsenko.\n\n\
 System: %s %s on %s.\n"), buf.sysname, buf.release, buf.machine);
 }
 #undef version_string
@@ -406,7 +393,8 @@ int main (int argc, char *argv[])
   char buff[STRING];
   pthread_t sit;
 
-  strfcpy (locale, getenv ("LANG"), sizeof(locale));
+  if ((c = getenv ("LANG")))
+    strfcpy (locale, c, sizeof(locale));
   if ((c = strchr (locale, '.')))
   {
     *c++ = 0;
@@ -455,7 +443,7 @@ int main (int argc, char *argv[])
       case 'v':		/* version information */
 	print_version();
 	return 0;
-      case 'w':
+      case 'w':		/* undocumented: for debug purpose. */
 	O_WAIT = 1;
 	break;
       case '?':		/* unknown option */
@@ -474,11 +462,25 @@ int main (int argc, char *argv[])
     char Path[2*_POSIX_PATH_MAX];
     size_t pl;
 
-    if (getcwd (Path, sizeof(Path)))
+    if (buff[0] == '/')			/* it's absolute path */
+      Config = safe_strdup (buff);
+    else if (getcwd (Path, sizeof(Path)))
     {
       pl = safe_strlen (Path);
       snprintf (&Path[pl], sizeof(Path) - pl, "/%s", buff);
       Config = safe_strdup (Path);
+    }
+    if (Config)
+    {
+      char *ch = strrchr (Config, '/');
+
+      *ch = 0;				/* isolate path from name */
+      if (chdir (Config))		/* check if path is accessible */
+      {
+	perror ("cannot chdir");
+	return 1;			/* fatal error */
+      }
+      *ch = '/';
     }
   }
   /* check the parameters */

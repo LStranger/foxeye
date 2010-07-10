@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2003  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2001-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -15,7 +15,7 @@
  *     along with this program; if not, write to the Free Software
  *     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * wtmp file structure and functions declarations.
+ * This file is part of FoxEye's source: wtmp file API.
  */
 
 #ifndef _WTMP_H
@@ -42,7 +42,7 @@ typedef struct
 } wtmp_t;
 
 short Event (const char *);				/* user event name -> event */
-int FindEvent (wtmp_t *, const char *, short, lid_t);	/* Lname, event, from */
+int FindEvent (wtmp_t *, const char *, short, lid_t, time_t); /* Lname, event, from, upto */
 void NewEvent (short, lid_t, lid_t, short);		/* event, from, lid, count */
 void NewEvents (short, lid_t, size_t, lid_t[], short[]);
 void RotateWtmp (void);					/* called monthly */

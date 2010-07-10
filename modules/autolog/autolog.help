@@ -1,0 +1,72 @@
+# first section is usage
+# second section is that config maker will put into config
+# third section is full help
+
+module autolog
+:%*
+:
+:This module provides automatic creating, opening, and closing log files for\
+ private and public conversation.
+
+set autolog-ctl-prefix
+:%* <string>
+:Prefix for join and other notices in autolog files.
+:This string is inserted into logged line before actual message when logging\
+ some notices such as joining and quitting users, etc.
+ Default: "-|- ".
+
+set autolog-path
+:%* <string>
+:Path template for files created by autologging. (%%N is target, %%@ is net,
+ and any strftime substitutions)
+:This variable defines template for path of log file that is opened/created\
+ for clients and communities (channels). Substitutions:
+ %%N - target name (nick, channel, etc.)
+ %%@ - registered network name
+ %%d, %%b, %%y, etc - date fields as in strftime(3)
+ Default: "~/.foxeye/logs/%%@/%%N".
+
+set autolog-serv-path
+:%* <string>
+:
+:This variable defines template for path of log file that is opened/created\
+ for common service (network) log. Substitutions:
+ %%@ - registered network name
+ %%d, %%b, %%y, etc - date fields as in strftime(3)
+ Default: "~/.foxeye/logs/%%@.netlog".
+
+set autolog-open
+:%* <string>
+:Template for string to add in autolog on opening (see strftime).
+:This variable defines a template for string that is inserted to log file on\
+ its opening. See strftime(3) for details.
+ Default: "IRC log started %%c".
+
+set autolog-close
+:%* <string>
+:Template for string to add in autolog on closing (see strftime).
+:This variable defines a template for string that is inserted to log file on\
+ its closing. See strftime(3) for details.
+ Default: "IRC log ended %%c".
+
+set autolog-daychange
+:%* <string>
+:Template for string to add in autolog when day changed (see strftime).
+:This variable defines a template for string that is inserted to log file when\
+ new day begins. See strftime(3) for details.
+ Default: "Day changed: %%a %%x".
+
+set autolog-timestamp
+:%* <string>
+:Template for string to add at start of message line in autolog (see strftime).
+:This variable defines a template for string that is inserted into beginning\
+ of each logged line except self-formed (such as %^autolog-daychange%^). See\
+ strftime(3) for details.
+ Default: "[%%H:%%M] ".
+
+set autolog-autoclose
+:%* <seconds>
+:Max idle time to close autolog.
+:This variable defines time interval of idle (no messages goes to log file)\
+ in which log file is closed.
+ Default: 600.

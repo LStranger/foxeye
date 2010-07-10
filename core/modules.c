@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2002  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -15,7 +15,7 @@
  *     along with this program; if not, write to the Free Software
  *     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * This file contains module control (load/unload/changing flags).
+ * This file is part of FoxEye's source: modules layer (load/unload/changing flags).
  */
 
 #include "foxeye.h"
@@ -80,7 +80,7 @@ ScriptFunction (FE_module)
       Unset_Iface();
       tmp->ift = I_DIED;
       BindResult = ModuleList;
-      return 1;
+      return -1;
     }
     cmd = args[1];
     args = NextWord (args);
@@ -98,7 +98,7 @@ ScriptFunction (FE_module)
     if (tmp)
     {
       Unset_Iface();
-      return 1;
+      return -1;
     }
   }
   else if (cmd == 'd')			/* unload the module */
@@ -109,7 +109,9 @@ ScriptFunction (FE_module)
     New_Request (tmp, F_SIGNAL, sig);		/* kill the module */
 #ifndef STATIC
     dlclose (tmp->data);			/* close dll */
+    tmp->data = NULL;
 #endif
+    tmp->ift = I_DIED;
     Unset_Iface();				/* unlock after Find_Iface() */
     if (!BT_Moddel)
       BT_Moddel = Add_Bindtable ("unload", B_MASK);
@@ -160,25 +162,32 @@ ScriptFunction (FE_module)
       return 0;
     }
 #endif
-    /* start the module */
-    if ((mods = (iftype_t(*)(INTERFACE *,ifsig_t))func (args)) == NULL)
-    {
-      ERROR ("module %s: ModuleInit() error", name);
 #ifndef STATIC
-      dlclose (modh);
-#endif
-      return 0;
-    }
-#ifndef STATIC
-    if (!Add_Iface (I_MODULE, name, mods, NULL, modh))
+    if (!(tmp = Add_Iface (I_TEMP, name, NULL, NULL, modh)))
     {
       dlclose (modh);
 #else
-    if (!Add_Iface (I_MODULE, name, mods, NULL, NULL))
+    if (!(tmp = Add_Iface (I_TEMP, name, NULL, NULL, NULL)))
     {
 #endif
+      ERROR ("module %s: cannot create interface.", name);
       return 0;
     }
+    /* start the module */
+    if ((mods = (iftype_t(*)(INTERFACE *,ifsig_t))func (args)) == NULL)
+    {
+      ERROR ("module %s: ModuleInit() error.", name);
+#ifndef STATIC
+      dlclose (modh);
+      tmp->data = NULL;
+#endif
+      tmp->ift = I_DIED;
+      return 0;
+    }
+    Set_Iface (tmp);				/* just in case */
+    tmp->IFSignal = mods;
+    tmp->ift = I_MODULE;
+    Unset_Iface();
     if (!BT_Modadd)
       BT_Modadd = Add_Bindtable ("load", B_MASK);
     do
@@ -196,7 +205,7 @@ ScriptFunction (FE_module)
 		   name, args);
     else
       Add_Request (I_LOG, "*", F_BOOT, "Loaded module %s", name);
-    return 1;
+    return -1;
   }
   else					/* unknown command? */
     ERROR ("invalid call: module -%c %s", cmd, args);

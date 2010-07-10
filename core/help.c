@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -15,7 +15,7 @@
  *     along with this program; if not, write to the Free Software
  *     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * Here is help system with help and control.
+ * This file is part of FoxEye's source: the help layer.
  */
 
 #include "foxeye.h"
@@ -81,7 +81,7 @@ int Add_Help (const char *name)
   char path[LONG_STRING];
   FILE *fp = NULL;
   long size;
-  HELPFILE *hf;
+  HELPFILE **hf;
   HELP **ht;
   char *data, *endc = NULL;
   char *key, *gr = NULL;
@@ -93,6 +93,12 @@ int Add_Help (const char *name)
   {
     snprintf (path, sizeof(path), "%s/%s.%s", HELPDIR, name, locale);
     fp = fopen (path, "r");
+    /* check if file.$lang exists */
+    if (!fp)
+    {
+      snprintf (path, sizeof(path), "%s/%s.%.2s", HELPDIR, name, locale);
+      fp = fopen (path, "r");
+    }
   }
   /* check for default helpfile */
   if (!fp)
@@ -119,23 +125,24 @@ int Add_Help (const char *name)
     return 0;
   }
   fseek (fp, 0L, SEEK_SET);
-  hf = safe_calloc (1, sizeof(HELPFILE));
-  hf->hfile = safe_malloc ((size_t)size + 1);
-  hf->name = safe_strdup (name);
-  hf->next = NULL;
-  if (fread (hf->hfile, 1, (size_t)size, fp) != size)
+  for (hf = &HFiles; *hf; hf = &(*hf)->next);	/* find the tail */
+  *hf = safe_calloc (1, sizeof(HELPFILE));
+  (*hf)->hfile = safe_malloc ((size_t)size + 1);
+  if (fread ((*hf)->hfile, 1, (size_t)size, fp) != size)
   {
     Add_Request (I_LOG, "*", F_BOOT, "Help file reading error!");
     fclose (fp);
-    FREE (&hf->hfile);
-    FREE (&hf);
+    FREE (&(*hf)->hfile);
+    FREE (hf);
     return 0;
   }
   fclose (fp);
+  (*hf)->name = safe_strdup (name);
+  (*hf)->next = NULL;
   Add_Request (I_LOG, "*", F_BOOT, "Loading helpfile %s", path);
-  hf->hfile[(size_t)size] = 0;
-  ht = &hf->help;
-  data = hf->hfile;
+  (*hf)->hfile[(size_t)size] = 0;
+  ht = &(*hf)->help;
+  data = (*hf)->hfile;
   c = NULL;
   /* HELPGR "" must be first */
   _get_helpgr (NULL);
@@ -220,7 +227,7 @@ int Add_Help (const char *name)
       data++;
     if (data && *data == '\n')
       data++;
-  } while (data && data < hf->hfile + size);
+  } while (data && data < (*hf)->hfile + size);
   if (c)				/* topics terminator */
     *c = 0;
   return 1;
@@ -261,7 +268,8 @@ void Delete_Help (const char *name)
 
 static int _no_such_help (INTERFACE *iface, int mode)
 {
-  New_Request (iface, 0, _("No help on this."));
+  if (mode >= 0)
+    New_Request (iface, 0, _("No help on this."));
   return 0;
 }
 
@@ -274,7 +282,7 @@ static int _help_one_topic (char *text, INTERFACE *iface, char *prefix,
   char *c, *end;
 
   if (mode > 2 || mode < 0)		/* ugly mode? */
-    mode = 2;
+    mode = 0;
   /* select a part */
   for (; mode; )
   {
@@ -379,9 +387,23 @@ int Get_Help (const char *fst, const char *sec, INTERFACE *iface, userflag gf,
   HELP *t;
 
   dprint (4, "help:Get_Help: call \"%s %s\"", NONULL(fst), NONULL(sec));
-  if (!fst || !*fst || !safe_strcmp (fst, "*"))
+  if (!h)
+    return _no_such_help (iface, mode);
+  else if (!table)
+  {
+    if (!fst)
+      return _no_such_help (iface, mode);
+  }
+  else if (!fst && *topic)					/* NULL smth */
+  {
+    if (strcmp (topic, "*") &&					/* NULL !"*" */
+	Check_Bindtable (table, sec, gf, cf, NULL) == NULL)
+      return _no_such_help (iface, mode);
+    fst = Bindtable_Name (table);
+  }
+  else if (!fst || !*fst || !strcmp (fst, "*"))			/* "*" NULL */
     return _help_all_topics (Help, iface, gf, cf, table, mode);
-  if (!h || (table && Check_Bindtable (table, fst, gf, cf, NULL) == NULL))
+  else if (Check_Bindtable (table, fst, gf, cf, NULL) == NULL)	/* smth "*" */
     return _no_such_help (iface, mode);
   /* check for group first - if is second parameter! */
   if (!*topic)
@@ -401,14 +423,16 @@ int Get_Help (const char *fst, const char *sec, INTERFACE *iface, userflag gf,
     h = Help;
     topic = fst;
   }
+  if (table && !strcmp (topic, "*"))
+    return _help_all_topics (h, iface, gf, cf, table, mode);
   lct = safe_malloc (strlen(topic) + 1);
-  safe_strlower (lct, topic, strlen(topic) + 1);
+  unistrlower (lct, topic, strlen(topic) + 1);
   t = Find_Key (h->tree, lct);
   FREE (&lct);
   if (!t)
   {
-    WARNING ("help: topic \"%s\" not found", NONULL(topic));
-    if (h != Help)
+    WARNING ("help: topic \"%s\" not found", topic);
+    if (table && h != Help)
       return _help_all_topics (h, iface, gf, cf, table, mode);
     return _no_such_help (iface, mode);
   }

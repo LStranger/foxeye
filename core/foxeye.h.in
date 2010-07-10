@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -14,6 +14,8 @@
  *     You should have received a copy of the GNU General Public License
  *     along with this program; if not, write to the Free Software
  *     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * This file is part of FoxEye's source: common includes and definitions.
  */ 
 
 /* strict POSIX.2 */
@@ -34,6 +36,11 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdarg.h>
+#include <pthread.h>
+
+#ifdef HAVE_THREAD_H
+# include <thread.h>
+#endif
 
 #ifdef _POSIX_SOURCE
 # include <time.h>
@@ -158,8 +165,8 @@ void free ();
 #define	MBNAMEMAX	MB_LEN_MAX*NAMEMAX /* it is part of HOSTMASKLEN */
 #define HOSTMASKLEN	MBNAMEMAX+IDENTLEN+HOSTLEN+2
 //#define CHANNAMEMAX	50	/* channel name length */
-#define	CHANNFIRSTCHAR	"&#+!"	/* channel name first char */
-#define SPECIALCHARS	CHANNFIRSTCHAR "@:" /* first char of special names */
+//#define CHANNFIRSTCHAR	"&#+!"	/* channel name first char */
+//#define SPECIALCHARS	CHANNFIRSTCHAR "@:" /* first char of special names */
 #define RESTRICTEDCHARS	" ,\007\r\n" /* cannot be in names */
 #define MESSAGEMAX	512	/* including CR-LF at end */
 //#define BLOCKMAX	2*MESSAGEMAX /* must be 2 MESSAGEMAX */
@@ -189,7 +196,7 @@ typedef enum
   I_DCCALIAS	= (1<<14),	/* DCC chat alias for TCL requests */
   I_QUERY	= (1<<15),	/* private query */
   I_PENDING	= (1<<16),	/* tmp, unset after request */	/* 0x010000 */
-  I_IGNORED	= (1<<17),	/* local interface flag to ignore input */
+  I_FINWAIT	= (1<<17),	/* from thread for dispatcher: terminate me */
   I_TELNET	= (1<<18),	/* this DCC chat is answer on listening port */
   I_LOCKED	= (1<<19),	/* this interface temporary unavailable */
   I_AUTHPASS	= (1<<20),	/* client is authenticated */	/* 0x100000 */
@@ -207,8 +214,8 @@ typedef enum
   F_T_ACTION,
 	/* message flags */
   F_PUBLIC	= (1<<4),	/* p   public msg/notice/ctcp    --- dests ---*/
-  F_PRIV	= (1<<5),	/* m   unhandled msg/notice/ctcp from/to bot */
-  F_BOTNET	= (1<<6),	/* n   partyline msg/notice/ctcp */
+  F_PRIV	= (1<<5),	/* m   msg/notice/ctcp from/to bot */
+  F_BOTNET	= (1<<6),	/* n   botnet notices */
   F_USERS	= (1<<7),	/* u   user changes information  --- logs ----*/
   F_CMDS	= (1<<8),	/* c   any user command */
   F_CONN	= (1<<9),	/* b   clients connections/shares */
@@ -221,16 +228,17 @@ typedef enum
   F_MODES	= (1<<16),	/* k   mode/topic change/kick/ban */
   F_WALL	= (1<<17),	/* w   wallops/server message */
   F_QUICK	= (1<<18),	/*     high priority of request	 --- flags ---*/
-  F_REPORT	= (1<<19),	/*     this is a report */
-  F_MINE	= (1<<20),	/*     this send by me not for me */
-  F_SHARE	= (1<<21),	/*     message to shared bot */
-  F_SHAREINFO	= (1<<22),	/*     the same but info/greeting */
-  F_ASK		= (1<<23),	/*     required answer to that message */
-  F_SIGNAL	= (1<<24),	/*     generate signal instead of request */
-  F_END		= (1<<25),	/*     client going to down */
-  F_ECHO	= (1<<26),	/*     session only: echo on     --- session -*/
-  F_COLOR	= (1<<27),	/*     session only: enable color */
-  F_COLORCONV	= (1<<28)	/*     session only: convert color to ansi/mono */
+  F_AHEAD	= (1<<19),	/*     priority: insert before last */
+  F_REPORT	= (1<<20),	/*     this is a report */
+  F_MINE	= (1<<21),	/*     this send by me not for me */
+  F_SHARE	= (1<<22),	/*     message to shared bot */
+  F_SHAREINFO	= (1<<23),	/*     the same but info/greeting */
+  F_ASK		= (1<<24),	/*     required answer to that message */
+  F_SIGNAL	= (1<<25),	/*     generate signal instead of request */
+  F_END		= (1<<26),	/*     client going to down */
+  F_ECHO	= (1<<27),	/*     session only: echo on     --- session -*/
+  F_COLOR	= (1<<28),	/*     session only: enable color */
+  F_COLORCONV	= (1<<29)	/*     session only: convert color to ansi/mono */
 } flag_t;
 
 #define FLAG_T		"pmnucbseodijkw"
@@ -254,7 +262,9 @@ typedef struct req_t
   char string[MESSAGEMAX];	/* text of request or signal */
 } REQUEST;
 
+#ifdef HAVE_ICONV
 typedef struct conversion_t conversion_t;
+#endif
 
 typedef enum __attribute__ ((__packed__))
 {
@@ -318,17 +328,23 @@ typedef enum
   U_FLG		= (1<<20),	/* G   */
   U_FLH		= (1<<21),	/* H   */
   /* record attributes */
-  U_BOT		= (1<<22),	/* b   user is a bot */
-  U_UNSHARED	= (1<<23),	/* u   private, not shared with sharebots */
-  U_ALIAS	= (1<<24),	/*     (pseudo-user) alias */
-  U_SPECIAL	= (1<<25),	/*     (pseudo-user) network/service/channel */
-  U_ANY		= (1<<26)	/*     set 1 for any regular user */
+  U_UNSHARED	= (1<<22),	/* u   private, not shared with sharebots */
+  U_IGNORED	= (1<<23),	/* I   user's messages are ignored */
+  U_NEGATE	= (1<<24),	/*     (pseudo-user) inverse matching */
+  U_ALIAS	= (1<<25),	/*     (pseudo-user) alias */
+  U_SPECIAL	= (1<<26),	/*     (pseudo-user) network/service/channel */
+  U_ANY		= (1<<27)	/*     set 1 for any regular user */
 } userflag;
 
-#define USERFLAG "kaefvhomsn*idqABCDEFGHbu"
+#define USERFLAG "kaefvhomsn*idqABCDEFGHuI"
 
 #define U_GLOBALS (U_INVITE | U_FRIEND | U_VOICE | U_MASTER | U_SPEAK | \
-		   U_OWNER | U_NOAUTH | U_QUIET | U_BOT | U_SPECIAL | U_ANY)
+		   U_OWNER | U_NOAUTH | U_QUIET | U_IGNORED | U_SPECIAL | U_ANY)
+
+#define U_AND	U_ALIAS		/* if channel flag must be ANDed with global */
+				/* when matching instead of default behavior */
+
+#define U_NONE  (~(U_NEGATE | U_ALIAS)) /* for bindings */
 
 /* return values for Inspect_Client() */
 typedef enum
@@ -405,5 +421,8 @@ typedef short idx_t;
 #define	SOCKETMAX	1024	/* max number of opened inet sockets */
 
 /* main.c defines */
-#define CONSOLE_LOGLEV (F_PRIV | F_CMDS | F_CONN | F_USERS | F_BOOT | F_WARN | \
+#define	CONSOLE_LOGLEV (F_PRIV | F_CMDS | F_CONN | F_USERS | F_BOOT | F_WARN | \
 			F_ERROR | F_DEBUG | F_COLOR | F_COLORCONV)
+
+/* sheduler.c defines */
+#define	MAXDRIFT	3	/* max time shift to don't run "time-shift" */

@@ -20,20 +20,21 @@ away
 :%* [message]
 :
 :Sets your status on the botnet channel as "away". Your away message will\
- be displayed in the %^who%^ list. You can remove your "away" status by\
- typing %^back%^ command. %* without arguments will show you your away\
- message.
-
-back
-:%*
-:
-:Unsets your "away" status on the bothet channel.
+ be displayed in the %cw%n list. You can remove your "away" status by\
+ typing %c%*%n command without arguments.
 
 boot
 :%* name
 :
-:Kicks someone (%_name%_) from botnet (as if he/she has entered ".quit"). \
+:Kicks someone (%_name%_) from botnet (as if he/she has entered ".quit").\
  You cannot boot the bot owner/runner.
+
+charset
+:%* [charset name]
+:
+:Sets or displays your charset name which is used to recode all messages\
+ on the dcc/telnet session. Note: it's not shared with other bots in the\
+ botnet.
 
 chat
 :%* [channel]
@@ -53,15 +54,16 @@ color
  If %_mode%_ is omitted then it shows your current color mode.
 
 console
-:%* [service] [flags change]
+:%* [service|"*"] [flags change]
 :
 :Changes log mode for your dcc/telnet session. You can also change which\
- service (or channel) log messages you want to see. If flags are prepended\
- with '+' then you have log level added, if with '-' then removed. You can\
+ target (usually service or channel) log messages you want to see. Note that\
+ target is affecting all flags, even 'm' one. If flags are prepended with\
+ '+' then you have log level added and if with '-' then removed. You can\
  combine both adds and removes in one command. Valid levels are:
-   m  display unhandled private msgs/ctcps/notices
+   m  display private msgs/ctcps/notices
    p  display public talk and ctcps for the channel/service
-   n  display partyline msgs/notices
+   n  display botnet notices
    k  display kicks/bans/topic or mode changes on the channel
    j  display joins/parts/nick changes/signoffs/etc on the channel
    b  display clients connections and shares
@@ -73,6 +75,9 @@ console
    o  display different state notices and warnings
    e  display correctable internal errors
    d  display debug messages that only coders would care about
+ Note that %_service%_ also defines what service-specific set of commands\
+ you have enabled at the time. Value of "%^*%^" leaves you without any of\
+ service-specific commands but lets you get all logs on your console.
 
 cstat
 :%*
@@ -93,13 +98,16 @@ echo
 help
 :%* [topic]
 :Get help message for topic.
-:Prints out help message for %_topic%_. First line is usage template. \
- Second (and more) line is description.
+:Prints out help message for %_topic%_. First line is usage template. In that\
+ template argument(s) in square brackets is optional, argument(s) in quotes\
+ must be entered literally, string(s) in angle brackets is what values are\
+ allowed for argument(s), and read description of usage in next line(s) of\
+ detailed help.
 
 me
-:%*
+:%* action
 :
-:Sends action message to the botnet channel. It will be displayed as\
+:Sends %_action%_ message to the botnet channel. It will be displayed as
  %^* %N does something.%^
 
 motd
@@ -109,7 +117,7 @@ motd
  first joined the botnet.
 
 simul
-:%* text
+:%* <lname> text
 :
 :Simulates input of someone else on dcc/telnet session. It seems as if\
  someone will type that text itself. Note: you must remember about\
@@ -118,7 +126,10 @@ simul
 who
 :%* [botnick|service]
 :
-:Shows who connected to bot or service. This command shows
+:Shows who connected to bot or service. This command shows the table of all\
+ opened ports for incoming connections and all clients and services directly\
+ connected to %_service%_. If name is omitted then shows that info for node\
+ you are on now. Owner can customise output format for this command.
 
 w
 :%* [channel]
@@ -126,9 +137,9 @@ w
 :Prints out list of people on your botnet channel or other %_channel%_ if it\
  was specified. This command shows a login name (preceded with "*" for\
  owner, "+" for anyone with master permissions, "@" for any operator or\
- "%%" for anyone with half-op status), from here he/she connected (bot\
- name or "-" for local connections), date or time of connection, idle\
- time, and some info if available.
+ "%%" for anyone with half-op status), from here he/she connected (bot name\
+ or "-" for local connections), date or time of connection, idle time, and\
+ some info if available. Owner can customise output format for this command.
 
 quit
 :%* [message]
@@ -137,18 +148,18 @@ quit
  be printed out for other party members as reason.
 
 connect
-:%* <network|public@network|botnick> [args]
+:%* <network|public@network|nodename> [args]
 :
-:Starts connection attempt to network, community on connected network or bot\
- by given name. Optional %_args%_ are network specific. Network or botnick must\
- be already defined in Listfile to get this command to work since there is no\
- way to know which protocol we have to use to connect.
+:Starts connection attempt to network, community on connected network or some\
+ other node in the network by given name. Optional %_args%_ are network\
+ specific. The name must be already defined in Listfile to get this command to\
+ work since there is no way to know which protocol we have to use to connect.
 
 disconnect
-:%* <network|public@network|botnick> [reason]
+:%* <network|public@network|nodename> [reason]
 :
-:Disconnects you from network, community or bot with given name if you are\
- connected to it. Optional string may be given as reason of disconnect.
+:Disconnects you from network, community or other node with given name if you\
+ are connected to it. Optional string may be given as reason of disconnect.
 
 # -----------------------
 # init.c bindings:
@@ -157,17 +168,17 @@ binds
 :%* ["-l"|name|"-a" [name]]
 :
 :Shows binding status. Modifiers:
-   -l    	show list of all tables and number of bindings in each
-   -a [name]	show list of all bindings in table %_name%_ (or in all tables)
-   name  	show list of internal bindings in table %_name%_
+   -l         show list of all tables and number of bindings in each
+   -a [name]  show list of all bindings in table %_name%_ (or in all tables)
+   name       show list of internal bindings in table %_name%_
 
 module
 :%* ["-c"|"-d"] modulename [args]
 :
-:Controls of module state (the same as %^function module%^):
- %*	loads an unloaded module by it's name with optional arguments
- %* -c	checks if module is already loaded
- %* -d	unloads a loaded module
+:Controls of module state (the same as %cfunction module%n):
+ %*     loads an unloaded module by it's name with optional arguments
+ %* -c  checks if module is already loaded
+ %* -d  unloads a loaded module
  See also %yhelp %*%n %_modulename%_.
 
 status
@@ -185,9 +196,8 @@ fset
 rehash
 :%*
 :
-:Flushes unsaved listfile changes to disk then reloads config file and\
- freshes all variables from it. All commands from config file will be also\
- restarted.
+:Flushes all unsaved listfile changes, logs, connections, etc. to disk then\
+ reloads config file and tries to run every command found in it.
 
 restart
 :%*
@@ -214,6 +224,13 @@ function module
 :
 :
 :Loads an installed unloaded module by it's name with optional arguments.\
+ Currently available modules are:
+   logs         - customisable saving and rotating of log files.
+   autolog      - automatic saving of private and public conversations.
+   lua          - support for scripts in Lua language.
+   irc          - common support of connection to IRC network.
+   irc-channel  - base support for channels of IRC network.
+   irc-ctcp     - support for basic CTCP DCC commands.
  See also %yhelp module%n.
 
 # -----------------------
@@ -223,13 +240,41 @@ chattr
 :%* name [flags] [service]
 :
 :Lets you view and change flags for client record. Usage:
- %* name     	only shows current flags
- %* name +x  	adds flag with symbolic name x to client record
- %* name -x  	removes flag with symbolic name x from client record
- %* name +x #ch	adds flag with symbolic name x to channel #ch of client
- %* name +x|-y #ch	adds flag x to client record and removes flag y from\
- 			channel #ch of client
+ %* name            only shows current flags
+ %* name +x         adds flag with symbolic name x to client record
+ %* name -x         removes flag with symbolic name x from client record
+ %* name +x %_#ch%_     adds flag with symbolic name x to service %_#ch%_ for client
+ %* name +x|-y %_#ch%_  adds flag x to client record and removes flag y from service\
+		%_#ch%_ for client
  Only owner may change permissions for owners and masters.
+ 
+ Full list of supported flags:
+   a  has service access
+   k  access to service or mode changes denied
+   v  can ask to give speak permissions (voice flag)
+   h  is service halfop (i.e. has restricted privileges)
+   o  is service operator (i.e. privileged)
+   m  is service master (i.e. has extended privileges)
+   n  is service owner (i.e. has full control)
+   *  enforce any of above on network/service
+   d  must be de-opped
+   q  denied to speak
+   f  is friendly, i.e. don't be kicked out in some situations
+   s  permitted to say anything on network/service
+   e  welcomed to come (invited)
+   i  trusted without authentication
+   I  user's messages are ignored
+   u  private record (i.e. not shared with sharebots)
+ For networks and services most of flags apply the same things for whole\
+ service (flags a,s,u) or automate them for anyone but some flags have\
+ different meaning:
+   h  cycle channel to get privileges
+   m  protect operators and friendly ones
+   *  enforce bans on channel / autoconnect to network
+   q  do revenge
+   i  non-dynamic modes (for example bans will stay on channel forever)
+   n,e,I  (not used)
+ Also there are 8 custom flags (A...H) for use in your scripts.
 
 +host
 :%* name hostmask
@@ -245,11 +290,12 @@ chattr
 +name
 :%* [-<network type>] name [hostmask [flags]]
 :
-:Creates a new client record for given %_name%_. If %_hostmask%_ given then\
- adds that hostmask to listfile. The new record will have given %_flags%_\
- or no flags otherwise. You may also add network records with this command,\
- in that case you have to add %_network type%_ before %_name%_ with minus\
- sign, first character of %_name%_ must be '%^@%^'.
+:Creates a new client record for given %_name%_. If %_hostmask%_ different\
+ from "%^-%^" is given then adds that hostmask to listfile. The new record\
+ will have given %_flags%_ or no flags otherwise. You may also add special\
+ records (for network, bot, local service, etc.) with this command too, in\
+ that case you have to add %_network type%_ before %_name%_ with minus sign.\
+ For flags description see %yhelp chattr%n.
 
 -name
 :%* name
@@ -286,4 +332,4 @@ save
 :%*
 :
 :Forcibly saves listfile to disk. This is useful if you think the program may\
- be about to crash or something.
+ be about to crash or something else is wrong.

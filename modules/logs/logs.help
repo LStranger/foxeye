@@ -2,6 +2,12 @@
 # second section is that config maker will put into config
 # third section is full help
 
+module logs
+:%*
+:
+:This module provides support for filing different log messages and rotating\
+ those logs.
+
 function logfile
 :logfile [-n[ots]] [-y[early]|-m[onthly]|-w[eekly]] [-r[path] rpath] filename\
  level [service]
@@ -9,8 +15,15 @@ function logfile
 :
 :Starts or stops (with -c command switch) logfile %_filename%_ which will\
  collect all log events of any type from list %_level%_ that come for\
- %_service%_ (if it's omitted then assume it has value "*" what means collect\
- events for any destination)  See %yhelp console%n for details of %_level%_.
+ %_service%_ (if it's omitted then assume it has value "%^*%^" what means collect\
+ events for any destination). See %yhelp console%n for details of %_level%_.
+ Additional swithces:
+   -nots	don't write timestamps ("[HH:MM] ") at start of each line
+   -yearly	rotate logfile once per year
+   -monthly	rotate logfile once per month
+   -weekly	rotate logfile once per week
+   -rpath %_rpath%_	set log rotation path to %_rpath%_ instead of default one
+		(see %yset logrotate-path%n for details).
 
 set logrotate-path
 :%* <template>

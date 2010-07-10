@@ -1,30 +1,33 @@
 Since it's a bit hard let's explain what each userflag means:
-flag	user(:service)	bot:direct	user:public	service/net (mode/egg)
-------	--------------	--------------	--------------	--------------
-FRIEND	no kick		-		no kick		+dontkickops
-DENY	N:kill		reject		ban		-user(bans|exempts|invites)
-ACCESS	N:access/exempt	leaf		ban exempt	-inactive/autoreconnect
-INVITE	invite		-*-		invite		-secret
-VOICE	can ask voice	-*-		can ask voice	+autovoice
-QUIET	never voice	-*-		never voice	+revenge|+revengebot
-HALFOP	N:local op	shared		can get halfop	+cycle
- +AUTO	N:auto-halfop	-		auto-halfop	-
-OP	N:op		hub		can get op	+autoop
- +AUTO	N:autoop	autoconnect	autoop		+enforcebans/autoconnect
-MASTER	master/admin	-		master/admin	+protect(ops|friends)
-DEOP	N:never op	-		never op	+bitch
-SPEAK	can simulate	-		auto-voice	+greet
-OWNER	full access	-		full access	-
-BOT	G:a bot		-		-		-
-NOAUTH	need no auth	-		sticky		+dynamic(bans|exempts|invites)
-UNSHARE	local record	local record	local record	-shared
+flag	C bot:direct	user(:service)	user:public	service/net (mode/egg)
+------	- ------------	--------------	--------------	--------------
+FRIEND	f -		no kick		no kick		+dontkickops
+DENY	k reject	N:kill		ban		-user(bans|exempts|invites)
+ACCESS	a leaf		N:access/exempt	ban exempt	-inactive/autoreconnect
+INVITE	e -*-		invite		invite		-secret
+VOICE	v -*-		can ask voice	can ask voice	+autovoice
+QUIET	q -*-		never voice	never voice	+revenge|+revengebot
+HALFOP	h shared	N:local op	can get halfop	+cycle
+ +AUTO	  -		N:auto-halfop	auto-halfop	-
+OP	o hub		N:op		can get op	+autoop
+ +AUTO	* autoconnect	N:autoop	autoop		+enforcebans/autoconnect
+MASTER	m -		master/admin	master/admin	+protect(ops|friends)
+DEOP	d -		N:never op	never op	+bitch
+SPEAK	s -		can simulate	auto-voice	+greet
+OWNER	n -		full access	full access	-
+NOAUTH	i -		need no auth	sticky		-dynamic(bans|exempts|invites)
+UNSHARE	u local record	local record	local record	-shared
+IGNORED	I -		ignore msgs	ignore msg	-
+
+(column C is associated flag char, for reference; 'N:' in column 'user'
+ means it's applied only to network/service itself, not to publics in it)
 
 each lower flag has more priority than upper one
 each public flag has more priority that equivalent server/global one
 
-only OWNER can change MASTER SPEAK OWNER UNSHARED
+only OWNER can change MASTER SPEAK OWNER UNSHARED IGNORED
 only MASTER can change :OP :HALFOP :AUTO VOICE QUIET INVITE
-only OP can change FRIEND :DEOP *BOT
+only OP can change FRIEND :DEOP
 only HALFOP can change :DENY :ACCESS
 
 ierarchy: *HALFOP->*OP->*MASTER->*OWNER
@@ -32,7 +35,7 @@ ierarchy: *HALFOP->*OP->*MASTER->*OWNER
 
 so eggdrop's flags are (* not for bots):
 a	OP +AUTO #chan
-b	BOT *
+b	-
 c	?
 d	DEOP [#chan]
 f	FRIEND [#chan]

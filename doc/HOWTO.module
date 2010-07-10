@@ -1,0 +1,34 @@
+If you want to write a module then you want a CVS version of sources since
+it has few more files. SourceForge currently have only distribution one.
+
+Source tree is optimized such way you'll never want to edit something but
+only files in module directory. Files may be '.c' and '.h' source files
+and few special ones, see list below. Each '.c' file will be compiled and
+alltogether linked into '.so' dinamically linked library (or linked into
+bot in case of static compliling).
+
+How to start? At first, decide name of your module. Once decided, create
+subdirectory in sources tree's directory 'modules' that have name of your
+module. Next, copy file from 'doc' directory named 'module.template.c'
+into your created directory and rename it as you wish but keep last suffix
+'.c' as it is C file. Edit it. You can use any C commands except ones that
+use standard input and output streams, and also you can use API that is
+described in file 'modules.api' in 'doc' directory.
+
+Additional files in your module directory:
+<name>.ref	- if you writing support for some scripting language, you
+		  can put additional commands of that language that are
+		  implemented by the module for use with FoxEye's running
+		  data there; it will be installed into doc's directory;
+accvs.api	- if you managing some bindtable in your module you have
+		  to put description of it in this file; examples and
+		  syntax are described in file 'core/accvs.blist';
+<name>.help	- help file to use with module; it will be installed into
+		  help files' directory without '.help' suffix; see file
+		  'help.format' in 'doc' directory for details of syntax;
+accvs.m4	- will be processed into 'configure' file by autoconf;
+accvs.POTFILES	- contains list of files which contain strings that may
+		  be localized;
+accvs.cfg	- this file will be included into 'core/foxeye.h' so it
+		  should contain global definitions which may be used by
+		  other modules.
