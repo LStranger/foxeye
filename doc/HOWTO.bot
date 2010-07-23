@@ -118,3 +118,43 @@ network mircnet and connect to it:
     You should see bot's succesfully joined the channel and ready to greet
 everyone, enjoy it. This HOWTO ends now, you can learn everything else by
 typing .help and so on. :)
+
+
+
+	Part II. How to set bans, exempts, and invites.
+
+    1. Bans.
+
+    There are two categories of bans: nonamed (i.e. anonymous) bans and
+personalized bans.
+    To use first type you need a module "modes". I hope you know already
+how to start a module so you did it. As soon you started the module you
+have 3 good commands for direct: '+ban', '-ban', and 'chban'. First one
+adds nonamed ban into Listfile, second one removes nonamed ban and third
+one changes parameters (sticky flag, target, or comment) for existing ban.
+See your help for further details. Examples:
+
+.+ban Fuck*!*@* * +40w Never come here again!
+.+ban *!*adv@*.r23f.br @mircnet
+
+    To make a personalized ban you can add flag 'k' to some user's record
+for the channel or network with command 'chattr' and remove that flag to
+remove personalized ban. If module "modes" was loaded then you can change
+ban reason for the user with command 'banreason'. Example:
+
+.chattr badguy +k @mircnet
+
+    Also you can ban someone without adding them into Listfile using a
+command 'kickban'. See your help for details.
+
+
+    2. Exempts and invites.
+
+    Just remember, exempts and invites are deeply personal things so there
+is even no plans to make any support for nonamed exempts and invites. Use
+command 'chattr' to add exempts and invites to existing users. There is
+even advantage about this, you can more easily add and remove hostmasks and
+targets from a client record (so exempt or invite). Examples:
+
+.chattr LightGirl +a @mircnet
+.chattr otherbot +e #watch@mircnet

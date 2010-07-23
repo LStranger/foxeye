@@ -1,0 +1,60 @@
+# first section is usage
+# second section is that config maker will put into config or /msg style help
+# third section is full help
+
+module modes
+:%*
+:
+:This module contains support for bans and greetings management.
+
+greeting
+:%* [channel["@"net]] [--lname] [text|"NONE"]
+:
+:Changes text of greeting for any channel on any network. Value "%^NONE%^"\
+ removes greeting for that channel. You can omit network or channel name\
+ if you have set default channel with command %cconsole%n. If you have enough\
+ permissions (master or above) then you can change greeting for others with\
+ this command too.
+
++ban
+:%* ["%%"]mask <service>|"*" ["+"time] [reason]
+:
+:Creates new "nonamed" ban record. If %_service%_ is "%^*%^" then sets\
+ global ban for the %_mask%_, else sets ban for the %_mask%_ on %_service%_\
+ (which can be comma separated list of networks and channels). If %_time%_\
+ is omitted then ban will be expired after %cdefault-ban-time%n, else sets\
+ expiration time with %_time%_ which is string in form [N"w"][X"d"][Y"h"][Z"m"]\
+ where N is number of weeks, X is number of days, Y is number of hours, and\
+ Z is number of minutes (example: +1d4h - ban will be expired in 1 day and\
+ 4 hours from current moment). If %_reason%_ is omitted then use "you are\
+ banned" value (see module "%^irc-channel%^"). If mask is prepended with\
+ "%%" then ban is considered "sticky", i.e. it will be not took off after\
+ some time if it's set on the channel but will be on until expiration.
+
+-ban
+:%* mask
+:
+:Deletes "nonamed" ban record for the %_mask%_.
+
+chban
+:%* ["%%"]mask <service>|"*" ["+"time] [reason]
+:
+:Changes "sticky" flag, targets, time and reason of already existing\
+ "nonamed" ban. If %_service%_ is "%^*%^" then changes ban to be global one,\
+ else changes it to be one on %_service%_ (which can be comma separated list\
+ of networks and channels). If %_time%_ and/or %_reason%_ is omitted then\
+ previous expiration time and/or reason will be kept for the ban. See also\
+ %yhelp +ban%n for more details.
+
+banreason
+:%* lname [text]
+:
+:Shows or sets info (ban reason) on some client %_lname%_. If %_text%_ is\
+ omitted then shows current value, else sets value of info (ban reason) with\
+ %_text%_. See also %yhelp +ban%n.
+
+set default-ban-time
+:%* <seconds>
+:
+:
+ Default: 172800.

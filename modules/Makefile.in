@@ -2,7 +2,7 @@
 # Makefile for base modules directory for recursive compilation.
 #
 # This file is part of FoxEye distribution.
-# Copiright (C) 1999-2008 Andrej Gritsenko <andrej@rep.kiev.ua>
+# Copiright (C) 1999-2010 Andrej Gritsenko <andrej@rep.kiev.ua>
 
 SHELL = @SHELL@
 
@@ -89,3 +89,5 @@ ${top_srcdir}/core/static.h:
 	    echo "{ NULL }"; \
 	    echo "};"; \
 	    echo "#endif") >>$@
+
+.SHELL: name="sh" path="@BASH@"

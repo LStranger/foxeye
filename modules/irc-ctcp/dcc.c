@@ -54,6 +54,7 @@ static dcc_priv_t *ActDCC = NULL;	/* chain of active sessions */
 static bindtable_t *BT_IDcc;		/* "ctcp-dcc" : CTCP DCC bindings */
 static bindtable_t *BT_Login;		/* "login" bindtable from Core */
 static bindtable_t *BT_Dnload;		/* "dcc-got" : received a file */
+static bindtable_t *BT_Cctcp;		/* a bindtable from module "irc" */
 
 
 static long int ircdcc_ahead_size = 0;	/* "turbo" mode to speed up transfer */
@@ -400,6 +401,7 @@ static void _dcc_send_handler (int res, void *input_data)
   ptr = 0;
   bs = 0;
   ahead = 0;
+  time (&t);
   memset (statistics, 0, sizeof(statistics));
   if (want_resume)		/* if waiting for ACCEPT then open temp file */
     f = tmpfile();
@@ -995,6 +997,33 @@ static int ctcp_version (INTERFACE *client, unsigned char *who, char *lname,
   return 1;
 }
 
+BINDING_TYPE_irc_priv_msg_ctcp (ctcp_help);
+static int ctcp_help (INTERFACE *client, unsigned char *who, char *lname,
+		      char *unick, char *msg)
+{
+  char *c;
+  clrec_t *u;
+  userflag uf, cf;
+
+  StrTrim (msg);			/* is it really wise? :) */
+  if (msg && !*msg)
+    msg = NULL;				/* no args */
+  dprint (4, "got CTCP HELP %s", NONULL(msg));
+  c = strrchr (client->name, '@');	/* trying to get network name */
+  if (c)				/* will use global + network flags */
+    c++;
+  if ((u = Lock_Clientrecord (lname)))
+  {
+    uf = Get_Flags (u, NULL) | Get_Flags (u, c);
+    cf = Get_Flags (u, "");		/* see "irc-priv-msg-ctcp" table */
+    Unlock_Clientrecord (u);
+  }
+  else
+    uf = cf = 0;
+  Get_Help (msg, NULL, client, uf, cf, BT_Cctcp, NULL, 1);
+  return 1;
+}
+
 static void _irc_ctcp_register (void)
 {
   Add_Request (I_INIT, "*", F_REPORT, "module irc-ctcp");
@@ -1037,6 +1066,7 @@ static iftype_t irc_ctcp_mod_sig (INTERFACE *iface, ifsig_t sig)
       Delete_Binding ("irc-priv-msg-ctcp", &ctcp_time, NULL);
       Delete_Binding ("irc-priv-msg-ctcp", &ctcp_ping, NULL);
       Delete_Binding ("irc-priv-msg-ctcp", &ctcp_version, NULL);
+      Delete_Binding ("irc-priv-msg-ctcp", &ctcp_help, NULL);
       UnregisterVariable ("dcc-ahead");
       UnregisterVariable ("dcc-resume-timeout");
       UnregisterVariable ("dcc-resume-min");
@@ -1080,19 +1110,21 @@ Function ModuleInit (char *args)
   Add_Binding ("ctcp-dcc", "ACCEPT *", 0, 0, &dcc_accept, NULL);
   BT_Login = Add_Bindtable ("login", B_UNDEF); /* foreign! */
   BT_Dnload = Add_Bindtable ("dcc-got", B_MASK);
-  Add_Binding ("irc-priv-msg-ctcp", "DCC *", U_ANY, U_NONE, &ctcp_dcc, NULL);
-  Add_Binding ("irc-priv-msg-ctcp", "CHAT", U_ACCESS, U_NONE, &ctcp_chat, NULL);
+  BT_Cctcp = Add_Bindtable ("irc-priv-msg-ctcp", B_UNDEF); /* foreign! */
+  Add_Binding ("irc-priv-msg-ctcp", "DCC *", 0, 0, &ctcp_dcc, NULL);
+  Add_Binding ("irc-priv-msg-ctcp", "CHAT", U_NONE, U_ACCESS, &ctcp_chat, NULL);
   Add_Binding ("irc-priv-msg-ctcp", "TIME", 0, 0, &ctcp_time, NULL);
   Add_Binding ("irc-priv-msg-ctcp", "PING *", 0, 0, &ctcp_ping, NULL);
   Add_Binding ("irc-priv-msg-ctcp", "VERSION", 0, 0, &ctcp_version, NULL);
+  Add_Binding ("irc-priv-msg-ctcp", "HELP*", 0, 0, &ctcp_help, NULL);
   // register our variables
   Add_Help ("irc-ctcp");
   _irc_ctcp_register();
-  format_dcc_gotfile = SetFormat ("dcc-got-file",
+  format_dcc_gotfile = SetFormat ("dcc_got_file",
 				  _("DCC GET of %* from %N completed."));
-//  format_dcc_startget = SetFormat ("dcc-get-start",
+//  format_dcc_startget = SetFormat ("dcc_get_start",
 //				  _("DCC GET of %* from %N established."));
-//  format_dcc_request = SetFormat ("dcc-request",
+//  format_dcc_request = SetFormat ("dcc_request",
 //				  _("DCC connection request for \"%*\" from %N(%@) to %I:%P"));
   return ((Function)&irc_ctcp_mod_sig);
 }

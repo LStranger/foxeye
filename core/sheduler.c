@@ -437,6 +437,11 @@ char *IFInit_Sheduler (void)
     Crontable = safe_calloc (32, sizeof(shedentry_t));
     _SCalloc = 32;
   }
+  if (_SFnum || _STnum || _SCnum)
+  {
+    ERROR ("sheduler.c:unclean restart: %uF/%uT/%uP", _SFnum, _STnum, _SCnum);
+    _SFnum = _STnum = _SCnum = 0;
+  }
   /* register "time-shift" bindtable */
   BT_TimeShift = Add_Bindtable ("time-shift", B_MASK);
   /* init time */

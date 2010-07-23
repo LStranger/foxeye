@@ -1,0 +1,39 @@
+	FoxEye's Tcl reference manual.
+
+    TCL support in FoxEye done in ways of compatibility with Eggdrop so
+most of things should be working but due to really huge difference in
+architecture there are few things that you have to take in consideration.
+First difference lies in userflags. Some foxeye's userflags does not have
+equivalent eggdrop's attributes and opposite is true as well - attributes
+'c', 'h', 'x', 'e', 'w', 'z' aren't supported in FoxEye and also there
+are no global flags for attributes 'a', 'd', 'g', 'k', 'l', 'o', 'v', and
+'y' but there are network-wide instead. Second difference is about nicks
+and channel names - due to multi-network nature of FoxEye all nicks and
+channel names are presented in arguments in form TheNick@Network not just
+TheNick. Third difference is matching model, in FoxEye matching works in
+shell style so there can be some 'strange' chars in masks such as '[' for
+example.
+
+ bind <type> <attr> key|mask [cmd]
+    - binds some procedure <cmd> to match some key/mask and some flags
+      combination (by eggdrop-compatible set) into some bindtable (that
+      named eggdrop-compatible again) <type> or returns name of already
+      bound procedure if procedure name is omitted;
+ unbind <type> <attr> key <cmd>
+    - removes all bindings that are bound to some procedure <cmd> from
+      bindtable <type>; unlike eggdrop's command parameters <attr> and
+      key are ignored and left there for compatibility reasons;
+ send_request <to> <type> <mode> text
+    - sends text to some client or service by it's type (one of 'd' for
+      direct service, 'n' for network, 'c' for client, 'l' for logfile)
+      and some mode (which is logging flag(s) or 0 for normal message).
+
+Also any function that is registered by any module (and also 'port' and
+'module' from the core) is present in interpreter as
+
+ function param
+ 
+i.e. as function that gets one parameter. It returns one numeric result.
+See documentation on functions for more details.
+ 
+	Copyright (C) 2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>

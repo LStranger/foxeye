@@ -29,6 +29,12 @@
 #include "tree.h"
 #include "conversion.h"
 
+#ifndef STATIC		/* it's simpler to have dlcose() here */
+# ifdef HAVE_DLFCN_H
+#  include <dlfcn.h>
+# endif
+#endif
+
 #ifndef HAVE_SIGACTION
 # define sigaction sigvec
 #ifndef HAVE_SA_HANDLER
@@ -193,6 +199,7 @@ static pthread_mutex_t LockIface;
 
 ALLOCATABLE_TYPE (queue_t, _Q, next) /* alloc_queue_t(), free_queue_t() */
 
+/* locks on input: LockIface */
 static int add2queue (ifi_t *to, request_t *req)
 {
   queue_t *newq;
@@ -280,6 +287,7 @@ typedef struct reqbl_t
 
 static reqbl_t *_Rbl = NULL;
 
+/* locks on input: LockIface */
 /* we don't use standard macro here to have all requests in one thread */
 static request_t *alloc_request_t (void)
 {
@@ -308,27 +316,29 @@ static request_t *alloc_request_t (void)
   _Rnum++;
   if (lastdebuglog)
   {
-    fprintf (lastdebuglog, "::dispatcher:alloc_request_t: 0x%08x\n",
-	     (unsigned int)req);
+    fprintf (lastdebuglog, "::dispatcher:alloc_request_t: 0x%08x free=0x%08x\n",
+	     (int)req, (int)FreeReq);
     fflush (lastdebuglog);
   }
   return req;
 }
 
+/* locks on input: LockIface */
 static void free_request_t (request_t *req)
 {
-  req->x.next = FreeReq;
-  req->a.mask_if = 0;
-  FreeReq = req;
+  req->x.next = FreeReq;		/* shift free queue up */
+//  req->a.mask_if = 0; // why to touch it ever?
+  FreeReq = req;			/* this one is first to use now */
   _Rnum--;
   if (lastdebuglog)
   {
-    fprintf (lastdebuglog, "::dispatcher:free_request_t: 0x%08x\n",
-	     (unsigned int)req);
+    fprintf (lastdebuglog, "::dispatcher:free_request_t: 0x%08x next=0x%08x\n",
+	     (int)req, (int)req->x.next);
     fflush (lastdebuglog);
   }
 }
 
+/* locks on input: LockIface */
 static void vsadd_request (ifi_t *to, iftype_t ift, const char *mask,
 			   flag_t flag, const char *fmt, va_list ap)
 {
@@ -367,7 +377,7 @@ static void vsadd_request (ifi_t *to, iftype_t ift, const char *mask,
   n = 0;
   if (to)
     n = add2queue (to, cur);
-  else if (!strpbrk (mask, "*?"))
+  else if (!strpbrk (mask, "*?"))	/* simple wildcards */
   {
     LEAF *l = NULL;
 
@@ -375,7 +385,8 @@ static void vsadd_request (ifi_t *to, iftype_t ift, const char *mask,
       n += add2queue (l->s.data, cur);
     if (!n && (ch = strrchr(cur->a.to, '@'))) /* handle client@service */
     {
-      DBG ("vsadd_request: check for collector(s) %s type 0x%x", ch, (int)ift);
+      DBG ("dispatcher:vsadd_request: check for collector(s) %s type 0x%x",
+	   ch, (int)ift);
       for (i = 0; i < _Inum; i++)	/* relay it to collector if there is one */
       {
 	if ((Interface[i]->a.ift & ift) &&
@@ -409,7 +420,7 @@ static void vsadd_request (ifi_t *to, iftype_t ift, const char *mask,
 	if (!conv)
 	{
 	  conv = Interface[i]->a.conv;
-	  DBG ("dispatcher %d:conversion to %s", i, Conversion_Charset(conv));
+	  DBG ("dispatcher: %d:conversion to %s", i, Conversion_Charset(conv));
 	  req = alloc_request_t();
 	  strfcpy (req->a.to, NONULL(mask), sizeof(req->a.to));
 	  req->a.mask_if = ift;
@@ -433,11 +444,10 @@ static void vsadd_request (ifi_t *to, iftype_t ift, const char *mask,
 	}
 	else if (Interface[i]->a.conv == conv)
 	{
-	  DBG ("dispatcher %d:conversion to %s", i, Conversion_Charset(conv));
 	  if (lastdebuglog)
 	  {
-	    fprintf (lastdebuglog, "::dispatcher:vsadd_request: iface 0x%08x: req 0x%08x -> 0x%08x\n",
-		     (unsigned int)Interface[i],
+	    fprintf (lastdebuglog, "::dispatcher:vsadd_request: iface %d[0x%08x]: conversion to %s: req 0x%08x -> 0x%08x\n",
+		     i, (unsigned int)Interface[i], Conversion_Charset(conv),
 		     (unsigned int)Interface[i]->pq->request,
 		     (unsigned int)req);
 	    fflush (lastdebuglog);
@@ -469,7 +479,9 @@ static void vsadd_request (ifi_t *to, iftype_t ift, const char *mask,
     else if (Interface[i]->pq && lastdebuglog)
       fprintf (lastdebuglog, "::dispatcher:vsadd_request: skipping pq 0x%08x\n",
 	       (unsigned int)Interface[i]->pq);
-    Interface[i++]->a.ift &= ~I_PENDING;
+    if ((Interface[i]->a.ift & I_PENDING) && lastdebuglog)
+      fprintf (lastdebuglog, "::dispatcher:vsadd_request: suddenly I_PENDING!\n");
+    Interface[i++]->a.ift &= ~I_PENDING; /* shouldn't it be not */
 #ifdef HAVE_ICONV
     if (i == _Inum)
     {
@@ -479,12 +491,21 @@ static void vsadd_request (ifi_t *to, iftype_t ift, const char *mask,
     }
 #endif
   }
+  if (lastdebuglog)
+  {
+    fprintf (lastdebuglog, "::dispatcher:vsadd_request: success on 0x%08x: %d\n",
+	     (unsigned int)cur, cur->x.used);
+    fflush (lastdebuglog);
+  }
   if (!cur->x.used)
     free_request_t (cur);
+  else if (cur->x.used < 0)
+    ERROR ("dispatcher:vsadd_request: unknown error (used=%d)!", cur->x.used);
   if (n)
     ERROR ("dispatcher:vsadd_request: %u request(s) unhandled!", n);
 }
 
+/* locks on input: LockIface */
 static int delete_request (ifi_t *i, queue_t *q)
 {
   queue_t *last;
@@ -523,6 +544,7 @@ static int delete_request (ifi_t *i, queue_t *q)
   return 1;
 }
 
+/* locks on input: LockIface */
 static int relay_request (request_t *req)
 {
   unsigned int i = 0;
@@ -532,14 +554,19 @@ static int relay_request (request_t *req)
   /* check for flags and matching, don't relay back */
   for (i = 0; i < _Inum; i++)
   {
+    if (Interface[i]->pq && lastdebuglog)
+      fprintf (lastdebuglog, "::dispatcher error:relay_request: got pq 0x%08x!\n",
+	       (int)Interface[i]->pq);
     if ((Interface[i]->a.ift & req->a.mask_if) &&
 	(Interface[i] != Current) &&
-	simple_match (req->a.to, Interface[i]->a.name) >= 0)
-      add2queue (Interface[i], req);
+	simple_match (req->a.to, Interface[i]->a.name) >= 0 &&
+	add2queue (Interface[i], req))
+      Interface[i]->pq = NULL;
   }
   return 1;
 }
 
+/* locks on input: LockIface */
 static int _get_current (void)
 {
   int out;
@@ -582,6 +609,7 @@ static int _get_current (void)
   return 0;
 }
 
+/* locks on input: (LockIface) */
 int Relay_Request (iftype_t ift, char *name, REQUEST *req)
 {
   request_t *cur;
@@ -603,14 +631,16 @@ int Relay_Request (iftype_t ift, char *name, REQUEST *req)
   n = 0;
   l = NULL;
   while ((l = _find_itree (ift, cur->a.to, l))) /* check for exact name */
-    n += add2queue (l->s.data, cur);
-  if (!n && (ch = strrchr(cur->a.to, '@'))) /* handle client@service */
+    if (add2queue (l->s.data, cur) && (++n))	/* increment if success */
+      ((ifi_t *)l->s.data)->pq = NULL;		/* it should be reset! */
+  if (!n && (ch = strrchr(cur->a.to, '@')))	/* handle client@service */
   {
     for (i = 0; i < _Inum; i++)	/* relay it to collector if there is one */
     {
       if ((Interface[i]->a.ift & ift) &&
-	  simple_match (ch, Interface[i]->a.name) > 1)
-	add2queue (Interface[i], cur);
+	  simple_match (ch, Interface[i]->a.name) > 1 &&
+	  add2queue (Interface[i], cur))
+	Interface[i]->pq = NULL;		/* it should be reset! */
     }
   }
   if (!cur->x.used)
@@ -619,6 +649,7 @@ int Relay_Request (iftype_t ift, char *name, REQUEST *req)
   return REQ_OK;
 }
 
+/* locks on input: LockIface */
 static int unknown_iface (INTERFACE *cur)
 {
   register unsigned int i = 0;
@@ -682,6 +713,7 @@ Add_Iface (iftype_t ift, const char *name, iftype_t (*sigproc) (INTERFACE*, ifsi
   return (&Interface[i]->a);
 }
 
+/* locks on input: LockIface */
 static int _delete_iface (unsigned int r)
 {
   register unsigned int i;
@@ -708,7 +740,12 @@ static int _delete_iface (unsigned int r)
   if (todel->name)
     Delete_Key (ITree, todel->name, curifi);
   FREE (&todel->name);
-  safe_free (&todel->data);
+  if (!(todel->ift & I_MODULE))		/* modules have handle in data */
+    safe_free (&todel->data);
+#ifndef STATIC
+  else
+    dlclose (todel->data);
+#endif
 #ifdef HAVE_ICONV
   Free_Conversion (todel->conv);
 #endif
@@ -719,6 +756,7 @@ static int _delete_iface (unsigned int r)
 static ifst_t *StCur = NULL, *StAll = NULL;
 static int StNum = 0;
 
+/* locks on input: LockIface */
 /* returns previous interface in stack, NULL if this is first */
 static INTERFACE *stack_iface (INTERFACE *newif, int set_current)
 {
@@ -762,6 +800,7 @@ static INTERFACE *stack_iface (INTERFACE *newif, int set_current)
   return newst->prev->ci;
 }
 
+/* locks on input: LockIface */
 /* returns previous interface in stack, NULL if this was first */
 static INTERFACE *unstack_iface (void)
 {
@@ -796,6 +835,12 @@ static void iface_run (unsigned int i)
 //    fflush (lastdebuglog);
 //  }
   /* all rest are died? return now! */
+  if (Interface[i]->pq)
+  {
+    ERROR ("dispatcher error: found unhandled PQ 0x%08x on interface %u[0x%08x]!",
+	   (int)Interface[i]->pq, i, (int)Interface[i]);
+    Interface[i]->pq = NULL;		/* reset it until we crash! */
+  }
   if (i < _Inum && (Interface[i]->a.ift & I_FINWAIT))
   {
     if (Interface[i]->a.IFSignal)
@@ -938,6 +983,8 @@ INTERFACE *Set_Iface (INTERFACE *newif)
   return stack_iface (newif, 1);
 }
 
+/* locks on input: LockIface */
+/* locks on return: (LockIface) */
 int Unset_Iface (void)
 {
   Current = (ifi_t *)unstack_iface();
@@ -1325,7 +1372,9 @@ int dispatcher (INTERFACE *start_if)
 	  for (i = 0; i < _Inum; i++)		/* mark all listeners to die */
 	    if (Interface[i]->a.ift & I_CONNECT)
 	      Interface[i]->a.ift |= I_FINWAIT;	/* modules: unset flag later */
+	  ShutdownR = "Restart requested.";
 	  init();				/* restart */
+	  ShutdownR = NULL;
 	  break;
 	case SIGTERM:
 	default:

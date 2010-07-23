@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2003-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -82,6 +82,7 @@ static int flush_log (logfile_t *log, int force, int needsync)
   if (fcntl (log->fd, F_SETLK, &lck) == -1)
     return errno;		/* cannot lock the file */
   lseek (log->fd, 0, SEEK_END);
+  // add start of html here
   x = write (log->fd, log->buf, log->inbuf);
   es = errno;
   lck.l_type = F_UNLCK;
@@ -269,6 +270,8 @@ static int add_to_log (INTERFACE *iface, REQUEST *req)
 #define L_DELE 16
 #define L_NOTS 32
 //#define L_HTML 64
+//#define L_NOCL 128
+
 
 static time_t get_rotatetime (int fd, int mode)
 {
@@ -326,6 +329,7 @@ static void do_rotate (logfile_t *log)
     return;
   }
   localtime_r (&log->lastmsg, &tm);
+  // end html here
   close (log->fd);
   log->fd = -1;			/* if we get any error let's don't fall */
   /* make rotate path */
@@ -578,9 +582,10 @@ static void module_log_regall (void)
   RegisterString ("logfile-notice-prefix", log_prefix, sizeof(log_prefix), 0);
   /* register logfiles - only when all variables are set */
   for (log = Logfiles; log; log = log->next)
-    Add_Request (I_INIT, "*", F_REPORT, "logfile %s%s%s %s %s",
-		 (log->add_buf == &textlog_add_buf_nots) ? "-n " : "",
-		 log->rmode ? ((log->rmode < 2) ? "-w " : (log->rmode == 2) ? "-m " : "-y ") : "",
+    Add_Request (I_INIT, "*", F_REPORT, "logfile%s%s%s%s%s %s %s %s",
+		 (log->add_buf == &textlog_add_buf_nots) ? " -n" : "",
+		 log->rmode ? ((log->rmode < 2) ? " -w" : (log->rmode == 2) ? " -m" : " -y") : "",
+		 log->rpath ? " -rpath \"" : "", NONULL(log->rpath), log->rpath ? "\"" : "",
 		 log->path, logfile_printlevel (log->level), log->iface->name);
   RegisterFunction ("logfile", &cfg_logfile, "[-n] [-y|-m|-w] filename level [service]");
 }
@@ -641,8 +646,12 @@ static iftype_t module_log_signal (INTERFACE *iface, ifsig_t sig)
 		   "no opened logs found");
       for (log = Logfiles; log; log = log->next)
       {
-	New_Request (tmp, F_REPORT, "   file %s, last flushed %d seconds ago",
-		     log->path, log->inbuf ? Time - log->timestamp : -1);
+	if (log->inbuf)
+	  New_Request (tmp, F_REPORT, "   file %s, last flushed %d seconds ago",
+		       log->path, Time - log->timestamp);
+	else
+	  New_Request (tmp, F_REPORT, "   file %s, no updates to save",
+		       log->path);
       }
       Unset_Iface();
       break;

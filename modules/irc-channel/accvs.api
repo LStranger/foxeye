@@ -7,7 +7,8 @@ join=>part|kick|quit join=>netsplit=>netjoin join=>netsplit=>quit
 JOIN  "iirrcc--jjooiinn"       MASK
   int func(unsigned char *_w_h_o, const char *_l_n_a_m_e, INTERFACE *_c_h_a_n);
     Used when someone _l_n_a_m_e with nick!user@host _w_h_o joins IRC channel
-    _c_h_a_n.
+    _c_h_a_n. Note: matching uses network+global flags instead of global
+    ones.
       Matching: "channel nick!user@host" string.
       Script args: nick user@host Lname channel
 
@@ -15,7 +16,8 @@ PART  "iirrcc--ppaarrtt"       MASK
   (int) void func(unsigned char *_w_h_o, const char *_l_n_a_m_e,
 		  INTERFACE *_c_h_a_n, char *_m_s_g);
     Used when someone _l_n_a_m_e with nick!user@host _w_h_o parts IRC channel
-    _c_h_a_n with reason _m_s_g.
+    _c_h_a_n with reason _m_s_g. Note: matching uses network+global flags
+    instead of global ones.
       Matching: "channel nick!user@host" string.
       Script args: nick user@host Lname channel msg
 
@@ -30,7 +32,8 @@ KICK  "iirrcc--kkiicckk"       MASK
 TOPC  "iirrcc--ttooppiicc"      MASK
   (int) void func(unsigned char *_w_h_o, const char *_l_n_a_m_e,
 		  INTERFACE *_c_h_a_n, char *_t_o_p_i_c);
-    Used when we got new topic info (on join or topic change).
+    Used when we got new topic info (on join or topic change). Note:
+    matching uses network+global flags instead of global ones.
       Matching: "channel topic" string.
       Script args: nick user@host Lname channel topic
 
@@ -38,8 +41,9 @@ MODE  "iirrcc--mmooddeecchhgg"    MASK
   (int) void func(unsigned char *_w_h_o, const char *_l_n_a_m_e,
 		  INTERFACE *_c_h_a_n, char *_c_h_g);
     Used when someone _l_n_a_m_e with nick!user@host _w_h_o made mode change _c_h_g
-    on IRC channel _c_h_a_n.  Note: mode change line from server is parsed
-    and separated before calling any binding.
+    on IRC channel _c_h_a_n. Note: matching uses network+global flags instead
+    of global ones. Note2: mode change line from server is parsed and
+    separated before calling any binding.
       Matching: full mode change line (i.e. with channel name).
       Tcl args: nick user@host Lname channel chg
 
@@ -47,7 +51,8 @@ REJN  "iirrcc--nneettjjooiinn"    MASK
   (int) void func(unsigned char *_w_h_o, const char *_l_n_a_m_e,
 		  INTERFACE *_c_h_a_n);
     Used when IRC netjoin was detected (i.e. netsplit is over) and
-    someone _l_n_a_m_e with nick!user@host _w_h_o returned to channel _c_h_a_n.
+    someone _l_n_a_m_e with nick!user@host _w_h_o returned to channel _c_h_a_n. Note:
+    matching uses network+global flags instead of global ones.
       Matching: "chan who" string.
       Script args: nick user@host Lname channel
 

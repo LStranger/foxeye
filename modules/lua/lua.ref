@@ -47,4 +47,12 @@ Lname here is registration name (login name).
       last activity time, host string and lname; if nick omitted (or nil)
       then returns when, string and who set the topic on channel.
 
+Also any function that is registered by any module (and also 'port' and
+'module' from the core) is present in interpreter as
+
+ ret = foxeye.function(param)
+
+i.e. as function that gets one string parameter and returns one numeric
+result. See documentation on functions for more details.
+
 	Copyright (C) 2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>

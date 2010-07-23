@@ -110,7 +110,7 @@ Signals to interfaces.
     "Quiet" termination of interface. Don't release any memory and/or
     other resources, don't call any function but async-safe (see below),
     don't lock any mutexes, just close the files and connections. The
-    message in (char *)SShhuuttddoowwnnRR may be used as shutdown reason.
+    message in variable SShhuuttddoowwnnRR may be used as shutdown reason.
   SS__TTEERRMMIINNAATTEE:
     Terminate the interface. It must stop any job doing by interface and
     release every resource that was touched on creating or in process
@@ -126,9 +126,9 @@ Signals to interfaces.
 Shutdown process.
 ---------------
   Shutdown sequence: all IP connections; all modules; all left interfaces
-  (if still there are any). In cause of normal shutdown every connection
-  or module gets signal SS__TTEERRMMIINNAATTEE and all others SS__SSHHUUTTDDOOWWNN. Else any
-  interface gets signal SS__SSHHUUTTDDOOWWNN. In any case variable SShhuuttddoowwnnRR will
+  (if any of them survived). In case of normal shutdown every connection
+  or module gets signal SS__TTEERRMMIINNAATTEE and all others SS__SSHHUUTTDDOOWWNN. Else every
+  interface gets signal SS__SSHHUUTTDDOOWWNN. In any case variable SShhuuttddoowwnnRR may
   contain reason of shutdown.
 
 Connection chains.
@@ -314,9 +314,24 @@ Common API:
     Note: this function does not perform case-insensitive comparison!
 	Reenterability: async-safe
 
+  char *ssttrrffccppyy (char *_d_s_t, const char *_s_r_c, size_t _n)
+    Copies null-terminated text string _s_r_c to end of text string in the
+    _d_s_t but don't exceed maximum string length _n of _d_s_t. In difference of
+    strncpy() resulted string is always null-terminated. Returns _d_s_t.
+	Reenterability: async-safe
+
   char *ssttrrffccaatt (char *_d_s_t, const char *_s_r_c, size_t _n)
-    Adds null-terminated text string _s_r_c to end of text string in the
-    _d_s_t but don't exceed maximum string length _n of _d_s_t.
+    If _d_s_t is NULL or _n is 0 then returns 0. Else adds null-terminated
+    text string _s_r_c to end of null-terminated text string in the _d_s_t but
+    don't exceed maximum string length _n of _d_s_t. Returns _d_s_t.
+	Reenterability: async-safe
+
+  char *ggeettttookkeenn (char *_p_t_r, char **_e_o_w)
+    Parses null-terminated string _p_t_r, puts terminated null char after
+    first word of it and if _e_o_w is not NULL then puts pointer to this
+    termination char into _e_o_w. Returns pointer to next token in parsed
+    string. If there is no words left in the string then returns pointer
+    to null char. Delimiter of words on parsing is space char.
 	Reenterability: async-safe
 
   char *NNeexxttWWoorrdd (const char *_m_s_g)
@@ -394,6 +409,9 @@ Common API:
     syntax but does not produce SIGSEGV in case of NULL arguments.
 	Reenterability: async-safe
 
+  unsigned short make_hash (const char *str);
+	Reenterability: async-safe
+
   int Merge_Listfile (char *path);
 
   void bboott__sshhuuttddoowwnn (char *_m_e_s_s_a_g_e, int _e);
@@ -416,9 +434,10 @@ Bindings API:
   binding_t *CChheecckk__BBiinnddttaabbllee (bindtable_t *_t_a_b_l_e, const char *_s_t_r,
 			      userflag _g_u_f, userflag _c_u_f, binding_t *_l_a_s_t);
     Checks bindtable _t_a_b_l_e for entries matched string _s_t_r for users with
-    global userflags _g_u_f or channel userflags _c_u_f. Returns first matched
-    binding if _l_a_s_t equal NULL. Returns next match if _l_a_s_t is last found
-    binding.
+    matching combination of global userflags _g_u_f and userflags for some
+    service _c_u_f (see Add_Binding() description for more details). Returns
+    first matched binding if _l_a_s_t equal NULL. Returns next match if _l_a_s_t
+    is last found binding.
 	Reenterability: none
 
   const char *BBiinnddttaabbllee__NNaammee (bindtable_t *_t_a_b_l_e);
@@ -429,14 +448,24 @@ Bindings API:
 			  userflag _g_u_f, userflag _c_u_f, Function _f_u_n_c,
 			  const char *_f_n_a_m_e);
     Adds binding to bindtable _t_a_b_l_e_n_a_m_e. Strings checked via bindtable
-    have to match string _m_a_s_k with current type of mathcing and users
-    must have all global userflags _g_u_f or all channel userflags _c_u_f.
-    _f_u_n_c is function associated with that binding and if _f_n_a_m_e is not
-    NULL then _f_u_n_c is script interpreter entrance and it will get _f_n_a_m_e
-    as first parameter (see below). See match() for _m_a_s_k details if
-    bindtable is B_MASK or B_UNIQMASK type. Returns pointer to new added
-    binding. Note: _m_a_s_k must be a lowercase string until bindtable is
-    B_MATCHCASE type.
+    have to match string _m_a_s_k with current type of mathcing and clients
+    (or any events that will be checked by Check_Bindtable() afterwards)
+    must have matched combination of global userflags _g_u_f and selected
+    service userflags _c_u_f to be available. By default userflags are
+    matched if client's global flags have all bits set which are set in
+    _g_u_f or if client's selected service flags have all bits set which are
+    set in _c_u_f but that behavior can be extended: if any _g_u_f or
+    _c_u_f have set bit U_NEGATE then userflags will be matched when
+    appropriate client's flags have no one bit set of those that are set
+    in binding's ones; and if _c_u_f have set bit U_AND then userflags are
+    matched if client's global flags have all bits set which are set in
+    _g_u_f and also client's selected service flags have all bits set which
+    are set in _c_u_f. Argument _f_u_n_c points to function associated with that
+    binding. If _f_n_a_m_e is not NULL then _f_u_n_c points to script interpreter
+    which will get _f_n_a_m_e as first parameter (see below). See match() for
+    _m_a_s_k details if bindtable is B_MASK or B_UNIQMASK type. Returns
+    pointer to new added binding. Note: _m_a_s_k must be a lowercase string
+    until bindtable is B_MATCHCASE type.
 	Reenterability: none
 
   void DDeelleettee__BBiinnddiinngg (const char *_t_a_b_l_e_n_a_m_e, Function _f_u_n_c,
@@ -489,10 +518,9 @@ Bindings API:
 
 Listfile API:
 -------------
-
   int AAdddd__CClliieennttrreeccoorrdd (const char *_n_a_m_e, const unsigned char *_m_a_s_k,
 			userflag _u_f);
-    Adds user with Lname _n_a_m_e, hostmask _m_a_s_k at form nick!user@host and
+    Adds user with Lname _n_a_m_e, hostmask _m_a_s_k in form nick!user@host and
     global userflags _u_f to Listfile. See match() for hostmask details.
     Returns nonull value if successful.
 	Reenterability: none
@@ -526,11 +554,12 @@ Listfile API:
     from global flags and flags for network _n_e_t (if _n_e_t is NULL then for
     direct service). Locks Listfile record of that user. Returns pointer
     to internal Listfile record structure. Function never can find any
-    special user record or alias. Also search is case sencitive so _m_a_s_k
-    must be in lowercase. Note: Locks in core are complex so until you
-    want deadlock NEVER use Listfile API calls from above or any API
-    calls that are marked as thread-safe or reenterable while any record
-    in Listfile is locked!
+    special user record or alias. Note: Locks in core are complex so
+    until you want deadlock NEVER use Listfile API calls from above or
+    any API calls that are marked as thread-safe or reenterable while any
+    record in Listfile is locked! Note2: this function will scan whole
+    Listfile database so can be slow sometimes and for the best you have
+    to use it as few as possible.
 	Reenterability: thread-safe
 
   clrec_t *LLoocckk__CClliieennttrreeccoorrdd (const char *_n_a_m_e);
@@ -541,9 +570,21 @@ Listfile API:
     thread-safe or reenterable while any record in Listfile is locked!
 	Reenterability: thread-safe
 
+  clrec_t *LLoocckk__bbyyLLIIDD (lid_t _i_d);
+    Attempts to lock Listfile record of user with LID _i_d. Returns pointer
+    to internal Listfile record structure or NULL if user was not found.
+    Note: Locks in core are complex so until you want deadlock NEVER use
+    Listfile API calls from above or any API calls that are marked as
+    thread-safe or reenterable while any record in Listfile is locked!
+    Note2: there is a small chance that there is another record on that
+    LID already in case if someone deleted record of that LID and created
+    new one after you've got that _i_d so this method of access to Listfile
+    record might be considered unreliable.
+	Reenterability: thread-safe
+
   void UUnnlloocckk__CClliieennttrreeccoorrdd (clrec_t *_u_s_e_r);
-    Unlocks Listfile record locked by previous call Find_Clientrecord()
-    or Lock_Clientrecord() function. Returns nothing.
+    Unlocks Listfile record locked by previous call Find_Clientrecord(),
+    Lock_Clientrecord(), or Lock_byLID() function. Returns nothing.
 	Reenterability: thread-safe
 
   char *GGeett__FFiieelldd (clrec_t *_u_s_e_r, const char *_f_n, time_t *_t_i_m_e);
@@ -561,15 +602,19 @@ Listfile API:
     within it.
 	Reenterability: thread-safe
 
-  int SSeett__FFiieelldd (clrec_t *_u_s_e_r, const char *_f_n, const char *_v_a_l);
+  int SSeett__FFiieelldd (clrec_t *_u_s_e_r, const char *_f_n, const char *_v_a_l,
+		 time_t _t_i_m_e);
     Sets content of Listfile field _f_n for user with internal Listfile
     record structure at _u_s_e_r with value _v_a_l. Returns nonull value if
     success. If _f_n is "" then sets direct service console settings for
-    the user. Note: if _f_n is "alias", Set_Field() will do not change
-    Listfile (delete old & add new aliases) so you must do it yourself.
-    Note2: if _f_n is a special name then that name must be prepended with
-    '@' to make difference with custom field names and custom field
-    name should not have '@' nor ':' within it.
+    the user. If _t_i_m_e isn't 0 and _f_n is a service name then sets it as
+    field's expiration time. Note: if _f_n is "alias", Set_Field() will do
+    not change Listfile (delete old & add new aliases) so you must do it
+    yourself. Note2: if _f_n is a special name then that name must be
+    prepended with '@' to make difference with custom field names and
+    custom field name should not have '@' nor ':' within it. Note3: if _f_n
+    is one of standard fields ("info" for example) then it cannot contain
+    any ':' in the _v_a_l.
 	Reenterability: none
 
   int GGrrooww__FFiieelldd (clrec_t *_u_s_e_r, const char *_f_n, const char *_v_a_l);
@@ -598,32 +643,60 @@ Listfile API:
 
   userflag GGeett__FFllaaggss (clrec_t *_u_s_e_r, const char *_s_e_r_v);
     Returns userflags of user with internal Listfile record structure at
-    _u_s_e_r for service _s_e_r_v. If _s_e_r_v is NULL then returns direct service
-    userflags. If _s_e_r_v is special name then returns value compiled from
-    global userflags and userflags for that service.
+    _u_s_e_r for service _s_e_r_v. If _s_e_r_v is "" then returns direct service
+    and global userflags. If _s_e_r_v is NULL then returns global userflags.
+	Reenterability: thread-safe
+
+  userflag SSeett__FFllaaggss (clrec_t *_u_s_e_r, const char *_s_e_r_v, userflag _u_f);
+    Attempts to set userflags on internal Listfile record structure at
+    _u_s_e_r for service _s_e_r_v according to _u_f. If _s_e_r_v is NULL then sets
+    direct service and global userflags. Take in consideration that some
+    of flags are immutable and cannot be changed with this function (for
+    example, you cannot convert normal client record into special one).
+    Returns userflags that are set now for service _s_e_r_v or 0 in case of
+    error.
+	Reenterability: none
+
+  lid_t GGeett__LLIIDD (clrec_t *_u_s_e_r);
+    Returns LID for client with internal Listfile record _u_s_e_r.
 	Reenterability: thread-safe
 
   userflag GGeett__CClliieennttffllaaggss (const char *_n_a_m_e, const char *_s_e_r_v);
     Returns userflags of user with Lname _n_a_m_e for service _s_e_r_v. If _s_e_r_v
-    is NULL then returns direct service userflags. If _s_e_r_v is special
-    name then returns value compiled from global userflags and userflags
-    for that service.
+    is "" then returns direct service and global userflags. If _s_e_r_v is
+    NULL then returns global userflags.
 	Reenterability: thread-safe
 
   int GGeett__CClliieennttlliisstt (INTERFACE *_i_f_a_c_e, userflag _u_f, const char *_f_n,
 		      char *_m_a_s_k);
-    Sends list (space separated) of known Lnames that have userflags any
-    of _u_f and Listfile field _f_n matched _m_a_s_k, to interface _i_f_a_c_e via
-    New_Request(). If _f_n is NULL then Lnames and hostmasks will be
-    checked against _m_a_s_k. Returns number of requests that were sent.
-    Note: if _f_n is a special name then that name must be prepended with
-    '@' to make difference with custom field names.
+    Sends list (space separated) of known Lnames which have global
+    userflags any of _u_f and Listfile field _f_n matched _m_a_s_k, to interface
+    _i_f_a_c_e via New_Request(). If checked for bans (_u_f contains appropriate
+    flag) or if _f_n is NULL then Lnames and hostmasks will be checked
+    against _m_a_s_k. If _f_n is a service name then userflags for that service
+    will be checked to contain any of _u_f too in case global userflags
+    were not matched. If found Listfile record is "nonamed" ban then it's
+    hostmask will be sent instead of missing Lname. Returns number of
+    requests that were sent. Note: if _f_n is a special name then that name
+    must be prepended with '@' to make difference with custom field
+    names.
 	Reenterability: none
 
-  int GGeett__HHoossttlliisstt (INTERFACE *_i_f_a_c_e, const char *_n_a_m_e);
+  int GGeett__HHoossttlliisstt (INTERFACE *_i_f_a_c_e, lid_t _i_d);
     Sends list (space separated) of known hosts for Listfile record with
-    Lname _n_a_m_e to interface _i_f_a_c_e via New_Request(). Returns number of
-    requests that were sent.
+    LID _i_d to interface _i_f_a_c_e via New_Request(). Returns number of
+    requests that were sent. Note: it's required that you get your _i_d
+    right away so there will be no chance to get another record on that
+    LID.
+	Reenterability: none
+  
+  int GGeett__FFiieellddlliisstt (INTERFACE *_i_f_a_c_e, lid_t _i_d);
+    Sends list (space separated) of known fields for Listfile record with
+    LID _i_d to interface _i_f_a_c_e via New_Request(). Only services (either
+    special or composite names) or user-defined field names will be sent.
+    Returns number of requests that were sent. Note: it's required that
+    you get your _i_d right away so there will be no chance to get another
+    record on that LID.
 	Reenterability: none
   
   userflag MMaattcchh__CClliieenntt (char *_h_o_s_t, char *_i_d_e_n_t, const char *_n_a_m_e);
@@ -631,17 +704,17 @@ Listfile API:
     users with hostmask _i_d_e_n_t@_h_o_s_t and with Lname mask _n_a_m_e.
 	Reenterability: thread-safe
 
-  lid_t GGeettLLIIDD (const char *_n_a_m_e);
+  lid_t FFiinnddLLIIDD (const char *_n_a_m_e);
     Returns LID for client with Lname _n_a_m_e.
 	Reenterability: thread-safe
-
-  userflag SSeett__FFllaaggss (lid_t, const char *, userflag);
-	Reenterability: ???
 
   char *uusseerrffllaaggttoossttrr (userflag _f_l_a_g_s, char *_b_u_f_f);
     Converts _f_l_a_g_s to string and prints it to buffer _b_u_f_f. Returns _b_u_f_f
     pointer. Note: buffer must be long enough to get the string.
 	Reenterability: async-safe
+
+  unsigned short Get_Clienthash (const char *lname, const char *host);
+	Reenterability: none
 
 Wtmp API:
 ---------
@@ -660,6 +733,17 @@ Wtmp API:
     finds the event on any service, if _i_d is ID_ANY then finds the event
     on any service but direct. If there was no event found then returns
     _t_e_m_p zeroed.
+	Reenterability: thread-safe
+
+  int FFiinnddEEvveennttss (wtmp_t *_t_e_m_p, int _w_s, const char *_u_s_e_r, short _e_v_e_n_t,
+		  lid_t _i_d, time_t _u_p_t_o)
+    Finds not more than _w_s last events for Lname _u_s_e_r and it number _e_v_e_n_t
+    that was logged from some service _i_d not earlier than _u_p_t_o and writes
+    it to array _t_e_m_p of size _w_s in order that last event goes into cell
+    _t_e_m_p[0] and so on. Returns number of found events. If _e_v_e_n_t is W_ANY,
+    the function finds any evend for that _i_d. If _i_d is ID_ME then finds
+    the event on any service, if _i_d is ID_ANY then finds the event on any
+    service but direct.
 	Reenterability: thread-safe
 
   void NNeewwEEvveenntt (short _e_v_e_n_t, lid_t _f_r_o_m, lid_t _i_d, short _n_u_m);
@@ -827,9 +911,9 @@ Sockets API:
 		   unsigned short _p_o_r_t);
     Sets up new socket in non-block mode, establishes connection with
     Internet address with name _d_o_m_a_i_n to port _p_o_r_t if _m_o_d_e is M_RAW or
-    M_TEXT, or opens new listening socket if _m_o_d_e is M_LIST or M_LINP.
-    If _m_o_d_e is M_LINP then listening socket will be opened for only
-    one connection. Returns 0 if success or error code otherwise.
+    or opens new listening socket if _m_o_d_e is M_LIST or M_LINP. If _m_o_d_e
+    is M_LINP then listening socket will be opened for single connection.
+    Returns 0 if success or error code otherwise.
     	Reenterability: thread-safe
 
   idx_t AAnnsswweerrSSoocckkeett (idx_t _i_d_x);
@@ -863,20 +947,16 @@ Sockets API:
 	Reenterability: async-safe
 
   ssize_t RReeaaddSSoocckkeett (char *_b_u_f, idx_t _i_d_x, size_t _s_z, int _m_o_d_e);
-    Reads data from socket _i_d_x to buffer _b_u_f. If _m_o_d_e is M_RAW then reads
-    raw data to max buffer size _s_z and returns size of data that was got.
-    Otherwise reads data into buffer until it is full or until CR+LF is
-    encountered in socket stream, in that case ending CR+LF will be
-    excluded from string, string terminated with zero byte and function
-    returns size of data that was got from socket (including terminating
-    byte). If _m_o_d_e is M_POLL then do the same but may wait up to 200
+    Reads data from socket _i_d_x to buffer _b_u_f. If _m_o_d_e is not M_POLL then
+    reads raw data to max buffer size _s_z and returns size of data that
+    was got. If _m_o_d_e is M_POLL then do the same but may wait up to 200
     milliseconds. If socket was died unexpectedly or we got EOF then
     returns E_NOSOCKET. Also may return E_AGAIN if socket is waiting a
     connection.
 	Reenterability: async-safe
 
-  ssize_t WWrriitteeSSoocckkeett (idx_t _i_d_x, char *_b_u_f, size_t *_p_t_r, size_t *_s_z,
-		       int _m_o_d_e);
+  ssize_t WWrriitteeSSoocckkeett (idx_t _i_d_x, const char *_b_u_f, size_t *_p_t_r,
+		       size_t *_s_z, int _m_o_d_e);
     Writes raw data of size _s_z to socket _i_d_x from buffer _b_u_f at _p_t_r.
     Returns number of bytes written and changes counters _p_t_r and _s_z. If
     _m_o_d_e is M_POLL then do the same but may wait up to 200 milliseconds.
@@ -898,17 +978,6 @@ Direct client's connections API:
     Runs bindtable "chat-part" when user that has interface _i_f_a_c_e and is
     connected via socket _i_d_x parts botnet channel _b_o_t_c_h with quit message
     _q_m_s_g. Returns nothing.
-	Reenterability: none
-
-  ssize_t SSeessssiioonn__PPuutt (peer_t *_s, char *_l_i_n_e, size_t _s_z);
-    Sends data _l_i_n_e of size _s_z to session _s. If there was an error then
-    returns error code. Else returns size of data was accepted.
-	Reenterability: none
-
-  ssize_t SSeessssiioonn__GGeett (peer_t *_s, char *_b_u_f, size_t _b_u_f_s_i_z_e);
-    Gets data from session _s to buffer _b_u_f of maximal size _b_u_f_s_i_z_e. If
-    there was an error then returns error code. Else returns size of
-    data was got.
 	Reenterability: none
 
   void DDcccc__PPaarrssee (peer_t *_s, char *_n_a_m_e, char *_c_m_d, userflag _g_f,
@@ -972,6 +1041,57 @@ Direct client's connections API:
     Returns 0 if password matches.
 	Reenterability: none
 
+Connection chain API:
+---------------------
+#include "direct.h"
+
+  int CCoonnnncchhaaiinn__GGrrooww (peer_t *_p_e_e_r, char _f);
+    Adds filter of type _f at top of connection chain of _p_e_e_r. Returns 1
+    if filter was added, 0 if filter not found, and -1 in case of error.
+    You should always call this at least once before you can use any of
+    Connchain_Put(), Connchain_Get(), Connchain_Kill(), Peer_Put(), or
+    Peer_Get() functions. You must always call Connchain_Kill() for any
+    peer where you creted connection chain with Connchain_Grow().
+	Reenterability: none
+
+  ssize_t CCoonnnncchhaaiinn__PPuutt (connchain_i **_c_c, idx_t _i_d_x, const char *_l_i_n_e,
+			 size_t *_s);
+    Tries to filter and send data of size _s from buffer _l_i_n_e through next
+    link of connection chain _c_c for socket identifier _i_d_x. If _l_i_n_e is
+    NULL then it tries to send what is still left in chain's own buffers
+    and in that case either returns error (if nothing left to send into
+    socket _i_d_x) or number of bytes send (i.e. 0). If _l_i_n_e isn't NULL but
+    _s contains 0 then it returns value CONNCHAIN_READY in case when chain
+    can take data for sending on next call or some other value otherwise.
+    If there are data to send and there were no errors encountered then
+    appropriately updates counter at s and returns number of bytes that
+    were sent.
+	Reenterability: thread-safe
+
+  ssize_t CCoonnnncchhaaiinn__GGeett (connchain_i **_c_c, idx_t _i_d_x, char *_b_u_f,
+			 size_t _s);
+    Tries to receive and filter data from socket _i_d_x through connection
+    chain _c_c and put them into buffer _b_u_f of maximum size _s. If _l_i_n_e is
+    NULL or if there was and error on receiving data then chain will be
+    destroyed immediately and socket closed. Returns either error or size
+    of data that was recieved into buf.
+	Reenterability: thread-safe
+
+  CCoonnnncchhaaiinn__KKiillll (peer_t *_p_e_e_r);
+    Macro, defined as: Connchain_Get(&peer->connchain,peer->socket,NULL,0)
+    Used for terminating connection chain.
+	Reenterability: thread-safe
+
+  PPeeeerr__PPuutt (peer_t *_p_e_e_r, const char *_b_u_f, size_t *_s);
+    Macro, defined as: Connchain_Put(peer->connchain,peer->socket,buf,s)
+    Used for putting data on the top of connection chain.
+	Reenterability: thread-safe
+
+  PPeeeerr__GGeett (peer_t *_p_e_e_r, char *_b_u_f, size_t _s);
+    Macro, defined as: Connchain_Get(&peer->connchain,peer->socket,buf,s)
+    Used for the getting data from the top of connection chain.
+	Reenterability: thread-safe
+
 Charset conversions API:
 ------------------------
 #include "conversion.h"
@@ -1026,18 +1146,20 @@ All int func() returns 0 if binding did not executed. If binding
 arguments are correct but no logs needed, func() may return -1. All
 bindings may be non-reenterable if another wasn't declared.
 
-Interpreter's bindings:
+Interpreter entrance for bindings:
   int func(char *_f_n_a_m_e, int _a_r_g_c, char *_a_r_g_v[]);
     Call interpreter function _f_n_a_m_e with _a_r_g_c arguments array _a_r_g_v (see
-    the "Script args:" label below). If _f_n_a_m_e is "-" then interpreter
-    must return its name.
+    the "Script args:" label below and if there is no such label on the
+    bindtable then interpreter bindings will be never called even if some
+    of them exist). If _f_n_a_m_e is "-" then interpreter should return its
+    name. Note: _a_r_g_c value can be from 0 to 6.
 
 Builted in bindings: since C does not have possibility to have typedef for
   function, only way to have type control is to insert line composited from
-  'BINDING_TYPE_' with bindtable name with dashes replaced with underscores
+  'BINDING_TYPE_' with bindtable name with dashes replaced by underscores
   and function name before binding's definition, for example:
 
-    BINDING_TYPE_add_ui (au_test);
+    BINDING_TYPE_add_ui (au_test);	/* for bindtable "add-ui" */
     static int au_test (INTERFACE *iface, char *s)
     .......
 

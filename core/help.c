@@ -273,7 +273,7 @@ static int _no_such_help (INTERFACE *iface, int mode)
   return 0;
 }
 
-#define HELP_LINE_SIZE 70
+#define HELP_LINE_SIZE 72
 
 static int _help_one_topic (char *text, INTERFACE *iface, char *prefix,
 			    const char *gr, const char *topic, int mode)
@@ -381,34 +381,33 @@ static int _help_all_topics (HELPGR *what, INTERFACE *iface, userflag gf,
 int Get_Help (const char *fst, const char *sec, INTERFACE *iface, userflag gf,
 	      userflag cf, bindtable_t *table, char *prefix, int mode)
 {
-  const char *topic = NONULL(sec);
-  char *lct;
+  const char *topic = NONULL(sec);	/* default topic=fst{sec} */
   HELPGR *h = Help;
   HELP *t;
 
   dprint (4, "help:Get_Help: call \"%s %s\"", NONULL(fst), NONULL(sec));
   if (!h)
-    return _no_such_help (iface, mode);
+    return _no_such_help (iface, mode);		/* no help loaded */
   else if (!table)
   {
     if (!fst)
-      return _no_such_help (iface, mode);
+      return _no_such_help (iface, mode);	/* NULL/smth : no table */
   }
   else if (!fst && *topic)					/* NULL smth */
   {
     if (strcmp (topic, "*") &&					/* NULL !"*" */
 	Check_Bindtable (table, sec, gf, cf, NULL) == NULL)
-      return _no_such_help (iface, mode);
-    fst = Bindtable_Name (table);
+      return _no_such_help (iface, mode);	/* NULL/name : not found */
+    fst = Bindtable_Name (table);		/* -> table/name */
   }
   else if (!fst || !*fst || !strcmp (fst, "*"))			/* "*" NULL */
     return _help_all_topics (Help, iface, gf, cf, table, mode);
   else if (Check_Bindtable (table, fst, gf, cf, NULL) == NULL)	/* smth "*" */
-    return _no_such_help (iface, mode);
+    return _no_such_help (iface, mode);		/* no fst in table */
   /* check for group first - if is second parameter! */
-  if (!*topic)
-    topic = fst;
-  else for (; h; h = h->next)
+  if (!*topic)					/* if fst/NULL */
+    topic = fst;			/* then topic=fst{fst} */
+  else for (; h; h = h->next)			/* smth/name */
   {
     if (!safe_strcasecmp (h->key, fst))
       break;
@@ -418,21 +417,22 @@ int Get_Help (const char *fst, const char *sec, INTERFACE *iface, userflag gf,
   {
     WARNING ("help: set \"%s\" not found", fst);
     if (sec && *sec)
-      return _no_such_help (iface, mode);
+      return _no_such_help (iface, mode);	/* BAD/smth */
     /* find common help */
-    h = Help;
-    topic = fst;
+    h = Help;					/* if smth/NULL */
+//    topic = fst;			/* then topic={smth} */
   }
-  if (table && !strcmp (topic, "*"))
+  if (table && !strcmp (topic, "*"))		/* if topic is ...{*} */
     return _help_all_topics (h, iface, gf, cf, table, mode);
-  lct = safe_malloc (strlen(topic) + 1);
-  unistrlower (lct, topic, strlen(topic) + 1);
-  t = Find_Key (h->tree, lct);
-  FREE (&lct);
+//  lct = safe_malloc (strlen(topic) + 1);
+//  unistrlower (lct, topic, strlen(topic) + 1);
+//  t = Find_Key (h->tree, lct);
+//  FREE (&lct);
+  t = Find_Key (h->tree, topic);
   if (!t)
   {
     WARNING ("help: topic \"%s\" not found", topic);
-    if (table && h != Help)
+    if (table && h != Help && !sec)		/* table/NULL */
       return _help_all_topics (h, iface, gf, cf, table, mode);
     return _no_such_help (iface, mode);
   }

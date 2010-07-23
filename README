@@ -1,11 +1,13 @@
 What is FoxEye?
     FoxEye is an IRC bot that is compatible (I meant:) with Eggdrop bot. Ones
-  have alike commands and Tcl interface but FoxEye has it as module.
+  have alike commands and Tcl interface but FoxEye has it as module. But this
+  isn't all about FoxEye because it has possibilities above and beyond ones
+  of Eggdrop...
 
 Note for SOCKS support:
-    Full functionality of bot cannot be established since SOCKS does not have
-  listen port support.   If you want use the bot behind the firewall you have
-  ask your system adminstrator for NAT firewall. :)
+    Full functionality of bot cannot be established until SOCKS do have any
+  listen port support. If you want use the bot behind the firewall you have
+  to ask your system adminstrator for some NAT firewall setup. :)
 
 Catched signals and actions:
 SIGFPE	shutdown the bot
@@ -23,7 +25,7 @@ SIGSYS	shutdown the bot
 SIGIO	used by sockets API
 
 Return codes:
-0	all OK
+0	all went OK
 1	command line error
 2	out of memory
 3	init error
@@ -45,20 +47,31 @@ Undocumented options.
   to command line then it'll create new file 'foxeye.debug' where any debug
   messages will be stored in slightly modified format. This option does not
   require '-d' option. Meaningful only for developers. There also is some
-  undocumended macro DBG(fmt,...) that writes debug only into this file.
+  undocumended macro DBG(fmt,...) that writes debug only into this file (in
+  difference with dprint() this one is async-safe, i.e. can be called any
+  time but be pretty sure you have correct arguments to it!).
 
 Version control.
-    Any version A.Bxxx must be compatible. It means if something was changed
+    Any version A.BCxxx must be compatible. It means if something was changed
   in the core headers then it must be subject for version change.
 
 Why I may need iconv?
-    Iconv is a library what make a conversion from one charset to other.
+    Iconv is a library which can do conversion from one charset to another.
   You may need it if you have a number of different character sets in your
   botnet.
 
 Color codes and smile codes.
     Due to historical reasons text coloring codes scheme is one from mIRC.
   Smiles are GUI-only feature so there is no smile codes scheme in FoxEye.
+
+Are 'Dcc-idx' script parameters any useful?
+    No, they aren't. Only reason they are there is eggdrop compatibility. You
+  cannot use them to send some information to 'partyline' (a direct service
+  session) because if you could then you'll skip message queuing completely.
+  Only way to send a message to directly connected client is use his login
+  name and node (bot) where he/she is connected. So that 'Dcc-idx' parameter
+  is for your curiosity or you can try to trace connected clients if that can
+  be somewhat useful for your script.
 
 What is in the core?
     Core has the code which is common or used by many modules, so it's
@@ -86,6 +99,8 @@ What modules are available?
    irc		- common support of connection to IRC network.
    irc-channel	- base support for channels of IRC network.
    irc-ctcp	- implementation of some IRC commands including few DCC.
+   modes	- implementation of commands +ban, -ban, and others
+   tcl		- support for scripts in Tcl language
     Were planned to implement some other modules but they are either pending
     or unrequested. Feel free to write them or ask someone to implement:
    botnet	- implementation of network of bots
@@ -101,7 +116,6 @@ What modules are available?
    jabber	- base support for Jabber network
    login	- "login", "logoff", and "cron" scripts for each chat user
    md5		- support for md5 encryption
-   modes	- implementation of commands +ban, -ban, and others
    news		- service for storing news and notifying people about them
    notes	- service for storing notes from people to other people
    perl		- support for scripting in Perl language
@@ -110,6 +124,5 @@ What modules are available?
    ssl		- support of SSL for every connection
    su		- enables change of user on chat subsystem
    syslog	- support for logging some messages to syslog
-   tcl		- support for scripts in Tcl language
    ui		- support for generic user interface (text or GUI)
    ziplink	- support for compressed connections

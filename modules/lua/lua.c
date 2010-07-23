@@ -281,6 +281,7 @@ static int _lua_sendto (lua_State *L, iftype_t to, flag_t fl)
 {
   if (lua_gettop (L) != 2)
     return luaL_error (L, "bad number of parameters");
+  // TODO: implement sending to direct service/botnet
   luaL_argcheck (L, lua_isstring (L, 1), 1, NULL);
   luaL_argcheck (L, lua_isstring (L, 2), 2, NULL);
   Add_Request (to, (char *)lua_tostring (L, 1), fl, "%s", lua_tostring (L, 2));
@@ -342,7 +343,7 @@ static int _lua_event (lua_State *L) /* foxeye.event(type,lname[,value]) */
     return luaL_error (L, "bad number of parameters");
   luaL_argcheck (L, lua_isstring (L, 1), 1, NULL);
   luaL_argcheck (L, lua_isstring (L, 2), 2, NULL);
-  id = GetLID (lua_tostring (L, 2));
+  id = FindLID (lua_tostring (L, 2));
   if (id == ID_REM)
     return luaL_error (L, "name \"%s\" isn't registered", lua_tostring (L, 2));
   if (lua_gettop (L) == 3)
@@ -439,8 +440,8 @@ static const luaL_Reg luatable_foxeye[] = {
   { "EFind", &_lua_efind },
 //  { "SetTimer", &_lua_timer }, // NewTimer : tid = SetTimer(time,func[,data])
 //  { "ResetTimer", &_lua_untimer }, // KillTimer : ResetTimer(tid)
-//  { "GetFormat", &_lua_fget },
-//  { "SetFormat", &_lua_fset },
+//  { "GetFormat", &_lua_fget }, // GetFormat : fmt = GetFormat(name)
+//  { "SetFormat", &_lua_fset }, // SetFormat : SetFormat(name,fmt)
   { "version", &_lua_version },
   { NULL, NULL }
 };
@@ -448,11 +449,13 @@ static const luaL_Reg luatable_foxeye[] = {
 static const luaL_Reg luatable_foxeye_client[] = {
   { "nick", &_lua_nick },
 //  { "find", &_lua_cfind }, // Get_Clientlist : list = find(mask[,flag[,field]])
-//  { "have", &_lua_chave }, // Get_Clientflags : x = have(lname,flag[,serv])
+//  { "have", &_lua_chave }, // (G|S)et_Flags : x = have(lname[,serv[,flag]])
 //  { "add", &_lua_cadd }, // Add_Clientrecord : add(lname,mask,flag)
 //  { "delete", &_lua_cdelete }, // Delete_Clientrecord : delete(lname)
 //  { "set", &_lua_cset }, // *Set_Field : set(lname,field[,value])
 //  { "get", &_lua_cget }, // *Get_Field : val,flag,time = get(lname,field)
+//  { "hosts", &_lua_chosts }, // Get_Hostlist : list = hosts(lname)
+//  { "infos", &_lua_cinfos }, // Get_Fieldlist : list = infos(lname)
   { NULL, NULL }
 };
 
@@ -656,7 +659,7 @@ static int lua_unregister_variable (const char *name)
 BINDING_TYPE_dcc (dc_lua);
 static int dc_lua (peer_t *from, char *args)
 {
-  if (!args || !*args)
+  if (!args)
     return 0;
   if (luaL_loadstring(Lua, args) || lua_pcall(Lua, 0, LUA_MULTRET, 0))
   {
@@ -728,7 +731,7 @@ static iftype_t lua_module_signal (INTERFACE *iface, ifsig_t sig)
  */
 Function ModuleInit (char *args)
 {
-  ifsig_t sig = S_REG;
+  char sig[sizeof(ifsig_t)] = {S_REG};
 
   CheckVersion;
   Lua = lua_open();
@@ -755,7 +758,7 @@ Function ModuleInit (char *args)
   Add_Binding ("unregister", NULL, 0, 0, &lua_unregister_variable, NULL);
   Add_Binding ("unfunction", NULL, 0, 0, &lua_unregister_function, NULL);
   Add_Binding ("dcc", "lua", U_OWNER, U_NONE, &dc_lua, NULL);
-  Add_Request (I_MODULE | I_INIT, "*", F_SIGNAL, (char *)&sig);
+  Add_Request (I_MODULE | I_INIT, "*", F_SIGNAL, sig);
   Add_Help ("lua");
   return ((Function)&lua_module_signal);
 }

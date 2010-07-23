@@ -13,8 +13,10 @@
 DCC   "ddcccc"            UCOMPL
   int func(peer_t *_f_r_o_m, char *_a_r_g_s);
     Used when user enters the command on partyline. Partyline member
-    identified with session _f_r_o_m. Arguments _a_r_g_s to command are
-    stripped from leading spaces.
+    identified with session _f_r_o_m. Arguments _a_r_g_s to command are stripped
+    from leading spaces and if no arguments were found then _a_r_g_s is NULL.
+    Note: matching global+direct service flags instead of just global and
+    service is from console settings.
       Matching: first word of partyline command without leading '.'.
       Script args: Lname Dcc-idx args
 
@@ -192,16 +194,39 @@ UNLD  "uunnllooaadd"         MASK
       Matching: none.
 
 -     "ccoonnnncchhaaiinn--ggrrooww" MATCHCASE
-  int func(peer_t *_p_e_e_r, ssize_t (**_r_e_c_v)(connchain_i *, idx_t,
-			    const char *, size_t, connchain_buffer **),
-	   ssize_t (**_s_e_n_d)(connchain_i *, idx_t, const char *, size_t,
-			    connchain_buffer **), connchain_buffer **_b_u_f);
-    Used when Connchain_Grow() function is called. It tries to setup
-    connection chain link for some _p_e_e_r, remembers _p_e_e_r for notification
-    in case when module that handles this link is terminated. Pointers
-    _r_e_c_v and _s_e_n_d are handlers for receiving and sending data thru the
-    link respectively, _b_u_f is pointer where this function have to store
-    link instance's own buffer structure, this pointer will be passed to
-    _r_e_c_v and _s_e_n_d handlers later. Returns 1 if setup was successful or 0
-    otherwise.
+  int func(peer_t *_p_e_e_r, ssize_t (**_r_e_c_v)(connchain_i **, idx_t,
+			    char *, size_t, connchain_buffer **),
+	   ssize_t (**_s_e_n_d)(connchain_i **, idx_t, const char *,
+			    size_t *, connchain_buffer **),
+	   connchain_buffer **_b_u_f);
+    Used when Connchain_Grow() function is called. It tries to setup a
+    connection chain link for some _p_e_e_r. Value of _p_e_e_r can be used for
+    identification on the setup or for notification in case when module
+    which handles this filter is terminated, any other usage of this
+    value is prohibited. _r_e_c_v and _s_e_n_d are pointers to handlers for
+    receiving and sending data through the link respectively and _b_u_f is
+    pointer where this binding have to store link instance's own buffer
+    structure, this pointer will be passed to _r_e_c_v() and _s_e_n_d() handlers
+    later. If there were no errors then all three those pointers must be
+    set by the binding. Returns 1 in case of success or 0 otherwise.
+    Note: both handlers should be thread-safe, be careful!
+    Arguments for _r_e_c_v() are: pointer for passing to Connchain_Get();
+    socket identifier; pointer to receiving buffer; size of that buffer;
+    pointer to this instance's own buffer. If _r_e_c_v() got NULL pointer to
+    receiving buffer then it have to destroy own buffer. If it get an
+    error from next link it should do the same and in both cases return
+    error and after that neither _r_e_c_v() nor _s_e_n_d() ever will be called
+    again. Else should return number of received bytes.
+    Arguments for _s_e_n_d() are: pointer for passing to Connchain_Put();
+    socket identifier; pointer to sending buffer; pointer to counter of
+    bytes to send; pointer to instance's own buffer. If _s_e_n_d() got NULL
+    pointer to sending buffer then it have to try to send what is still
+    left in own buffer and it will never receive data again. It still may
+    get calls but as soon as own buffer is empty or if it get error from
+    next link it should always return error. If send() got pointer to
+    sending buffer not equal to NULL but count of bytes to send equal to
+    0 then it should return value CONNCHAIN_READY if it can take data for
+    sending on next call and some other value otherwise. If there were no
+    errors then _s_e_n_d() should return number of bytes were sent and change
+    counter (by argument's pointer) appropriately.
       Matching: connchain flag char.

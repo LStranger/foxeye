@@ -75,16 +75,20 @@ int match (const char *, const char *);		/* lib.c */
 int simple_match (const char *, const char *);
 userflag strtouserflag (const char *, char **);
 int Have_Wildcard (const char *);
-char *NextWord (const char *);
-char *NextWord_Unquoted (char *, const char *, size_t);	/* dst, src, size */
-void StrTrim (char *);
 void printl (char *, size_t, char *, size_t, char *, const char *, \
 	     const char *, char *, uint32_t, unsigned short, int, const char *);
 /* buf, size, fmt, linelen, nick, uhost, lname, chann, ip, port, idle, params */
+unsigned short make_hash (const char *);
 
-//char *safe_strlower (char *, const char *, size_t);
 size_t unistrlower (char *, const char *, size_t);
-char *strfcat (char *, const char *, size_t);
+char *strfcpy (char *, const char *, size_t);
+
+void *safe_calloc (size_t, size_t);
+void *safe_malloc (size_t);
+void safe_realloc (void **, size_t);
+void safe_free (void **);
+#ifndef HAVE_INLINE
+char *safe_strdup (const char *);
 
 int safe_strcmp (const char *, const char *);
 int safe_strcasecmp (const char *, const char *);
@@ -93,13 +97,13 @@ int safe_strncasecmp (const char *, const char *, size_t);
 char *safe_strchr (const char *, int);
 size_t safe_strlen (const char *);
 
-char *safe_strdup (const char *);
-void *safe_calloc (size_t, size_t);
-void *safe_malloc (size_t);
-void safe_realloc (void **, size_t);
-void safe_free (void **);
-
 const char *expand_path (char *, const char *, size_t);
+char *strfcat (char *, const char *, size_t);
+char *NextWord (const char *);
+char *NextWord_Unquoted (char *, const char *, size_t);	/* dst, src, size */
+char *gettoken (char *, char **); /* ptr, nptr */
+void StrTrim (char *);
+#endif /* not HAVE_INLINE */
 
 #define FOREVER while (1)
 #define NONULL(x) x?x:""
@@ -107,10 +111,10 @@ const char *expand_path (char *, const char *, size_t);
 
 #define ISSPACE(c) isspace((uchar)c)
 
-#define strfcpy(A,B,C) strncpy(A,B,C), *(A+(C)-1)=0
+//#define strfcpy(A,B,C) strncpy(A,B,C), *(A+(C)-1)=0
 
 /* helper function for modules and UIs */
-#define CheckVersion if (strncmp(VERSION,_VERSION,3)) return NULL
+#define CheckVersion if (strncmp(VERSION,_VERSION,4)) return NULL
 
 /* macro prototype for different structures allocation functions
    it takes three arguments:
@@ -151,12 +155,18 @@ static type *alloc_##type (void) \
     tvar##max = tvar##num; \
   return cur; \
 } \
-static void free_##type (type *cur) \
+static inline void free_##type (type *cur) \
 { \
   cur->next = (void *)Free##tvar; \
   Free##tvar = cur; \
   tvar##num--; \
 }
+
+/* simple functions have to be either in lib.c
+   or here if compiler supports inline directive */
+#ifdef HAVE_INLINE
+# include "inlines.h"
+#endif
 
 /* ----------------------------------------------------------------------------
  * Prototypes for broken systems

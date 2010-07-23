@@ -28,6 +28,12 @@
 #include <errno.h>
 #include <sys/utsname.h>
 
+/* simple functions have to be either here or in protos.h
+   if compiler supports inline directive */
+#ifndef HAVE_INLINE
+# include "inlines.h"
+#endif
+
 static char *mem_msg = N_("Out of memory!");
 
 void *safe_calloc (size_t nmemb, size_t size)
@@ -78,8 +84,8 @@ void safe_realloc (void **p, size_t siz)
   }
   if (!r)
     bot_shutdown (mem_msg, 2);
-  *p = r;
   DBG ("safe_realloc(0x%08x,%u)=0x%08x", *p, siz, r);
+  *p = r;
 }
 
 void safe_free (void **p)
@@ -92,38 +98,6 @@ void safe_free (void **p)
   }
 }
 
-char *safe_strdup (const char *s)
-{
-  char *p;
-  size_t l;
-
-  if (!s || !*s) return NULL;
-  l = safe_strlen (s) + 1;
-  p = (char *)safe_malloc (l);
-  memcpy (p, s, l);
-  return (p);
-}
-
-/* TODO:
-char *strfcpy (char *dst, const char *src, size_t n)
-char *gettoken (char *str, char **next)
-*/
-
-/* own function instead of ugly strncat() */
-char *strfcat (char *dst, const char *src, size_t n)
-{
-  register size_t n1;
-
-  if (!n || !dst)
-    return NULL;
-  n1 = strlen (dst);
-  n--;
-  if (!src || n1 >= n)
-    return dst;
-  dst[n] = 0;			/* terminate dst */
-  strncpy (&dst[n1], src, n - n1);
-  return dst;
-}
 
 #if 0
 /* convert all characters in the string to lowercase in current locale */
@@ -199,44 +173,6 @@ size_t unistrlower (char *dst, const char *src, size_t ds)
   return (sout + 1);
 }
 
-int safe_strcmp(const char *a, const char *b)
-{
-  return strcmp(NONULL(a), NONULL(b));
-}
-
-int safe_strcasecmp(const char *a, const char *b)
-{
-  return strcasecmp(NONULL(a), NONULL(b));
-}
-
-int safe_strncmp(const char *a, const char *b, size_t l)
-{
-  return strncmp(NONULL(a), NONULL(b), l);
-}
-
-int safe_strncasecmp(const char *a, const char *b, size_t l)
-{
-  return strncasecmp(NONULL(a), NONULL(b), l);
-}
-
-size_t safe_strlen(const char *a)
-{
-  return a ? strlen (a) : 0;
-}
-
-char *safe_strchr (const char *s, int c)
-{
-  register char *r = (char *)s;
-  register char ch = c;
-
-  if (r)
-  {
-    for (; *r && *r != ch; r++);
-    if (*r == 0)
-      r = NULL;
-  }
-  return r;
-}
 
 #if 0
 static char Wildcards[] = "~%*{?[";
@@ -756,59 +692,6 @@ int simple_match (const char *mask, const char *text)
   return match_it (mask, &text, &mask[ptr]);	/* do real comparison */
 }
 
-
-char *NextWord (const char *msg)
-{
-  if (msg == NULL) return (char *)msg;
-  while (*msg && *msg != ' ') msg++;
-  while (*msg == ' ') msg++;
-  return (char *)msg;
-}
-
-char *NextWord_Unquoted (char *name, const char *line, size_t s)
-{
-  register char *c;
-  char ch;
-
-  if ((c = (char *)line) == NULL)
-    return NULL;
-  if (*c == '"')
-  {
-    ch = '"';
-    c++;
-  }
-  else
-    ch = ' ';
-  while (*c)
-  {
-    if (*c == ch && (ch != '"' || *(++c) != '"'))
-      break;
-    if (s > 1)
-    {
-      *name++ = *c;
-      s--;
-    }
-    c++;
-  }
-  if (s)
-    *name = 0;
-  while (*c == ' ') c++;
-  return c;
-}
-
-void StrTrim (char *cmd)
-{
-  register char *ch;
-
-  if (!cmd)
-    return;
-  for (ch = &cmd[strlen(cmd)]; ch >= cmd; ch--)
-    if (*ch && !strchr (" \r\n", *ch))
-      break;
-  if (ch < cmd || *ch)
-    ch[1] = 0;
-}
-
 int Have_Wildcard (const char *str)
 {
   register int i;
@@ -818,6 +701,7 @@ int Have_Wildcard (const char *str)
       return i;
   return -1;
 }
+
 
 /* bs is max space available if text doesn't fit in linelen s
  * bs >= s or bs == 0 if wrapping enabled */
@@ -1176,10 +1060,59 @@ void printl (char *buf, size_t s, char *templ, size_t strlen,
   _try_printl (buf, s, &p, strlen, 0);
 }
 
-const char *expand_path (char *buf, const char *str, size_t s)
+/* thanks to glibc and gcc for showing me how to optimize it */
+char *strfcpy (char *s1, const char *s2, size_t n)
 {
-  if (safe_strncmp (str, "~/", 2))
-    return str;
-  snprintf (buf, s, "%s/%s", getenv ("HOME"), &str[2]);
-  return buf;
+  char *s = s1;
+
+  if (n == 0)
+    return NULL;
+  if ((--n) >= 4)
+  {
+    size_t n4 = n >> 2;
+
+    do {
+      if ((s1[0] = s2[0]) == '\0')
+	return s;
+      if ((s1[1] = s2[1]) == '\0')
+	return s;
+      if ((s1[2] = s2[2]) == '\0')
+        return s;
+      if ((s1[3] = s2[3]) == '\0')
+        return s;
+      s1 += 4;
+      s2 += 4;
+    } while (--n4 != 0);
+  }
+  n &= 3;
+  if (n > 0)
+  {
+    if ((s1[0] = s2[0]) == '\0')
+      return s;
+    if (n > 1)
+    {
+      if ((s1[1] = s2[1]) == '\0')
+	return s;
+      if (n > 2 && (s1[2] = s2[2]) == '\0')
+	return s;
+    }
+  }
+  s1[n] = '\0';
+  return s;
+}
+
+unsigned short make_hash (const char *s)
+{
+  register unsigned int hash;
+
+  if (!s) return 0;
+  hash = 0;
+  while (*s)
+  {
+    hash += (hash << 5);		/* hash*33 */
+    hash ^= *s++;			/* XOR with byte */
+    hash ^= (hash >> 16);		/* XOR high and low parts */
+    hash &= 0xffff;			/* leave only low part */
+  }
+  return hash;
 }

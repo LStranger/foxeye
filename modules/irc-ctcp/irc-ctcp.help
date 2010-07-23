@@ -1,5 +1,5 @@
 # first section is usage
-# second section is that config maker will put into config
+# second section is that config maker will put into config or ctcp help
 # third section is full help
 
 module irc-ctcp
@@ -99,9 +99,24 @@ set dcc-allow-ctcp-chat
  port and send CTCP DCC CHAT command to that user.
  Default: yes.
 
-fset dcc-got-file
+fset dcc_got_file
 :
 :
 :Used when someone successfully uploaded some file to you. Macros: %%L, %%@,\
  %%N, %%I, %%* (file name).
  Default: "DCC GET of %%* from %%N completed.".
+
+CHAT
+:
+:%*: Sends you DCC CHAT request from me (helpful if you are behind firewall).
+:
+
+TIME
+:
+:%*: Replies you current system time on my side.
+:
+
+VERSION
+:
+:%*: Replies you version of Foxeye running.
+:

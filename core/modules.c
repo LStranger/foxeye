@@ -106,7 +106,10 @@ ScriptFunction (FE_module)
     if (!tmp)					/* check if don't loaded */
       return 0;
     sig[0] = S_TERMINATE;
+    snprintf (path, sizeof(path), "Module %s unloaded.", name);
+    ShutdownR = path;
     New_Request (tmp, F_SIGNAL, sig);		/* kill the module */
+    ShutdownR = NULL;
 #ifndef STATIC
     dlclose (tmp->data);			/* close dll */
     tmp->data = NULL;

@@ -148,17 +148,22 @@ static ssize_t _write_pipe (char *buf, size_t *sw)
   return (sg);
 }
 
+typedef struct {
+  peer_t s;
+  char buf[MESSAGEMAX];
+} console_peer;
+
 static int _request (INTERFACE *iface, REQUEST *req)
 {
-  peer_t *dcc = (peer_t *)iface->data;
+  console_peer *dcc = (console_peer *)iface->data;
   ssize_t sw;
   char buff[MESSAGEMAX];
   volatile int to_all;
 
   /* first time? */
-  if (!dcc->iface)
+  if (!dcc->s.iface)
   {
-    dcc->iface = iface;
+    dcc->s.iface = iface;
     close (Fifo_Inp[1]);
     close (Fifo_Out[0]);
   }
@@ -236,7 +241,7 @@ static int _request (INTERFACE *iface, REQUEST *req)
     return REQ_OK;
   /* run command or send to 0 channel of botnet */
   else
-    Dcc_Parse (dcc, "", buff, -1, -1, -2, 0, NULL, NULL);
+    Dcc_Parse (&dcc->s, "", buff, -1, -1, -2, 0, NULL, NULL);
   return REQ_OK;
 }
 
@@ -370,17 +375,15 @@ options:\n\
    <file>\tconfig file name\n\
 ");
 
-#define version_string "FoxEye " VERSION "\n"
 static void print_version (void)
 {
   struct utsname buf;
 
   uname (&buf);
-  printf (version_string);
+  printf ("FoxEye " VERSION "\n");
   printf (_("Copyright (C) 1999-2010 Andriy Gritsenko.\n\n\
-System: %s %s on %s.\n"), buf.sysname, buf.release, buf.machine);
+OS: %s %s on %s.\n"), buf.sysname, buf.release, buf.machine);
 }
-#undef version_string
 
 int main (int argc, char *argv[])
 {
@@ -541,7 +544,7 @@ int main (int argc, char *argv[])
   fcntl (Fifo_Inp[0], F_SETFL, O_NONBLOCK);
   fcntl (Fifo_Out[1], F_SETFL, O_NONBLOCK);
   if (have_con)
-    if_console.ift = I_CONSOLE | I_LOG | I_TELNET | I_DIRECT;
+    if_console.ift = I_CONSOLE | I_LOG | I_DIRECT;
   else
     if_console.ift = I_LOCKED | I_DIED;
   if_console.name = safe_strdup ("::0");
@@ -570,7 +573,7 @@ int main (int argc, char *argv[])
     }
     else
     {						/* broken pipe - kill all */
-      pthread_kill (sit, SIGTERM);
+      pthread_cancel (sit);
       pthread_join (sit, NULL);
       break;
     }

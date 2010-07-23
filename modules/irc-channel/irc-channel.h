@@ -83,7 +83,7 @@ typedef struct LINK
 
 typedef struct CHANNEL
 {
-  INTERFACE *chi;		/* with name "channel@network", lower case */
+  INTERFACE *chi;		/* name "channel@network", lower case, short */
   char *real;			/* Channel@network from our JOIN as is */
   LINK *nicks;
   char *key;

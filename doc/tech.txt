@@ -43,7 +43,9 @@ botnet protocol:
 ch# nick@bot...		message to botnet channel ch# from nick@bot
 nick1@bot1 nick@bot...	message to nick1@bot1 from nick@bot
 
-reserved flags for connchain:
-Z	compressed link (zlib)
+reserved flags for connchain (don't reimplement them!):
 S	SSL listener
 s	SSL outgoing connection
+x	text parser (M_RAW -> M_TEXT)
+y	RFC854 (telnet) stripper
+Z	compressed link (zlib)

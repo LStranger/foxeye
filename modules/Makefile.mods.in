@@ -5,19 +5,12 @@
 # Copiright (C) 1999-2010 Andrej Gritsenko <andrej@rep.kiev.ua>
 
 SHELL = /bin/sh
-FILENAME = $(shell @BASENAME@ `pwd`)
-CFILES = $(wildcard *.c)
-HFILES = $(wildcard *.h)
-HELPFILES = $(wildcard *.help)
-DOCFILES = $(wildcard *.ref)
-OBJS = $(patsubst %.c,%.o,$(CFILES))
-DISTFILES = $(CFILES) $(HFILES) $(HELPFILES) $(DOCFILES)
 
 srcdir = @srcdir@
 top_srcdir = ../..
 top_builddir = ../..
-subdir = modules/$(FILENAME)
-override distdir = ${top_builddir}/@PACKAGE@-@VERSION@/$(subdir)
+subdir := modules/$(FILENAME)
+mdistdir := ${top_builddir}/@PACKAGE@-@VERSION@/$(subdir)
 
 prefix = @prefix@
 exec_prefix = @exec_prefix@
@@ -31,8 +24,30 @@ mkinstalldirs = $(SHELL) ${top_srcdir}/mkinstalldirs
 CFLAGS = -c @CFLAGS@ @DEFS@ $(INCLUDES) @CPPFLAGS@
 LDFLAGS = @LDFLAGS@
 MODLIBS = @MODLIBS@
+
+@MAKEIFGNU@ MAKE # GNU make
+FILENAME = $(shell /usr/bin/basename `pwd`)
+CFILES = $(wildcard *.c)
+HFILES = $(wildcard *.h)
+HELPFILES = $(wildcard *.help)
+DOCFILES = $(wildcard *.ref)
+OBJS = $(CFILES:%.c=%.o)
 FILENAMESUB = $(shell echo $(FILENAME) | sed 's/-/_/g')
-EXTRAMODLIBS = $(shell echo `$(MODLIBS); echo $$MODLIBS_$(FILENAMESUB)`)
+EXTRAMODLIBS = $(shell ($(MODLIBS); echo $$MODLIBS_$(FILENAMESUB)))
+@MAKEELSE@ # BSD make
+FILENAME != /usr/bin/basename $(.CURDIR)
+ALLFILES != /bin/ls
+CFILES = ${ALLFILES:M*.c}
+HFILES = ${ALLFILES:M*.h}
+HELPFILES = ${ALLFILES:M*.help}
+DOCFILES = ${ALLFILES:M*.ref}
+OBJS = ${CFILES:S/.c$/.o/}
+FILENAMESUB = ${FILENAME:S/-/_/g}
+EXTRAMODLIBS != $(MODLIBS); echo $$MODLIBS_$(FILENAMESUB)
+^ := $>
+@MAKEENDIF@
+
+DISTFILES = $(CFILES) $(HFILES) $(HELPFILES) $(DOCFILES)
 
 all static: $(OBJS)
 
@@ -93,9 +108,9 @@ uninstall: uninstall-help uninstall-docs
 	else :; fi
 
 dist distdir:
-	$(mkinstalldirs) $(distdir)
+	@$(mkinstalldirs) $(mdistdir)
 	@dists="$(DISTFILES)"; \
 	for file in $$dists; do \
-	    ln $(srcdir)/$$file $(distdir) 2> /dev/null \
-	    || cp -dp $(srcdir)/$$file $(distdir); \
+	    ln $(srcdir)/$$file $(mdistdir) 2> /dev/null \
+	    || cp -p $(srcdir)/$$file $(mdistdir); \
 	done

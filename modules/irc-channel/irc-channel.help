@@ -9,10 +9,6 @@ module irc-channel
  autorejoin, users' statistics, main control (permanent bans/exceptions),\
  logging, netsplit/netjoin detection, some channel interactions.
 
-identify
-:%* password
-:Allows you to identify yourself as owner of nick %_%N%_.
-:
 
 set irc-netsplit-log-timeout
 :%* <seconds>
@@ -88,37 +84,37 @@ set irc-default-kick-reason
 :%* <string>
 :Default reason for command "kick".
 :This variable defines which reason must me send to IRC server if none was\
- written in command %ckick%n.
+ written in command %ckick%n or %ckickban%n.
  Default: "requested".
 
-fset irc-join
+fset irc_join
 :
 :
 :Used when someone joins some IRC channel. Macros: %%N, %%@, %%L, %%#.
  Default: "%%y%%N%%n(%%@) has joined %%#".
 
-fset irc-part
+fset irc_part
 :
 :
 :Used when someone leaves some IRC channel. Macros: %%N, %%@, %%L, %%#,\
  %%* (message).
  Default: "%%^%%N%%^(%%@) has left %%# (%%*)".
 
-fset irc-nickchange
+fset irc_nickchange
 :
 :
 :Used when someone on IRC network changed their nick to another. Macros:\
  %%N (old nick), %%@, %%L, %%* (new nick).
  Default: "%%^%%N%%^ is now known as %%y%%*%%n".
 
-fset irc-quit
+fset irc_quit
 :
 :
 :Used when someone quits IRC network. Macros: %%N, %%@, %%L, %%# (network),\
  %%* (reason).
  Default: "%%^%%N%%^(%%@) has quit %%# (%%*)".
 
-fset irc-lost-in-netsplit
+fset irc_lost_in_netsplit
 :
 :
 :Used when there was a netsplit on IRC network and some users didn't returned\
@@ -126,21 +122,21 @@ fset irc-lost-in-netsplit
  \%%* (netsplit servers pair).
  Default: "%%^%%N%%^ has lost in netsplit (%%*)".
 
-fset irc-kick
+fset irc_kick
 :
 :
 :Used when one user (possibly network services) has kicked another user from\
  IRC channel. Macros: %%N, %%@, %%L (target), %%#, %%* (reason).
  Default: "%%^%%N%%^ has kicked %%L from %%# (%%*)".
 
-fset irc-modechange
+fset irc_modechange
 :
 :
 :Used when someone changed mode of some IRC channel. Macros: %%N, %%@, %%L,\
  %%#, %%* (mode change line).
  Default: "mode/%%# (%%*) by %%^%%N%%^".
 
-fset irc-netsplit
+fset irc_netsplit
 :
 :
 :Used when network split (disconnect between servers) has been detected on\
@@ -148,7 +144,7 @@ fset irc-netsplit
  %%* (netsplit servers pair).
  Default: "netsplit (%%*), quits: %%N".
 
-fset irc-netjoin
+fset irc_netjoin
 :
 :
 :Used when network join (reconnect of server after network split) has been\
@@ -156,7 +152,7 @@ fset irc-netjoin
  %%N (nicklist), %%#, %%* (joined server), %%- (time of split).
  Default: "netsplit of %%* is over, joins: %%N".
 
-fset irc-topic
+fset irc_topic
 :
 :
 :Used when someone changed topic of some IRC channel. Macros: %%N, %%@, %%L,\
@@ -262,11 +258,16 @@ ss-irc dehop
 :Removes mode +h for %_nick%_ on some IRC channel if bot have enough\
  priveleges to do that.
 
-ss-irc greeting
-:greeting [channel["@"net]] [--lname] [text|"none"]
+#ss-irc greeting
+#:greeting [channel["@"net]] [--lname] [text|"none"]
+#:
+#:Changes text of greeting for any channel on any network. Value "%^none%^"\
+# removes greeting for that channel. You can omit network or channel name\
+# if you have set default channel with command %cconsole%n. If you have enough\
+# permissions (master or above) then you can change greeting for others with\
+# this command too.
+
+IDENTIFY
 :
-:Changes text of greeting for any channel on any network. Value "%^none%^"\
- removes greeting for that channel. You can omit network or channel name\
- if you have set default channel with command %cconsole%n. If you have enough\
- permissions (master or above) then you can change greeting for others with\
- this command too.
+:%* <password>: Identifies you as owner of nick %_%N%_.
+:

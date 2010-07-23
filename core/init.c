@@ -194,10 +194,12 @@ binding_t *Add_Binding (const char *table, const char *mask, userflag gf,
       {
 	FREE (&bind->key);			/* tree error */
 	FREE (&bind);
+	ERROR ("init.c:Add_Binding: tree error.");
 	return NULL;
       }
       bind->prev = NULL;
     }
+    DBG ("init.c:+bind:0x%08x shifted 0x%08x/tree", (int)bind, (int)bind->prev);
   }
   else /* not B_UNIQ */
   {
@@ -232,6 +234,7 @@ binding_t *Add_Binding (const char *table, const char *mask, userflag gf,
       last->next = bind;			/* insert as last binding */
     else
       bt->list.bind = bind;			/* insert as first binding */
+    DBG ("init.c:+bind:0x%08x shifted 0x%08x nextto 0x%08x", (int)bind, (int)bind->prev, (int)last);
   }
   bind->gl_uf = gf;
   bind->ch_uf = cf;
@@ -281,6 +284,8 @@ void Delete_Binding (const char *table, Function func, const char *name)
 	{
 	  dprint (2, "binds: deleting binding from bindtable \"%s\" with key \"%s\"",
 		  table, b->key);
+	  DBG ("init.c:-bind:0x%08x unshifting 0x%08x after 0x%08x/tree",
+		(int)b, (int)b->prev, (int)last);
 	  if (last)			/* it's not first binding - remove */
 	  {
 	    last->prev = bind = b->prev;
@@ -312,14 +317,17 @@ void Delete_Binding (const char *table, Function func, const char *name)
       }
     }
   }
-  else for (b = bt->list.bind, last = NULL; b; )
+  else for (b = bt->list.bind, last = NULL; (bind = b); )
   {
-    for (bind = b, next = NULL; bind; )	/* try descent into it */
+    next = NULL;
+    do					/* try descent into it */
     {
       if (bind->func == func && (!name || !safe_strcmp (b->name, name)))
       {
 	dprint (2, "binds: deleting binding from bindtable \"%s\" with mask \"%s\"",
 		table, bind->key);
+	DBG ("init.c:-bind:0x%08x unshifting 0x%08x after 0x%08x nextto 0x%08x",
+		(int)bind, (int)bind->prev, (int)next, (int)last);
 	if (next)			/* it's not first binding */
 	{
 	  next->prev = bind->prev;
@@ -356,7 +364,7 @@ void Delete_Binding (const char *table, Function func, const char *name)
 	next = bind;
 	bind = next->prev;
       }
-    } /* all b->prev are checked now */
+    } while (bind); /* all b->prev are checked now */
     last = b;
     if (b)
       b = b->next;
@@ -364,19 +372,21 @@ void Delete_Binding (const char *table, Function func, const char *name)
 }
 
 binding_t *Check_Bindtable (bindtable_t *bt, const char *str, userflag gf,
-			  userflag cf, binding_t *bind)
+			  userflag scf, binding_t *bind)
 {
   int i = 0;
   binding_t *b;
   char buff[LONG_STRING];
   register char *ch = buff;
   register userflag tgf, tcf;
+  userflag cf;
   register const unsigned char *s = NONULL(str);
   char cc = ' ';
   size_t sz;
 
   if (bt == NULL || bt->type == B_UNDEF)
     return NULL;
+  cf = (scf & ~U_EQUAL);		/* drop the flag to matching */
   if (bt->type == B_MASK || bt->type == B_UNIQMASK)
     cc = 0;
   else if (bt->type == B_MATCHCASE)
@@ -395,7 +405,12 @@ binding_t *Check_Bindtable (bindtable_t *bt, const char *str, userflag gf,
   if (bt->type == B_UNIQ)
   {
     b = Find_Key (bt->list.tree, buff);
-    if (b)
+    if (scf & U_EQUAL)
+    {
+      if (b && (gf != b->gl_uf || cf != b->ch_uf))
+	b = NULL;
+    }
+    else if (b)
     {
       if (b->gl_uf & U_NEGATE)				/* -a */
 	tgf = (b->gl_uf & ~gf);
@@ -426,6 +441,13 @@ binding_t *Check_Bindtable (bindtable_t *bt, const char *str, userflag gf,
     }
     for (i = 0; b; b = b->next)
     {
+      if (scf & U_EQUAL)		/* check exact matching */
+      {
+	if (gf != b->gl_uf || cf != b->ch_uf || safe_strcmp (b->key, buff))
+	  continue;
+	i = 1;				/* support for U_COMPL type */
+	break;				/* found! */
+      }
       if (b->gl_uf & U_NEGATE)				/* -a */
 	tgf = (b->gl_uf & ~gf);
       else						/* a */
@@ -1403,9 +1425,6 @@ static int dc_set (peer_t *dcc, char *args)
   char var[STRING];
   VarData *data = NULL;
 
-  StrTrim (args);
-  if (args && !*args)
-    args = NULL;
   if (args)				/* any variable */
   {
     register char *c;
@@ -1472,9 +1491,6 @@ static int dc_fset (peer_t *dcc, char *args)
   char var[STRING];
   VarData2 *data = NULL;
 
-  StrTrim (args);
-  if (args && !*args)
-    args = NULL;
   if (args)				/* any format */
   {
     register char *c;
@@ -1532,13 +1548,11 @@ static int dc_status (peer_t *dcc, char *args)
   char ifsig[sizeof(ifsig_t)] = {S_REPORT};
   char buff[STRING];
 
-  if (args && !*args)
-    args = NULL;
-  else if (args && !strcmp (args, "-a"))
+  if (args && !strcmp (args, "-a"))
     args = "*";
   printl (buff, sizeof(buff),
 _("Universal network client " PACKAGE ", version " VERSION ".\r\n\
-Running on %s at host %@, started %*."),
+Started %* on %s at host %@."),
 	  0, NULL, hostname, Nick, NULL, 0L, 0, 0, ctime (&StartTime));
   New_Request (dcc->iface, 0, buff);
   if (!args)

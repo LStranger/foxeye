@@ -416,17 +416,20 @@ static void _recheck_modes (IRC *net, LINK *target, userflag rf,
 	   (rf & U_QUIET))				/* must be quiet */
     _push_mode (net, target, mbuf, A_VOICE, 0, NULL);
   /* check server/channel user's op/voice status to give */
-  if (!(target->mode & A_OP) && !(rf & U_DEOP) && (rf & U_OP) &&
+  if (!(target->mode & A_OP) &&				/* isn't op */
+      !(rf & U_DEOP) && (rf & U_OP) &&			/* may be opped */
       ((rf & U_AUTO) || (cf & U_OP)))			/* +autoop */
-    _push_mode (net, target, mbuf, A_OP, 1, NULL);	/* autoop */
-  else if (!(target->mode & A_HALFOP) && !(rf & U_DEOP) && (rf & U_HALFOP) &&
+    _push_mode (net, target, mbuf, A_OP, 1, NULL);
+  else if (!(target->mode & (A_HALFOP | A_OP)) &&	/* isn't [half]op */
+	   !(rf & U_DEOP) && (rf & U_HALFOP) &&		/* may be halfopped */
 	   ((rf & U_AUTO) || (cf & U_OP)) &&		/* +autoop */
 	   (net->features & L_HASHALFOP))
-    _push_mode (net, target, mbuf, A_HALFOP, 1, NULL);	/* auto-halfop */
-  else if (!(target->mode & A_VOICE) && !(rf & U_QUIET) &&
-	   ((rf & U_SPEAK) ||
+    _push_mode (net, target, mbuf, A_HALFOP, 1, NULL);
+  else if (!(target->mode & (A_VOICE | A_HALFOP | A_OP)) && /* hasn't voice/op */
+	   !(rf & U_QUIET) &&				/* may be voiced */
+	   ((rf & U_SPEAK) ||				/* autovoice */
 	    ((rf & U_VOICE) && (cf & U_VOICE))))	/* +autovoice */
-    _push_mode (net, target, mbuf, A_VOICE, 1, NULL);	/* autovoice */
+    _push_mode (net, target, mbuf, A_VOICE, 1, NULL);
   /* greeting user if it is first joined after enough absence */
   DBG ("chmanagement:checking for greeting:%d:%c:%s:%c:%s", firstjoined,
 	(cf&U_SPEAK) ? '+' : '-', target->nick->lname,
@@ -473,7 +476,7 @@ void ircch_recheck_modes (IRC *net, LINK *target, userflag sf, userflag cf,
     _kickban_user (net, target, &mbuf, info);
   else
     _recheck_modes (net, target, rf,
-		    Get_Clientflags (target->chan->chi->name, NULL), &mbuf, x);
+		    Get_Clientflags (target->chan->chi->name, ""), &mbuf, x);
   _flush_mode (net, target->chan, &mbuf);
 }
 
@@ -654,22 +657,25 @@ int ircch_parse_modeline (IRC *net, CHANNEL *chan, LINK *origin, char *prefix,
 	    ircch_remove_mask (list, item);
 	  /* if ban was removed then remove all matched dynamic exceptions */
 	  if (mc == 'b' &&
-	      !(Get_Clientflags (chan->chi->name, NULL) & U_NOAUTH))
+	      !(Get_Clientflags (chan->chi->name, "") & U_NOAUTH))
 	    _ircch_expire_exempts (net, chan, &mbuf);
+	    // TODO: instead of expire do next or let them just expire ATM?
+	    //_ircch_clear_exempts (net, chan, schr, &mbuf);
 	  continue;
 	}
 	else if (origin)
-	{
 	  ircch_add_mask (list, origin->nick->host,
 			  safe_strlen (origin->nick->name), schr);
-	  /* TODO: set matched exceptions while ban is set */
-	  if ((gcf & U_AUTO) && chan->tid == -1 && /* start enforcer */
-	      ((mc == 'b' && mf == '+') || (mc == 'e' && mf == '-')))
-	    chan->tid = NewTimer (chan->chi->ift, chan->chi->name, S_LOCAL,
-				  ircch_enforcer_time, 0, 0, 0);
-	}
 	else
 	  ircch_add_mask (list, "", 0, schr);
+	/* start enforcer if enforcing is on and ban is raised */
+	if ((gcf & U_AUTO) && chan->tid == -1 && mc == 'b' && mf == '+')
+	  chan->tid = NewTimer (chan->chi->ift, chan->chi->name, S_LOCAL,
+				ircch_enforcer_time, 0, 0, 0);
+	/* TODO: set matched exceptions while ban is set */
+	//if (mc == 'b' &&		/* ignore +e and +I */
+	//    !(Get_Clientflags (chan->chi->name, "") & U_NOAUTH))
+	//  _ircch_raise_exempts (net, chan, schr, &mbuf);
       }
       else if (mch)
       {
@@ -709,7 +715,7 @@ int ircch_parse_modeline (IRC *net, CHANNEL *chan, LINK *origin, char *prefix,
 	  {
 	    Add_Request (I_LOG, "*", F_WARN, "Key for channel %s was changed!",
 			 chan->chi->name);
-	    Set_Field (cr, "passwd", chan->key);
+	    Set_Field (cr, "passwd", chan->key, 0);
 	    Unlock_Clientrecord (cr);
 	  }
 	}
@@ -742,7 +748,8 @@ int ircch_parse_modeline (IRC *net, CHANNEL *chan, LINK *origin, char *prefix,
 	  if (!(orf & U_MASTER))	/* masters may change modes */
 	  {
 	    if (target->nick->lname)
-	      trf = _make_rf (net,
+	      trf = _make_rf (net,	/* mix global and channel ones */
+			Get_Clientflags (target->nick->lname, NULL) |
 			Get_Clientflags (target->nick->lname, &net->name[1]),
 			Get_Clientflags (target->nick->lname, chan->chi->name));
 	    else
@@ -758,10 +765,12 @@ int ircch_parse_modeline (IRC *net, CHANNEL *chan, LINK *origin, char *prefix,
 	else if (mf == '-')		/* modechange for whole channel */
 	{
 	  chan->mode &= ~mch;
+	  // TODO: if '-i' then clear invites list because server do that too
 	}
 	else
 	{
 	  chan->mode |= mch;
+	  // TODO: if '+i' then raise every +I we have in Listfile for the channel
 	}
       }
     }
@@ -832,19 +841,20 @@ void ircch_enforcer (IRC *net, CHANNEL *chan)
 
   mbuf.changes = mbuf.pos = mbuf.apos = 0;
   mbuf.cmd = NULL;
-  cf = Get_Clientflags (chan->chi->name, NULL);
+  cf = Get_Clientflags (chan->chi->name, "");	/* get all flags */
   for (link = chan->nicks; link; link = link->prevnick)
     if (!(link->mode & (A_ADMIN | A_OP | A_HALFOP)) || !(cf & U_FRIEND))
     {
-      if (link->nick->lname && (clr = Lock_Clientrecord (link->nick->lname)))
+      if ((clr = Lock_byLID (link->nick->id)))	/* we need to check excempts */
       {
-	rf = _make_rf (net, Get_Flags (clr, &net->name[1]),
+	rf = _make_rf (net,
+		       Get_Flags (clr, NULL) | Get_Flags (clr, &net->name[1]),
 		       Get_Flags (clr, chan->chi->name));
 	Unlock_Clientrecord (clr);
       }
       else
 	rf = 0;
-      if (rf & (U_FRIEND | U_MASTER | U_OP | U_HALFOP))
+      if (rf & (U_FRIEND | U_MASTER | U_OP | U_HALFOP | U_ACCESS))
 	continue;
       for (ban = chan->bans, ex = NULL; ban; ban = ban->next)
 	if (match (ban->what, link->nick->host) > 0)
@@ -896,7 +906,7 @@ void ircch_expire (IRC *net, CHANNEL *ch)
 {
   modebuf_t mbuf;
 
-  if ((Get_Clientflags (ch->chi->name, NULL) & U_NOAUTH))	/* -dynamic */
+  if ((Get_Clientflags (ch->chi->name, "") & U_NOAUTH))	/* -dynamic */
     return;
   mbuf.changes = mbuf.pos = mbuf.apos = 0;
   mbuf.cmd = NULL;
@@ -1260,9 +1270,11 @@ static int ssirc_kick (peer_t *who, INTERFACE *where, char *args)
   /* TODO: _ircch_recheck_link() */
   if (tlink->nick->lname)		/* check seniority */
   {
-    uf = _make_rf (net, Get_Clientflags (who->iface->name, &net->name[1]),
+    uf = _make_rf (net, Get_Clientflags (who->iface->name, NULL) |
+		   Get_Clientflags (who->iface->name, &net->name[1]),
 		   Get_Clientflags (who->iface->name, ch->chi->name));
-    tf = _make_rf (net, Get_Clientflags (tlink->nick->lname, &net->name[1]),
+    tf = _make_rf (net, Get_Clientflags (tlink->nick->lname, NULL) |
+		   Get_Clientflags (tlink->nick->lname, &net->name[1]),
 		   Get_Clientflags (tlink->nick->lname, ch->chi->name));
     if ((!(uf & U_MASTER) && (tf & U_MASTER)) ||
 	(!(uf & U_OP) && (tf & U_OP)) ||
@@ -1326,9 +1338,11 @@ static int ssirc_kickban (peer_t *who, INTERFACE *where, char *args)
   /* TODO: _ircch_recheck_link() */
   if (tlink->nick->lname)		/* check seniority */
   {
-    uf = _make_rf (net, Get_Clientflags (who->iface->name, &net->name[1]),
+    uf = _make_rf (net, Get_Clientflags (who->iface->name, NULL) |
+		   Get_Clientflags (who->iface->name, &net->name[1]),
 		   Get_Clientflags (who->iface->name, ch->chi->name));
-    tf = _make_rf (net, Get_Clientflags (tlink->nick->lname, &net->name[1]),
+    tf = _make_rf (net, Get_Clientflags (tlink->nick->lname, NULL) |
+		   Get_Clientflags (tlink->nick->lname, &net->name[1]),
 		   Get_Clientflags (tlink->nick->lname, ch->chi->name));
     if ((!(uf & U_MASTER) && (tf & U_MASTER)) ||
 	(!(uf & U_OP) && (tf & U_OP)) ||
@@ -1437,6 +1451,7 @@ static int ssirc_dehop (peer_t *who, INTERFACE *where, char *args)
   return _ssirc_setmode (who, where, args, A_HALFOP, 0);
 }
 
+#if 0
 /* TODO: move it where it must be, i.e. to network-independent management mod. */
 		/* .greeting [channel[@net]] [--lname] [text|"none"] */
 BINDING_TYPE_ss_ (ssirc_greeting);
@@ -1457,7 +1472,8 @@ static int ssirc_greeting (peer_t *who, INTERFACE *where, char *args)
   if (args[0] == '-' && args[1] == '-')
   {
     DBG ("irc-channel:ssirc_greeting: check perm: %s@%s/%s", who->iface->name, &net->name[1], ch->chi->name);
-    uf = _make_rf (net, Get_Clientflags (who->iface->name, &net->name[1]),
+    uf = _make_rf (net, Get_Clientflags (who->iface->name, NULL) |
+		   Get_Clientflags (who->iface->name, &net->name[1]),
 		   Get_Clientflags (who->iface->name, ch->chi->name));
     if (uf & U_MASTER)
     {
@@ -1469,7 +1485,7 @@ static int ssirc_greeting (peer_t *who, INTERFACE *where, char *args)
 	New_Request (who->iface, 0, _("No such client name: %s"), buf);
 	return 0;
       }
-      tf = _make_rf (net, Get_Flags (u, &net->name[1]),
+      tf = _make_rf (net, Get_Flags (u, NULL) | Get_Flags (u, &net->name[1]),
 		     Get_Flags (u, ch->chi->name));
       Unlock_Clientrecord (u);
       /* master may see/change only own or not-masters greeting */
@@ -1512,7 +1528,7 @@ static int ssirc_greeting (peer_t *who, INTERFACE *where, char *args)
     u = Lock_Clientrecord (tgt);
     if (u)
     {
-      Set_Field (u, ch->chi->name, NULL);
+      Set_Field (u, ch->chi->name, NULL, 0);
       Unlock_Clientrecord (u);
       New_Request (who->iface, 0, _("Greeting on %s for %s reset."),
 		   ch->chi->name, tgt);
@@ -1527,12 +1543,13 @@ static int ssirc_greeting (peer_t *who, INTERFACE *where, char *args)
     WARNING ("ssirc_greeting: unknown error with Lname %s", tgt);
     return -1;
   }
-  Set_Field (u, ch->chi->name, args);
+  Set_Field (u, ch->chi->name, args, 0);
   Unlock_Clientrecord (u);
   New_Request (who->iface, 0, _("Greeting on %s for %s set to: %s"),
 	       ch->chi->name, tgt, args);
   return 1;
 }
+#endif
 
 /*
 ?  {"reset",		"m|m",	(Function) cmd_reset,		NULL},
@@ -1564,7 +1581,7 @@ void ircch_set_ss (void)
   NB (deop,	U_OP, U_OP);
   NB (hop,	U_OP, U_OP);
   NB (dehop,	U_OP, U_OP);
-  NB (greeting,	0, 0);
+//  NB (greeting,	0, 0);
 #undef NB
 }
 
@@ -1586,6 +1603,6 @@ void ircch_unset_ss (void)
   NB (deop);
   NB (hop);
   NB (dehop);
-  NB (greeting);
+//  NB (greeting);
 #undef NB
 }

@@ -48,9 +48,10 @@ typedef struct
 {
   char *domain;			/* if free then this is NULL */
   unsigned short port;
-  ssize_t bufpos;
-  size_t available;
-  char inbuf[2*MB_LEN_MAX*MESSAGEMAX]; /* cyclic input buffer */
+  int ready;
+//  ssize_t bufpos;
+//  size_t available;
+//  char inbuf[2*MB_LEN_MAX*MESSAGEMAX]; /* cyclic input buffer */
 } socket_t;
 
 static pid_t _mypid;
@@ -67,6 +68,7 @@ static void sigio_handler (int signo)
   poll (Pollfd, _Snum, 0);
 }
 
+#if 0
 static void dmemcpy (void *d, socket_t *s, size_t l)
 {
   DBG ("dmemcpy(%u+%u)[%-*.*s]", s->bufpos, l, l, l, &s->inbuf[s->bufpos]);
@@ -162,6 +164,7 @@ static ssize_t _socket_find_line (socket_t *s)
     return (p);
   return (p-1);
 }
+#endif
 
 void CloseSocket (idx_t idx)
 {
@@ -192,7 +195,8 @@ static idx_t allocate_socket ()
   Pollfd[idx].events = POLLIN | POLLPRI | POLLOUT | POLLHUP | POLLERR;
   Pollfd[idx].revents = 0;
   Socket[idx].domain = NULL;
-  Socket[idx].bufpos = Socket[idx].available = 0;
+//  Socket[idx].bufpos = Socket[idx].available = 0;
+  Socket[idx].ready = FALSE;
   if (idx == _Snum)
     _Snum++;
   DBG ("allocate_socket: got socket %hd", idx);
@@ -216,43 +220,47 @@ ssize_t ReadSocket (char *buf, idx_t idx, size_t sr, int mode)
     rev = POLLERR;
   else
     rev = Pollfd[idx].revents;
-  mode -= M_RAW;
+//  mode -= M_RAW;
   /* now check for incomplete connection... */
-  if (sock->bufpos == -1)
+  if (sock->ready == FALSE)
   {
-    if (!(rev & (POLLIN | POLLPRI | POLLOUT | POLLERR)))
+    if (!(rev & (POLLIN | POLLPRI | POLLERR | POLLOUT)))
       return (E_AGAIN);		/* still waiting for connection */
     if (rev & POLLERR)
     {
       CloseSocket (idx);
-      return (E_ERRNO);		/* connection timeout or other error */
-    }
-    else if (read (Pollfd[idx].fd, sock->inbuf, 0) < 0)
-    {
-      CloseSocket (idx);
       return (E_ERRNO - errno);	/* connection timeout or other error */
     }
-    sock->bufpos = 0;		/* connection established! */
+//    else if (read (Pollfd[idx].fd, sock->inbuf, 0) < 0)
+//    {
+//      CloseSocket (idx);
+//      return (E_ERRNO - errno);	/* connection timeout or other error */
+//    }
+    sock->ready = TRUE;		/* connection established! */
   }
+#if 0
   if (mode)
     sg = _socket_find_line (sock);
   if (sg < 0)
   {
-    if (!rev)
+#endif
+    if (!rev && mode == M_POLL)
     {
-      poll (&Pollfd[idx], 1, mode == (M_POLL - M_RAW) ? POLL_TIMEOUT : 0);
+      poll (&Pollfd[idx], 1, POLL_TIMEOUT);
       rev = Pollfd[idx].revents;
     }
     if (rev & POLLNVAL)
       CloseSocket (idx);
     if (rev & (POLLNVAL | POLLERR))
     {
-      if (!(sg = sock->available))	/* let's give a chance to get data */
+//      if (!(sg = sock->available))	/* let's give a chance to get data */
 	return (E_NOSOCKET);
     }
     else if (rev & (POLLIN | POLLPRI))
     {
-      sg = sock->bufpos + sock->available;
+	DBG ("trying read socket %d", idx);
+//      sg = sock->bufpos + sock->available;
+#if 0
       if (mode)				/* non-raw socket, read into inbuf */
       {
 	/* fill tail first */
@@ -288,28 +296,31 @@ ssize_t ReadSocket (char *buf, idx_t idx, size_t sr, int mode)
 	  sock->available += sg;
       }
       else				/* raw socket, just read it */
-	sg = read (Pollfd[idx].fd, buf, sr);
-      if (sg <= 0)
+#endif
+      if ((sg = read (Pollfd[idx].fd, buf, sr)) > 0 && mode != M_RAW)
+	DBG ("got from socket %d:[%-*.*s]", idx, sg, sg, buf);
+      if (sg < 0)
       {
-	CloseSocket (idx);
-	sg = 0;				/* if socket died then close it */
+	CloseSocket (idx);		/* if socket died then close it */
+	return (E_ERRNO - errno);		
       }
       Pollfd[idx].revents = 0;		/* we read socket, reset state */
-      if (mode)
-	sg = _socket_find_line (sock);
-      if (sg < 0)
-	return 0;
+//      if (mode)
+//	sg = _socket_find_line (sock);
+//      if (sg < 0)
+//	return 0;
     }
     else
       return 0;
+#if 0
   }
   if (mode)
   {
     if (sg >= sr)
       sg = sr - 1;
   }
-  else if (sg > sr)
-    sg = sr;
+//  else if (sg > sr)
+//    sg = sr;
   if (mode)
   {
     if (sg >= 0)			/* some line found! */
@@ -317,13 +328,14 @@ ssize_t ReadSocket (char *buf, idx_t idx, size_t sr, int mode)
     buf[sg] = 0;			/* line terminator */
     sg++;				/* in text modes it includes 0 */
   }
+#endif
   return (sg);
 }
 
 /*
  * returns: -1 if error or number of writed bytes from buf
  */
-ssize_t WriteSocket (idx_t idx, char *buf, size_t *ptr, size_t *sw, int mode)
+ssize_t WriteSocket (idx_t idx, const char *buf, size_t *ptr, size_t *sw, int mode)
 {
   socket_t *sock;
   short rev;
@@ -335,7 +347,7 @@ ssize_t WriteSocket (idx_t idx, char *buf, size_t *ptr, size_t *sw, int mode)
     return 0;
   rev = Pollfd[idx].revents;
   sock = &Socket[idx];
-  if (!rev)
+  if (!rev)				/* TODO: try not to poll it? */
   {
     poll (&Pollfd[idx], 1, mode == M_POLL ? POLL_TIMEOUT : 0);
     rev = Pollfd[idx].revents;
@@ -358,6 +370,7 @@ ssize_t WriteSocket (idx_t idx, char *buf, size_t *ptr, size_t *sw, int mode)
       return 0;
     *ptr += sg;
     *sw -= sg;
+    sock->ready = TRUE;			/* connected as we sent something */
     return (sg);
   }
 }
@@ -450,7 +463,7 @@ int SetupSocket (idx_t idx, int type, char *domain, unsigned short port)
 //    if (errno != EINPROGRESS)
     if ((i = connect (sockfd, (struct sockaddr *)&sin, sizeof(sin))) < 0)
       return (E_ERRNO - errno);
-    Socket[idx].bufpos = i;
+//    Socket[idx].ready = i;
   }
 #ifdef HAVE_SYS_FILIO_H		/* non-BSDish systems have not O_ASYNC flag */
   i = 1;
@@ -560,25 +573,25 @@ char *SocketError (int er, char *buf, size_t s)
     case E_NOSOCKET:
       strfcpy (buf, "no such socket", s);
       break;
-    case E_NOLISTEN:
-      strfcpy (buf, "cannot listen the socket", s);
-      break;
+//    case E_NOLISTEN:
+//      strfcpy (buf, "cannot listen the socket", s);
+//      break;
     case E_UNDEFDOMAIN:
       strfcpy (buf, "domain not defined", s);
       break;
     case E_NOSUCHDOMAIN:
       strfcpy (buf, "no such domain", s);
       break;
-    case E_NOCONNECT:
-      strfcpy (buf, "cannot connect to host", s);
-      break;
+//    case E_NOCONNECT:
+//      strfcpy (buf, "cannot connect to host", s);
+//      break;
     default:
       strfcpy (buf, "unknown socket error", s);
   }
   return buf;
 }
 
-int fe_init_sockets (void)
+int _fe_init_sockets (void)
 {
   struct sigaction act;
 

@@ -18,12 +18,12 @@ function logfile
  %_service%_ (if it's omitted then assume it has value "%^*%^" what means collect\
  events for any destination). See %yhelp console%n for details of %_level%_.
  Additional swithces:
-   -nots	don't write timestamps ("[HH:MM] ") at start of each line
-   -yearly	rotate logfile once per year
-   -monthly	rotate logfile once per month
-   -weekly	rotate logfile once per week
-   -rpath %_rpath%_	set log rotation path to %_rpath%_ instead of default one
-		(see %yset logrotate-path%n for details).
+   -nots        don't write timestamps ("[HH:MM] ") at start of each line
+   -yearly      rotate logfile once per year
+   -monthly     rotate logfile once per month
+   -weekly      rotate logfile once per week
+   -rpath %_rpath%_ set log rotation path to %_rpath%_ instead of default one
+                (see %yset logrotate-path%n for details).
 
 set logrotate-path
 :%* <template>

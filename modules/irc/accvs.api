@@ -38,7 +38,9 @@ PUBM  "iirrcc--ppuubb--mmssgg--mmaasskk" MASK
     Used when we got a message _m_s_g that came for IRC channel _c_h_a_n from
     someone _c_l_i_e_n_t with nick!user@host _w_h_o (_u_n_i_c_k is his/her nickname
     that is converted to lower case) and is identified as _l_n_a_m_e. _c_h_a_n is
-    string in form "#channel@network".
+    string in form "#channel@network" (in case of safe channels the name
+    "!chan@network" gets short name). Note: matching uses network+global
+    flags instead of global ones.
       Matching: "chan msg" string.
       Script args: nick@net user@host Lname chan msg
 
@@ -54,7 +56,9 @@ PUB   "iirrcc--ppuubb--mmssgg--ccmmdd" UNIQ
     someone _c_l_i_e_n_t with nick!user@host _w_h_o (_u_n_i_c_k is his/her nickname
     that is converted to lower case) which is identified as _l_n_a_m_e if
     that message may be interpreted as command. _c_h_a_n is string in form
-    "#channel@network" and _m_s_g is arguments string to command.
+    "#channel@network" (in case of safe channels the name "!chan@network"
+    gets short name) and _m_s_g is arguments string to command. Note:
+    matching uses network+global flags instead of global ones.
       Matching: command.
       Script args: nick@net user@host Lname chan args
 
@@ -78,7 +82,9 @@ MSGM  "iirrcc--pprriivv--mmssgg--mmaasskk" MASK
 		   char *_u_n_i_c_k, char *_m_s_g);
     Used when we got a message _m_s_g on IRC network that came for me from
     someone _c_l_i_e_n_t with nick!user@host _w_h_o (_u_n_i_c_k is his/her nickname
-    that is converted to lower case) and is identified as _l_n_a_m_e.
+    that is converted to lower case) and is identified as _l_n_a_m_e. Note:
+    matching flags are global+network instead of just global and direct
+    service as service ones.
       Matching: msg.
       Script args: nick@net user@host Lname msg
 
@@ -94,7 +100,8 @@ MSG   "iirrcc--pprriivv--mmssgg--ccmmdd" UNIQ
     someone _c_l_i_e_n_t with nick!user@host _w_h_o (_u_n_i_c_k is his/her nickname
     that is converted to lower case) which is identified as _l_n_a_m_e if
     that message may be interpreted as command. _m_s_g is arguments string
-    to command.
+    to command. Note: matching flags are global+network instead of just
+    global and direct service as service ones.
       Matching: command.
       Script args: nick@net user@host Lname args
 
@@ -129,7 +136,8 @@ NICK  "iirrcc--nniicckkcchhgg"    MASK
     Used when someone with nick!user@host _w_h_o changes on IRC network
     _n_e_t his/her nick to _n_e_w_n and is identified now as _l_n_a_m_e. _l_c_o_l_d_n and
     _l_c_n_e_w_n are old and new nicknames respectively that are converted to
-    lower case. Note: scripts are called for each channel separately
+    lower case. Note: matching uses network+global flags instead of
+    global ones. Note2: scripts are called for each channel separately
     and script bindings will be called only if module "irc-channel" is
     loaded, and channel flags are not ignored only for script bindings.
       Matching: newnick.
@@ -140,10 +148,11 @@ SIGN  "iirrcc--ssiiggnnooffff"    MASK
 		  char *_l_c_n_i_c_k, char *_m_s_g);
     Used when someone _l_n_a_m_e with nick!user@host _w_h_o leaves IRC network
     _n_e_t with the reason _m_s_g. _l_c_n_i_c_k is user nickname that is converted
-    to lower case. Note: scripts are called for each channel separately
+    to lower case. Note: matching uses network+global flags instead of
+    global ones. Note2: scripts are called for each channel separately
     and script bindings will be called only if "irc-channel" module is
     loaded, and channel flags are not ignored only for script bindings.
-    Note2: Script bindings here are called too when someone was lost in
+    Note3: Script bindings here are called too when someone was lost in
     netsplit and in that case reason is undefined.
       Matching: "nick!user@host" string.
       Script args: nick user@host Lname channel msg
@@ -154,7 +163,8 @@ SPLT  "iirrcc--nneettsspplliitt"   MASK
     Used when some IRC server splits out of another IRC server (_s_e_r_v_e_r_s
     is string "left-server gone-server") on the network _n_e_t and someone
     _l_n_a_m_e with nick!user@host _w_h_o has left our part of network. _l_c_n_i_c_k
-    is user nick that is converted to lower case. Note: scripts are
+    is user nick that is converted to lower case. Note: matching uses
+    network+global flags instead of global ones. Note2: scripts are
     called for each channel separately and any script bindings will be
     called only if "irc-channel" module is loaded, and channel flags are
     not ignored only for script bindings.

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2001-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -43,6 +43,7 @@ typedef struct
 
 short Event (const char *);				/* user event name -> event */
 int FindEvent (wtmp_t *, const char *, short, lid_t, time_t); /* Lname, event, from, upto */
+int FindEvents (wtmp_t *, int, const char *, short, lid_t, time_t); /* size, ... */
 void NewEvent (short, lid_t, lid_t, short);		/* event, from, lid, count */
 void NewEvents (short, lid_t, size_t, lid_t[], short[]);
 void RotateWtmp (void);					/* called monthly */

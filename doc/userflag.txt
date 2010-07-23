@@ -13,14 +13,15 @@ OP	o hub		N:op		can get op	+autoop
  +AUTO	* autoconnect	N:autoop	autoop		+enforcebans/autoconnect
 MASTER	m -		master/admin	master/admin	+protect(ops|friends)
 DEOP	d -		N:never op	never op	+bitch
-SPEAK	s -		can simulate	auto-voice	+greet
+SPEAK	s -		N:can simulate	auto-voice	+greet
 OWNER	n -		full access	full access	-
 NOAUTH	i -		need no auth	sticky		-dynamic(bans|exempts|invites)
 UNSHARE	u local record	local record	local record	-shared
 IGNORED	I -		ignore msgs	ignore msg	-
 
 (column C is associated flag char, for reference; 'N:' in column 'user'
- means it's applied only to network/service itself, not to publics in it)
+ means it's applied only to network/service itself (including direct one),
+ i.e. there is no appropriate global flag for it)
 
 each lower flag has more priority than upper one
 each public flag has more priority that equivalent server/global one

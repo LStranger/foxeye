@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2000-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -14,32 +14,26 @@
  *     You should have received a copy of the GNU General Public License
  *     along with this program; if not, write to the Free Software
  *     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
- *
- * This file is a part of FoxEye source documentation. A module template.
  */
 
-#include "foxeye.h"
-#include "modules.h"
-#include "init.h"
+#ifndef _FE_TCL_H
+#define _FE_TCL_H 1
 
-/*
- * this function must receive signals:
- *  S_TERMINATE - unload module,
- *  S_REPORT - out state info to log,
- *  S_REG - report/register anything we should have in config file.
- */
-static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
-{
-  return 0;
-}
+#ifdef HAVE_TCL
+# include "tcl.h"
+#endif
 
-/*
- * this function called when you load a module.
- * Input: parameters string args.
- * Returns: address of signals receiver function, NULL if not loaded.
- */
-Function ModuleInit (char *args)
-{
-  CheckVersion;
-  return ((Function)&module_signal);
-}
+#ifdef HAVE_TCL8X
+# define TCLARGS Tcl_Obj *CONST		/* last argument of command */
+  //int ArgInteger (Tcl_Interp *, Tcl_Obj *);
+# define ArgString Tcl_GetStringFromObj
+#else
+# define TCLARGS char *
+# define ArgInteger(i,a) atoi(a)
+# define ArgString(a,b) a, *(b) = safe_strlen (a)
+#endif
+
+//void ResultInteger (Tcl_Interp *, int);
+//void ResultString (Tcl_Interp *, char *, size_t);
+
+#endif

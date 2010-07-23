@@ -308,7 +308,7 @@ int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
   size_t msglen = 0;			/* avoiding compiler warning */
   INTERFACE *client;
   clrec_t *clr;
-  userflag uf;
+  userflag uf, df = 0;
   binding_t *bind;
   bindtable_t *btmask;
   int i;
@@ -325,24 +325,23 @@ int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
 		      NULL, NULL) & A_REGISTERED)
   {
     if ((clr = Lock_Clientrecord (lname)))	/* might it be deleted yet? */
-      uf = Get_Flags (clr, &pmsgout->name[1]);
+      uf = Get_Flags (clr, &pmsgout->name[1]);	/* network flags */
     else
       uf = 0;
   }
-  else
+  else					/* Find_Clientrecord ignores case */
   {
     if (ae)
-    {
       *ae = '!';
-      msglen = strlen (lcnick);
-      unistrlower (&lcnick[msglen], ae, sizeof(lcnick) - msglen);
-    }
-    clr = Find_Clientrecord (lcnick, &lname, &uf, &pmsgout->name[1]);
+    clr = Find_Clientrecord (from, &lname, &uf, &pmsgout->name[1]);
     if (ae)
-      lcnick[msglen] = 0;		/* leave only lower case nick there */
+      *ae = 0;				/* (from) still have to be just nick */
   }
   if (clr)
   {
+    uf |= Get_Flags (clr, NULL);	/* add global flags */
+    if (!to)				/* it's for me */
+      df = Get_Flags (clr, "");		/* direct service flags for bindings */
     lname = safe_strdup (lname);
     Unlock_Clientrecord (clr);
   }
@@ -359,8 +358,7 @@ int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
   }
   dprint (4, "irc_privmsgin: got message from %s to %s of type %d", from, to,
 	  msg_type);
-  if (ae)				/* find/create pmsgout for sender */
-    *ae = 0;				/* pmsgout has to be nick@net */
+  /* find/create pmsgout for sender, pmsgout has to be nick@net */
   if ((client = _pmsgout_get_client (pmsgout->name, from)))
     Unset_Iface();
   else
@@ -370,7 +368,7 @@ int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
     client = _pmsgout_stack_insert ((pmsgout_stack **)&pmsgout->data, tocl);
   }
   if (ae)
-    *ae = '!';
+    *ae = '!';				/* restore full mask in (from) */
   ((pmsgout_stack *)client->data)->last = Time + pmsg_keep;
   /* check for flood */
   bind = NULL;
@@ -470,12 +468,12 @@ int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
     {
       userflag cf;
 
-      if (lname && to)
+      if (lname && to)			/* known one to channel */
 	cf = Get_Clientflags (lname, tocl);
-      else if (to)
+      else if (to)			/* unknown to channel */
 	cf = 0;
-      else
-	cf = -1;
+      else				/* private msg */
+	cf = df;
       /* do mask bindtable */
       for (bind = NULL; (bind = Check_Bindtable (btmask, chmask, uf, cf, bind)); )
       {

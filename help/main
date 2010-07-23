@@ -231,6 +231,8 @@ function module
    irc          - common support of connection to IRC network.
    irc-channel  - base support for channels of IRC network.
    irc-ctcp     - support for basic CTCP DCC commands.
+   modes        - implementation of commands +ban, -ban, and few more.
+   tcl          - support for scripts in Tcl language.
  See also %yhelp module%n.
 
 # -----------------------
@@ -246,27 +248,30 @@ chattr
  %* name +x %_#ch%_     adds flag with symbolic name x to service %_#ch%_ for client
  %* name +x|-y %_#ch%_  adds flag x to client record and removes flag y from service\
 		%_#ch%_ for client
- Only owner may change permissions for owners and masters.
+ Only owner may change permissions for owners and masters. Flags can be\
+ set for direct service and global, and also for some service in one command.\
+ When used in first case, flags that are marked as %^(G)%^ are global ones\
+ and others are direct service ones.
  
  Full list of supported flags:
    a  has service access
    k  access to service or mode changes denied
-   v  can ask to give speak permissions (voice flag)
+   v  can ask to give speak permissions (voice flag) %^(G)%^
    h  is service halfop (i.e. has restricted privileges)
    o  is service operator (i.e. privileged)
-   m  is service master (i.e. has extended privileges)
-   n  is service owner (i.e. has full control)
+   m  is service master (i.e. has extended privileges) %^(G)%^
+   n  is service owner (i.e. has full control) %^(G)%^
    *  enforce any of above on network/service
    d  must be de-opped
-   q  denied to speak
+   q  denied to speak %^(G)%^
    f  is friendly, i.e. don't be kicked out in some situations
    s  permitted to say anything on network/service
-   e  welcomed to come (invited)
-   i  trusted without authentication
-   I  user's messages are ignored
+   e  welcomed to come (invited) %^(G)%^
+   i  trusted without authentication %^(G)%^
+   I  user's messages are ignored %^(G)%^
    u  private record (i.e. not shared with sharebots)
- For networks and services most of flags apply the same things for whole\
- service (flags a,s,u) or automate them for anyone but some flags have\
+ For network or service records most of flags apply the same things for me\
+ on service (flags a,s,u) or automate them for anyone but some flags have\
  different meaning:
    h  cycle channel to get privileges
    m  protect operators and friendly ones

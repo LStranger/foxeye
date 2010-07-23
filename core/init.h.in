@@ -89,7 +89,7 @@ void Status_Encodings (INTERFACE *);		/* the same (conversion.c) */
 # define String(a,b,c)		extern char b[STRING];
 # define Flood(a,b,c)
 # define Format(a,b)		extern char format_##a[FORMATMAX];
-#endif
+#endif /* __INIT_C */
 #endif /* ifndef DISPATCHER_C */
 #else /* ifndef INIT_C */
 # define Command(a,b,c)		RegisterFunction (a, &b, c);
@@ -126,15 +126,7 @@ Command ("module", FE_module, "name")		/* must be last :) */
 #undef Flood
 #undef Format
 #endif /* ifndef DISPATCHER_C */
-/* String  ("incoming-path", dnload_dir, "") */
-/* Integer	("dcc-turbo", dcc_turbo, 1) */
 /* Integer	("dcc-blocksize", dcc_blksize, 4096) */
-/* Integer	("dccget-maxsize", dcc_getmax, 1000000) */
-/* Integer	("dcc-resume-min", resume_min, 10000) */
-/* Integer	("dcc-resume-timeout", resume_timeout, 120) */
-/* Bool	("dcc-get", dcc_get, TRUE|ASK|CAN_ASK) */
-/* Bool	("dcc-resume", dcc_resume, TRUE|ASK|CAN_ASK) */
-/* Bool	("dcc-overwrite", dcc_overwrite, TRUE|CAN_ASK) */
 /* Integer ("max-dcc", max_dcc, 50) */
 /* Integer ("reserved-port", port_files, 0) */
 /* Bool    ("show-motd", motdon, TRUE) */

@@ -137,29 +137,6 @@ static size_t irc_rfc1459_strlower (char *dst, const char *o, size_t s)
 
 /* --- Internal functions --------------------------------------------------- */
 
-/* see RFC1459 or RFC2812 */
-static int parse_ircparams (char **array, char *param)
-{
-  register char *c;
-  register int n;
-
-  c = param;
-  for (n = 0; *c && n < 15; n++)
-  {
-    if (*c == ':')
-    {
-      array[n++] = c+1;
-      break;
-    }
-    array[n] = c;
-    while (*c && *c != ' ') c++;
-    if (*c) *c++ = 0;
-    while (*c == ' ') c++;
-  }
-  array[n] = NULL;
-  return n;
-}
-
 // TODO: implement [%flags] and connchain use
 /*
  * form of hostrecord:
@@ -277,7 +254,7 @@ static char *_irc_getnext_server (irc_server *serv, const char *add,
     register const char *c;
 
     /* load servers list from userrecord */
-    i = Get_Hostlist (tmp, &serv->pmsgout->name[1]);
+    i = Get_Hostlist (tmp, FindLID (&serv->pmsgout->name[1]));
     dprint (4, "_irc_getnext_server: got %d", i);
     if (i)
     {
@@ -383,6 +360,7 @@ static int _irc_try_server (irc_server *serv, const char *tohost, int banned,
 //  dprint (4, "_irc_try_server: was socket %d, server %s, state %u",
 //	  serv->p.socket, serv->p.dname ? serv->p.dname : "[undef]",
 //	  serv->p.state);
+  Connchain_Kill ((&serv->p));
   if (serv->p.socket >= 0)
     KillSocket(&serv->p.socket);
   FREE (&serv->p.dname);
@@ -400,11 +378,10 @@ static int _irc_try_server (irc_server *serv, const char *tohost, int banned,
 			       &irc_privmsgout_default, NULL);
   }
   /* some cleanup... */
-  serv->p.inbuf = 0;
   serv->penalty = 0;
   serv->p.last_input = Time;
   /* check if we will try connection/reconnect */
-  uf = Get_Clientflags (serv->p.iface->name, NULL);
+  uf = Get_Clientflags (serv->p.iface->name, "");	/* all flags */
   if (serv->p.state != P_DISCONNECTED)
     LOG_CONN (_("Connection with network %s lost%s%s%s."), serv->p.iface->name,
 	      reason ? ": " : "", reason ? reason : banned ? _(": denied") : "",
@@ -497,57 +474,79 @@ static char *_irc_try_nick (irc_server *serv, clrec_t *clr)
   return serv->mynick;
 }
 
-static void _irc_send (irc_server *serv)
+static int _irc_send (irc_server *serv, char *line)
 {
-  char *c, *last;
-  size_t sw;
+  char *c;
+  ssize_t sw, sd;
   int i;
+  char buf[MB_LEN_MAX*MESSAGEMAX];
 
-  if (serv->p.socket < 0)	/* nothing to do */
-    return;
-  /* count number of CR-LF in buffer */
-  for (i = 0, c = &serv->p.buf[serv->p.bufpos], last = &c[serv->p.inbuf];
-		c < last; i++)
+  if (serv->p.socket < 0)		/* nothing to do */
+    return -1;
+  /* check connchain */
+  sw = 0;
+  sd = Peer_Put ((&serv->p), "", &sw);
+  if (sd < 0)				/* error */
+    return -1;
+  if (sd != CONNCHAIN_READY)		/* not ready */
+    return 0;
+  if (line == NULL)			/* nothing to do but it's check */
+    return 1;
+  for (i = 1, c = line; c; i++)		/* count number of CR-LF in buffer */
   {
-    c = memchr (c, '\n', last - c) + 1;
-    if (c) c++;
-    else break;
+    c = safe_strchr (c, '\n');
+    if (c) c++;				/* LF found */
+    else break;				/* EOL reached */
   }
   /* check SendQ */
-  if (Time + maxpenalty < serv->last_output + serv->penalty + i)
-    return;
-  /* try to send buffer */
-  c = &serv->p.buf[serv->p.bufpos];
-  sw = WriteSocket (serv->p.socket, serv->p.buf, &serv->p.bufpos,
-		    &serv->p.inbuf, M_RAW);
-  if (sw == 0)
-    return;
-  else if (sw > 0)
+  if (Time + maxpenalty < serv->last_output + serv->penalty + 2 * i)
+    return 0;
+  /* format the line now */
   {
-    dprint (5, "_irc_send: sent to %s: \"%-*.*s\"", serv->p.iface->name, sw, sw, c);
-    for (i = 0, last = &c[sw]; c < last; i++)
+    register char *cc;
+
+    for (c = line, cc = buf; *c && cc < &buf[sizeof(buf)-2]; c++)
     {
-      c = memchr (c, '\n', last - c);
-      if (c) c++;
-      else break;
+      if (*c == '\r' && c[1] == '\n')	/* already CR+LF pair so pass it */
+	*cc++ = *c++;
+      else if (*c == '\n')		/* only LF so convert to CR+LF */
+	*cc++ = '\r';
+      *cc++ = *c;			/* copy char */
     }
-    serv->penalty += 2 * i;
-    if (Time - serv->last_output >= serv->penalty)
-      serv->penalty = 0;
-    else
-      serv->penalty -= (Time - serv->last_output);
-    serv->last_output = Time;
-    return;
+    if (cc != buf && *(cc-1) == '\n')	/* was ended with CR+LF? */
+      cc -= 2;				/* skip CR+LF at end */
+    sw = cc - buf;
+    if (sw == 0)
+      return 1;				/* nothing to do */
+    dprint (4, "_irc_send: buffer filled for %s: %d bytes",
+	    serv->p.iface->name, sw);
   }
-  /* if socket died then kill it */
-  _irc_try_server (serv, NULL, 0, NULL);
+  /* try to send buffer */
+  sd = Peer_Put ((&serv->p), buf, &sw);
+  if (sd < 0)				/* error here */
+    return -1;
+  if (sd == 0)
+    return 0;
+  if (sw != 0)	/* it should be impossible - if it's ready it can get twice */
+    ERROR ("irc:_irc_send: could not send: only %d out of %d done.", (int)sd,
+	   (int)(sw + sd));
+  /* recalculate penalty */
+  serv->penalty += 2 * i;
+  if (Time - serv->last_output >= serv->penalty)
+    serv->penalty = 0;
+  else
+    serv->penalty -= (Time - serv->last_output);
+  serv->last_output = Time;
+  return 1;
 }
 
+/* since Find_Clientrecord is case-insensitive now, we don't need lower case */
 static char *_irc_get_lname (char *nuh, userflag *uf, char *net)
 {
   char *c;
   clrec_t *u;
 
+  DBG ("irc:_irc_get_lname:looking for %s", nuh);
   u = Find_Clientrecord (nuh, &c, uf, net);
   if (u)
   {
@@ -567,6 +566,7 @@ static iftype_t _irc_signal (INTERFACE *iface, ifsig_t sig)
   irc_server *serv = (irc_server *)iface->data;
   char *reason, *domain;
   unsigned short port;
+  size_t bufpos, inbuf;
   INTERFACE *tmp;
   binding_t *bind;
   char report[STRING];
@@ -578,11 +578,10 @@ static iftype_t _irc_signal (INTERFACE *iface, ifsig_t sig)
 	reason = ShutdownR;
       else
 	reason = "leaving";
-      snprintf (serv->p.buf, sizeof(serv->p.buf), "\r\nQUIT :%s\r\n", reason);
-      serv->p.inbuf = strlen (serv->p.buf);
-      serv->p.bufpos = 0;
-      WriteSocket (serv->p.socket, serv->p.buf, &serv->p.bufpos, &serv->p.inbuf,
-		   M_RAW);
+      snprintf (report, sizeof(report), "\r\nQUIT :%s\r\n", reason);
+      inbuf = strlen (report);
+      bufpos = 0;
+      WriteSocket (serv->p.socket, report, &bufpos, &inbuf, M_RAW);
       CloseSocket (serv->p.socket);
       iface->ift |= I_DIED;
       serv->p.iface = NULL;
@@ -663,6 +662,7 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
 {
   irc_server *serv = (irc_server *)iface->data;
   register char *c;
+  char thebuf[STRING];
   int i, isregistered = 0, reject = 1;
   ssize_t sw = 0;	/* we don't need that but to exclude warning... */
 
@@ -714,8 +714,8 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
 	 _irc_connection_ready()), else if waiting for connection
 	 then ReadSocket will return E_AGAIN */
       if (serv->p.socket >= 0 && 
-	  (sw = ReadSocket (serv->p.buf, serv->p.socket, sizeof(serv->p.buf),
-			     M_RAW)) >= 0)
+	  (sw = ReadSocket (thebuf, serv->p.socket, sizeof(thebuf),
+			    M_RAW)) >= 0)
       {
 	clrec_t *clr;
 	char *ident, *realname;
@@ -727,7 +727,6 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
 	if (!clr)		/* it was already deleted??? */
 	{
 	  serv->p.state = P_LASTWAIT;
-	  serv->p.inbuf = 0;
 	  Add_Request (I_LOG, "*", F_CONN | F_ERROR,
 		       _("Disconnected from %s: unknown error."), iface->name);
 	  return _irc_request_main (iface, req);
@@ -751,11 +750,11 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
 	  realname = irc_default_realname;
 	/* send NICK/USER pair */
 	if (c)
-	  snprintf (serv->p.buf, sizeof(serv->p.buf),
+	  snprintf (thebuf, sizeof(thebuf),
 		    "PASS %s\r\nNICK %s\r\nUSER %s 8 * :%s\r\n", c,
 		    serv->mynick, ident, realname);
 	else
-	  snprintf (serv->p.buf, sizeof(serv->p.buf),
+	  snprintf (thebuf, sizeof(thebuf),
 		    "NICK %s\r\nUSER %s 8 * :%s\r\n", serv->mynick, ident,
 		    realname);
 #ifdef HAVE_ICONV
@@ -768,19 +767,21 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
 #endif
 	/* setup the state */
 	serv->p.state = P_LOGIN;
-	serv->p.inbuf = strlen (serv->p.buf);
-	serv->p.bufpos = 0;
+	/* TODO: add some nice filter from % in host - SSL, etc. */
+	Connchain_Grow ((&serv->p), 'x'); /* RAW -> TXT filter */
+	_irc_send (serv, thebuf); /* no errors should be here yet */
       }
       else if (serv->p.socket < 0 || sw != E_AGAIN)
       {
 	dprint (4, "_irc_request: no connection: %s",
 		SocketError ((serv->p.socket >= 0) ? sw : serv->p.socket,
-			     serv->p.buf, sizeof(serv->p.buf)));
+			     thebuf, sizeof(thebuf)));
 	return _irc_try_server (serv, NULL, 0, NULL);
       }
     case P_LOGIN:
-      if (serv->p.state == P_LOGIN && serv->p.inbuf != 0)
-	_irc_send (serv);
+      if (serv->p.state == P_LOGIN &&
+	  _irc_send (serv, NULL) < 0)	/* it might reset connection? */
+	return _irc_try_server (serv, NULL, 0, NULL);
       /* we are waiting for RPL_WELCOME now */
       /* connection timeout? - disconnect and check if we may retry */
       if (Time - serv->p.last_input > irc_connect_timeout)
@@ -796,26 +797,17 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
 	return _irc_try_server (serv, NULL, 0, NULL);
     case P_QUIT:
     case P_TALK:
-      if (serv->p.inbuf)
-	_irc_send (serv);
+      if (_irc_send (serv, NULL) < 0)	/* flush output to server */
+	return _irc_try_server (serv, NULL, 0, NULL);
       if (serv->p.state == P_IDLE || serv->p.state == P_TALK)
 	isregistered = 1;		/* _irc_send() might reset connection */
-      else if (serv->p.inbuf)		/* serv->p.state == P_QUIT */
-	return 1;
       if (serv->p.state != P_QUIT)
 	break;
-      /* check if we still have message to send */
-      if (req)
-      {
-	snprintf (serv->p.buf, sizeof(serv->p.buf), "%s\r\n", req->string);
-	serv->p.inbuf = strlen (serv->p.buf);
-	serv->p.bufpos = 0;
-      }
+      if (req)				/* we still have message to send */
+        _irc_send (serv, req->string);	/* ignoring result... */
       serv->p.state = P_LASTWAIT;
     case P_LASTWAIT:
-      if (serv->p.inbuf)
-	_irc_send (serv);
-      if (serv->p.inbuf)
+      if (_irc_send (serv, NULL) == 0)	/* still not ready */
 	return 1;
       /* it was just sent quit message so run bindings and go off */
       _irc_disconnected (serv);
@@ -854,10 +846,11 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
     char *prefix, *p, *uh;
     binding_t *bind;
 
-    if (serv->p.inbuf == 0)	/* connection established, we may send data */
-      reject = 0;
+    /* connection established, we may send data */
+    if ((sw = _irc_send (serv, req ? req->string : NULL)) == 1)
+      reject = 0; /* nice, we sent it */
     /* check for input (sw includes '\0') */
-    sw = ReadSocket (inbuf, serv->p.socket, sizeof(inbuf), M_TEXT);
+    sw = Peer_Get ((&serv->p), inbuf, sizeof(inbuf));
     if (sw < 0)	/* error, close it */
       return _irc_try_server (serv, NULL, 0, NULL);
     else if (sw == 0) /* check last input if ping timeout then try to ping it */
@@ -879,16 +872,17 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
 	reject = 1;
       }
     }
-    else	/* congratulations, we get the input! */
+    else	/* congratulations, we got the input! */
     {
-      dprint (5, "_irc_request: got from %s: [%-*.*s]", iface->name, sw, sw, inbuf);
+      sw--;		/* skip ending '\0' */
 #ifdef HAVE_ICONV
       p = sbuf;
-      sbuf[sizeof(sbuf)-1] = 0; /* we may exceed sbuf? */
       sw = Do_Conversion (iface->conv, &p, sizeof(sbuf) - 1, inbuf, sw);
+      p[sw] = 0;	/* end this line with '\0' anyway */
 #else
       p = inbuf;
 #endif
+      dprint (5, "_irc_request: got from %s: [%-*.*s]", iface->name, sw, sw, p);
       if (serv->p.state == P_IDLE)
 	serv->p.state = P_TALK;
       serv->p.last_input = Time;
@@ -896,16 +890,28 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
       if (p[0] == ':')	/* there is a prefix */
       {
 	prefix = params[1] = ++p; /* prefix, i.e. sender */
-	while (*p && *p != ' ') p++;
-	*p++ = 0;
+	p = gettoken (p, NULL);
       }
       else
 	prefix = NULL;
-      while (*p == ' ') p++;
       params[2] = p; /* command */
-      while (*p && *p != ' ') p++;
-      i = parse_ircparams (&params[3], NextWord (p));
-      *p = 0;
+      p = gettoken (p, NULL);
+      for (i = 0; *p; i++)
+      {
+	if (*p == ':')
+	{
+	  params[(i++) + 3] = &p[1];
+	  break;
+	}
+	if (i == 14)
+	{
+	  params[(i++) + 3] = p;
+	  break;
+	}
+	params[i + 3] = p;
+	p = gettoken (p, NULL);
+      }
+      params[i + 3] = NULL;
       p = _irc_current_server (serv, NULL);
       uh = NULL;
       if (!prefix) /* it's from server */
@@ -950,29 +956,9 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
   /* accept (any?) request if ready for it (SendQ checked by _irc_send) */
   if (!reject && req)
   {
-    register char *cc;
-
-    for (c = req->string, cc = serv->p.buf; *c &&
-	 cc < &serv->p.buf[sizeof(serv->p.buf)-2]; c++)
-    {
-      if (*c == '\r' && c[1] == '\n')	/* already CR+LF pair so skip it */
-	*cc++ = *c++;
-      else if (*c == '\n')		/* only LF so convert to CR+LF */
-	*cc++ = '\r';
-      *cc++ = *c;			/* copy char */
-    }
-    if (cc != serv->p.buf && *(cc-1) != '\n')	/* didn't ended with CR+LF? */
-    {
-      *cc++ = '\r';			/* add CR+LF at end */
-      *cc++ = '\n';
-    }
-    serv->p.inbuf = cc - serv->p.buf;
-    serv->p.bufpos = 0;
-    dprint (4, "_irc_request: buffer filled for %s: %d bytes", iface->name,
-	    serv->p.inbuf);
     return 2;
   }
-  else if (isregistered && !serv->p.inbuf && !req)	/* all sent already */
+  else if (isregistered && !reject && !req)	/* all sent already */
     irc_privmsgout(serv->pmsgout, irc_pmsg_keep);
   return 1;				/* default to reject */
 }
@@ -1164,7 +1150,7 @@ static int irc_quit (INTERFACE *net, char *sv, char *me, char *src,
 
   if (parc != 1 || !src)
     return 0;
-  if ((cc = strchr (src, '!')))
+  if ((cc = safe_strchr (src, '!')))
     *cc = 0;
   if (strcasecmp (src, me)) /* it's not me */
   {
@@ -1176,8 +1162,8 @@ static int irc_quit (INTERFACE *net, char *sv, char *me, char *src,
     int s;
     binding_t *bind;
 
-    if ((gone = safe_strchr (src, '!'))) /* using *gone as temp char* var */
-      *gone = 0;
+//    if ((gone = safe_strchr (src, '!'))) /* using *gone as temp char* var */
+//      *gone = 0;
     strfcpy (target, src, MBNAMEMAX+1); /* use old nick for interfaces */
     irc_privmsgout_cancel (((irc_server *)net->data)->pmsgout, src);
     strfcat (target, ((irc_server *)net->data)->pmsgout->name, sizeof(target));
@@ -1189,15 +1175,10 @@ static int irc_quit (INTERFACE *net, char *sv, char *me, char *src,
     if (lc)
       lc (target, src, MBNAMEMAX+1);
     else
-      target[safe_strlen(src)] = 0;
-    s = safe_strlen (target);
-    if (gone)
-    {
-      *gone = '!';
-      unistrlower (&target[s], gone, sizeof(target) - s);
-    } /* target is lower case nick!user@host now */
-    lname = _irc_get_lname (target, &uf, net->name);
-    target[s] = 0; /* we need it to be just nick for bindings */
+      target[safe_strlen(src)] = 0;	/* leave only nick there for bindings */
+    if (cc)
+      *cc = '!';
+    lname = _irc_get_lname (src, &uf, net->name);
     gone = strchr (parv[0], ' ');
     if (gone)	/*  to check if it's netsplit message */
       *gone = 0;
@@ -1215,9 +1196,11 @@ static int irc_quit (INTERFACE *net, char *sv, char *me, char *src,
     FREE (&lname);
   }
   else		/* someone killed me? */
+  {
+    if (cc)
+      *cc = '!';
     _irc_try_server ((irc_server *)net->data, NULL, 0, NULL);
-  if (cc)
-    *cc = '!';
+  }
   return 0;
 }
 
@@ -1355,10 +1338,10 @@ static int irc_nick (INTERFACE *net, char *sv, char *me, char *src,
       oldnick[safe_strlen(src)] = 0;
       s = safe_strlen (parv[0]);
     }
-    if (lname)
+    if (lname)				/* compose new mask */
     {
       *lname = '!';
-      unistrlower (&newnick[s], lname, sizeof(newnick) - s);
+      strfcpy (&newnick[s], lname, sizeof(newnick) - s);
     }
     lname = _irc_get_lname (newnick, &uf, net->name);
     newnick[s] = 0;
@@ -1552,7 +1535,7 @@ static int irc_rpl_isupport (INTERFACE *net, char *sv, char *me, char *src,
   value[i] = 0;
   DBG ("irc_rpl_isupport: [%s]->[%s]", cs, value);
   if (safe_strcmp (cs, value))
-    Set_Field (clr, IRCPAR_FIELD, value);
+    Set_Field (clr, IRCPAR_FIELD, value, 0);
   Unlock_Clientrecord (clr);
   ((irc_server *)net->data)->lc = lc;
   return 1;
@@ -1763,7 +1746,7 @@ static int module_irc_signal (INTERFACE *iface, ifsig_t sig)
       {
 	if ((ch = strchr (c, ' ')))			/* get a token */
 	  *ch++ = 0;
-	if ((Get_Clientflags (c, NULL) & U_AUTO) &&	/* autoconnect found */
+	if ((Get_Clientflags (c, "") & U_AUTO) &&	/* autoconnect found */
 	    (!Find_Iface (I_SERVICE, c) || Unset_Iface()))
 	  connect_irc (c, NULL);			/* shedule a connection */
       }
@@ -1837,7 +1820,7 @@ Function ModuleInit (char *args)
   BT_IrcConn = Add_Bindtable ("irc-connected", B_MASK);
   Add_Binding ("irc-connected", "*", 0, 0, (Function)&ic_default, NULL);
   BT_IrcDisc = Add_Bindtable ("irc-disconnected", B_MASK);
-  Add_Binding ("connect", "irc", U_SPECIAL, -1, &connect_irc, NULL); /* no channels */
+  Add_Binding ("connect", "irc", U_SPECIAL, U_NONE, &connect_irc, NULL); /* no channels */
   BT_IrcNChg = Add_Bindtable ("irc-nickchg", B_MATCHCASE); /* always lowercase */
   BT_IrcSignoff = Add_Bindtable ("irc-signoff", B_MATCHCASE); /* the same */
   BT_IrcNSplit = Add_Bindtable ("irc-netsplit", B_MATCHCASE); /* the same */

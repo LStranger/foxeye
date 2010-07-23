@@ -29,13 +29,20 @@
 #00029	13.06.2010  13.06.2010	'.status' outputs malformed version
 #00030	14.06.2010  14.06.2010	'.help away' - bad colors
 #00031	14.06.2010  15.06.2010	init:_add_fn: function "port" already exist
-#00032	15.06.2010		after restart: list: bad cleanup: 0/0/0/0/0/0/4
+#00032	15.06.2010  14.07.2010	after restart: list: bad cleanup: 0/0/0/0/0/0/4
 #00033	07.07.2010  07.07.2010	module lua does not inserts itself in config
 #00034	07.07.2010  09.07.2010	short help says "yes" since gen. says "on"
-#00035	07.07.2010  left as is	should be a way to enter "?" value on gen.
+#00035	07.07.2010  ok as is	should be a way to enter "?" value on gen.
 #00036	07.07.2010		color codes in console are not supressed
-#00037	08.07.2010		strange adding .+name -user apf *!*@qqqqqqq
-#00038	08.07.2010		.restart on console kills everything
+#00037	08.07.2010  ok as is	strange adding .+name -user apf *!*@qqqqqqq
+#00038	08.07.2010  15.07.2010	.restart gives lot of junk free()!
 #00039	08.07.2010  08.07.2010	irc_mode: either strange server or I'm dumb
 #00040	08.07.2010  08.07.2010	foxeye in free(): warning: junk pointer...
 #00042	09.07.2010		mask for banned aren't searched in listfile
+#00043	10.07.2010  10.07.2010	wRAR.() has quit irc () - since 08.07!
+#00044	12.07.2010  15.07.2010	it gives voices on ops!
+#00045	12.07.2010  15.07.2010	SIGSEGV in alloc_request_t()
+#00046	12.07.2010  14.07.2010	/ctcp HELP CHAT - nothing to show?
+#00047	14.07.2010  15.07.2010	dispatcher error: found unhandled PQ ...
+#00048	14.07.2010  15.07.2010	bindings "ss-irc" are not always deleted
+#00049	14.07.2010  15.07.2010	safe_free(0x282f0292) after .who #channel@irc

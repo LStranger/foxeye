@@ -2,7 +2,7 @@ dnl Process this file with autoconf to produce a configure script.
 AC_PREREQ(2.50)
 AC_INIT(core/foxeye.h)
 AM_CONFIG_HEADER(config.h)
-AM_INIT_AUTOMAKE(foxeye, 0.5a5)
+AM_INIT_AUTOMAKE(foxeye, 0.7a1)
 
 AC_CANONICAL_HOST
 
@@ -20,6 +20,7 @@ AC_PROG_INSTALL
 AC_PROG_RANLIB
 AC_PROG_LN_S
 AC_PATH_PROG(BASENAME, basename)
+AC_PATH_PROG(BASH, bash)
 dnl AC_CHECK_PROGS(SGML2TXT, "docbook-to-man", test -f \$@ || sgml2txt)
 
 dnl Checks for C compiler features
@@ -30,6 +31,11 @@ dnl AC_C_BIGENDIAN
 
 ac_default_prefix="${HOME}/${PACKAGE}"
 m4_pattern_allow(LIBOBJ)
+
+if test "$ac_cv_c_inline" != no ; then
+    AC_DEFINE(HAVE_INLINE, 1, [Define to 1 if you have working inline modifier])
+    AC_SUBST(HAVE_INLINE)
+fi
 
 LD="${CC}" dnl Linker for the modules
 CPPFLAGS="-D_REENTRANT ${CPPFLAGS}" dnl defaults
@@ -128,6 +134,26 @@ if test "$fe_cv_static" = no; then
 	    ;;
     esac
 fi
+
+dnl some substitutions for modules/Makefile.mods
+case `eval "make -v -f NoFile 2>/dev/null"` in
+    GNU*)
+	MAKEIFGNU="ifdef"
+	MAKEELSE="else"
+	MAKEENDIF="endif"
+	;;
+    *)
+	MAKEIFGNU=".ifndef"
+	MAKEELSE=".else"
+	MAKEENDIF=".endif"
+esac
+AC_SUBST(MAKEIFGNU)
+AC_SUBST(MAKEELSE)
+AC_SUBST(MAKEENDIF)
+
+dnl Checks for multithreaded heap managers
+AC_SEARCH_LIBS(mallocctl, mtmalloc) dnl Sun's MTmalloc
+AC_HAVE_LIBRARY(hoard) dnl Not sure if it works that way
 
 dnl Checks for libraries and extensions
 AC_SEARCH_LIBS(socket, socket)

@@ -203,7 +203,7 @@ static void _ircch_del_lname (NICK *nick)
       ERROR ("_ircch_del_lname: nick %s not found in Lname %s", nick->name,
 	     nick->lname);
   }
-  nick->prev_TSL = NULL; /* caller may be silly to not reset it so do it here */
+  nick->prev_TSL = NULL;		/* reset cleared fields */
   nick->lname = NULL;
 }
 
@@ -343,10 +343,10 @@ static CHANNEL *_ircch_get_channel0 (IRC *net, const char *ch, const char *real)
 
     if (modeline)
       ircch_parse_configmodeline (net, chan, modeline);
+    chan->id = Get_LID (u);
     /* TODO: check if we might be invited/joined to unknown channel! */
     Unlock_Clientrecord (u);
   }
-  chan->id = GetLID (ch);
   chan->tid = -1;
   NewShedule (I_SERVICE, ch, S_TIMEOUT, "*", "*", "*", "*", "*");
   if (Insert_Key (&net->channels, chan->chi->name, chan, 1))
@@ -439,7 +439,7 @@ static NICK *_ircch_get_nick (IRC *net, const char *lcn, int create)
 }
 
 /* it's nonsence to find Lname on me so don't call! */
-static char *_ircch_get_lname (char *nuh, userflag *sf, userflag *cf,
+static char *_ircch_get_lname (char *nuh, userflag *sf, userflag *cf, lid_t *id,
 			       char *net, char *chan, char **info, NICK *nn)
 {
   char *c;
@@ -449,7 +449,7 @@ static char *_ircch_get_lname (char *nuh, userflag *sf, userflag *cf,
   {
     u = Lock_Clientrecord ((c = nn->lname));
     if (u && sf)
-      *sf = Get_Flags (u, net);
+      *sf = Get_Flags (u, NULL) | Get_Flags (u, net);
   }
   else						/* search for lname */
     u = Find_Clientrecord (nuh, &c, sf, net);
@@ -460,12 +460,15 @@ static char *_ircch_get_lname (char *nuh, userflag *sf, userflag *cf,
       *cf = Get_Flags (u, chan);
     if (info)
       *info = safe_strdup (Get_Field (u, "info", NULL));
+    if (id)
+      *id = Get_LID (u);
     Unlock_Clientrecord (u);
     return c;
   }
   if (sf) *sf = 0;
   if (cf) *cf = 0;
   if (info) *info = NULL;
+  if (id) *id = ID_REM;
   return NULL;
 }
 
@@ -609,9 +612,10 @@ static NICK *_ircch_destroy_link (LINK *link)	/* definition */
   return NULL;
 }
 
-static void _ircch_update_link (NICK *nick, LINK *link, char *lname)
+static void _ircch_update_link (NICK *nick, LINK *link, char *lname, lid_t lid)
 {
   LINK *nl;
+  short hash;
 
   /* check if either listfile was changed or client joined first time */
   if (safe_strcmp (lname, nick->lname))
@@ -627,10 +631,11 @@ static void _ircch_update_link (NICK *nick, LINK *link, char *lname)
     if (lname)
     {
       _ircch_add_lname (nick, lname);
-      nick->id = GetLID (lname);
+      nick->id = lid;
+      hash = Get_Clienthash (lname, nick->host);
       for (nl = nick->channels; nl; nl = nl->prevchan)
 	if (nl != link && nl->chan->id != ID_REM)	/* all but this link */
-	  NewEvent (W_START, nl->chan->id, nick->id, 0);
+	  NewEvent (W_START, nl->chan->id, nick->id, hash);
     }
     for (nl = nick->channels; nl; nl = nl->prevchan)
     {
@@ -642,14 +647,14 @@ static void _ircch_update_link (NICK *nick, LINK *link, char *lname)
 }
 
 static void _ircch_recheck_link (IRC *net, LINK *link, char *lname,
-				 userflag uf, userflag cf, char *info)
+				 userflag uf, userflag cf, char *info, lid_t id)
 {
   LINK *nl;
   wtmp_t wtmp;
 
-  link->chan->id = GetLID (link->chan->chi->name); /* hmm, id may be changed */
-  _ircch_update_link (link->nick, link, lname);
-  if (!(link->mode & A_ISON))				/* just joined */
+//  link->chan->id = GetLID (link->chan->chi->name); /* hmm, id may be changed? */
+  _ircch_update_link (link->nick, link, lname, id);
+  if (!(link->mode & (A_ISON | A_ME)))			/* just joined */
   {
     DBG ("_ircch_recheck_link:just joined %s, check last %lu", lname, Time - ircch_greet_time);
     if (!lname || ircch_greet_time <= 0 ||
@@ -666,7 +671,8 @@ static void _ircch_recheck_link (IRC *net, LINK *link, char *lname,
       }
     ircch_recheck_modes (net, link, uf, cf, info, nl ? 0 : 1);
     if (lname && link->chan->id != ID_REM)		/* and now this too */
-      NewEvent (W_START, link->chan->id, link->nick->id, 0);
+      NewEvent (W_START, link->chan->id, link->nick->id,
+		Get_Clienthash (lname, link->nick->host));
   }
   dprint (4, "_ircch_recheck_link: success on %s[%ld]", lname, link->nick->id);
   link->activity = Time;
@@ -914,7 +920,7 @@ static void _ircch_netjoin_report (IRC *net, netsplit *split, CHANNEL *chan)
     snprintf (str, sizeof(str), "%s %s", chan->chi->name, nick->name);
     if (nick->lname && (u = Lock_Clientrecord (nick->lname)))
     {
-      uf = Get_Flags (u, &net->name[1]);
+      uf = Get_Flags (u, NULL) | Get_Flags (u, &net->name[1]);
       cf = Get_Flags (u, chan->chi->name);
       Unlock_Clientrecord (u);
     }
@@ -961,7 +967,8 @@ static void _ircch_netsplit_lost_report (IRC *net, SplitMember **sm, char *msg)
       continue;
     }
     _ircch_quited_log (nick, nick->lname,
-		       nick->lname ? Get_Clientflags (nick->lname, NULL) : 0,
+		       nick->lname ? (Get_Clientflags (nick->lname, NULL) |
+				Get_Clientflags (nick->lname, &net->name[1])) : 0,
 		       s->member, nick->host, msg);
     // remove link
     n = _ircch_destroy_link (s->member);
@@ -1199,7 +1206,11 @@ static void _ircch_its_rejoin (IRC *net, netsplit *split)
     {
       nick = s->member->nick;
       _ircch_netsplit_remove_nick (nick); /* remove from list now */
-      uf = nick->lname ? Get_Clientflags (nick->lname, &net->name[1]) : 0;
+      if (nick->lname)
+	uf = Get_Clientflags (nick->lname, NULL) |
+	     Get_Clientflags (nick->lname, &net->name[1]);
+      else
+	uf = 0;
       dprint (4, "_ircch_its_rejoin: have %s", nick->name);
       for (link = nick->channels; link; link = link2)
       {
@@ -1416,6 +1427,8 @@ static iftype_t _ircch_sig (INTERFACE *iface, ifsig_t sig)
 	     link->nick->host, link->mode);
 	if (!(link->mode & ReportMask))
 	  continue;
+	if (!link->nick->host)		/* channel not fully sync. yet */
+	  continue;
 	c = strchr (link->nick->host, '!');
 	if (c)
 	  s = c++ - link->nick->host;
@@ -1429,15 +1442,16 @@ static iftype_t _ircch_sig (INTERFACE *iface, ifsig_t sig)
 	memcpy (&nick[1], link->nick->host, s);
 	nick[s+1] = 0;
 	/* lname might be changed since last event */
-	if (link->nick == net->me)
+	if (link->nick != net->me)
 	  lname = NULL;
 	else
 	  lname = _ircch_get_lname (link->nick->host, NULL, NULL, NULL, NULL,
-				    NULL, link->nick);
+				    NULL, NULL, link->nick);
 	DBG ("ircch:report: (pt2) nick %s host %s lname %s times %.13s/%lu",
 	     nick, c, lname, link->joined, link->activity);
-	printl (str, sizeof(str), ReportFormat, 0, nick, c, lname,
-		link->joined, 0, 0, link->activity ? Time - link->activity : 0,
+	printl (str, sizeof(str), ReportFormat, 0, nick, c,
+		(link->nick == net->me) ? "ME!" : lname, link->joined, 0, 0,
+		link->activity ? Time - link->activity : 0,
 		(link->mode & A_ISON) ? NULL : _("is in netsplit"));
 	New_Request (tmp, F_REPORT, "%s", str);
 	FREE (&lname);
@@ -1539,7 +1553,7 @@ static void ic_ircch (INTERFACE *network, char *servname, char *nick,
   {
     if ((ch = strchr (c, ' ')))			/* get a token */
       *ch++ = 0;
-    if (Get_Clientflags (c, NULL) & U_ACCESS)	/* autojoin found */
+    if (Get_Clientflags (c, "") & U_ACCESS)	/* autojoin found */
       _ircch_join_channel (net, c);
   }
   tmp->ift = I_DIED;
@@ -1620,7 +1634,7 @@ static int irc_invite (INTERFACE *iface, char *svname, char *me, char *prefix,
 		 prefix ? prefix : svname, chname);
     return 0;
   }
-  cf = Get_Clientflags (chname, NULL);
+  cf = Get_Clientflags (chname, "");
   if (cf & U_ACCESS)				/* it seems it's pending */
   {
     _ircch_join_channel (net, chname);
@@ -1659,6 +1673,7 @@ static int irc_join (INTERFACE *iface, char *svname, char *me, char *prefix,
   LINK *link;
   char *ch, *lname, *r;
   userflag uf, cf;
+  lid_t id;
   char lcn[HOSTMASKLEN+1];
 
   if (!prefix || parc == 0 || !(net = _ircch_get_network (iface->name, 0, lc)))
@@ -1680,7 +1695,8 @@ static int irc_join (INTERFACE *iface, char *svname, char *me, char *prefix,
       r = nick->split->servers;			/* it's available now! */
       _ircch_netsplit_remove_nick (nick); /* remove from split structure ASAP */
       _ircch_quited (nick, nick->lname,
-		     nick->lname ? Get_Clientflags (nick->lname, iface->name) : 0,
+		     nick->lname ? (Get_Clientflags (nick->lname, NULL) |
+				Get_Clientflags (nick->lname, iface->name)) : 0,
 		     nick->host, r);
     }
     if (ch) *ch = 0;
@@ -1724,17 +1740,22 @@ static int irc_join (INTERFACE *iface, char *svname, char *me, char *prefix,
       return -1;			/* got JOIN for channel where I'm not! */
     s = strlen (lcn);
     unistrlower (&lcn[s], ch, sizeof(lcn) - s);
-    lname = _ircch_get_lname (lcn, &uf, &cf, iface->name, chan->chi->name, &r,
-			      NULL);
+    lname = _ircch_get_lname (lcn, &uf, &cf, &id, iface->name, chan->chi->name,
+			      &r, NULL);
     lcn[s] = 0;				/* prepare it for _ircch_get_link() */
   }
   /* create link, update wtmp */
   link = _ircch_get_link (net, lcn, chan);
+  if (nick == net->me)			/* skip recheck noncense for me */
+    link->mode = A_ME;
+  else					/* it should be zero, isn't it? */
+    link->mode = 0;
 //  if (nick->lname && link->chan->id != ID_REM)	/* first try for it */
 //    NewEvent (W_START, link->chan->id, nick->id, 0);
-  _ircch_recheck_link (net, link, lname, uf, cf, r); /* do rest with lname and wtmp */
+  /* do rest with lname and wtmp */
+  _ircch_recheck_link (net, link, lname, uf, cf, r, id);
   /* check for netjoin and else run bindings */
-  link->mode = (nick == net->me) ? A_ME : A_ISON;	/* ~A_INSPLIT */
+  link->mode |= A_ISON;					/* ~A_INSPLIT */
   if (!nick->split)
   {
     _ircch_joined (link, prefix, safe_strchr (prefix, '!'), uf, cf, parv[0]);
@@ -1761,6 +1782,7 @@ static int irc_kick (INTERFACE *iface, char *svname, char *me, char *prefix,
   binding_t *bind;
   userflag uf, cf;
   netsplit *split;
+  lid_t id;
   char str[MESSAGEMAX];
 
   if (!prefix || parc < 2 || !(net = _ircch_get_network (iface->name, 0, lc)) ||
@@ -1800,11 +1822,11 @@ static int irc_kick (INTERFACE *iface, char *svname, char *me, char *prefix,
   if (!link || link->nick == net->me)
     lname = r = NULL;
   else
-    lname = _ircch_get_lname (str, &uf, &cf, iface->name, ch->chi->name, &r,
-			      link->nick);
+    lname = _ircch_get_lname (str, &uf, &cf, &id, iface->name, ch->chi->name,
+			      &r, link->nick);
   /* get op info */
   if (link)
-    _ircch_recheck_link (net, link, lname, uf, cf, r);
+    _ircch_recheck_link (net, link, lname, uf, cf, r, id);
   _ircch_net_got_activity (net, tlink);
   /* update wtmp */
   if (tlink->nick->lname && ch->id != ID_REM)
@@ -1919,6 +1941,7 @@ static int irc_mode (INTERFACE *iface, char *svname, char *me, char *prefix,
   char *c;
   CHANNEL *ch;
   userflag uf, cf;
+  lid_t id;
 
   if (parc < 2 || !(net = _ircch_get_network (iface->name, 0, lc)))
     return -1;
@@ -1970,9 +1993,9 @@ static int irc_mode (INTERFACE *iface, char *svname, char *me, char *prefix,
       if (origin->nick == net->me)
 	lname = r = NULL;
       else
-	lname = _ircch_get_lname (lcn, &uf, &cf, iface->name, ch->chi->name,
-				  &r, origin->nick);
-      _ircch_recheck_link (net, origin, lname, uf, cf, r);
+	lname = _ircch_get_lname (lcn, &uf, &cf, &id, iface->name,
+				  ch->chi->name, &r, origin->nick);
+      _ircch_recheck_link (net, origin, lname, uf, cf, r, id);
       FREE (&lname);
       FREE (&r);
     }
@@ -2021,6 +2044,7 @@ static int irc_part (INTERFACE *iface, char *svname, char *me, char *prefix,
   userflag uf, cf;
   binding_t *bind;
   netsplit *split;
+  lid_t id;
   char str[MESSAGEMAX];
 
   if (!prefix || parc == 0 ||
@@ -2051,9 +2075,9 @@ static int irc_part (INTERFACE *iface, char *svname, char *me, char *prefix,
   if (link->nick == net->me)
     lname = r = NULL;
   else
-    lname = _ircch_get_lname (str, &uf, &cf, iface->name, ch->chi->name, &r,
-			      link->nick);
-  _ircch_recheck_link (net, link, lname, uf, cf, r);
+    lname = _ircch_get_lname (str, &uf, &cf, &id, iface->name, ch->chi->name,
+			      &r, link->nick);
+  _ircch_recheck_link (net, link, lname, uf, cf, r, id);
   _ircch_net_got_activity (net, link);
   /* update wtmp */
   if (link->nick->lname && ch->id != ID_REM)
@@ -2114,6 +2138,7 @@ static int irc_topic (INTERFACE *iface, char *svname, char *me, char *prefix,
   userflag uf, cf;
   LINK *link;
   binding_t *bind;
+  lid_t id;
   char str[MESSAGEMAX];
 
   if (!prefix || parc == 0 ||
@@ -2127,12 +2152,12 @@ static int irc_topic (INTERFACE *iface, char *svname, char *me, char *prefix,
     lc (str, prefix, sizeof(str));
   else
     strfcpy (str, prefix, sizeof(str));
+  s = strlen (str);
   link = _ircch_get_link (net, str, ch);
   CHECKHOSTSET (link->nick, prefix);	/* we might got TOPIC from alien? */
   if (c)
   {
     *c = '!';
-    s = strlen (str);
     unistrlower (&str[s], c, sizeof(str) - s);
   }
   if (link->nick == net->me)
@@ -2141,9 +2166,9 @@ static int irc_topic (INTERFACE *iface, char *svname, char *me, char *prefix,
     lname = r = NULL;
   }
   else
-    lname = _ircch_get_lname (str, &uf, &cf, iface->name, ch->chi->name, &r,
-			      link->nick);
-  _ircch_recheck_link (net, link, lname, uf, cf, r);
+    lname = _ircch_get_lname (str, &uf, &cf, &id, iface->name, ch->chi->name,
+			      &r, link->nick);
+  _ircch_recheck_link (net, link, lname, uf, cf, r, id);
   _ircch_net_got_activity (net, link);
   /* set structure */
   ircch_remove_mask (&ch->topic, ch->topic);
@@ -2196,6 +2221,7 @@ static int irc_rpl_userhost (INTERFACE *iface, char *svname, char *me,
   char *c, *cc, *host, *name;
   char ch;
   size_t s;
+  lid_t id;
   char userhost[HOSTMASKLEN+1];
 
   if (parc < 2 || !(net = _ircch_get_network (iface->name, 0, lc)))
@@ -2251,9 +2277,9 @@ static int irc_rpl_userhost (INTERFACE *iface, char *svname, char *me,
     {
       s = strlen(userhost);
       unistrlower (&userhost[s], name, sizeof(userhost) - s);
-      name = _ircch_get_lname (userhost, NULL, NULL, NULL, NULL, NULL, nick);
+      name = _ircch_get_lname (userhost, NULL, NULL, &id, NULL, NULL, NULL, nick);
       if (name)
-	_ircch_update_link (nick, NULL, name);
+	_ircch_update_link (nick, NULL, name, id);
       FREE (&name);
       DBG ("irc_rpl_userhost: got %s = %s", userhost, NONULL(nick->lname));
     }
@@ -2436,6 +2462,7 @@ static int irc_rpl_whoreply (INTERFACE *iface, char *svname, char *me,
   IRC *net;
   NICK *nick;
   char *c;
+  lid_t id;
   char userhost[HOSTMASKLEN+1];
 
   if (parc < 7 || !(net = _ircch_get_network (iface->name, 0, lc)))
@@ -2456,8 +2483,8 @@ static int irc_rpl_whoreply (INTERFACE *iface, char *svname, char *me,
     c += unistrlower (c, parv[2], (&userhost[sizeof(userhost)]-c-1));
     *c++ = '@';
     unistrlower (c, parv[3], (&userhost[sizeof(userhost)]-c));
-    c = _ircch_get_lname (userhost, NULL, NULL, NULL, NULL, NULL, nick);
-    _ircch_update_link (nick, NULL, c);
+    c = _ircch_get_lname (userhost, NULL, NULL, &id, NULL, NULL, NULL, nick);
+    _ircch_update_link (nick, NULL, c, id);
     FREE (&c);
     /* do with host */
     snprintf (userhost, sizeof(userhost), "%s!%s@%s", parv[5], parv[2], parv[3]);
@@ -2764,6 +2791,7 @@ static void ircch_nick (INTERFACE *iface, char *lname, unsigned char *who,
   userflag uf, cf = 0;
   binding_t *bind;
   char *c, *cc;
+  lid_t id;
   char str[MESSAGEMAX];
 
   if (!(net = _ircch_get_network2 (iface->name)) ||
@@ -2785,13 +2813,14 @@ static void ircch_nick (INTERFACE *iface, char *lname, unsigned char *who,
     else
       c = NULL;
     _ircch_quited (nnick, nnick->lname,
-		   nnick->lname ? Get_Clientflags (nnick->lname, iface->name) : 0,
+		   nnick->lname ? (Get_Clientflags (nnick->lname, NULL) |
+				Get_Clientflags (nnick->lname, iface->name)) : 0,
 		   nnick->host, c ? c : "*");
   }
   if (nick == net->me)		/* renaming of me? */
     lname = NULL;
   if (lname)
-    uf = Get_Clientflags (lname, iface->name);
+    uf = Get_Clientflags (lname, iface->name) | Get_Clientflags (lname, NULL);
   else
     uf = 0;
   // TODO: can it be that nick is marked as in split?
@@ -2815,13 +2844,18 @@ static void ircch_nick (INTERFACE *iface, char *lname, unsigned char *who,
 	  lname, NULL, 0, 0, 0, newnick);
   if (c) *c = '!';
   if (!safe_strcmp (nick->lname, lname))
+  {
     cc = NULL;	/* use it as mark of lname change */
+    id = FindLID (lname);
+  }
+  else
+    id = nick->id;
   for (link = nick->channels; link; link = link->prevchan)
   {
     if (lname)
       cf = Get_Clientflags (lname, link->chan->chi->name);
     /* note: we cannot trace if new nick is matched to ban pattern */
-    _ircch_recheck_link (net, link, lname, uf, cf, NULL);
+    _ircch_recheck_link (net, link, lname, uf, cf, NULL, id);
     if (cc)	/* if lname was changed */
     {
       dprint (4, "ircch_nick: lname switched to %s, updating join time: %s => %s",
@@ -2860,7 +2894,10 @@ static void ircch_quit (INTERFACE *iface, char *lname, unsigned char *who,
     return;					/* what???!!! who???!!! */
   }
   dprint (4, "ircch: quit for %s", who);
-  uf = lname ? Get_Clientflags (lname, iface->name) : 0;
+  if (lname)
+    uf = Get_Clientflags (lname, NULL) | Get_Clientflags (lname, iface->name);
+  else
+    uf = 0;
   _ircch_net_got_activity (net, NULL);
   if (nick->split)
   {
@@ -2886,13 +2923,16 @@ static void ircch_netsplit (INTERFACE *iface, char *lname, unsigned char *who,
     ERROR ("ircch_netsplit: %s not found in network %s!", lcnick, iface->name);
     return;					/* what???!!! who???!!! */
   }
-  uf = lname ? Get_Clientflags (lname, iface->name) : 0;
+  if (lname)
+    uf = Get_Clientflags (lname, NULL) | Get_Clientflags (lname, iface->name);
+  else
+    uf = 0;
   _ircch_netsplit_add (net, servers, nick);	/* it will check for re-split */
-  if (nick->lname)
-    nick->id = GetLID (nick->lname);		/* it might be changed */
+//  if (nick->lname)
+//    nick->id = GetLID (nick->lname);		/* it might be changed */
   for (link = nick->channels; link; link = link->prevchan)
   {
-    link->chan->id = GetLID (link->chan->chi->name); /* it might be changed */
+//    link->chan->id = GetLID (link->chan->chi->name); /* it might be changed? */
     if (nick->lname && link->chan->id != ID_REM) /* ignore new lname! */
       NewEvent (W_END, link->chan->id, nick->id, link->count);
     link->count = 0;
@@ -2952,7 +2992,7 @@ static void icam_ircch (INTERFACE *client, unsigned char *from, char *lname,
     lname = NULL;
   if (lname)
   {
-    uf = Get_Clientflags (lname, &net->name[1]);
+    uf = Get_Clientflags (lname, &net->name[1]) | Get_Clientflags (lname, NULL);
     cf = Get_Clientflags (lname, ch->chi->name);
   }
   else
@@ -2960,7 +3000,7 @@ static void icam_ircch (INTERFACE *client, unsigned char *from, char *lname,
   if (link) 				/* hmm, it may be outside message */
   {
     /* note: we cannot trace if it is matched to ban pattern */
-    _ircch_recheck_link (net, link, lname, uf, cf, NULL);
+    _ircch_recheck_link (net, link, lname, uf, cf, NULL, nick->id);
     link->count++;
   }
   _ircch_net_got_activity (net, link);
@@ -3224,6 +3264,7 @@ static int ctcp_identify (INTERFACE *client, unsigned char *who, char *lname,
   IRC *net;
   NICK *nick;
   char *epass;
+  lid_t id;
 //  LINK *link;
 //  userflag sf, cf;
 
@@ -3250,6 +3291,7 @@ static int ctcp_identify (INTERFACE *client, unsigned char *who, char *lname,
     /* check if password matches */
     epass = safe_strdup (Get_Field (clr, "passwd", NULL));
 //    sf = Get_Flags (clr, &net->name[1]);
+    id = Get_LID (clr);
     Unlock_Clientrecord (clr);
     if (Check_Passwd (msg, epass))	/* if does not match */
     {
@@ -3260,7 +3302,7 @@ static int ctcp_identify (INTERFACE *client, unsigned char *who, char *lname,
       //New_Request .....
       nick->umode |= A_REGISTERED;
       if (nick->channels)	/* update lname and wtmp for all channels */
-	_ircch_recheck_link (net, nick->channels, lcnick, 0, 0, NULL);
+	_ircch_recheck_link (net, nick->channels, lcnick, 0, 0, NULL, id);
     }
     FREE (&epass);
   }

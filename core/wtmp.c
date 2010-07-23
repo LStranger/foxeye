@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2001-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -160,7 +160,8 @@ static int _scan_wtmp (const char *path, wtmp_t *wtmp, int wn,
       k = sizeof(buff) / sizeof(wtmp_t);
     }
     i = fread (buff, sizeof(wtmp_t), k, fp);
-    DBG ("_scan_wtmp: %u by %u: read %u records", k, (unsigned int)sizeof(wtmp_t), i);
+    DBG ("_scan_wtmp: %u by %u: read %u records", (unsigned int)k,
+	 (unsigned int)sizeof(wtmp_t), (unsigned int)i);
     fseek (fp, -sizeof(wtmp_t) * i, SEEK_CUR);
     k = 0;
     for (; i > 0 && wn; )
@@ -215,44 +216,62 @@ static int _scan_wtmp (const char *path, wtmp_t *wtmp, int wn,
   return x;
 }
 
-/* finds last matched event
-   returns 0 if no error and fills array wtmp */
-int FindEvent (wtmp_t *wtmp, const char *lname, short event, lid_t fid, time_t upto)
+/* finds not more than (ws) last matched events not older than (upto)
+   returns number of found events */
+int FindEvents (wtmp_t *wtmp, int ws, const char *lname, short event,
+		lid_t fid, time_t upto)
 {
   lid_t myid[MYIDS_MAX]; /* I hope it's enough */
   size_t idn;
   char path[LONG_STRING];
   char wp[LONG_STRING];
-  int i;
+  int i, n;
 
-  if (!lname || (myid[0] = GetLID (lname)) == ID_REM)	/* was removed? */
-    return -1;
+  if (!lname || (myid[0] = FindLID (lname)) == ID_REM)	/* was removed? */
+    return 0;
 
   Set_Iface (NULL);			/* in order to access Wtpm variable */
   if (expand_path (wp, Wtmp, sizeof(wp)) == Wtmp)
     strfcpy (wp, Wtmp, sizeof(wp));
   Unset_Iface();
-  memset (wtmp, 0, sizeof(wtmp_t));
-  idn = 1;
+  idn = 1;				/* started with one myid */
   /* scan Wtmp first */
-  i = _scan_wtmp (wp, wtmp, 1, myid, &idn, event, fid, upto);
-  if (i < 0)
-    return -1;
-  /* if not found - scan Wtmp.1  ...  Wtmp.$wtmps */
-  if (i == 0)
-    for ( ; i < WTMPS_MAX && !wtmp->time; i++)
-    {
-      snprintf (path, sizeof(path), "%s.%d", wp, i + 1);
-      if (_scan_wtmp (path, wtmp, 1, myid, &idn, event, fid, upto))
-	break;
-    }
-  /* if not found - scan Wtmp.old */
-  if (!wtmp->time)
+  n = _scan_wtmp (wp, wtmp, ws, myid, &idn, event, fid, upto);
+  if (n < 0)				/* no Wtmp or everything is too old */
+    return 0;
+  /* if not enough - scan Wtmp.1  ...  Wtmp.$wtmps */
+  i = 0;
+  while (n < ws && i < WTMPS_MAX)
   {
-    snprintf (path, sizeof(path), "%s." WTMP_GONE_EXT, wp);
-    _scan_wtmp (path, wtmp, 1, myid, &idn, event, fid, upto);
+    register int x;
+
+    snprintf (path, sizeof(path), "%s.%d", wp, ++i);
+    x = _scan_wtmp (path, &wtmp[n], ws - n, myid, &idn, event, fid, upto);
+    if (x < 0)				/* no more files */
+      break;
+    n += x;				/* found few events! */
   }
-  return 0;
+  /* if not enough yet - scan Wtmp.old */
+  if (n < ws)
+  {
+    register int x;
+
+    snprintf (path, sizeof(path), "%s." WTMP_GONE_EXT, wp);
+    x = _scan_wtmp (path, &wtmp[n], ws - n, myid, &idn, event, fid, upto);
+    if (x > 0)				/* some event found! */
+      n += x;
+  }
+  return n;
+}
+
+/* finds last matched event
+   returns 0 if no error and fills array wtmp */
+int FindEvent (wtmp_t *wtmp, const char *lname, short event, lid_t fid, time_t upto)
+{
+  memset (wtmp, 0, sizeof(wtmp_t));	/* empty it before start */
+  if (FindEvents (wtmp, 1, lname, event, fid, upto))
+    return 0;
+  return (-1);
 }
 
 void NewEvent (short event, lid_t from, lid_t lid, short count)

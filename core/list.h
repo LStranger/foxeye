@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -15,7 +15,7 @@
  *     along with this program; if not, write to the Free Software
  *     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * Listfile specific functions declarations.
+ * This file is part of FoxEye's source: the Listfile API.
  */
 
 #ifndef _LIST_H
@@ -33,13 +33,15 @@ typedef short lid_t;
 typedef struct USERRECORD clrec_t;
 
 int Get_Clientlist (INTERFACE *, userflag, const char *, char *);
-int Get_Hostlist (INTERFACE *, const char *);
+int Get_Hostlist (INTERFACE *, lid_t);
+int Get_Fieldlist (INTERFACE *, lid_t);
+unsigned short Get_Clienthash (const char *, const char *);
 userflag Match_Client (char *, char *, const char *);
 userflag Get_Clientflags (const char *, const char *);
 clrec_t *Find_Clientrecord (const uchar *, char **, userflag *, char *);
 clrec_t *Lock_Clientrecord (const char *);
 char *Get_Field (clrec_t *, const char *, time_t *);
-int Set_Field (clrec_t *, const char *, const char *);
+int Set_Field (clrec_t *, const char *, const char *, time_t);
 int Grow_Field (clrec_t *, const char *, const char *);
 userflag Get_Flags (clrec_t *, const char *);
 userflag Set_Flags (clrec_t *, const char *, userflag);
@@ -47,7 +49,9 @@ int Add_Mask (clrec_t *, const uchar *);
 int Delete_Mask (clrec_t *, const uchar *);
 void Unlock_Clientrecord (clrec_t *);
 
-lid_t GetLID (const char *);	/* Lname -> LID */
+lid_t FindLID (const char *);	/* Lname -> LID */
+lid_t Get_LID (clrec_t *);
+clrec_t *Lock_byLID (lid_t);
 
 char *userflagtostr (userflag, char *);
 

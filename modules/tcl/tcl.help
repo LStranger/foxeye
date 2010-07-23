@@ -1,0 +1,18 @@
+# first section is usage
+# second section is that config maker will put into config
+# third section is full help
+
+module tcl
+:%*
+:
+:This module provides support for scripts that are written in Tcl programming\
+ language. It is mostly compatible with eggdrop but read %^tcl.ref%^ manual\
+ first, please.
+
+tcl
+:%* text
+:
+:Tries to interpret and execute Tcl %_text%_ command. If error found then\
+ shows interpreter message about error. If %_text%_ was executed without\
+ errors and evaluated chunk has returned any result that is convertible to\
+ string value then shows this value.

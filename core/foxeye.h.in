@@ -197,10 +197,9 @@ typedef enum
   I_QUERY	= (1<<15),	/* private query */
   I_PENDING	= (1<<16),	/* tmp, unset after request */	/* 0x010000 */
   I_FINWAIT	= (1<<17),	/* from thread for dispatcher: terminate me */
-  I_TELNET	= (1<<18),	/* this DCC chat is answer on listening port */
-  I_LOCKED	= (1<<19),	/* this interface temporary unavailable */
-  I_AUTHPASS	= (1<<20),	/* client is authenticated */	/* 0x100000 */
-  I_DIED	= (1<<21)	/* this interface now died */
+  I_LOCKED	= (1<<18),	/* this interface temporary unavailable */
+  I_AUTHPASS	= (1<<19),	/* client is authenticated */	/* 0x100000 */
+  I_DIED	= (1<<20)	/* this interface now died */
 } iftype_t;
 
 /* logging/request flags */
@@ -338,13 +337,17 @@ typedef enum
 
 #define USERFLAG "kaefvhomsn*idqABCDEFGHuI"
 
-#define U_GLOBALS (U_INVITE | U_FRIEND | U_VOICE | U_MASTER | U_SPEAK | \
+#define U_GLOBALS (U_INVITE | U_FRIEND | U_VOICE | U_MASTER | \
 		   U_OWNER | U_NOAUTH | U_QUIET | U_IGNORED | U_SPECIAL | U_ANY)
 
-#define U_AND	U_ALIAS		/* if channel flag must be ANDed with global */
-				/* when matching instead of default behavior */
+#define U_AND	U_ALIAS	/* channel flag, means 'global AND channel' instead of */
+			    /* default OR behavior for flags */
+#define U_EQUAL	U_SPECIAL /* channel flag, means all flags and mask are matched */
+			    /* in Check_Bindtable() when they are equal */
 
 #define U_NONE  (~(U_NEGATE | U_ALIAS)) /* for bindings */
+
+#define U_IMMUTABLE (U_NEGATE | U_ALIAS | U_SPECIAL | U_ANY) /* cannot be changed */
 
 /* return values for Inspect_Client() */
 typedef enum
