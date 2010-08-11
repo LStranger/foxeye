@@ -64,15 +64,6 @@ Color codes and smile codes.
     Due to historical reasons text coloring codes scheme is one from mIRC.
   Smiles are GUI-only feature so there is no smile codes scheme in FoxEye.
 
-Are 'Dcc-idx' script parameters any useful?
-    No, they aren't. Only reason they are there is eggdrop compatibility. You
-  cannot use them to send some information to 'partyline' (a direct service
-  session) because if you could then you'll skip message queuing completely.
-  Only way to send a message to directly connected client is use his login
-  name and node (bot) where he/she is connected. So that 'Dcc-idx' parameter
-  is for your curiosity or you can try to trace connected clients if that can
-  be somewhat useful for your script.
-
 What is in the core?
     Core has the code which is common or used by many modules, so it's
   vital for the bot or can avoid duplicate the code:
@@ -106,6 +97,7 @@ What modules are available?
    botnet	- implementation of network of bots
    dcc-new	- chat subsystem access for any unregistered user
    eggdropnet	- implementation of eggdrop's botnet protocol
+   expirehosts	- deletes hosts and users not seen for too long time
    forth	- support for scripts in Forth language
    fserv	- file downloading service
    getops	- automatic getting privileges from other bots

@@ -15,13 +15,16 @@ mdistdir := ${top_builddir}/@PACKAGE@-@VERSION@/$(subdir)
 prefix = @prefix@
 exec_prefix = @exec_prefix@
 pkglibdir = @libdir@/@PACKAGE@
+datadir = @prefix@/share
+pkgdatadir = $(datadir)/@PACKAGE@
 helpdir = $(pkglibdir)/help
-docdir = ${prefix}/share/doc/@PACKAGE@-@VERSION@
+docdir = $(datadir)/doc/@PACKAGE@-@VERSION@
 
 INCLUDES = -I${top_srcdir}/tree -I${top_srcdir}/core
 INSTALL = @INSTALL@ -m 644
 mkinstalldirs = $(SHELL) ${top_srcdir}/mkinstalldirs
-CFLAGS = -c @CFLAGS@ @DEFS@ $(INCLUDES) @CPPFLAGS@
+DEFS = @DEFS@ -DSCRIPTSDIR=\"$(pkgdatadir)\"
+CFLAGS = -c @CFLAGS@ $(DEFS) $(INCLUDES) @CPPFLAGS@
 LDFLAGS = @LDFLAGS@
 MODLIBS = @MODLIBS@
 
@@ -59,7 +62,7 @@ clean:
 $(FILENAME).so: $(OBJS)
 	@LD@ $(LDFLAGS) -o $@ $^ $(EXTRAMODLIBS)
        
-%.o: %.c $(HFILES) ${top_srcdir}/core/modules.h ${top_srcdir}/core/foxeye.h ${top_srcdir}/core/protos.h
+.c.o: $(HFILES) ${top_srcdir}/core/modules.h ${top_srcdir}/core/foxeye.h ${top_srcdir}/core/protos.h
 	@CC@ -o $@ $(CFLAGS) -D_STATIC_INIT=modinit_$(FILENAMESUB) $<
 
 install-help:

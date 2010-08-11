@@ -24,8 +24,6 @@
 #include "direct.h"
 #include "init.h"
 
-// TODO: move this to socket.c or connchain.c ?
-
 /* ---------------------------------------------------------------------------
  * Common data typedef and last link handlers for connchain.
  */
@@ -39,6 +37,8 @@ struct connchain_i			/* internal use only */
 };
 
 bindtable_t *BT_CChain;
+
+ALLOCATABLE_TYPE (connchain_i, _CC_, next) /* alloc_connchain_i(), free_... */
 
 /* send raw data into socket, *chain and *b are undefined here */
 static ssize_t _connchain_send (connchain_i **chain, idx_t idx,
@@ -77,12 +77,12 @@ static ssize_t _connchain_recv (connchain_i **chain, idx_t idx,
 /* allocate starting link structure */
 static void _connchain_create (peer_t *peer)
 {
-  peer->connchain = safe_malloc (sizeof(connchain_i));
+  peer->connchain = alloc_connchain_i();
   peer->connchain->recv = &_connchain_recv;
   peer->connchain->send = &_connchain_send;
   /* ignoring ->buf since we don't need it for _this_ link */
   peer->connchain->next = NULL;
-  dprint (4, "connchain.c: created initial link 0x%08x", (int)peer->connchain);
+  dprint (2, "connchain.c: created initial link 0x%08x", (int)peer->connchain);
 }
 
 /* ---------------------------------------------------------------------------
@@ -104,20 +104,20 @@ int Connchain_Grow (peer_t *peer, char c)
   tc[0] = c;
   tc[1] = 0;
   b = NULL;				/* start from scratch */
-  chain = safe_malloc (sizeof(connchain_i));	/* allocate link struct */
-  while ((b = Check_Bindtable (BT_CChain, tc, -1, -1, b)))
+  chain = alloc_connchain_i();		/* allocate link struct */
+  while ((b = Check_Bindtable (BT_CChain, tc, U_ALL, U_ANYCH, b)))
     if (!b->name &&			/* internal only? trying to init */
 	b->func (peer, &chain->recv, &chain->send, &chain->buf))
       break;				/* found a working binding! */
   if (b == NULL)			/* no handler found there! */
   {
-    dprint (4, "connchain.c: link %c not found.", c);
-    FREE (&chain);			/* unalloc struct then */
+    dprint (3, "connchain.c: link %c not found.", c);
+    free_connchain_i (chain);		/* unalloc struct then */
     return 0;
   }
   chain->next = peer->connchain;	/* it's done OK, insert into chain */
   peer->connchain = chain;
-  dprint (4, "connchain.c: created link %c: 0x%08x", c, (int)chain);
+  dprint (2, "connchain.c: created link %c: 0x%08x", c, (int)chain);
   return 1;
 }
 
@@ -157,8 +157,9 @@ ssize_t Connchain_Get (connchain_i **chain, idx_t idx, char *buf, size_t sz)
   if (i >= 0)					/* everything seems OK */
     return i;
   Connchain_Get (&(*chain)->next, idx, NULL, sz); /* it's dead, kill next */
-  dprint (4, "connchain.c: destroying link 0x%08x", (int)*chain);
-  FREE (chain);
+  dprint (2, "connchain.c: destroying link 0x%08x", (int)*chain);
+  free_connchain_i (*chain);
+  *chain = NULL;
   return i;
 }
 
@@ -211,7 +212,7 @@ static ssize_t _ccfilter_x_send (connchain_i **ch, idx_t id, const char *str,
   i = *sz;
   if (i == 0)				/* it was a test and we are ready */
     return CONNCHAIN_READY;
-  if (i > sizeof(bb->buf) - 2)		/* line + CR/LF */
+  if (i > (ssize_t)sizeof(bb->buf) - 2)	/* line + CR/LF */
     i = sizeof(bb->buf) - 2;
   memcpy (bb->buf, str, i);
   *sz -= i;
@@ -231,7 +232,7 @@ static ssize_t _ccfx_find_line (connchain_b *bb)
   {
     if ((c = memchr (&bb->buf[bb->bufpos], '\n', bb->inbuf)))
       return (c - &bb->buf[bb->bufpos]);	/* found it */
-    else if (bb->inbuf >= sizeof(bb->buf) - 1)	/* all buffer is filled */
+    else if (bb->inbuf >= (ssize_t)sizeof(bb->buf) - 1)	/* buffer is full */
       return (sizeof(bb->buf) - 1);
     return -1;					/* try it later */
   }
@@ -239,7 +240,7 @@ static ssize_t _ccfx_find_line (connchain_b *bb)
     return (c - &bb->buf[bb->bufpos]);		/* found in end of buf */
   if ((c = memchr (bb->buf, '\n', bb->bufpos + bb->inbuf - sizeof(bb->buf))))
     return (c - bb->buf);			/* found at start of buf */
-  else if (bb->inbuf >= sizeof(bb->buf) - 1)	/* all buffer is filled */
+  else if (bb->inbuf >= (ssize_t)sizeof(bb->buf) - 1) /* all buffer is filled */
     return (sizeof(bb->buf) - 1);
   return -1;					/* try it later */
 }
@@ -258,13 +259,13 @@ static ssize_t _ccfx_get_line (connchain_b *bb, ssize_t i, char *str, size_t sz)
       x = i;					/* \0 instead of CR */
     else					/* no CR found */
       x = d;					/* \0 instead of LF */
-    if (x > sz)					/* we don't care! */
+    if (x > (ssize_t)sz)			/* we don't care! */
       x = sz;					/* put as many as we can */
     strfcpy (str, &bb->buf[bb->bufpos], x);	/* with terminating 0 */
     if ((bb->inbuf -= d) == 0)			/* emptied, ignore ->bufpos */
       return x;
     d += bb->bufpos;				/* calculate new bufpos */
-    if (d >= sizeof(bb->buf))
+    if (d >= (ssize_t)sizeof(bb->buf))
       d -= sizeof(bb->buf);
     bb->bufpos = d;
     return x;
@@ -272,7 +273,7 @@ static ssize_t _ccfx_get_line (connchain_b *bb, ssize_t i, char *str, size_t sz)
   d = sizeof(bb->buf) - bb->bufpos;		/* piece at end */
   i -= d;					/* left at start */
   bb->inbuf -= (i + 1);				/* prepare now */
-  if (d >= sz)					/* we don't care! */
+  if (d >= (ssize_t)sz)				/* we don't care! */
     d = sz - 1;
   memcpy (str, &bb->buf[bb->bufpos], d);
   sz -= d;					/* how many left in buf */
@@ -280,7 +281,7 @@ static ssize_t _ccfx_get_line (connchain_b *bb, ssize_t i, char *str, size_t sz)
     x = i;					/* \0 instead of CR */
   else						/* no CR found */
     x = i + 1;					/* \0 instead of LF */
-  if (x > sz)					/* we don't care! */
+  if (x > (ssize_t)sz)				/* we don't care! */
     x = sz;					/* put as many as we can */
   strfcpy (str, bb->buf, x);			/* with terminating 0 */
   bb->bufpos = i + 1;
@@ -303,7 +304,7 @@ static ssize_t _ccfilter_x_recv (connchain_i **ch, idx_t id, char *str,
     return _ccfx_get_line (bb, i, str, sz); /* pull all lines from buffer */
   if (bb->inbuf == 0)
     bb->bufpos = 0;			/* restart the pointer */
-  if ((i = bb->bufpos + bb->inbuf) < sizeof(bb->buf))
+  if ((i = bb->bufpos + bb->inbuf) < (ssize_t)sizeof(bb->buf))
   {
     i = Connchain_Get (ch, id, &bb->buf[i], sizeof(bb->buf) - i);
     if (i < 0)				/* got error */
@@ -344,9 +345,9 @@ static int _ccfilter_x_init (peer_t *peer,
   return 1;
 }
 
-// do something about report?
+// TODO: something about report?
 
-// init all this stuff
+/* init all this stuff */
 void _fe_init_connchains (void)
 {
   BT_CChain = Add_Bindtable ("connchain-grow", B_MATCHCASE);

@@ -27,6 +27,8 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/utsname.h>
+#include <wchar.h>
+#include <locale.h>
 
 /* simple functions have to be either here or in protos.h
    if compiler supports inline directive */
@@ -44,7 +46,7 @@ void *safe_calloc (size_t nmemb, size_t size)
     return NULL;
   if (!(p = calloc (nmemb, size)))
     bot_shutdown (mem_msg, 2);
-  DBG ("safe_calloc(%u*%u)=0x%08x", nmemb, size, p);
+  DBG ("safe_calloc(%u*%u)=0x%08x", nmemb, size, (int)p);
   return p;
 }
 
@@ -56,7 +58,7 @@ void *safe_malloc (size_t siz)
     return NULL;
   if ((p = (void *) malloc (siz)) == 0)
     bot_shutdown (mem_msg, 2);
-  DBG ("safe_malloc(%u)=0x%08x", siz, p);
+  DBG ("safe_malloc(%u)=0x%08x", siz, (int)p);
   return p;
 }
 
@@ -66,7 +68,7 @@ void safe_realloc (void **p, size_t siz)
 
   if (siz == 0)
   {
-    DBG ("safe_realloc(0x%08x,0)", *p);
+    DBG ("safe_realloc(0x%08x,0)", (int)*p);
     if (*p)
     {
       free (*p);
@@ -84,7 +86,7 @@ void safe_realloc (void **p, size_t siz)
   }
   if (!r)
     bot_shutdown (mem_msg, 2);
-  DBG ("safe_realloc(0x%08x,%u)=0x%08x", *p, siz, r);
+  DBG ("safe_realloc(0x%08x,%u)=0x%08x", (int)*p, siz, (int)r);
   *p = r;
 }
 
@@ -92,26 +94,12 @@ void safe_free (void **p)
 {
   if (*p)
   {
-    DBG ("safe_free(0x%08x)", *p);
+    DBG ("safe_free(0x%08x)", (int)*p);
     free (*p);
     *p = NULL;
   }
 }
 
-
-#if 0
-/* convert all characters in the string to lowercase in current locale */
-char *safe_strlower (char *dst, const char *src, size_t sz)
-{
-  register char *s = dst;
-  register unsigned char c;
-
-  while ((c = *src++) != 0 && sz-- > 1)
-    *s++ = tolower (c);
-  *s = 0;
-  return dst;
-}
-#endif
 
 /*
  * converts null-terminated string src to upper case string
@@ -129,16 +117,18 @@ size_t unistrlower (char *dst, const char *src, size_t ds)
   ds--; /* preserve 1 byte for terminating null char */
   if (src && *src)
   {
+    // TODO: make support for broken systems - recode in 8 bit locale
     if (MB_CUR_MAX > 1) /* if multibyte encoding */
     {
       wchar_t wc;
-      int len;
+      size_t len;
       register const char *ch;
+      mbstate_t ms;
       char c[MB_LEN_MAX];
 
       for (ch = src, ss = strlen(ch); *ch && ds; )
       {
-	len = mbtowc(&wc, ch, ss);
+	len = mbrtowc(&wc, ch, ss, &ms);
 	if (len < 1) /* unrecognized char! TODO: debug warning on it? */
 	{
 	  ss--;
@@ -150,7 +140,7 @@ size_t unistrlower (char *dst, const char *src, size_t ds)
 	ss -= len; /* advance pointer in sourse string */
 	ch += len;
 	wc = tolower(wc);
-	len = wctomb(c, wc); /* first get the size of lowercase mbchar */
+	len = wcrtomb(c, wc, &ms); /* first get the size of lowercase mbchar */
 	if (len < 1)
 	  continue; /* tolower() returned unknown char? ignore it */
 	if (len > ds)
@@ -173,180 +163,87 @@ size_t unistrlower (char *dst, const char *src, size_t ds)
   return (sout + 1);
 }
 
+static bool _charset_is_utf = FALSE;
 
-#if 0
-static char Wildcards[] = "~%*{?[";
-#define wildcard(c) strchr (Wildcards, c)
-
-static int match_wildcard (uchar *w, uchar c)
+void foxeye_setlocale (void)
 {
-  register int i;
-  register uchar ec = ']';
+  char new_locale[SHORT_STRING];
 
-  if (c) switch (*w)
+  // TODO: make support for broken systems - set to 8 bit locales
+  snprintf (new_locale, sizeof(new_locale), "%s.%s", locale, Charset);
+  DBG ("trying set locale to %s", new_locale);
+  if (setlocale (LC_ALL, new_locale) == NULL)
   {
-    case '~':
-      if (c == ' ')
-	return 1;
-      break;
-    case '%':
-      if (c != ' ')
-	return 1;
-      break;
-    case '*':
-      return 1;
-    case '{':
-      ec = '}';
-    case '[':
-      if (w[1] == '^')
-      {
-	i = 0;
-	w++;
-      }
-      else
-	i = 1;
-      do
-      {
-	w++;
-	if (c == *w)
-	  return i;
-	if (*w && w[1] == '-' && w[2])
-	{
-	  if (c >= *w && c <= w[2])
-	    return i;
-	  w += 2;
-	}
-      } while (*w && w[1] != ec);
-      if (!i)
-	return 1;
-      break;
-    case '?':
-      if (c)
-	return 1;
-      break;
-    case '\\':
-      w++;
-    default:
-      if (*w == c)
-	return 1;
-  }
-  return 0;
-}
-
-static uchar *skip_wildcard (uchar *s)
-{
-  if (*s == '[' || *s == '{')
-  {
-    register uchar ec = '}';
-
-    if (*s == '[')
-      ec = ']';
-    if (s[1] == '^')
-      s++;
-    do
+    _charset_is_utf = FALSE;
+    snprintf (new_locale, sizeof(new_locale), "%s.%s", locale, CHARSET_8BIT);
+    if (setlocale (LC_ALL, new_locale) == NULL)
     {
-      s++;
-      if (*s && s[1] == '-' && s[2])
-	s += 2;
-    } while (*s && s[1] != ec);
-    if (*s)
-      s++;
-  }
-  if (*s)
-    s++;
-  return s;
-}
-
-/* wildcards:
- *	~	one or more of spaces
- *	%	any number of non-spaces
- *	*	any number of any chars
- *	{a-n}	any number of characters of range a...n
- *	{^a-n}	any number of characters not of range a...n
- *	?	any character
- *	[a-n]	any character of range a...n
- *	[^a-n]	any character not of range a...n
- *	\	quote next char
- */
-static int match_it (uchar *mask, uchar *text)
-{
-  register uchar *m, *t, *mn;
-  uchar *next;
-  int cur, n = -1;
-
-  if (!*mask && !*text)			/* empty strings are equal always */
-    return 0;
-  /* firstly - we check for matching at all */
-  while (*text && *mask && match_wildcard (mask, *text))
-  {
-    m = mask;
-    t = text;
-    next = NULL;
-    /* check and skip minimum of matching wildcards */
-    while (wildcard (*m) && match_wildcard (m, *t))
-    {
-      mn = skip_wildcard (m);
-      if (*m == '~')			/* at least one space */
-	t++;
-      if (*m == '?' || *m == '[')	/* this is exact matched to one char */
-	t++;
-      else
-	while (match_wildcard (m, *t) && !match_wildcard (mn, *t)) t++;
-      if (!next)			/* set next for skipping */
-	next = t;
-      m = mn;
+      setlocale (LC_ALL, "");
+      ERROR ("init: failed to set locale to %s, reverted to default!", new_locale);
     }
-    mn = t;				/* save pointer for calculate */
-    /* check matched chars */
-    while (*t && *m && !wildcard (*m))
-    {
-      if (*m == '\\')			/* skip quote char */
-	m++;
-      if (*m != *t)
-        break;
-      m++;
-      t++;
-    }
-    /* m and t unmatched here or frame ends - try next frame */
-    if ((cur = match_it (m, t)) >= 0)
-      cur += (t - mn);			/* sum mathced nowildcards */
-    if (cur > n)
-      n = cur;				/* get maximum */
-    /* go to next character - if exact, skip mask too, else only text++ */
-    if (!next || next == text)
-      text++;
-    else
-      text = next;
-    if (*mask == '[' || *mask == '?' || !match_wildcard (mask, *text))
-      mask = skip_wildcard (mask);
-    if (!wildcard (*mask))
-      break;
   }
-  return n;
-}
-
-/* check for matching in shell wildcards style:
- * returns -1 if no matched, or number of not-wildcards characters matched */
-int match (const char *mask, const char *text)
-{
-  if ((!text || !*text) && (!mask || !*mask))
-    return 0;
-  if ((mask && *mask == '*' && !mask[1]) ||
-      (text && *text == '*' && !text[1]))
-    return 0;
-  if (!text || !mask)
-    return -1;
-  if (Have_Wildcard (mask) < 0)
-  {
-    if (strcmp (mask, text))
-      return -1;
-    return (strlen (mask));
-  }
-  return match_it ((uchar *)mask, (uchar *)text);
-}
+  else if (!strncasecmp (Charset, "utf", 3))
+    _charset_is_utf = TRUE;
+  else
+    _charset_is_utf = FALSE;
+#ifdef ENABLE_NLS
+  bindtextdomain (PACKAGE, LOCALEDIR);
+  textdomain (PACKAGE);
 #endif
+}
 
-/* TODO: change matching to * ? [abc] [a-d] [^abc] {exp1,exp2} form */
+/*
+ * truncate null-terminated string in line to contain not more than:
+ *  - len bytes (including termination byte)
+ *  - maxchars characters (without null char)
+ * returns size of truncated string in bytes without null char
+ */
+size_t unistrcut (char *line, size_t len, int maxchars)
+{
+  len--;			/* preserve 1 byte for '\0' */
+  if (_charset_is_utf == TRUE)	/* let's count chars - works for utf* only */
+  {
+    register int chsize = 0;
+    register unsigned char *ch = (unsigned char *)line;
+    register unsigned char *chmax = &line[len];
+
+    while (chsize < maxchars && ch < chmax && *ch) /* go for max chars */
+    {
+      if ((*ch++ & 0xc0) == 0xc0)	/* first multibyte octet */
+	while ((*ch & 0xc0) == 0x80 && ch < chmax)
+	  ch++;				/* skip rest of octets */
+      chsize++;				/* char counted */
+    }
+    len = (char *)ch - line;
+  }
+  // TODO: make support for broken systems - recode in 8 bit locale
+  else if (MB_CUR_MAX > 1)	/* another multibyte charset is in use */
+  {
+    register size_t cursize;
+    register int chsize = 0;
+    register char *ch = line;
+    char *chmax = &line[len];
+    mbstate_t ms;
+
+    while (chsize < maxchars && ch < chmax)
+    {
+      cursize = mbrlen(ch, chmax - ch, &ms);
+      if (cursize <= 0)			/* break at invalid char */
+	break;
+      chsize++;
+      ch += cursize;
+    }
+    len = ch - line;
+  }
+  else				/* 8bit encoding - just let's cut it */
+    if ((int)len > maxchars)		/* may be it's already ok */
+      len = maxchars;
+  if (line && line[len])
+    line[len] = '\0';
+  return len;
+}
+
+
 static int pattern_size (const char *pattern)
 {
   register const char *c;
@@ -527,90 +424,6 @@ int match (const char *mask, const char *text)
 
 #define swildcard(c) (c == '*' || c == '?')
 
-#if 0
-static int smatch_wildcard (uchar w, uchar c)
-{
-  if (w == '*')			/* it's matched to empty string too */
-    return 1;
-  if (c && (w == '?' || w == c))
-    return 1;
-  return 0;
-}
-
-static int smatch_it (uchar *mask, uchar *text)
-{
-  register uchar *m, *t, *mn;
-  uchar *next;
-  int cur, n = -1;
-
-  if (!*mask && !*text)			/* empty strings are equal always */
-    return 0;
-  /* firstly - we check for matching at all */
-  while (*text && *mask && smatch_wildcard (mask, *text))
-  {
-    m = mask;
-    t = text;
-    next = NULL;
-    /* check and skip minimum of matching wildcards */
-    while (*t && swildcard (*m))
-    {
-      if (*m == '?')			/* this is exact matched to one char */
-	t++;
-      else
-	while (smatch_wildcard (*m, *t) && !smatch_wildcard (m[1], *t)) t++;
-      if (!next)			/* set next for skipping */
-	next = t;
-      m++;
-    }
-    mn = t;				/* save pointer for calculate */
-    /* check matched chars */
-    while (*t && *m == *t && !swildcard (*m))
-    {
-      m++;
-      t++;
-    }
-    /* m and t unmatched here or frame ends - try next frame */
-    if ((cur = smatch_it (m, t)) >= 0)
-      cur += (t - mn);			/* sum matched nowildcards */
-    if (cur > n)
-      n = cur;				/* get maximum */
-    /* go to next character - if exact, skip mask too, else only text++ */
-    if (!next || next == text)
-      text++;
-    else
-      text = next;
-    if (*mask == '?')
-      mask++;
-    else if (*mask && !smatch_wildcard (*mask, *text))
-      mask++;
-    if (!swildcard (*mask))		/* all rest are unmatched or EOL */
-      break;
-  }
-  return n;
-}
-
-
-/* check for matching in shell wildcards style but for '*' and '?' only:
- * returns -1 if no matched, or number of not-wildcards characters matched */
-int simple_match (const char *mask, const char *text)
-{
-  if ((!text || !*text) && (!mask || !*mask))
-    return 0;
-  if ((mask && *mask == '*' && !mask[1]) ||
-      (text && *text == '*' && !text[1]))
-    return 0;
-  if (!text || !mask)
-    return -1;
-  if (!strpbrk (mask, "*?"))
-  {
-    if (strcmp (mask, text))
-      return -1;
-    return (strlen (mask));
-  }
-  return smatch_it ((uchar *)mask, (uchar *)text);
-}
-#endif
-
 static int smatch_it (const char *mask, const char **text, const char *pe)
 {
   const char *t, *tc, *te;		/* current char */
@@ -689,7 +502,7 @@ int simple_match (const char *mask, const char *text)
   if (!text || !mask)				/* NULL not matched to smth */
     return -1;
   ptr = strlen (mask);
-  return match_it (mask, &text, &mask[ptr]);	/* do real comparison */
+  return smatch_it (mask, &text, &mask[ptr]);	/* do real comparison */
 }
 
 int Have_Wildcard (const char *str)
@@ -791,7 +604,7 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
       ssize_t n;			/* n is number of real chars to add */
       size_t nmax;
       char *fix;
-      int nn;
+      ssize_t nn;
       static char mircsubst[] = "WkbgrymRYGcCBMKw";
 
       if (!q || (end = strchr (t, '?')) == NULL)
@@ -800,7 +613,7 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
       if (cc && cc < end)
 	end = cc;			/* now end is template for parse */
       n = end - t;
-      if (ll && n > ll - p->i)
+      if (ll && (size_t)n > ll - p->i)
 	n = ll - p->i;			/* now n is template that fit here */
       nn = &buf[s-1] - c;		/* rest chars in buff */
       if (nn < 0)
@@ -849,7 +662,7 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
 	  nn = n;
 	}
       }
-      else if (ll && nn > ll - p->i)
+      else if (ll && (size_t)nn > ll - p->i)
 	nn = ll - p->i;			/* nn is rest for line - at least 1 */
       n = 0;
       tbuf[0] = 0;
@@ -1040,7 +853,6 @@ void printl (char *buf, size_t s, char *templ, size_t strlen,
 
   if (templ == NULL || buf == NULL || s == 0)
     return;
-//fprintf(stderr,"%s[%u]:nick=%s:uhost=%s:lname=%s:chan=%s:ip=%u:port=%hu:msg=%s\n",templ,strlen,nick,uhost,lname,chan,ip,port,message);
   if (*templ == 0)	/* just terminate line if empty template */
   {
     buf[0] = 0;

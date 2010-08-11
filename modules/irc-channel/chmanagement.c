@@ -51,7 +51,8 @@ typedef struct
 
 typedef struct
 {
-  size_t changes, pos, apos;
+  int changes;
+  size_t pos, apos;
   const char *cmd;
   char modechars[MODECHARSMAX];
   char mchg[STRING];
@@ -464,7 +465,7 @@ void ircch_recheck_modes (IRC *net, LINK *target, userflag sf, userflag cf,
 
   if (!target)
     return;		/* I cannot have any permissions to operate */
-  if (Time - target->lmct < (unsigned long int)ircch_mode_timeout)
+  if (Time - target->lmct < ircch_mode_timeout)
     return;		/* don't push too fast modechanges, it will abuse */
   _make_modechars (mbuf.modechars, net);
   mbuf.changes = mbuf.pos = mbuf.apos = 0;
@@ -637,10 +638,10 @@ int ircch_parse_modeline (IRC *net, CHANNEL *chan, LINK *origin, char *prefix,
 		schr ? " " : "", NONULL(schr));
       for (bind = NULL; (bind = Check_Bindtable (mbt, buf, uf, ocf, bind)); )
       {
-	if (bind->name)
-	  RunBinding (bind, prefix,
+	if (bind->name)		/* note for eggdrop's users: prefix handled */
+	  RunBinding (bind, prefix,	/* a bit different for server mode */
 		      (origin && origin->nick->lname) ? origin->nick->lname : "*",
-		      chan->chi->name, -1, NextWord (buf));
+		      chan->chi->name, NULL, -1, NextWord (buf));
 	else
 	  bind->func (prefix, origin ? origin->nick->lname : NULL, chan->chi,
 		      NextWord (buf));
@@ -656,7 +657,7 @@ int ircch_parse_modeline (IRC *net, CHANNEL *chan, LINK *origin, char *prefix,
 	  if ((item = ircch_find_mask (*list, schr)))
 	    ircch_remove_mask (list, item);
 	  /* if ban was removed then remove all matched dynamic exceptions */
-	  if (mc == 'b' &&
+	  if (mc == 'b' && !(net->features & L_NOEXEMPTS) &&
 	      !(Get_Clientflags (chan->chi->name, "") & U_NOAUTH))
 	    _ircch_expire_exempts (net, chan, &mbuf);
 	    // TODO: instead of expire do next or let them just expire ATM?
@@ -674,6 +675,7 @@ int ircch_parse_modeline (IRC *net, CHANNEL *chan, LINK *origin, char *prefix,
 				ircch_enforcer_time, 0, 0, 0);
 	/* TODO: set matched exceptions while ban is set */
 	//if (mc == 'b' &&		/* ignore +e and +I */
+	//    !(net->features & L_NOEXEMPTS) &&
 	//    !(Get_Clientflags (chan->chi->name, "") & U_NOAUTH))
 	//  _ircch_raise_exempts (net, chan, schr, &mbuf);
       }
@@ -911,7 +913,8 @@ void ircch_expire (IRC *net, CHANNEL *ch)
   mbuf.changes = mbuf.pos = mbuf.apos = 0;
   mbuf.cmd = NULL;
   _ircch_expire_bans (net, ch, &mbuf);
-  _ircch_expire_exempts (net, ch, &mbuf);
+  if (!(net->features & L_NOEXEMPTS))
+    _ircch_expire_exempts (net, ch, &mbuf);
   if (!(ch->mode & A_INVITEONLY))
   {
     /* TODO: check invites and remove all expired */
@@ -1189,7 +1192,7 @@ static int ssirc_topic (peer_t *who, INTERFACE *where, char *args)
   }
   else if (!(c = strrchr (where->name, '@')))	/* check for current network */
     return 0;					/* cannot determine network */
-  else if (c - (char *)where->name >= sizeof(target))
+  else if ((size_t)(c - (char *)where->name) >= sizeof(target))
     strfcpy (target, where->name, sizeof(target)); /* it's impossible! */
   else						/* get chan name from where */
     strfcpy (target, where->name, (c - (char *)where->name) + 1);

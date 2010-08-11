@@ -46,7 +46,7 @@ typedef struct logfile_t
   int reccount;
   INTERFACE *iface;
   ssize_t (*add_buf) (struct logfile_t *, char *, size_t, size_t);
-  int inbuf;
+  size_t inbuf;
   bool wantprefix;
   char buf[HUGE_STRING];
 } logfile_t;
@@ -64,7 +64,7 @@ static time_t lastrotated = 0;
 
 static int flush_log (logfile_t *log, int force, int needsync)
 {
-  size_t x;
+  ssize_t x;
   struct flock lck;
   int es;
 

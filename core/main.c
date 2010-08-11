@@ -26,7 +26,6 @@
 #include <getopt.h>
 #endif
 
-#include <locale.h>
 #include <fcntl.h>
 #include <sys/poll.h>
 #include <sys/utsname.h>
@@ -93,7 +92,7 @@ static ssize_t _read_pipe (char *buf, size_t sr)
   ssize_t sg;
 
   buf[0] = 0;				/* line terminator if EAGAIN */
-  if ((sg = _pipe_find_line()) < 0);
+  if ((sg = _pipe_find_line()) < 0)
   {
     sg = _bufpos + _inbuf;
     sg = read (Fifo_Inp[0], &_inp_buf[sg], sizeof(_inp_buf) - sg);
@@ -108,7 +107,7 @@ static ssize_t _read_pipe (char *buf, size_t sr)
     if (sg < 0)
       return 0;
   }
-  if (sg >= sr)
+  if ((size_t)sg >= sr)
     sg = sr - 1;
   _pipe_get_line (buf, sg);
   if (sg)
@@ -134,7 +133,7 @@ static ssize_t _write_pipe (char *buf, size_t *sw)
 	sg = 0;
       break;
     }
-    else if (sg != *sw)
+    else if ((size_t)sg != *sw)
     {
       *sw -= sg;
       memmove (buf, &buf[sg], *sw);
@@ -241,7 +240,7 @@ static int _request (INTERFACE *iface, REQUEST *req)
     return REQ_OK;
   /* run command or send to 0 channel of botnet */
   else
-    Dcc_Parse (&dcc->s, "", buff, -1, -1, -2, 0, NULL, NULL);
+    Dcc_Parse (&dcc->s, "", buff, -1, -1, -2, 0, NULL, NULL, NULL);
   return REQ_OK;
 }
 
@@ -403,11 +402,7 @@ int main (int argc, char *argv[])
     *c++ = 0;
     strfcpy (Charset, c, sizeof(Charset));
   }
-  setlocale (LC_ALL, "");
-#ifdef ENABLE_NLS
-  bindtextdomain (PACKAGE, LOCALEDIR);
-  textdomain (PACKAGE);
-#endif
+  foxeye_setlocale();
   buff[0] = 0;
   /* parse command line parameters */
   while ((ch = getopt (argc, argv, "cdDg:hmn:rtvw")) > 0)
@@ -424,7 +419,7 @@ int main (int argc, char *argv[])
 	O_TESTCONF = TRUE;
 	break;
       case 'h':		/* help */
-	printf (Usage);
+	printf ("%s", Usage);
 	return 0;
       case 'd':		/* increase debug level */
 	O_DLEVEL++;
@@ -452,7 +447,7 @@ int main (int argc, char *argv[])
       case '?':		/* unknown option */
       case ':':		/* parameter missing */
       default:
-	fprintf (stderr, Usage);
+	fprintf (stderr, "%s", Usage);
 	return 1;
     }
   }

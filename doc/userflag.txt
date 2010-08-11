@@ -2,17 +2,17 @@ Since it's a bit hard let's explain what each userflag means:
 flag	C bot:direct	user(:service)	user:public	service/net (mode/egg)
 ------	- ------------	--------------	--------------	--------------
 FRIEND	f -		no kick		no kick		+dontkickops
-DENY	k reject	N:kill		ban		-user(bans|exempts|invites)
+DENY	k -		ban		ban		-user(bans|exempts|invites)
 ACCESS	a leaf		N:access/exempt	ban exempt	-inactive/autoreconnect
-INVITE	e -*-		invite		invite		-secret
-VOICE	v -*-		can ask voice	can ask voice	+autovoice
-QUIET	q -*-		never voice	never voice	+revenge|+revengebot
+INVITE	e -		invite		invite		-secret
+VOICE	v -		can ask voice	can ask voice	+autovoice
+QUIET	q -		never voice	never voice	+revenge|+revengebot
 HALFOP	h shared	N:local op	can get halfop	+cycle
  +AUTO	  -		N:auto-halfop	auto-halfop	-
 OP	o hub		N:op		can get op	+autoop
  +AUTO	* autoconnect	N:autoop	autoop		+enforcebans/autoconnect
 MASTER	m -		master/admin	master/admin	+protect(ops|friends)
-DEOP	d -		N:never op	never op	+bitch
+DEOP	d reject	N:never op	never op	+bitch
 SPEAK	s -		N:can simulate	auto-voice	+greet
 OWNER	n -		full access	full access	-
 NOAUTH	i -		need no auth	sticky		-dynamic(bans|exempts|invites)
@@ -62,5 +62,5 @@ h	OP +AUTO
 i	?
 l	ACCESS
 p	HALFOP
-r	DENY
+r	DEOP
 s	HALFOP

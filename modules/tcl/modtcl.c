@@ -22,10 +22,14 @@
 #include "modules.h"
 
 #ifdef HAVE_TCL
+#define USE_NON_CONST 1 /* prevent CONST for newest versions of TCL */
+#include "tcl.h"
+
 #include "init.h"
-#include "modtcl.h"
 #include "direct.h"
 #include "conversion.h"
+#include "list.h"
+#include "sheduler.h"
 
 typedef struct {
   char *intcl;
@@ -64,6 +68,7 @@ static tcl_bindtable tcl_bindtables[] = {
   { "nick",	"irc-nickchg", 0 },
   { "sign",	"irc-signoff", 0 },
   { "splt",	"irc-netsplit", 0 },
+  { NULL,	NULL, 0 },
   { "evnt",	NULL, 0 },
   { "sent",	NULL, 0 },
   { "link",	NULL, 0 },
@@ -83,9 +88,8 @@ static tcl_bindtable tcl_bindtables[] = {
 
 static Tcl_Interp *Interp = NULL;
 
-#ifdef HAVE_ICONV
-static conversion_t *TclUTFConv;
-#endif
+static char tcl_default_network[IFNAMEMAX] = "irc";
+static long int tcl_max_timer = 2 * 24 * 3600;
 
 static inline void ResultInteger (Tcl_Interp *tcl, int res)
 {
@@ -135,6 +139,16 @@ static inline int ArgInteger (Tcl_Interp *tcl, Tcl_Obj *obj)
     i = -1;
   return i;
 }
+#else
+# define ArgInteger(i,a) atoi(a)
+#endif
+
+#ifdef HAVE_TCL8X
+# define TCLARGS Tcl_Obj *CONST		/* last argument of command */
+# define ArgString Tcl_GetStringFromObj
+#else
+# define TCLARGS char *
+# define ArgString(a,b) a, *(b) = safe_strlen (a)
 #endif
 
 static int _tcl_interface (char *, int, char **);
@@ -205,7 +219,7 @@ U_ACCESS,U_QUIET,0,	0,	U_OP,	U_UNSHARED,U_VOICE,0,	/* p - w */
       else if (*a >= '-' && *a <= 'z')\
 	f |= _tcl_togflagtable[*a++ - ' '];\
       else\
-	a++;
+	a++
 
 static int _tcl_tocflagtable[] = {
 0,	0,	0,	0,	0,	0,	U_AND,	0,	/*   - ' */
@@ -227,7 +241,7 @@ U_FLH,	0,	0,	0,	0,	0,	0,	0,	/* H - O */
       if (*a >= '&' && *a <= 'z')\
 	f |= _tcl_tocflagtable[*a++ - ' '];\
       else\
-	a++;
+	a++
 
 			/* bind <type> <attr> key [cmd] */
 static int _tcl_bind (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS argv[])
@@ -238,9 +252,9 @@ static int _tcl_bind (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS argv[])
   userflag gf, cf;
   char buf[32];
 
-  if (argc < 3 || argc > 4)		/* check for number of params */
+  if (argc < 4 || argc > 5)		/* check for number of params */
     return _tcl_errret (tcl, "bad number of parameters.");
-  c = ArgString (argv[0], &s);		/* find <type> in list */
+  c = ArgString (argv[1], &s);		/* find <type> in list */
   if (c && s < 5 && s > 2)		/* eggdrop limits it to 3 or 4 */
   {
     unistrlower (buf, c, 5);
@@ -252,12 +266,16 @@ static int _tcl_bind (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS argv[])
     return _tcl_errret (tcl, "bad bindtable name.");
   if (!tbt->name)
     return _tcl_errret (tcl, "bindtable isn't found.");
-  c = ArgString (argv[1], &s);		/* calculate attr(s) */
+  c = ArgString (argv[2], &s);		/* calculate attr(s) */
   gf = 0;
   _tcl_togflag (c, s, gf);
+  if (gf == U_NEGATE)			/* nothing to negate */
+    gf = 0;
   cf = 0;
   _tcl_tocflag (c, s, cf);
-  c = ArgString (argv[2], &s);		/* it's key/mask now */
+  if (!(cf & ~(U_NEGATE | U_AND)))	/* nothing to negate or and */
+    cf = 0;
+  c = ArgString (argv[3], &s);		/* it's key/mask now */
   if (argc == 3) /* if no command name then find and return binding name */
   {
     bindtable_t *bt = Add_Bindtable (tbt->name, B_UNDEF);
@@ -267,7 +285,7 @@ static int _tcl_bind (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS argv[])
       ResultString (tcl, bind->name, strlen (bind->name));
     return TCL_OK;			/* how to notify we have result? */
   }
-  fn = ArgString (argv[3], &s);
+  fn = ArgString (argv[4], &s);
   Add_Binding (tbt->name, c, gf, cf, &_tcl_interface, fn); /* add binding */
   tbt->used = 1;
   return TCL_OK;
@@ -281,9 +299,9 @@ static int _tcl_unbind (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS argv[]
   size_t s;
   char buf[5];
 
-  if (argc != 4)			/* check for number of params */
+  if (argc != 5)			/* check for number of params */
     return _tcl_errret (tcl, "bad number of parameters.");
-  c = ArgString (argv[0], &s);		/* find <type> in list */
+  c = ArgString (argv[1], &s);		/* find <type> in list */
   if (c && s < 5 && s > 2)		/* eggdrop limits it to 3 or 4 */
   {
     unistrlower (buf, c, 5);
@@ -296,7 +314,7 @@ static int _tcl_unbind (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS argv[]
   if (!tbt->name)
     return _tcl_errret (tcl, "bindtable isn't found.");
   /* we ignore attr(s) and mask due to difference with eggdrop, sorry */
-  c = ArgString (argv[3], &s);		/* it's command name now */
+  c = ArgString (argv[4], &s);		/* it's command name now */
   Delete_Binding (tbt->name, &_tcl_interface, c);
   return TCL_OK;
 }
@@ -304,7 +322,143 @@ static int _tcl_unbind (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS argv[]
 			/* send_request <to> <type> <mode> text */
 static int _tcl_send_request (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS argv[])
 {
-  return TCL_ERROR; // not ready yet
+  size_t s;
+  char *to, *c, *t;
+  iftype_t ift;
+  flag_t fl;
+  static char *typec = "dncl";
+  static iftype_t typev[] = {I_DCCALIAS,I_SERVICE,I_CLIENT,I_LOG};
+  static char *flagc = "0124pmtcbsodjkw-";
+  static flag_t flagv[] = {F_T_MESSAGE,F_T_NOTICE,F_T_CTCP,F_T_ACTION,F_PUBLIC,
+			  F_PRIV,F_BOTNET,F_CMDS,F_CONN,F_SERV,
+			  F_WARN,F_DEBUG,F_JOIN,F_MODES,F_WALL,F_QUICK};
+
+  if (argc != 5)
+    return _tcl_errret (tcl, "bad number of parameters.");
+  to = ArgString (argv[1], &s);		/* target of message */
+  c = ArgString (argv[2], &s);
+  for (ift = 0; s; s--)			/* get type from chars */
+    if ((t = strchr (typec, *c++)))
+      ift |= typev[t - typec];
+  c = ArgString (argv[3], &s);
+  for (fl = 0; s; s--)			/* get flag from chars */
+    if ((t = strchr (flagc, *c++)))
+      fl |= flagv[t - flagc];
+  t = ArgString (argv[4], &s);		/* text of message */
+  Add_Request (ift, to, fl, "%s", t);	/* send message! */
+  return TCL_OK;
+}
+
+			/* ison <service> [lname] */
+static int _tcl_ison (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS argv[])
+{
+  const char *service, *lname;
+  size_t s;
+
+  if (argc < 2 || argc > 3)		/* check for number of params */
+    return _tcl_errret (tcl, "bad number of parameters.");
+  service = ArgString (argv[1], &s);	/* service name */
+  if (argc == 2)			/* no lname provided */
+    lname = NULL;
+  else
+    lname = ArgString (argv[2], &s);
+  if (!Lname_IsOn (service, lname, &lname))
+    lname = NULL;
+  ResultString (tcl, NONULL(lname), safe_strlen(lname));
+  return TCL_OK;			/* we got some result, nice */
+}
+
+			/* check_flags <lname> <flags> [service] */
+static int _tcl_check_flags (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS argv[])
+{
+  char *lname, *c;
+  size_t s;
+  userflag cf, rf;
+
+  if (argc < 3 || argc > 4)		/* check for number of params */
+    return _tcl_errret (tcl, "bad number of parameters.");
+  lname = ArgString (argv[1], &s);
+  c = ArgString (argv[2], &s);		/* calculate attr(s) */
+  cf = 0;
+  if (argc == 3)			/* global, i.e. network flags asked */
+  {
+    _tcl_togflag (c, s, cf);
+    rf = Get_Clientflags (lname, tcl_default_network) |
+	  Get_Clientflags (lname, NULL);
+  }
+  else
+  {
+    _tcl_tocflag (c, s, cf);
+    c = ArgString (argv[3], &s);	/* service name */
+    rf = Get_Clientflags (lname, c);
+  }
+  if ((rf & cf) == cf)			/* flags matched! */
+    ResultInteger (tcl, 1);
+  else
+    ResultInteger (tcl, 0);
+  return TCL_OK;
+}
+
+typedef struct tcl_timer
+{
+  tid_t tid;
+  time_t when;
+  char *cmd;
+  struct tcl_timer *prev;
+} tcl_timer;
+
+ALLOCATABLE_TYPE (tcl_timer, TT_, prev);
+
+static tcl_timer *Tcl_Last_Timer = NULL;
+
+			/* utimer <time> <cmd> */
+static int _tcl_utimer (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS argv[])
+{
+  char *c;
+  int n;
+  size_t s;
+  tcl_timer *tt;
+
+  if (argc != 3)			/* check for number of params */
+    return _tcl_errret (tcl, "bad number of parameters.");
+  n = ArgInteger (tcl, argv[1]);	/* timer */
+  c = ArgString (argv[2], &s);		/* cmd */
+  if (!*c || n < 0 || n > tcl_max_timer)
+    return _tcl_errret (tcl, "invalid parameters for utimer");
+  tt = alloc_tcl_timer();
+  tt->tid = NewTimer (I_MODULE, "tcl", S_LOCAL, (unsigned int)n, 0, 0, 0);
+  tt->cmd = safe_strdup (c);
+  tt->when = Time + n;
+  tt->prev = Tcl_Last_Timer;
+  Tcl_Last_Timer = tt;
+  dprint (3, "tcl:_tcl_utimer:added timer for %lu", (unsigned long)tt->when);
+  ResultInteger (tcl, (int)tt->tid);
+  return TCL_OK;
+}
+
+			/* killutimer <timerid> */
+static int _tcl_killutimer (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS argv[])
+{
+  int n;
+  tcl_timer *tt, *ptt;
+
+  if (argc != 2)			/* check for number of params */
+    return _tcl_errret (tcl, "bad number of parameters.");
+  n = ArgInteger (tcl, argv[1]);		/* tid */
+  for (tt = Tcl_Last_Timer, ptt = NULL; tt; tt = (ptt = tt)->prev)
+    if ((int)tt->tid == n)
+      break;
+  if (!tt)
+    return _tcl_errret (tcl, "this timer-id is not active.");
+  KillTimer (tt->tid);
+  FREE (&tt->cmd);
+  if (tt == Tcl_Last_Timer)
+    Tcl_Last_Timer = tt->prev;
+  else
+    ptt->prev = tt->prev;
+  dprint (3, "tcl:_tcl_killutimer:removed timer for %lu", (unsigned long)tt->when);
+  free_tcl_timer (tt);
+  return TCL_OK;
 }
 
 static void _tcl_add_own_procs (void)
@@ -317,6 +471,10 @@ static void _tcl_add_own_procs (void)
   NB (bind);
   NB (unbind);
   NB (send_request);
+  NB (ison);
+  NB (check_flags);
+  NB (utimer);
+  NB (killutimer);
 #undef NB
 }
 
@@ -346,8 +504,7 @@ static char *_trace_int (ClientData data, Tcl_Interp *tcl,
 
   if (flags & TCL_TRACE_UNSETS)	/* deleting it */
   {
-    dprint (3, "tcl:_trace_int: deleted %s",
-	    Tcl_GetVar2 (tcl, name1, name2, TCL_GLOBAL_ONLY));
+    dprint (4, "tcl:_trace_int: deleted %s.%s", name1, NONULL(name2));
 #ifdef HAVE_TCL8X
     Tcl_DecrRefCount (vardata->name);
 #endif
@@ -361,32 +518,42 @@ static char *_trace_int (ClientData data, Tcl_Interp *tcl,
 		&l) == TCL_ERROR)
       return Tcl_GetStringResult (tcl);
     *(long int *)vardata->data = l;
+    dprint (4, "tcl:_trace_int: changed %s.%s to %ld", name1, NONULL(name2), l);
 #else
-    if (Tcl_GetInt (tcl,
-		NONULL(Tcl_GetVar2 (tcl, name1, name2, TCL_GLOBAL_ONLY)),
-		&i) == TCL_ERROR)
+    if (Tcl_GetInt (tcl, Tcl_GetVar2 (tcl, name1, name2, TCL_GLOBAL_ONLY),
+		    &i) == TCL_ERROR)
       return tcl->result;
     *(long int *)vardata->data = (long int)i;
+    dprint (4, "tcl:_trace_int: changed %s.%s to %d", name1, NONULL(name2), i);
 #endif
   }
-  // TODO: TCL_TRACE_READS
+  else if (flags & TCL_TRACE_READS)
+  {
+    dprint (4, "tcl:_trace_int: read %s.%s", name1, NONULL(name2));
+#ifdef HAVE_TCL8X
+    Tcl_ObjSetVar2 (tcl, vardata->name, NULL,
+		    Tcl_NewLongObj (*(long int *)vardata->data),
+		    TCL_GLOBAL_ONLY);
+#else
+    char value[32];
+
+    snprintf (value, sizeof(value), "%ld", *(long int *)vardata->data);
+    Tcl_SetVar2 (tcl, name1, name2, value, TCL_GLOBAL_ONLY);
+#endif
+  }
   else
     ERROR ("tcl:_trace_int: unknown flags %d", flags);
   return NULL;
 }
 
-static char *_trace_bool (ClientData data, Tcl_Interp *interp,
+static char *_trace_bool (ClientData data, Tcl_Interp *tcl,
 			  char *name1, char *name2, int flags)
 {
-#ifndef HAVE_TCL8X
-  char value[32];
-#endif
   int i;
 
   if (flags & TCL_TRACE_UNSETS)	/* deleting it */
   {
-    dprint (3, "tcl:_trace_bool: deleted %s",
-	    Tcl_GetVar2 (interp, name1, name2, TCL_GLOBAL_ONLY));
+    dprint (4, "tcl:_trace_bool: deleted %s.%s", name1, NONULL(name2));
 #ifdef HAVE_TCL8X
     Tcl_DecrRefCount (vardata->name);
 #endif
@@ -395,25 +562,42 @@ static char *_trace_bool (ClientData data, Tcl_Interp *interp,
   else if (flags & TCL_TRACE_WRITES)
   {
 #ifdef HAVE_TCL8X
-    if (Tcl_GetBooleanFromObj (interp,
-		Tcl_ObjGetVar2 (interp, vardata->name, NULL, TCL_GLOBAL_ONLY),
+    if (Tcl_GetBooleanFromObj (tcl,
+		Tcl_ObjGetVar2 (tcl, vardata->name, NULL, TCL_GLOBAL_ONLY),
 		&i) == TCL_ERROR)
-      return Tcl_GetStringResult (interp);
+      return Tcl_GetStringResult (tcl);
 #else
-    if (Tcl_GetBoolean (interp,
-		NONULL(Tcl_GetVar2 (interp, name1, name2, TCL_GLOBAL_ONLY)),
+    if (Tcl_GetBoolean (tcl, Tcl_GetVar2 (tcl, name1, name2, TCL_GLOBAL_ONLY),
 		&i) == TCL_ERROR)
-      return interp->result;
+      return tcl->result;
 #endif
-    *(short *)((tcl_data *)data)->data = (short)i;
+    /* changing only flag TRUE, don't touch ASK and CAN_ASK */
+    *(bool *)vardata->data &= ~TRUE;		/* reset it */
+    *(bool *)vardata->data |= (bool)(i & TRUE);	/* update it */
+    dprint (4, "tcl:_trace_bool: changed %s.%s to %s", name1, NONULL(name2),
+	    (i & TRUE) ? "TRUE" : "FALSE");
   }
-  // TODO: TCL_TRACE_READS
+  else if (flags & TCL_TRACE_READS)
+  {
+    dprint (4, "tcl:_trace_bool:read %s.%s", name1, NONULL(name2));
+#ifdef HAVE_TCL8X
+    Tcl_ObjSetVar2 (tcl, vardata->name, NULL,
+		    Tcl_NewBooleanObj ((int)(*(bool *)vardata->data & TRUE)),
+		    TCL_GLOBAL_ONLY);
+#else
+    char value[4];
+
+    snprintf (value, sizeof(value), "%d",
+	      ((int)(*(bool *)vardata->data & TRUE)));
+    Tcl_SetVar2 (tcl, name1, name2, value, TCL_GLOBAL_ONLY);
+#endif
+  }
   else
     ERROR ("tcl:_trace_bool: unknown flags %d", flags);
   return NULL;
 }
 
-static char *_trace_str (ClientData data, Tcl_Interp *interp,
+static char *_trace_str (ClientData data, Tcl_Interp *tcl,
 			 char *name1, char *name2, int flags)
 {
   int i;
@@ -421,8 +605,7 @@ static char *_trace_str (ClientData data, Tcl_Interp *interp,
 
   if (flags & TCL_TRACE_UNSETS)	/* deleting it */
   {
-    dprint (3, "tcl:_trace_str: deleted %s",
-	    Tcl_GetVar2 (interp, name1, name2, TCL_GLOBAL_ONLY));
+    dprint (4, "tcl:_trace_str: deleted %s.%s", name1, NONULL(name2));
 #ifdef HAVE_TCL8X
     Tcl_DecrRefCount (vardata->name);
 #endif
@@ -431,43 +614,59 @@ static char *_trace_str (ClientData data, Tcl_Interp *interp,
   else if (flags & TCL_TRACE_WRITES)
   {
 #ifdef HAVE_TCL8X
-    if (!(s = Tcl_GetStringFromObj (Tcl_ObjGetVar2 (interp,
-	((tcl_data *)data)->name, NULL, TCL_GLOBAL_ONLY), &i)))
-      return Tcl_GetStringResult (interp);
+    if (!(s = Tcl_GetStringFromObj (Tcl_ObjGetVar2 (tcl,
+	vardata->name, NULL, TCL_GLOBAL_ONLY), &i)))
+      return Tcl_GetStringResult (tcl);
 #else
-    if (!(s = Tcl_GetVar2 (interp, name1, name2, TCL_GLOBAL_ONLY)))
-      return interp->result;
+    if (!(s = Tcl_GetVar2 (tcl, name1, name2, TCL_GLOBAL_ONLY)))
+      return tcl->result;
     i = safe_strlen (s);
 #endif
-    if (i >= 0 && i < ((tcl_data *)data)->len)
-    {
-      strfcpy ((char *)((tcl_data *)data)->data, s, i + 1);
-      return NULL;
-    }
-    i = ((tcl_data *)data)->len - 1;
-    strfcpy ((char *)((tcl_data *)data)->data, s, i + 1);
+    if (i >= 0 && (size_t)i < vardata->len)
+      strfcpy ((char *)vardata->data, s, i + 1);
+    else
+      strfcpy ((char *)vardata->data, s, vardata->len);
+    dprint (4, "tcl:_trace_str: changed %s.%s to %s", name1, NONULL(name2), s);
   }
-  // TODO: TCL_TRACE_READS
+  else if (flags & TCL_TRACE_READS)
+  {
+    dprint (4, "tcl:_trace_str: read %s.%s", name1, NONULL(name2));
+#ifdef HAVE_TCL8X
+    Tcl_ObjSetVar2 (tcl, vardata->name, NULL,
+		Tcl_NewStringObj (vardata->data, safe_strlen (vardata->data)),
+		TCL_GLOBAL_ONLY);
+#else
+    Tcl_SetVar2 (tcl, name1, name2, vardata->data, TCL_GLOBAL_ONLY);
+#endif
+  }
   else
     ERROR ("tcl:_trace_str: unknown flags %d", flags);
   return NULL;
 }
 
-static char *_trace_stat (ClientData data, Tcl_Interp *interp,
+static char *_trace_stat (ClientData data, Tcl_Interp *tcl,
 			  char *name1, char *name2, int flags)
 {
   if (flags & TCL_TRACE_UNSETS)	/* deleting it */
   {
-    dprint (3, "tcl:_trace_stat: deleted %s",
-	    Tcl_GetVar2 (interp, name1, name2, TCL_GLOBAL_ONLY));
+    dprint (4, "tcl:_trace_stat: deleted %s.%s", name1, NONULL(name2));
 #ifdef HAVE_TCL8X
     Tcl_DecrRefCount (vardata->name);
 #endif
     FREE (&data);
   }
-  else if (flags & TCL_TRACE_WRITES)
-    // TODO: reset it in TCL
+  else if (flags & TCL_TRACE_WRITES)	/* reset it in TCL */
+  {
+    dprint (4, "tcl:_trace_stat: tried to change %s.%s", name1, NONULL(name2));
+#ifdef HAVE_TCL8X
+    Tcl_ObjSetVar2 (tcl, vardata->name, NULL,
+		Tcl_NewStringObj (vardata->data, safe_strlen (vardata->data)),
+		TCL_GLOBAL_ONLY);
+#else
+    Tcl_SetVar2 (tcl, name1, name2, vardata->data, TCL_GLOBAL_ONLY);
+#endif
     return "this variable is read only";
+  }
   return NULL;
 }
 #undef vardata
@@ -476,16 +675,33 @@ static char *_trace_stat (ClientData data, Tcl_Interp *interp,
  * Calls from anywhere to TCL.
  */
 
+#define _tcl_dashtound(a,b) {\
+  register char *t=a;\
+  while (*b && t < &a[sizeof(a)-1]) {\
+    if (*b == '-') *t++ = '_';\
+    else *t++ = *b;\
+    b++; }\
+  *t = '\0';\
+}
+
 BINDING_TYPE_register(tcl_register_var);
 static int tcl_register_var (const char *name, void *ptr, size_t s)
 {
   tcl_data *data;
+  char tn[STRING];
+#ifndef HAVE_TCL8X
+  char value[32];
+#endif
 
+  /* set new instance */
   data = safe_calloc (1, sizeof(tcl_data));
   data->data = ptr;
   data->len = s;
+  _tcl_dashtound (tn, name);
+  /* unset previous value if it exists! */
+  Tcl_UnsetVar (Interp, (char *)tn, TCL_GLOBAL_ONLY);	/* ignore any error */
 #ifdef HAVE_TCL8X
-  data->name = Tcl_NewStringObj ((char *)name, safe_strlen (name));
+  data->name = Tcl_NewStringObj (tn, safe_strlen (tn));
   Tcl_IncrRefCount (data->name);
 #endif
   switch (s)
@@ -493,60 +709,71 @@ static int tcl_register_var (const char *name, void *ptr, size_t s)
     case 0:	/* integer */
 #ifdef HAVE_TCL8X
       Tcl_ObjSetVar2 (Interp, data->name, NULL,
-		      Tcl_NewLongObj (*(long int *)data->data),
+		      Tcl_NewLongObj (*(long int *)ptr),
 		      TCL_GLOBAL_ONLY);
 #else
-      snprintf (value, sizeof(value), "%ld", *(long int *)data->data);
-      Tcl_SetVar (Interp, name, value, TCL_GLOBAL_ONLY);
+      snprintf (value, sizeof(value), "%ld", *(long int *)ptr);
+      Tcl_SetVar (Interp, tn, value, TCL_GLOBAL_ONLY);
 #endif
-      Tcl_TraceVar (Interp, (char *)name, TCL_TRACE_WRITES | TCL_TRACE_UNSETS,
+      Tcl_TraceVar (Interp, tn,
+		    TCL_TRACE_READS | TCL_TRACE_WRITES | TCL_TRACE_UNSETS,
 		    &_trace_int, (ClientData)data);
       break;
     case 1:	/* boolean */
 #ifdef HAVE_TCL8X
       Tcl_ObjSetVar2 (Interp, data->name, NULL,
-		      Tcl_NewBooleanObj ((int)*(short *)data->data),
+		      Tcl_NewBooleanObj ((int)(*(bool *)ptr & TRUE)),
 		      TCL_GLOBAL_ONLY);
 #else
-      snprintf (value, sizeof(value), "%hd", *(short *)data->data);
-      Tcl_SetVar (Interp, name, value, TCL_GLOBAL_ONLY);
+      snprintf (value, sizeof(value), "%d", (int)(*(bool *)ptr & TRUE));
+      Tcl_SetVar (Interp, tn, value, TCL_GLOBAL_ONLY);
 #endif
-      Tcl_TraceVar (Interp, (char *)name, TCL_TRACE_WRITES | TCL_TRACE_UNSETS,
+      Tcl_TraceVar (Interp, tn,
+		    TCL_TRACE_READS | TCL_TRACE_WRITES | TCL_TRACE_UNSETS,
 		    &_trace_bool, (ClientData)data);
       break;
     case 2:	/* read-only */
 #ifdef HAVE_TCL8X
       Tcl_ObjSetVar2 (Interp, data->name, NULL,
-		      Tcl_NewStringObj (data->data, safe_strlen (data->data)),
+		      Tcl_NewStringObj (ptr, safe_strlen (ptr)),
 		      TCL_GLOBAL_ONLY);
 #else
-      Tcl_SetVar (Interp, name, data, TCL_GLOBAL_ONLY);
+      Tcl_SetVar (Interp, tn, ptr, TCL_GLOBAL_ONLY);
 #endif
-      Tcl_TraceVar (Interp, (char *)name, TCL_TRACE_WRITES | TCL_TRACE_UNSETS,
+      Tcl_TraceVar (Interp, tn, TCL_TRACE_WRITES | TCL_TRACE_UNSETS,
 		    &_trace_stat, (ClientData)data);
       break;
     default:	/* string */
 #ifdef HAVE_TCL8X
       Tcl_ObjSetVar2 (Interp, data->name, NULL,
-		      Tcl_NewStringObj (data->data, safe_strlen (data->data)),
+		      Tcl_NewStringObj (ptr, safe_strlen (ptr)),
 		      TCL_GLOBAL_ONLY);
 #else
-      Tcl_SetVar (Interp, name, data->data, TCL_GLOBAL_ONLY);
+      Tcl_SetVar (Interp, tn, ptr, TCL_GLOBAL_ONLY);
 #endif
-      Tcl_TraceVar (Interp, (char *)name, TCL_TRACE_WRITES | TCL_TRACE_UNSETS,
+      Tcl_TraceVar (Interp, tn,
+		    TCL_TRACE_READS | TCL_TRACE_WRITES | TCL_TRACE_UNSETS,
 		    &_trace_str, (ClientData)data);
   }
-  dprint (3, "tcl:registered variable %s.", name);
+  dprint (4, "tcl:registered variable %s/%d. (hope prev instance is deleted)",
+	  tn, (int)s);
   return 1;
 }
 
 BINDING_TYPE_unregister(tcl_unregister_var);
 static int tcl_unregister_var (const char *name)
 {
-  if (Tcl_UnsetVar (Interp, (char *)name, TCL_GLOBAL_ONLY) == TCL_OK)
+  char tn[STRING];
+
+  _tcl_dashtound (tn, name);
+  if (Tcl_UnsetVar (Interp, tn, TCL_GLOBAL_ONLY) == TCL_OK)
     return 1;
-  ERROR ("tcl:unregister variable %s failed: %s", name,
+  ERROR ("tcl:unregister variable %s failed: %s", tn,
+#ifdef HAVE_TCL8X
 	 Tcl_GetStringResult (Interp));
+#else
+	 Interp->result);
+#endif
   return 0;
 }
 
@@ -569,17 +796,38 @@ static int tcl_unregister_func (const char *name)
   if (Tcl_DeleteCommand (Interp, (char *)name) == TCL_OK)
     return 1;
   ERROR ("tcl:unregister function %s failed: %s", name,
+#ifdef HAVE_TCL8X
 	 Tcl_GetStringResult (Interp));
+#else
+	 Interp->result);
+#endif
   return 0;		/* error */
 }
 
 BINDING_TYPE_script(script_tcl);
 static int script_tcl (char *filename)
 {
+  DBG ("tcl:script_tcl:trying %s", filename);
   if (Tcl_EvalFile (Interp, filename) == TCL_OK)
     return 1;				/* success! */
+  if (!strchr (filename, '/'))		/* relative path? try SCRIPTSDIR */
+  {
+    char fn[LONG_STRING];
+
+    Add_Request (I_LOG, "*", F_WARN,
+		 "TCL: file %s not found, trying default path.", filename);
+    strfcpy (fn, SCRIPTSDIR "/", sizeof(fn));
+    strfcat (fn, filename, sizeof(fn));
+    DBG ("tcl:script_tcl:trying %s", fn);
+    if (Tcl_EvalFile (Interp, fn) == TCL_OK)
+      return 1;				/* success! */
+  }
   ERROR ("tcl:execution of \"%s\" failed: %s", filename,
+#ifdef HAVE_TCL8X
 	 Tcl_GetStringResult (Interp));
+#else
+	 Interp->result);
+#endif
   return 0;
 }
 
@@ -587,36 +835,30 @@ BINDING_TYPE_dcc(dc_tcl);
 static int dc_tcl (peer_t *from, char *args)
 {
   char *c;
-#ifdef HAVE_ICONV
-  char str[LONG_STRING];
-  size_t ss;
 
-  if (!args)
-    return 0;
-  c = str;
-  ss = Undo_Conversion (TclUTFConv, &c, sizeof(str) - 1, args, strlen(args));
-  c[ss] = 0;				/* terminate the line */
-#else
   if (!(c = args))
     return 0;
-#endif
+#ifdef HAVE_TCL8X
   Tcl_ResetResult (Interp);		/* reset it before run */
+#else
+  Interp->result = NULL;
+#endif
   if (Tcl_Eval (Interp, c) == TCL_OK)	/* success! */
   {
+#ifdef HAVE_TCL8X
     if ((c = Tcl_GetStringResult (Interp)))
-    {
-#ifdef HAVE_ICONV
-      args = c;
-      c = str;
-      ss = Do_Conversion (TclUTFConv, &c, sizeof(str) - 1, args, strlen(args));
-      c[ss] = 0;
+#else
+    if ((c = Interp->result))
 #endif
-      New_Request (from->iface, 0, "TCL: result was: %s", c);
-    }
+      New_Request (from->iface, 0, _("TCL: result was: %s"), c);
   }
   else
-    New_Request (from->iface, 0, "TCL: execution failed: %s",
+    New_Request (from->iface, 0, _("TCL: execution failed: %s"),
+#ifdef HAVE_TCL8X
 		Tcl_GetStringResult (Interp));
+#else
+		Interp->result);
+#endif
   return 1;
 }
 
@@ -625,7 +867,10 @@ static int _tcl_interface (char *fname, int argc, char *argv[])
 {
   int i;
 #ifdef HAVE_TCLEVALOBJV
-  Tcl_Obj *objv[8];			/* I hope it's enough */
+  Tcl_Obj *objv[10];			/* I hope it's enough */
+#else
+  char cmd[40];				/* the same */
+  char vn[8];
 #endif
 
   if (!fname || !*fname)		/* nothing to do */
@@ -635,48 +880,46 @@ static int _tcl_interface (char *fname, int argc, char *argv[])
     BindResult = "tcl";
     return 1;
   }
-  Tcl_ResetResult (Interp);
+#ifdef HAVE_TCL8X
+  Tcl_ResetResult (Interp);		/* reset it before run */
+#else
+  Interp->result = NULL;
+#endif
   /* now it's time to call TCL */
+  if (argc > 8)
+    argc = 8;
 #ifdef HAVE_TCLEVALOBJV
   objv[0] = Tcl_NewStringObj (fname, safe_strlen (fname));
-  if (argc > 6)
-    argc = 6;
   for (i = 0; i < argc; i++)
     objv[i + 1] = Tcl_NewStringObj (argv[i], safe_strlen (argv[i]));
   i = Tcl_EvalObjv (Interp, argc + 1, objv, TCL_GLOBAL_ONLY);
 #else
-  switch (argc)
+  cmd[0] = 0;
+  for (i = 0; i < argc; i++)
   {
-    case 0:
-      i = Tcl_VarEval (Interp, fname, NULL);
-      break;
-    case 1:
-      i = Tcl_VarEval (Interp, fname, argv[0], NULL);
-      break;
-    case 2:
-      i = Tcl_VarEval (Interp, fname, argv[0], argv[1], NULL);
-      break;
-    case 3:
-      i = Tcl_VarEval (Interp, fname, argv[0], argv[1], argv[2], NULL);
-      break;
-    case 4:
-      i = Tcl_VarEval (Interp, fname, argv[0], argv[1], argv[2], argv[3], NULL);
-      break;
-    case 5:
-      i = Tcl_VarEval (Interp, fname, argv[0], argv[1], argv[2], argv[3], argv[4], NULL);
-      break;
-    default:
-      i = Tcl_VarEval (Interp, fname, argv[0], argv[1], argv[2], argv[3], argv[4], argv[5], NULL);
-      break;
+    snprintf (vn, sizeof(vn), " $_a%d", i);
+    Tcl_SetVar (Interp, &vn[2], argv[i], TCL_GLOBAL_ONLY);	/* _aX */
+    strfcat (cmd, vn, sizeof(cmd));				/* " $_aX" */
   }
+  i = Tcl_VarEval (Interp, fname, cmd, NULL);
 #endif
   if (i == TCL_OK)			/* setting BindResult if all went OK */
   {
-    BindResult = Tcl_GetStringResult (Interp);
-    return 1;
+#ifdef HAVE_TCL8X
+    BindResult = (char *)Tcl_GetStringResult (Interp);
+#else
+    BindResult = Interp->result;
+#endif
+    if (BindResult && ((i = atoi (BindResult)) == 1 || i == -1))
+      return i;				/* 1 and -1 are valid values */
+    return 0;
   }
-  Add_Request (I_LOG, "*", F_WARN, "TCL: executing %s returned error: %s",
+  Add_Request (I_LOG, "*", F_WARN, _("TCL: executing %s returned error: %s"),
+#ifdef HAVE_TCL8X
 	       fname, Tcl_GetStringResult (Interp));
+#else
+	       fname, Interp->result);
+#endif
   return 0;
 }
 
@@ -689,6 +932,7 @@ static int _tcl_interface (char *fname, int argc, char *argv[])
 static int module_signal (INTERFACE *iface, ifsig_t sig)
 {
   tcl_bindtable *tbt;
+  tcl_timer *tt, *ptt;
 
   switch (sig)
   {
@@ -702,18 +946,57 @@ static int module_signal (INTERFACE *iface, ifsig_t sig)
       Delete_Binding ("unregister", &tcl_unregister_var, NULL);
       Delete_Binding ("unfunction", &tcl_unregister_func, NULL);
       Delete_Binding ("dcc", &dc_tcl, NULL);
+      while ((tt = Tcl_Last_Timer))	/* remove all timers */
+      {
+	Tcl_Last_Timer = tt->prev;
+	KillTimer (tt->tid);
+	FREE (&tt->cmd);
+	free_tcl_timer (tt);
+      }
       Tcl_DeleteInterp (Interp);	/* stop interpreter */
       Interp = NULL;
-#ifdef HAVE_ICONV
-      Free_Conversion (TclUTFConv);
-#endif
+      UnregisterVariable ("tcl-default-network");
+      UnregisterVariable ("tcl-max-timer");
       Delete_Help ("tcl");
       iface->ift |= I_DIED;		/* done */
+      break;
     case S_REG:
       Add_Request (I_INIT, "*", F_REPORT, "module tcl");
+      RegisterString ("tcl-default-network", tcl_default_network,
+		      sizeof(tcl_default_network), 0);
+      RegisterInteger ("tcl-max-timer", &tcl_max_timer);
+      break;
+    case S_LOCAL:
+      for (tt = Tcl_Last_Timer, ptt = NULL; tt; tt = (ptt = tt)->prev)
+	if (tt->when <= Time)		/* finds first matched */
+	  break;
+	else
+	  DBG ("tcl:timer:skipping timer %lu.", (unsigned long)tt->when);
+      if (!tt)
+      {
+	ERROR ("tcl:timer:not found timer for %lu.", (unsigned long)Time);
+	break;
+      }
+      dprint (4, "tcl:timer:found sheduled (%u->%u) cmd: %s",
+	      (unsigned int)tt->when, (unsigned int)Time, tt->cmd);
+      if (Tcl_Eval (Interp, tt->cmd) != TCL_OK)
+      {
+#ifdef HAVE_TCL8X
+	ERROR ("TCL timer: execution failed: %s", Tcl_GetStringResult (Interp));
+#else
+	ERROR ("TCL timer: execution failed: %s", Interp->result);
+#endif
+      }
+      FREE (&tt->cmd);
+      if (tt == Tcl_Last_Timer)
+	Tcl_Last_Timer = tt->prev;
+      else
+	ptt->prev = tt->prev;
+      free_tcl_timer (tt);
       break;
     case S_REPORT:
       // TODO!
+      break;
     default: ;
   }
   return 0;
@@ -738,9 +1021,6 @@ Function ModuleInit (char *args)
     Add_Request (I_LOG, "*", F_BOOT, "Warning: charset %s unknown for Tcl",
 		 Charset);
 #endif
-#ifdef HAVE_ICONV
-  TclUTFConv = Get_Conversion ("UTF-8");
-#endif
   /* add interface from TCL to core */
   _tcl_add_own_procs();
   /* add interface from core to TCL */
@@ -752,6 +1032,9 @@ Function ModuleInit (char *args)
   Add_Binding ("dcc", "tcl", U_OWNER, U_NONE, &dc_tcl, NULL);
   /* register core and modules data into TCL */
   Add_Request (I_MODULE | I_INIT, "*", F_SIGNAL, t);
+  RegisterString ("tcl-default-network", tcl_default_network,
+		  sizeof(tcl_default_network), 0);
+  RegisterInteger ("tcl-max-timer", &tcl_max_timer);
   Add_Help ("tcl");
   return ((Function)&module_signal);
 }

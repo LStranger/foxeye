@@ -120,7 +120,22 @@ static int binding_lua (char *name, int argc, char *argv[])
 BINDING_TYPE_script (script_lua);
 static int script_lua (char *filename)
 {
-  if (!luaL_loadfile (Lua, filename) && !lua_pcall (Lua, 0, 0, 0))
+  int i;
+
+  i = luaL_loadfile (Lua, filename);
+  if (i == LUA_ERRFILE &&		/* file not found */
+      !strchr (filename, '/'))		/* and relative path? try SCRIPTSDIR */
+  {
+    char fn[LONG_STRING];
+
+    lua_pop (Lua, 1);			/* delete error message from stack */
+    Add_Request (I_LOG, "*", F_WARN,
+		 "Lua: file %s not found, trying default path.", filename);
+    strfcpy (fn, SCRIPTSDIR "/", sizeof(fn));
+    strfcat (fn, filename, sizeof(fn));
+    i = luaL_loadfile (Lua, fn);
+  }
+  if (i == 0 && !lua_pcall (Lua, 0, 0, 0))
   {
     if (lua_gettop (Lua))
     {
@@ -742,7 +757,7 @@ Function ModuleInit (char *args)
   lua_pop (Lua, 3);	/* remove three above from stack */
   lua_getglobal (Lua, "foxeye"); /* T */
   if (luaL_newmetatable (Lua, "fe_vars")) /* T m */
-    // set all methods here
+    /* set all methods here */
     luaL_register (Lua, NULL, luatable_vars); /* T m -- nothing to stack! */
   lua_setmetatable (Lua, 1); /* T */
   lua_pushstring (Lua, "__data"); /* T d */

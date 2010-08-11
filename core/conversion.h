@@ -28,7 +28,6 @@ conversion_t *Clone_Conversion (conversion_t *);
 const char *Conversion_Charset (conversion_t *);
 size_t Do_Conversion (conversion_t *, char **, size_t, const char *, size_t);
 size_t Undo_Conversion (conversion_t *, char **, size_t, const char *, size_t);
-//size_t unistrcut (char *, size_t, int);
 
 #endif
 #endif

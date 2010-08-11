@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2006  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -58,8 +58,8 @@ ScriptFunction (FE_module)
   char sig[sizeof(ifsig_t)];
   Function func;
   iftype_t (*mods) (INTERFACE *, ifsig_t);
-#ifndef STATIC
   char path[STRING];
+#ifndef STATIC
   void *modh;
 #else
   register int i;
@@ -120,10 +120,10 @@ ScriptFunction (FE_module)
       BT_Moddel = Add_Bindtable ("unload", B_MASK);
     do
     {
-      if ((bind = Check_Bindtable (BT_Moddel, name, -1, -1, bind)))
+      if ((bind = Check_Bindtable (BT_Moddel, name, U_ALL, U_ANYCH, bind)))
       {
 	if (bind->name)
-	  RunBinding (bind, NULL, name, NULL, -1, NULL);
+	  RunBinding (bind, NULL, name, NULL, NULL, -1, NULL);
 	else
 	  bind->func (name);
       }
@@ -195,10 +195,10 @@ ScriptFunction (FE_module)
       BT_Modadd = Add_Bindtable ("load", B_MASK);
     do
     {
-      if ((bind = Check_Bindtable (BT_Modadd, name, -1, -1, bind)))
+      if ((bind = Check_Bindtable (BT_Modadd, name, U_ALL, U_ANYCH, bind)))
       {
 	if (bind->name)
-	  RunBinding (bind, NULL, name, NULL, -1, NULL);
+	  RunBinding (bind, NULL, name, NULL, NULL, -1, NULL);
 	else
 	  bind->func (name, args);
       }

@@ -52,7 +52,9 @@ AC_ARG_ENABLE(debug,
 if test "$enableval" = "no"; then
   AC_SET_NODEBUG
 else
+  dnl disable optimization and add extra warnings if it's debug compilation
   test "$CFLAGS" = "" || CFLAGS=`echo "$CFLAGS" | sed 's/[-]O2/-O0/g'`
+  AC_CHECK_LDFLAG(fe_cv_add_wextra, -Wextra, CFLAGS)
 fi
 ],
 AC_SET_NODEBUG)
@@ -129,6 +131,15 @@ else
 	AC_MSG_WARN(Your iconv doesn't support Cyrillic translit!)
     else
 	AC_MSG_RESULT(yes)
-fi
+    fi
+    AC_MSG_CHECKING(for order of //ignore and //translit)
+    if test x`echo proba|iconv -t ascii//translit//ignore 2>/dev/null` != xproba; then
+	AC_MSG_RESULT(//ignore//translit)
+	AC_DEFINE([TRANSLIT_IGNORE], ["//IGNORE//TRANSLIT"],
+		    [Order ot //ignore and //translit on iconv setup])
+    else
+	AC_MSG_RESULT(//translit//ignore)
+	AC_DEFINE([TRANSLIT_IGNORE], ["//TRANSLIT//IGNORE"])
+    fi
 fi
 ])

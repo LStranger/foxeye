@@ -89,7 +89,7 @@ int Add_Help (const char *name)
   size_t s = 0;				/* compiler lies about uninitialized */
 
   /* check if file.$locale exist */
-  if (locale && *locale)
+  if (*locale)
   {
     snprintf (path, sizeof(path), "%s/%s.%s", HELPDIR, name, locale);
     fp = fopen (path, "r");
@@ -128,7 +128,7 @@ int Add_Help (const char *name)
   for (hf = &HFiles; *hf; hf = &(*hf)->next);	/* find the tail */
   *hf = safe_calloc (1, sizeof(HELPFILE));
   (*hf)->hfile = safe_malloc ((size_t)size + 1);
-  if (fread ((*hf)->hfile, 1, (size_t)size, fp) != size)
+  if (fread ((*hf)->hfile, 1, (size_t)size, fp) != (size_t)size)
   {
     Add_Request (I_LOG, "*", F_BOOT, "Help file reading error!");
     fclose (fp);
@@ -217,7 +217,7 @@ int Add_Help (const char *name)
 	(*ht)->key = key;
 	if (Insert_Key (&((HELPGR *)(*ht)->helpgr)->tree, key, *ht, 1))
 	  WARNING ("help: duplicate entry \"%s\" for set \"%s\" ignored", key,
-		   key, gr == key ? "" : gr);
+		   gr == key ? "" : gr);
 	else
 	  dprint (2, "help: adding entry for \"%s\" to set \"%s\"", key,
 		  gr == key ? "" : gr);
@@ -424,10 +424,6 @@ int Get_Help (const char *fst, const char *sec, INTERFACE *iface, userflag gf,
   }
   if (table && !strcmp (topic, "*"))		/* if topic is ...{*} */
     return _help_all_topics (h, iface, gf, cf, table, mode);
-//  lct = safe_malloc (strlen(topic) + 1);
-//  unistrlower (lct, topic, strlen(topic) + 1);
-//  t = Find_Key (h->tree, lct);
-//  FREE (&lct);
   t = Find_Key (h->tree, topic);
   if (!t)
   {

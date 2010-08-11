@@ -6,7 +6,7 @@ module tcl
 :%*
 :
 :This module provides support for scripts that are written in Tcl programming\
- language. It is mostly compatible with eggdrop but read %^tcl.ref%^ manual\
+ language. It is mostly compatible with eggdrop but read %mtcl.ref%n manual\
  first, please.
 
 tcl
@@ -16,3 +16,15 @@ tcl
  shows interpreter message about error. If %_text%_ was executed without\
  errors and evaluated chunk has returned any result that is convertible to\
  string value then shows this value.
+
+set tcl-default-network
+:%* <lname>
+:
+:Defines network name which eggdrop procedures will use for every command.
+ Default: "irc".
+
+set tcl-max-timer
+:%* <seconds>
+:
+:Defines maximum time for sheduled execution by Tcl command %Rutimer%n.
+ Default: 172800.

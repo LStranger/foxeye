@@ -30,7 +30,9 @@ INTERFACE *Find_Iface (iftype_t, const char *);
 INTERFACE *Set_Iface (INTERFACE *);
 int Unset_Iface (void);
 int Rename_Iface (INTERFACE *, const char *);
+    __attribute__ ((format(printf, 4, 5)))
 void Add_Request (iftype_t, const char *, flag_t, const char *, ...);
+    __attribute__ ((format(printf, 3, 4)))
 void New_Request (INTERFACE *, flag_t, const char *, ...);
 int Relay_Request (iftype_t, char *, REQUEST *);
 int Get_Request (void);
@@ -41,7 +43,7 @@ binding_t *Check_Bindtable (bindtable_t *, const char *, userflag, userflag, \
 binding_t *Add_Binding (const char *, const char *, userflag, userflag, \
 			Function, const char *);
 void Delete_Binding (const char *, Function, const char *);
-int RunBinding (binding_t *, const uchar *, char *, char *, int, char *);
+int RunBinding (binding_t *, const uchar *, char *, char *, char *, int, char *);
 int Lname_IsOn (const char *, const char *, const char **);
 modeflag Inspect_Client (const char *, const char *, const char **, \
 			 const char **, time_t *, short *);
@@ -58,7 +60,8 @@ int Change_Lname (char *, char *);
  * Internal functions
  */
 
-void dprint (int, const char *, ...);		/* dispatch.c */
+    __attribute__ ((format(printf, 2, 3)))	/* dispatch.c */
+void dprint (int, const char *, ...);
 void bot_shutdown (char *, int);
 int dispatcher (INTERFACE *);
 
@@ -80,6 +83,8 @@ void printl (char *, size_t, char *, size_t, char *, const char *, \
 /* buf, size, fmt, linelen, nick, uhost, lname, chann, ip, port, idle, params */
 unsigned short make_hash (const char *);
 
+void foxeye_setlocale (void);
+size_t unistrcut (char *, size_t, int);
 size_t unistrlower (char *, const char *, size_t);
 char *strfcpy (char *, const char *, size_t);
 
@@ -110,8 +115,6 @@ void StrTrim (char *);
 #define FREE(x) safe_free((void **)x)
 
 #define ISSPACE(c) isspace((uchar)c)
-
-//#define strfcpy(A,B,C) strncpy(A,B,C), *(A+(C)-1)=0
 
 /* helper function for modules and UIs */
 #define CheckVersion if (strncmp(VERSION,_VERSION,4)) return NULL

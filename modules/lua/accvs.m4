@@ -10,11 +10,15 @@ dnl    AC_HAVE_LIBRARY(lua)
 	])
     else
 	AC_MSG_CHECKING(for lua config)
-	for lualibver in lua lua51 lua50 lua-5.1 lua-5.0; do
+	for lualibver in lua lua51 lua50 lua5.1 lua5.0 lua-5.1 lua-5.0; do
 	    if ! test $LUA_INCLUDES; then
 		if $ac_have_pkgconfig --exists $lualibver 2>/dev/null; then
 		    LUA_INCLUDES="`$ac_have_pkgconfig --cflags $lualibver`"
-		    LUA_LIBS="`$ac_have_pkgconfig --libs $lualibver`"
+		    if test "$fe_cv_static" = yes; then
+			LUA_LIBS="`$ac_have_pkgconfig --libs --static $lualibver`"
+		    else
+			LUA_LIBS="`$ac_have_pkgconfig --libs $lualibver`"
+		    fi
 		    AC_MSG_RESULT($lualibver: $LUA_LIBS)
 		    AC_DEFINE(HAVE_LIBLUA)
 		fi
@@ -35,7 +39,20 @@ if test -n "${LUA_INCLUDES}"; then
 fi
 
 if test -n "${LUA_LIBS}"; then
-    MODLIBS="MODLIBS_lua=\"${LUA_LIBS}\" ${MODLIBS}"
+    if test "$fe_cv_static" = yes; then
+	STATICLIBS="${LUA_LIBS} ${STATICLIBS}"
+    else
+	dnl add rpath in any case
+	case "$LUA_LIBS" in
+	    *-L*)
+		fe_cv_lua_rpath=" `echo $LUA_LIBS | sed -e 's/.*-L/-R/' -e 's/ .*$//'`"
+		;;
+	    *)
+		fe_cv_lua_rpath=
+		;;
+	esac
+	MODLIBS="MODLIBS_lua=\"${LUA_LIBS}${fe_cv_lua_rpath}\" ${MODLIBS}"
+    fi
 fi
 
 if test x$ac_cv_lib_lua != xno; then

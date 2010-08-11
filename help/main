@@ -36,6 +36,13 @@ charset
  on the dcc/telnet session. Note: it's not shared with other bots in the\
  botnet.
 
+chcharset
+:%* <lname> [charset name]
+:
+:Sets or displays charset name which is used to recode all messages coming\
+ to or from sessions for some client or service. This setting affects only\
+ local connects and are not shared with other bots in the botnet.
+
 chat
 :%* [channel]
 :
@@ -255,7 +262,7 @@ chattr
  
  Full list of supported flags:
    a  has service access
-   k  access to service or mode changes denied
+   k  access to service or mode changes denied %^(G)%^
    v  can ask to give speak permissions (voice flag) %^(G)%^
    h  is service halfop (i.e. has restricted privileges)
    o  is service operator (i.e. privileged)

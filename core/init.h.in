@@ -81,12 +81,14 @@ void Status_Encodings (INTERFACE *);		/* the same (conversion.c) */
 # define Bool(a,b,c)		bool b = c;
 # define Integer(a,b,c)		long int b = c;
 # define String(a,b,c)		char b[STRING] = c;
+# define Const(a,b)
 # define Flood(a,b,c)
 # define Format(a,b)		char format_##a[FORMATMAX] = b;
 #else /* __INIT_C */
 # define Bool(a,b,c)		extern bool b;
 # define Integer(a,b,c)		extern long int b;
 # define String(a,b,c)		extern char b[STRING];
+# define Const(a,b)
 # define Flood(a,b,c)
 # define Format(a,b)		extern char format_##a[FORMATMAX];
 #endif /* __INIT_C */
@@ -96,11 +98,13 @@ void Status_Encodings (INTERFACE *);		/* the same (conversion.c) */
 # define Bool(a,b,c)		RegisterBoolean (a, &b);
 # define Integer(a,b,c)		RegisterInteger (a, &b);
 # define String(a,b,c)		RegisterString (a, b, STRING, 0);
+# define Const(a,b)		RegisterString (a, b, strlen(b), 1);
 # define Flood(a,b,c)		_add_fl (#a, b, c);
 # define Format(a,b)		_add_fmt (#a, format_##a);
 #endif /* ifndef INIT_C */
 #ifndef DISPATCHER_C
 String  ("nick", Nick, "")			/* default nick and botnetnick */
+Const   ("version", "@VERSION@")
 String  ("my-hostname", hostname, "")
 String  ("locale", locale, "")
 String	("charset", Charset, "")		/* used by couple of modules */
@@ -123,6 +127,7 @@ Command ("module", FE_module, "name")		/* must be last :) */
 #undef Bool
 #undef Integer
 #undef String
+#undef Const
 #undef Flood
 #undef Format
 #endif /* ifndef DISPATCHER_C */

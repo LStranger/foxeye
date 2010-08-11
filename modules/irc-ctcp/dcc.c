@@ -517,12 +517,12 @@ static void _dcc_send_handler (int res, void *input_data)
     /* TODO: check if filepath is default */
     do
     {
-      if ((bind = Check_Bindtable (BT_Dnload, dcc->lname, uf, -1, bind)))
+      if ((bind = Check_Bindtable (BT_Dnload, dcc->lname, uf, U_ANYCH, bind)))
       {
 	if (bind->name)
 	{
 	  if (sfn) *sfn = 0;
-	  RunBinding (bind, NULL, dcc->lname, dcc->buf, -1,
+	  RunBinding (bind, NULL, dcc->lname, dcc->buf, NULL, -1,
 		      sfn ? dcc->filename : ".");
 	  if (sfn) *sfn = '/';
 	}
@@ -805,7 +805,7 @@ static int dcc_send (INTERFACE *w, uchar *who, char *lname, char *cw)
   dcc_priv_t *dcc;
   unsigned long ip;
   unsigned long long size = 0;
-  long name_max, path_max;
+  unsigned long name_max, path_max;
   unsigned short port = 0;
   char *c;
   struct stat st;
@@ -828,7 +828,7 @@ static int dcc_send (INTERFACE *w, uchar *who, char *lname, char *cw)
     return 0;
   }
   else if (ircdcc_get_maxsize >= 0 &&
-	   (unsigned long)size > (unsigned long)ircdcc_get_maxsize)
+	   (unsigned long)size > (uint32_t)ircdcc_get_maxsize)
   {
     free_dcc (dcc);
     Add_Request (I_LOG, "*", F_WARN, "invalid DCC: size %llu is out of range",
@@ -879,7 +879,7 @@ static int dcc_send (INTERFACE *w, uchar *who, char *lname, char *cw)
   strfcat (path, c, path_max + 1);
   if (stat (path, &st) < 0)		/* no such file */
     dcc->ptr = 0;
-  else if (st.st_size == size)		/* full size already */
+  else if (st.st_size == (off_t)size)	/* full size already */
   {
     free_dcc (dcc);
     Add_Request (I_LOG, "*", F_WARN,
@@ -887,17 +887,17 @@ static int dcc_send (INTERFACE *w, uchar *who, char *lname, char *cw)
 		 path);
     return 0;
   }
-  else if (st.st_size > size)		/* it's smaller than our! */
+  else if (st.st_size > (off_t)size)	/* it's smaller than our! */
   {
     Add_Request (I_LOG, "*", F_WARN,
 		 "DCC: offered size %llu of \"%s\" is below of current, restarting file.",
 		 size, path);
     dcc->ptr = dcc->size;
   }
-  else if (st.st_size < ircdcc_resume_min)	/* small file, redownload */
+  else if (st.st_size < ircdcc_resume_min) /* small file, redownload */
     dcc->ptr = 0;
   else
-    dcc->ptr = st.st_size;
+    dcc->ptr = (uint32_t)st.st_size;
   dcc->filename = safe_strdup (path);
   return _dcc_start (dcc, ip, port, w, who, lname);
 }
@@ -1105,18 +1105,18 @@ Function ModuleInit (char *args)
   CheckVersion;
   /* add own bindtables */
   BT_IDcc = Add_Bindtable ("ctcp-dcc", B_MATCHCASE);
-  Add_Binding ("ctcp-dcc", "CHAT *", 0, 0, &dcc_chat, NULL);
-  Add_Binding ("ctcp-dcc", "SEND *", 0, 0, &dcc_send, NULL);
-  Add_Binding ("ctcp-dcc", "ACCEPT *", 0, 0, &dcc_accept, NULL);
+  Add_Binding ("ctcp-dcc", "CHAT", 0, 0, &dcc_chat, NULL);
+  Add_Binding ("ctcp-dcc", "SEND", 0, 0, &dcc_send, NULL);
+  Add_Binding ("ctcp-dcc", "ACCEPT", 0, 0, &dcc_accept, NULL);
   BT_Login = Add_Bindtable ("login", B_UNDEF); /* foreign! */
   BT_Dnload = Add_Bindtable ("dcc-got", B_MASK);
   BT_Cctcp = Add_Bindtable ("irc-priv-msg-ctcp", B_UNDEF); /* foreign! */
-  Add_Binding ("irc-priv-msg-ctcp", "DCC *", 0, 0, &ctcp_dcc, NULL);
+  Add_Binding ("irc-priv-msg-ctcp", "DCC", 0, 0, &ctcp_dcc, NULL);
   Add_Binding ("irc-priv-msg-ctcp", "CHAT", U_NONE, U_ACCESS, &ctcp_chat, NULL);
   Add_Binding ("irc-priv-msg-ctcp", "TIME", 0, 0, &ctcp_time, NULL);
-  Add_Binding ("irc-priv-msg-ctcp", "PING *", 0, 0, &ctcp_ping, NULL);
+  Add_Binding ("irc-priv-msg-ctcp", "PING", 0, 0, &ctcp_ping, NULL);
   Add_Binding ("irc-priv-msg-ctcp", "VERSION", 0, 0, &ctcp_version, NULL);
-  Add_Binding ("irc-priv-msg-ctcp", "HELP*", 0, 0, &ctcp_help, NULL);
+  Add_Binding ("irc-priv-msg-ctcp", "HELP", 0, 0, &ctcp_help, NULL);
   // register our variables
   Add_Help ("irc-ctcp");
   _irc_ctcp_register();

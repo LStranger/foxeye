@@ -140,9 +140,10 @@ See your help for further details. Examples:
     To make a personalized ban you can add flag 'k' to some user's record
 for the channel or network with command 'chattr' and remove that flag to
 remove personalized ban. If module "modes" was loaded then you can change
-ban reason for the user with command 'banreason'. Example:
+ban reason for the user with command 'comment'. Example:
 
 .chattr badguy +k @mircnet
+.comment badguy you are not welcomed here!
 
     Also you can ban someone without adding them into Listfile using a
 command 'kickban'. See your help for details.
@@ -154,7 +155,8 @@ command 'kickban'. See your help for details.
 is even no plans to make any support for nonamed exempts and invites. Use
 command 'chattr' to add exempts and invites to existing users. There is
 even advantage about this, you can more easily add and remove hostmasks and
-targets from a client record (so exempt or invite). Examples:
+targets from a client record (so exempt or invite). And also there is no
+global exempts but network wide exempts stll available. Examples:
 
 .chattr LightGirl +a @mircnet
 .chattr otherbot +e #watch@mircnet

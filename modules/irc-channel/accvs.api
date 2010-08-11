@@ -27,7 +27,7 @@ KICK  "iirrcc--kkiicckk"       MASK
     Used when someone _l_n_a_m_e with nick!user@host _o_p kicks nick _w_h_o from
     channel _c_h_a_n with reason _c_o_m_m_e_n_t.
       Matching: "channel who" string.  (userflags are ignored)
-      Script args: op user@host Lname "channel who" comment
+      Script args: op user@host Lname channel who comment
 
 TOPC  "iirrcc--ttooppiicc"      MASK
   (int) void func(unsigned char *_w_h_o, const char *_l_n_a_m_e,

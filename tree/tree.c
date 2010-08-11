@@ -15,7 +15,7 @@
  *     along with this program; if not, write to the Free Software
  *     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * Tree-hash database functions.
+ * Tree-hash database indexing library.
  */ 
 
 #include "tree.h"
@@ -450,7 +450,7 @@ void *Find_Key (NODE *node, const char *key)
 LEAF *Next_Leaf (NODE *node, LEAF *leaf, char **key)
 {
   register NODE *cur = node;
-  size_t i;
+  ssize_t i;
 
   if (cur == NULL)
     return NULL;

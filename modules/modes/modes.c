@@ -86,24 +86,27 @@ static int dc_chban (peer_t *from, char *args)
   if (u)				/* release lock, we need only LID */
   {
     id = Get_LID (u);
+    reason = safe_strdup (Get_Field (u, "info", NULL));
     Unlock_Clientrecord (u);
   }
+  else
+    reason = NULL;
+  DBG ("modes:dc_chban:found id=%d flags=0x%x", (int)id, (int)uf);
   /* check if found record is exactly the unnamed mode */
   tmp = Add_Iface (I_TEMP, NULL, NULL, &_modes_receiver, NULL);
   if (!u || _modes_bancmp (id, mask, tmp))
   {
     tmp->ift = I_DIED;
+    FREE (&reason);
     New_Request (from->iface, 0, "There is no such ban: %s", mask);
     return 0;
   }
   /* check subfields and get old expiration time and reason */
-  reason = NULL;
   expire = Time + modes_default_ban_time;
   if (uf & U_DENY)			/* it's global ban now */
   {
+    lname = "";
     u = Lock_byLID (id);
-    reason = safe_strdup (Get_Field (u, "", &expire));
-    Unlock_Clientrecord (u);
   }
   else					/* it's not global ban */
   {
@@ -112,25 +115,37 @@ static int dc_chban (peer_t *from, char *args)
     Set_Iface (tmp);
     while (Get_Request());
     Unset_Iface();
-    for (lname = _modes_got; *lname; )
+    tgt = c = NULL;			/* reset for later */
+    u = NULL;
+    for (lname = _modes_got; *lname; )	/* find a valid record */
     {
-      c = gettoken (lname, NULL);
-      if ((u = Lock_Clientrecord (lname)))
+      c = gettoken (lname, &tgt);
+      if (strrchr (lname, '@') == lname)
+      {
+	if ((u = Lock_Clientrecord (&lname[1])))
+	  break;
+      }
+      else if ((u = Lock_Clientrecord (lname)))
 	break;
       lname = c;
+      if (*c)
+	*tgt = ' ';			/* restore space now */
     }
     if (u)
     {
       Unlock_Clientrecord (u);
       u = Lock_byLID (id);
       uf = Get_Flags (u, lname);
-      if (uf & U_DENY)			/* is it a ban at least? */
-	reason = safe_strdup (Get_Field (u, lname, &expire));
-      Unlock_Clientrecord (u);
-      DBG ("modes:dc_chban:tried %s, got flags 0x%x", lname, (int)uf);
-      if (!(uf & U_DENY))
+      if (!(uf & U_DENY))		/* is it a ban at least? */
+      {
+	Unlock_Clientrecord (u);
 	u = NULL;			/* not change ignores/etc with this */
+      }
+      DBG ("modes:dc_chban:tried %s, got flags 0x%x", lname, (int)uf);
     }
+    if (tgt && *c)			/* if we removed a space */
+      *tgt = ' ';
+    DBG ("modes:dc_chban: restored list=%s", _modes_got);
   }
   tmp->ift = I_DIED;			/* we don't need it anymore */
   if (!u)
@@ -139,13 +154,16 @@ static int dc_chban (peer_t *from, char *args)
     New_Request (from->iface, 0, "There is no such ban: %s", mask);
     return 0;
   }
+  Get_Field (u, lname, &expire);	/* get expiration time */
+  Unlock_Clientrecord (u);
   /* OK, ban found, now check for new target(s) */
-  args = NextWord_Unquoted (mask, args, sizeof(mask));
-  if (!strcmp (mask, "*"))		/* target is ALL, mark by empty */
+  args = NextWord_Unquoted (&mask[1], args, sizeof(mask)-1);
+  if (!strcmp (&mask[1], "*"))		/* target is ALL, mark by empty */
     mask[0] = 0;
   else					/* checking Listfile for target(s) */
   {
-    for (lname = tgt = mask; *lname; )
+    mask[0] = ' ';
+    for (lname = tgt = &mask[1]; *lname; )
     {
       if ((c = strchr (lname, ',')))
 	*c = 0;
@@ -163,7 +181,7 @@ static int dc_chban (peer_t *from, char *args)
       }
       if (c)
       {
-	if (tgt != mask)		/* don't put space at beginning */
+	if (tgt != &mask[1])		/* don't put space at beginning */
 	  *tgt++ = ' ';			/* rewrite comma with space */
 	lname = &c[1];			/* skip comma */
       }
@@ -171,7 +189,7 @@ static int dc_chban (peer_t *from, char *args)
 	break;
     }
     *tgt = 0;				/* terminate new list, just in case */
-    if (mask[0] == 0)			/* no valid target found */
+    if (mask[1] == 0)			/* no valid target found */
     {
       FREE (&reason);
       New_Request (from->iface, 0, "Invalid target list: %s", mask);
@@ -206,6 +224,8 @@ static int dc_chban (peer_t *from, char *args)
   for (lname = _modes_got; *lname; )
   {
     c = gettoken (lname, NULL);
+    if (strrchr (lname, '@') == lname)
+      lname++;
     Set_Flags (u, lname, 0);
     lname = c;
   }
@@ -214,25 +234,32 @@ static int dc_chban (peer_t *from, char *args)
   Set_Field (u, "info", *args ? args : reason, 0);
   if (!*mask)				/* global ban */
   {
-    Set_Flags (u, NULL, uf);		/* set global flags */
     Set_Field (u, "", "*", expire);	/* set it just to keep subrecord */
+    Set_Flags (u, NULL, uf);		/* set global flags */
   }
   else
   {
     Set_Field (u, "", NULL, 0);		/* remove subfield if there is any */
-    for (lname = mask; *lname; )
+    Set_Flags (u, NULL, 0);		/* reset global flags */
+    for (lname = mask; lname; )
     {
-      tgt = gettoken (lname, &c);
-      Set_Flags (u, lname, uf);
-      Set_Field (u, lname, NULL, expire);
-      if (*tgt)
-	*c = ' ';
+      if ((tgt = strchr (&lname[1], ' ')))
+	*tgt = 0;
+      Set_Flags (u, &lname[1], uf);
+      if (strchr (&lname[1], '@'))	/* channels */
+	Set_Field (u, &lname[1], NULL, expire);
+      else				/* networks */
+      {
+	*lname = '@';
+	Set_Field (u, lname, NULL, expire);
+      }
+      *lname++ = ' ';
       lname = tgt;
     }
   }
   Unlock_Clientrecord (u);
   FREE (&reason);
-  New_Request (from->iface, 0, "chban: updated to %s%s", mask,
+  New_Request (from->iface, 0, "chban: updated to%s%s", mask,
 	       sticky ? " (sticky)" : NULL);
   return 1;
 }
@@ -288,12 +315,13 @@ static int dc_pban (peer_t *from, char *args)
     tmp->ift = I_DIED;			/* we don't need it anymore */
   }
   /* check target(s) now */
-  args = NextWord_Unquoted (target, args, sizeof(target));
-  if (!strcmp (target, "*"))		/* target is ALL, mark by empty */
+  args = NextWord_Unquoted (&target[1], args, sizeof(target)-1);
+  if (!strcmp (&target[1], "*"))	/* target is ALL, mark by empty */
     target[0] = 0;
   else					/* checking Listfile for target(s) */
   {
-    for (lname = tgt = target; *lname; )
+    target[0] = ' ';
+    for (lname = tgt = &target[1]; *lname; )
     {
       if ((c = strchr (lname, ',')))
 	*c = 0;
@@ -309,21 +337,23 @@ static int dc_pban (peer_t *from, char *args)
 	  tgt += strlen(lname);
 	}
       }
+      else
+	DBG ("modes:dc_pban:invalid target %s", lname);
       if (c)
       {
-	if (tgt != target)		/* don't put space at beginning */
+	if (tgt != &target[1])		/* don't put space at beginning */
 	  *tgt++ = ' ';			/* rewrite comma with space */
 	lname = &c[1];			/* skip comma */
       }
       else
 	break;
     }
-    *tgt = 0;				/* terminate new list, just in case */
-    if (target[0] == 0)			/* no valid target found */
+    if (tgt == &target[1])		/* no valid target found */
     {
       New_Request (from->iface, 0, "Invalid target list: %s", target);
       return 0;
     }
+    *tgt = 0;				/* terminate new list, just in case */
   }
   /* since new target is OK, next we parse rest and update time/reason */
   if (*args == '+')			/* time description found */
@@ -362,25 +392,31 @@ static int dc_pban (peer_t *from, char *args)
   uf = U_DENY | (sticky ? U_NOAUTH : 0);
   if (*args)
     Set_Field (u, "info", args, 0);	/* call only if reason was set */
-  if (!*mask)				/* global ban */
+  if (!*target)				/* global ban */
   {
     Set_Flags (u, NULL, uf);		/* set global flags */
     Set_Field (u, "", "*", expire);	/* set it just to keep subrecord */
   }
   else
   {
-    for (lname = mask; *lname; )
+    for (lname = target; lname; )
     {
-      tgt = gettoken (lname, &c);
-      Set_Flags (u, lname, uf);
-      Set_Field (u, lname, NULL, expire);
-      if (*tgt)
-	*c = ' ';
+      if ((tgt = strchr (&lname[1], ' ')))
+	*tgt = 0;
+      Set_Flags (u, &lname[1], uf);
+      if (strchr (&lname[1], '@'))	/* channels */
+	Set_Field (u, &lname[1], NULL, expire);
+      else				/* networks */
+      {
+	*lname = '@';
+	Set_Field (u, lname, NULL, expire);
+      }
+      *lname++ = ' ';
       lname = tgt;
     }
   }
   Unlock_Clientrecord (u);
-  New_Request (from->iface, 0, "+ban: added %s%s", mask,
+  New_Request (from->iface, 0, "+ban: added%s%s", mask,
 	       sticky ? " (sticky)" : NULL);
   return 1;
 }
@@ -401,6 +437,7 @@ static int dc_mban (peer_t *from, char *args)
   if ((u = Find_Clientrecord (args, &lname, NULL, NULL)) && lname)
   {
     Unlock_Clientrecord (u);		/* it's not unnamed ban! */
+    DBG ("modes:dc_mban:found lname %s instead of ban", lname);
     u = NULL;
   }
   if (u)				/* release lock, we need only LID */
@@ -408,6 +445,8 @@ static int dc_mban (peer_t *from, char *args)
     id = Get_LID (u);
     Unlock_Clientrecord (u);
   }
+  else
+    DBG ("modes:dc_mban:mask %s wasn't found", args);
   /* check if found record is exactly the unnamed mode */
   tmp = Add_Iface (I_TEMP, NULL, NULL, &_modes_receiver, NULL);
   if (!u || _modes_bancmp (id, args, tmp))
@@ -419,14 +458,14 @@ static int dc_mban (peer_t *from, char *args)
   tmp->ift = I_DIED;			/* we don't need it anymore */
   /* remove mask from it and record will be deleted on next save */
   u = Lock_byLID (id);
-  Delete_Mask (u, "*");			/* clear every host ;) */
+  Delete_Mask (u, "*@*");		/* clear every host ;) */
   Unlock_Clientrecord (u);
   return 1;
 }
 
-		/* .banreason lname [text] */
-BINDING_TYPE_dcc (dc_banreason);
-static int dc_banreason (peer_t *who, char *args)
+		/* .comment lname [text] */
+BINDING_TYPE_dcc (dc_comment);
+static int dc_comment (peer_t *who, char *args)
 {
   char *c, *r;
   clrec_t *u;
@@ -595,12 +634,15 @@ static int dc_greeting (peer_t *who, char *args)
 
 
 /*
- * this function must receive signals:
+ * this function receives signals:
+ *  S_REG - register everything,
  *  S_TERMINATE - unload module,
  *  S_REPORT - out state info to log.
  */
 static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
 {
+  INTERFACE *tmp;
+
   if (sig == S_REG)
   {
     Add_Request (I_INIT, "*", F_REPORT, "module modes");
@@ -608,7 +650,9 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
   }
   else if (sig == S_REPORT)
   {
-    // TODO .......
+    tmp = Set_Iface (iface);
+    New_Request (tmp, F_REPORT, "Module modes: working.");
+    Unset_Iface();
   }
   else if (sig == S_TERMINATE)
   {
@@ -617,7 +661,7 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
     Delete_Binding ("dcc", &dc_pban, NULL);
     Delete_Binding ("dcc", &dc_mban, NULL);
     Delete_Binding ("dcc", &dc_chban, NULL);
-    Delete_Binding ("dcc", &dc_banreason, NULL);
+    Delete_Binding ("dcc", &dc_comment, NULL);
     UnregisterVariable ("default-ban-time");
   }
   return 0;
@@ -625,19 +669,18 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
 
 /*
  * this function called when you load a module.
- * Input: parameters string args.
+ * Input: parameters string args, no parameters currently.
  * Returns: address of signals receiver function, NULL if not loaded.
  */
 Function ModuleInit (char *args)
 {
   CheckVersion;
-//  return NULL; // while in progress
   Add_Help ("modes");
   Add_Binding ("dcc", "greeting", 0, 0, &dc_greeting, NULL);
   Add_Binding ("dcc", "+ban", U_OP, U_OP, &dc_pban, NULL);
   Add_Binding ("dcc", "-ban", U_OP, U_OP, &dc_mban, NULL);
   Add_Binding ("dcc", "chban", U_OP, U_OP, &dc_chban, NULL);
-  Add_Binding ("dcc", "banreason", U_OP, U_OP, &dc_banreason, NULL);
+  Add_Binding ("dcc", "comment", U_OP, U_OP, &dc_comment, NULL);
   RegisterInteger ("default-ban-time", &modes_default_ban_time);
   return ((Function)&module_signal);
 }

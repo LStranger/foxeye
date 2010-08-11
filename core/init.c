@@ -24,7 +24,6 @@
 
 #include <signal.h>
 #include <ctype.h>
-#include <locale.h>
 
 #include "direct.h"
 #include "tree.h"
@@ -390,18 +389,16 @@ binding_t *Check_Bindtable (bindtable_t *bt, const char *str, userflag gf,
   if (bt->type == B_MASK || bt->type == B_UNIQMASK)
     cc = 0;
   else if (bt->type == B_MATCHCASE)
-  {
-    cc = 0;
     i++;
-  }
   for (; *s && *s != cc && ch < &buff[sizeof(buff)-1]; ch++, s++)
   {
     if (i)
       *ch = *s;
-    else
+    else	/* todo: make it to be utf-capable */
       *ch = tolower (*s);
   }
   *ch = 0;
+//  DBG ("init.c:Check_Bindtable:checking for \"%s\":0x%08x/0x%08x", buff, (int)gf, (int)cf);
   if (bt->type == B_UNIQ)
   {
     b = Find_Key (bt->list.tree, buff);
@@ -480,7 +477,7 @@ binding_t *Check_Bindtable (bindtable_t *bt, const char *str, userflag gf,
 	case B_MASK:
 	case B_UNIQMASK:
 	case B_MATCHCASE:
-	  i = match (b->key, str) + 1;
+	  i = match (b->key, buff) + 1;
 	  break;
 	case B_UNDEF: case B_UNIQ: ; /* never reached but make compiler happy */
       }
@@ -513,18 +510,20 @@ const char *Bindtable_Name (bindtable_t *bt)
 /* define functions & variables first */
 #include "init.h"
 
-int RunBinding (binding_t *bind, const uchar *uh, char *fst, char *sec, int num,
-		char *last)
+int RunBinding (binding_t *bind, const uchar *uh, char *fst, char *sec,
+		char *third, int num, char *last)
 {
+  char *tt0;
   char uhost[STRING] = "";
   char n[16];
-  char *a[6];
+  char *a[8];
   register int i = 0;
 
   if (!bind || !bind->name || !bind->func)	/* checking... */
     return 0;
-  dprint (4, "init:RunBinding: %s %s %s %s %d %s", bind->name,
-	  NONULL((char *)uh), NONULL(fst), NONULL(sec), num, NONULL(last));
+  dprint (4, "init:RunBinding: %s\t%s\t%s\t%s\t%s\t%d\t%s", bind->name,
+	  NONULL((char *)uh), NONULL(fst), NONULL(sec), NONULL(third), num,
+	  last ? last : "(null)");
   BindResult = NULL;				/* clear result */
   if (uh)
   {
@@ -540,16 +539,29 @@ int RunBinding (binding_t *bind, const uchar *uh, char *fst, char *sec, int num,
     a[i++] = fst;
   if (sec && *sec)				/* NONULL */
     a[i++] = sec;
+  if (third)
+  {
+    char *tt2 = gettoken (third, &tt0);
+    a[i++] = third;
+    if (*tt2)					/* third is "X Y" */
+      a[i++] = tt2;
+    else					/* third is one word */
+      tt0 = NULL;
+  }
+  else
+    tt0 = NULL;
   if (num >= 0)					/* below 0 are ignored */
   {
     snprintf (n, sizeof(n), "%d", num);
     a[i++] = n;
   }
-  if (last && *last)				/* NONULL */
+  if (last/* && *last*/)				/* NONULL */
     a[i++] = last;
   i = bind->func (bind->name, i, a);		/* int func(char *,int,char **) */
   if (i)					/* return 0 or 1 only */
     i = 1;
+  if (tt0)
+    *tt0 = ' ';					/* restore third */
   return i;
 }
 
@@ -876,39 +888,46 @@ typedef struct
 {
   void *data;
   size_t len;		/* 0 - int, 1 - bool, 2 - constant, >2 - string */
-  char name[1] __attribute__ ((packed));
-} VarData __attribute__ ((packed));
+  char name[1];
+} __attribute__ ((packed)) VarData;
 
 static void _lock_var (const char *name)
 {
   VarData *data;
+  binding_t *bind = NULL;
 
-  data = Find_Key (VTree, name);
-  if (data)
-    data->len = 2;				/* set read-only */
+  if (!(data = Find_Key (VTree, name)))
+    return;
+  data->len = 2;				/* set read-only */
+  while ((bind = Check_Bindtable (BT_Reg, "*", U_ALL, U_ANYCH, bind)))
+    if (!bind->name)				/* internal only */
+      bind->func (name, data->data, 2);		/* call bindings */
 }
 
-static int _add_var (const char *name, void *var, size_t s)
+static int _add_var (const char *name, void *var, size_t *s)
 {
   VarData *data;
 
-  if (O_GENERATECONF != FALSE && s != 2)	/* if not read-only */
-    Get_ConfigFromConsole (name, var, s);
-  if (ConfigFileFile && s != 2)
-    _add_var_to_config (name, var, s);
+  if (O_GENERATECONF != FALSE && *s != 2)	/* if not read-only */
+    Get_ConfigFromConsole (name, var, *s);
+  if (ConfigFileFile && *s != 2)
+    _add_var_to_config (name, var, *s);
   if ((data = Find_Key (VTree, name)))		/* already registered */
   {
     if (data->data != var)
-      WARNING ("init: another data already binded to variable \"%s\"", name);
+      WARNING ("init: another data is already bound to variable \"%s\"", name);
     else
+    {
       dprint (4, "init:_add_var: retry on %s", name);
+      *s = data->len;				/* a little trick for locked */
+    }
     return 0;
   }
-  dprint (2, "init:_add_var: %s %u", name, (unsigned int)s);
+  dprint (2, "init:_add_var: %s %u", name, (unsigned int)*s);
   data = calloc (1, sizeof(VarData) + safe_strlen(name));
   data->data = var;
   strcpy (data->name, name);
-  data->len = s;
+  data->len = *s;
   if (!Insert_Key (&VTree, data->name, data, 1))	/* try unique name */
     return 1;
   free (data);
@@ -923,8 +942,8 @@ static int _register_var (const char *name, void *var, size_t s)
 
   if (!name || !var)
     return 0;
-  i = _add_var (name, var, s);			/* static binding ;) */
-  while ((bind = Check_Bindtable (BT_Reg, "*", -1, -1, bind)))
+  i = _add_var (name, var, &s);			/* static binding ;) */
+  while ((bind = Check_Bindtable (BT_Reg, "*", U_ALL, U_ANYCH, bind)))
     if (!bind->name)				/* internal only */
       i |= bind->func (name, var, s);
   return i;
@@ -966,7 +985,7 @@ int UnregisterVariable (const char *name)
   binding_t *bind = NULL;
 
   i = _del_var (name);				/* static binding ;) */
-  while ((bind = Check_Bindtable (BT_Unreg, "*", -1, -1, bind)))
+  while ((bind = Check_Bindtable (BT_Unreg, "*", U_ALL, U_ANYCH, bind)))
     if (!bind->name)				/* internal only */
       i |= bind->func (name);
   return i;
@@ -979,8 +998,8 @@ typedef struct
     short ld[2];		/* flood */
     char *mt;			/* format */
   } f;
-  char name[1] __attribute__ ((packed));
-} VarData2 __attribute__ ((packed));
+  char name[1];
+} __attribute__ ((packed)) VarData2;
 
 static int
 _add_fn (const char *name, int (*func)(const char *), const char *msg)
@@ -1035,7 +1054,7 @@ RegisterFunction (const char *name, int (*func)(const char *), const char *msg)
   if (!name || !func)
     return 0;
   i = _add_fn (name, func, msg);		/* static binding ;) */
-  while ((bind = Check_Bindtable (BT_Fn, "*", -1, -1, bind)))
+  while ((bind = Check_Bindtable (BT_Fn, "*", U_ALL, U_ANYCH, bind)))
     if (!bind->name)				/* internal only */
       i |= bind->func (name, func);
   return i;
@@ -1047,7 +1066,7 @@ int UnregisterFunction (const char *name)
   binding_t *bind = NULL;
 
   i = _del_fn (name);				/* static binding ;) */
-  while ((bind = Check_Bindtable (BT_Unfn, "*", -1, -1, bind)))
+  while ((bind = Check_Bindtable (BT_Unfn, "*", U_ALL, U_ANYCH, bind)))
     if (!bind->name)				/* internal only */
       i |= bind->func (name);
   return i;
@@ -1315,7 +1334,7 @@ static ScriptFunction (cfg_script)	/* to config - keep and store */
 
   if (!args || !*args)
     return 0;
-  bind = Check_Bindtable (BT_Script, args, -1, -1, NULL);
+  bind = Check_Bindtable (BT_Script, args, U_ALL, U_ANYCH, NULL);
   if (!bind || bind->name || !bind->func (args))	/* internal only */
     return 0;
   ss = safe_strlen (_Scripts_List) + strlen (args) + 9;	/* "\nscript $args" */
@@ -1758,7 +1777,6 @@ BINDING_TYPE_dcc (dc_restart);
 static int dc_restart (peer_t *dcc, char *args)
 {
   New_Request (dcc->iface, 0, "Restarting...");
-//  init();
   kill (getpid(), SIGINT);
   return -1;	/* don't log it :) */ /* TODO: decide if we have to log it */
 }
@@ -1804,7 +1822,7 @@ int Lname_IsOn (const char *pub, const char *lname, const char **name)
   {
     if ((Get_Flags (netw, NULL) & U_SPECIAL) &&
 	(nt = Get_Field (netw, ".logout", NULL))) /* get network type */
-      bind = Check_Bindtable (BT_IsOn, nt, -1, -1, NULL);
+      bind = Check_Bindtable (BT_IsOn, nt, U_ALL, U_ANYCH, NULL);
     else
       bind = NULL;
     Unlock_Clientrecord (netw);
@@ -1833,7 +1851,7 @@ modeflag Inspect_Client (const char *pub, const char *name, const char **lname,
   {
     if ((Get_Flags (netw, NULL) & U_SPECIAL) &&
 	(nt = Get_Field (netw, ".logout", NULL))) /* get network type */
-      bind = Check_Bindtable (BT_Inspect, nt, -1, -1, NULL);
+      bind = Check_Bindtable (BT_Inspect, nt, U_ALL, U_ANYCH, NULL);
     else
       bind = NULL;
     Unlock_Clientrecord (netw);
@@ -2076,14 +2094,7 @@ void init (void)
     dc_die (NULL, "terminated: no interfaces to work");
   if (O_TESTCONF != FALSE)
     dc_die (NULL, NULL);
-  snprintf (new_path, sizeof(new_path), "%s.%s", locale, Charset);
-  DBG ("trying set locale to %s", new_path);
-  if (setlocale (LC_ALL, new_path) == NULL)
-    ERROR ("init: failed to set locale to %s, reverting to default!", new_path);
-#ifdef ENABLE_NLS
-  bindtextdomain (PACKAGE, LOCALEDIR);
-  textdomain (PACKAGE);
-#endif
+  foxeye_setlocale();
   Add_Binding ("dcc", "binds", U_MASTER, U_MASTER, (Function)&dc_binds, NULL);
   Add_Binding ("dcc", "module", U_OWNER, U_NONE, (Function)&dc_module, NULL);
   Add_Binding ("dcc", "status", U_MASTER, U_NONE, (Function)&dc_status, NULL);

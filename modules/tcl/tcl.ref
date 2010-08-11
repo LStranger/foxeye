@@ -9,10 +9,14 @@ equivalent eggdrop's attributes and opposite is true as well - attributes
 are no global flags for attributes 'a', 'd', 'g', 'k', 'l', 'o', 'v', and
 'y' but there are network-wide instead. Second difference is about nicks
 and channel names - due to multi-network nature of FoxEye all nicks and
-channel names are presented in arguments in form TheNick@Network not just
-TheNick. Third difference is matching model, in FoxEye matching works in
-shell style so there can be some 'strange' chars in masks such as '[' for
-example.
+channel names are presented in arguments of foxeye's module procedures in
+form TheNick@Network not just TheNick but eggdrop's procedures have them
+just TheNick. Third difference is matching model, in FoxEye patterns are
+in shell style so there can be some 'strange' chars in masks such as '['
+for example.
+    Note about encoding in Tcl. In last versions of Tcl it's strict about
+UTF-8 as internal encoding so it's advisable to change 'charset' variable
+in config file to UTF-8 if you run into any problems in your Tcl scripts.
 
  bind <type> <attr> key|mask [cmd]
     - binds some procedure <cmd> to match some key/mask and some flags
@@ -26,14 +30,32 @@ example.
  send_request <to> <type> <mode> text
     - sends text to some client or service by it's type (one of 'd' for
       direct service, 'n' for network, 'c' for client, 'l' for logfile)
-      and some mode (which is logging flag(s) or 0 for normal message).
+      and some mode (which is logging flag(s) or 0 for normal message);
+ ison <service> [lname]
+    - checks if lname is currently online on service and returns his/her
+      nick; if lname is omitted then returns own nick on the service; if
+      lname isn't found then returns empty string;
+ check_flags <lname> <attr> [service]
+    - checks if lname has <attr> flags in their record for service (or
+      global and default network if parameter service is omitted) and
+      returns 1 if they are matched or 0 if not;
+ utimer <time> <cmd>
+    - shedules to execute Tcl command <cmd> after <time> seconds are
+      passed; returns timer identifier;
+ killutimer <timerid>
+    - aborts sheduled execution of some Tcl command by it <timerid>.
 
-Also any function that is registered by any module (and also 'port' and
-'module' from the core) is present in interpreter as
+    Also any function that is registered by any module (and also 'port'
+and 'module' from the core) is presented in interpreter as
 
  function param
  
 i.e. as function that gets one parameter. It returns one numeric result.
 See documentation on functions for more details.
+
+    Any variable that is registered by any module (including module "tcl"
+as well and the core) is presented in interpreter with name where any
+dashes are replaced with underscores (i.e. "tcl-default-network" variable
+can be read in TCL scripts as $tcl_default_network).
  
 	Copyright (C) 2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>

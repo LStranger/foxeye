@@ -1,13 +1,7 @@
-alltools.tcl
-    toolbox.tcl, toolkit.tcl and a few more tools all in 1 file
-    toolbox.tcl
-        cmwagner's collection of handy proc's
-    toolkit.tcl
-        a few useful proc's that may be required by other Tcl scripts
-
 eggcompat.tcl
-    add-on to Tcl module for more compatibility with eggdrop
+    add-on to Tcl module for more compatibility with eggdrop set of
+    commands.
 
 ques4.tcl
     makes web pages of who's on each channel, updated periodically
-    (requires toolkit.tcl and eggcompat.tcl)
+    (requires eggcompat.tcl)

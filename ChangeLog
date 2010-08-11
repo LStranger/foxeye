@@ -8,13 +8,88 @@ TODO:
 	* core/journal.c: to implement transactions journal (for botnet, etc.).
 	* modules/irc*: to do something with ident masks?
 	* *: to get rid of #if 0/1 ... #endif blocks, // comments, and TODO notes.
+	* debian: to debianize it when comes to beta release.
+	* modules/irc/irc.c: to recheck reaction on KILL on us.
 
---- [0.7a] * to test all *
+--- [0.8a] * to test all *
+Wed Aug 11 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* configure: added -Wextra when --enable-debug.
+	* tree/tree.c, core/dispatcher.c, core/help.c, core/lib.c, core/main.c, core/sheduler.c, core/list.c, core/connchain.c, modules/autolog/autolog.c, modules/irc-cgannel/*.c, modules/irc-ctcp/dcc.c, modules/irc/*.c, modules/logs/logs.c:
+	  fixed signedness in few places.
+	* core/lib.c: fixed matching in simple_match().
+	* core/main.c: fixed incorrect usage formatting.
+	* core/conversion.c, core/wtmp.c, core/list.c, core/lib.c, core/dispatcher.c, core/help.c, modules/tcl/modtcl.c, modules/irc/irc.c:
+	  fixed format parameters.
+
+Fri Jul 30 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/lib.c, core/main.c, core/init.c, core/protos.h, doc/modules.api:
+	  implemented new functions unistrcut() and foxeye_setlocale().
+	* modules/irc-channel/irc-channel.c: undone asking USERHOST on own JOIN.
+	* core/foxeye.h, help/main: changed U_DENY to be global flag (bug#50).
+	* core/init.c: fixed wrong parsing for mask bindtable types.
+	* modules/modes/modes.c, modules/modes/modes.help: renamed command
+	  'banreason' to 'comment'.
+	* modules/irc/irc.c: added handler of case when network record was
+	  deleted from Listfile.
+	* modules/irc-channel/irc-channel.c, modules/tcl/modtcl.c: tuned some
+	  debug messages.
+	* modules/tcl/modtcl.c: added handling of TCL_TRACE_READS.
+
+Wed Jul 28 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/tcl/accvs.m4: refined for newer tcl, made better diagnostics.
+	* modules/irc/msgs.c: fixed wrong number of parameters for scripts on
+	  CTCP/CTCR.
+	* modules/irc/msgs.c: forced deleting trash from lines to send.
+	* modules/irc-channel/irc-channel.c: fixed wrong Lname on reports.
+	* core/list.c: fixed returned flags string on U_NONE.
+	* core/modules.c, core/Makefile, configure: fixed static compiling.
+	* core/list.c, doc/modules.api: increased max field size made by
+	  Grow_Field() to 1024.
+	* core/direct.c, core/init.c, core/list.c, core/protos.h, core/modules.c, core/sheduler.c, doc/modules.api, modules/irc-ctcp/dcc.c, modules/irc/*.c, modules/irc-channel/*.c:
+	  added one more parameter for RunBinding().
+	* core/init.c, doc/modules.api, modules/irc-ctcp/dcc.c: changed mode
+	  B_MATCHCASE to be case-sensitive first word to mask matching.
+
+--- [0.7a] ok
+Tue Jul 27 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/init.c: modified RunBinding(): last parameter can be empty
+	  string not NULL.
+	* core/init.*: fixed propagation of read-only core variables.
+	* core/list.c: fixed Get_Fieldlist() so it makes difference between
+	  special names and custom fields.
+	* core/list.c: fixed coredump on loading unnamed records.
+	* modules/irc/msgs.c: fixed ignorance of public commands.
+	* modules/irc-channel/irc-channel.c: fixed coredump on netsplit on
+	  not fully syncronized channel.
+	* modules/modes/modes.c: fixed incorrect ban target parsing.
+	* modules/tcl/modtcl.c: fixed feeding of array to TCL interpreter.
+	* modules/tcl/modtcl.c: fixed return value from Tcl bindings.
+
+Mon Jul 26 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/direct.c: corrected wrong length from 'b' filted receiver.
+	* core/direct.*, doc/modules.api: removed Chat_Join() and Chat_Part();
+	  forced I_DCCALIAS be only direct session chat type.
+	* modules/modes/modes.c: fixed '+ban' target parsing.
+	* modules/tcl/modtcl.c: fixed arguments for calling Tcl_VarEval().
+	* modules/tcl/modtcl.c: added deleting previous value of variable on
+	  re-registering since it was just memory leak.
+
+Sun Jul 25 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/direct.c: corrected interface name for "chat off" clients.
+	* modules/Makefile.mods, modules/lua/lua.c, modules/tcl/modtcl.c: added
+	  SCRIPTSDIR definition (default scripts path) for compiler.
+
+Sat Jul 24 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/direct.c, help/main: added direct session command 'chcharset'.
+
 Fri Jul 23 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
-	* core/init.c, core/foxeye.h: added new channel flag U_EQUAL.
+	* core/init.c, core/foxeye.h, core/connchain.c, core/direct.c, core/list.c, core/modules.c, core/sheduler.c, modules/irc/irc.c, modules/irc/msgs.c, modules/irc-channel/irc-channel.c, modules/irc-ctcp/dcc.c:
+	  added new channel flag U_EQUAL and due to this macros U_ALL, U_ANYCH.
 	* modules/tcl/*: added module, very raw though.
 	* core/lib.c, core/list.*, core/protos.h, doc/modules.api, modules/irc-channel/irc-channel.c:
-	  implemented functions make_hash() and Get_Clienthash().
+	  implemented functions make_hash() and Get_Hosthash().
+	* acinclude.m4, core/conversion.c: added test for variable order of
+	  parameters of iconv.
 
 Thu Jul 22 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/list.c: fixed incorect calls of match().

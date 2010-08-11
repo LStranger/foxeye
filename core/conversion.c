@@ -108,7 +108,7 @@ conversion_t *Get_Conversion (const char *charset)
   if (inuse)				/* do text replace */
     snprintf (name, sizeof(name), "%s//TRANSLIT", Conversions->charset);
   else					/* do ignore unknown */
-    snprintf (name, sizeof(name), "%s//IGNORE//TRANSLIT", Conversions->charset);
+    snprintf (name, sizeof(name), "%s" TRANSLIT_IGNORE, Conversions->charset);
   if ((conv->cdin = iconv_open (name, charset)) == (iconv_t)(-1))
   {
     Free_Conversion (conv);		/* charset doesn't exist */
@@ -117,7 +117,7 @@ conversion_t *Get_Conversion (const char *charset)
   if (inuse)				/* do text replace */
     snprintf (name, sizeof(name), "%s//TRANSLIT", charset);
   else					/* do ignore unknown */
-    snprintf (name, sizeof(name), "%s//IGNORE//TRANSLIT", charset);
+    snprintf (name, sizeof(name), "%s" TRANSLIT_IGNORE, charset);
   conv->cdout = iconv_open (name, Conversions->charset);
   return conv;
 }
@@ -217,7 +217,7 @@ static size_t _do_conversion (iconv_t cd, char **buf, size_t sz,
     sl--;
   }					/* do ignore unknown */
   else if (iconv (cd, (ICONV_CONST char **)&line, &sl, &sbuf, &sz) == (size_t)(-1))
-    WARNING ("conversion error: %lu chars left unconverted", sz); /* error */
+    WARNING ("conversion error: %u chars left unconverted", sz); /* error */
   return (sbuf - *buf);
 }
 
@@ -246,7 +246,7 @@ void Status_Encodings (INTERFACE *iface)
     /* there is no reason to count Conversions->inuse since it will be 0
        after few interfaces are deleted (see dispatcher.c) */
     New_Request (iface, 0, "Conversions: internal charset %s.",
-		 conv->charset, conv->inuse);
+		 conv->charset);
     while ((conv = conv->next))
       New_Request (iface, 0, "Conversions: charset %s, used %d times.",
 		   conv->charset, conv->inuse);
@@ -255,62 +255,3 @@ void Status_Encodings (INTERFACE *iface)
 }
 
 #endif
-
-#if 0
-
-/* for internal use only, see macros below */
-size_t conv_do_conv(iconv_t, const unsigned char *, size_t, unsigned char **, size_t);
-
-/* public functions */
-conversion_t *conv_get_conversion(const char *);
-void conv_free_conversion(conversion_t *);
-conversion_t *conv_set_internal(conversion_t **old, const char *);
-#define conv_inherit(parent,new) new=parent, parent->inuse++
-#define conv_charset(conv) conv->charset
-#define conv_do_in(conv,in,insize,out,outsize) conv_do_conv(conv->cdin,in,insize,out,outsize)
-#define conv_do_out(conv,in,insize,out,outsize) conv_do_conv(conv->cdout,in,insize,out,outsize)
-
-/* helpers for transcoding fields to new internal codepage from old one (conv)
- * note: new codepage must be different from current!
- * note2: buff size for conv_transcode() must not be less of field size! */
-#define conv_transcode(conv,field,buff) do { unsigned char *c=buff;\
-					    size_t sz=conv_do_conv(conv->cdin,field,strlen(field),&c,sizeof(field)-1);\
-					    memcpy(field,buff,sz);\
-					    field[sz]=0;} while(0)
-#define conv_transcode_realloc(conv,field,buff) do { unsigned char *c=buff;\
-						    size_t sz=conv_do_conv(conv->cdin,field,strlen(field),&c,sizeof(buff));\
-						    MyFree(field);\
-						    field=MyMalloc(sz+1);\
-						    memcpy(field,buff,sz);\
-						    field[sz]=0;} while(0)
-
-size_t unistrcut (char *line, size_t len, size_t maxchars)
-{
-  if (len > maxchars)		/* may be it's already ok */
-  {
-#if !defined(CLIENT_COMPILE) && defined(RUSNET_IRCD)
-    if (UseUnicode > 0)		/* let's count chars - works for utf* only!!! */
-    {
-      register size_t chsize = 0;
-      register unsigned char *ch = (unsigned char *)line;
-      register unsigned char *chmax = &line[len];
-
-      while (chsize < maxchars && ch < chmax && *ch) /* go for max chars */
-      {
-	if ((*ch++ & 0xc0) == 0xc0)		/* first multibyte octet */
-	  while ((*ch & 0xc0) == 0x80 && ch < chmax)
-	    ch++;				/* skip rest of octets */
-	chsize++;				/* char counted */
-      }
-      len = (char *)ch - line;
-    }
-    else			/* 8bit encoding - just let's cut it */
-#endif
-      len = maxchars;
-  }
-  if (line && line[len])
-    line[len] = '\0';
-  return len;
-}
-
-#endif /* 0 */

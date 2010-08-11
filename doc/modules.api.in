@@ -381,6 +381,13 @@ Common API:
     Returns size of filled _d_s_t.
 	Reenterability: async-safe
 
+  size_t uunniissttrrccuutt (char *_l_i_n_e, size_t _l_e_n, int _m_a_x_c_h_a_r_s);
+    Truncates null-terminated string in _l_i_n_e to contain not more than _l_e_n
+    bytes (including termination byte) and also not more than _m_a_x_c_h_a_r_s
+    characters (without null char) according to current locale. Returns
+    size of truncated string in bytes (without null char).
+	Reenterability: async-safe
+
   void *ssaaffee__ccaalllloocc (size_t _n_m_e_m_b, size_t _s_i_z_e);
   void *ssaaffee__mmaalllloocc (size_t _s_i_z_e);
   char *ssaaffee__ssttrrdduupp (const char *_s);
@@ -478,14 +485,14 @@ Bindings API:
 	Reenterability: none
 
   int RRuunnBBiinnddiinngg (binding_t *_b_i_n_d, const unsigned char *_u_s_e_r, char *_f_s_t,
-		  char *_s_e_c, int _n_u_m, char *_l_a_s_t);
+		  char *_s_e_c, char *_t_h_i_r_d, int _n_u_m, char *_l_a_s_t);
     Runs script binding defined at _b_i_n_d, with arguments, formed from _u_s_e_r
-    (nick!user@host) as "nick user@host", strings _f_s_t, _s_e_c, _l_a_s_t and
-    integer _n_u_m in order as its presents in function call. Values of
-    NULL must be ignored, negative _n_u_m too. Return value is 0 if
-    binding returns so, 1 otherwise. If interpreter returned error,
-    RunBinding() returns 0, and a string result that represents an
-    error message must be logged.
+    splitted to nick and user@host, strings _f_s_t, _s_e_c, _t_h_i_r_d, _l_a_s_t, and
+    integer _n_u_m in order they are in function call. Any NULL values or
+    empty strings _f_s_t and _s_e_c are ignored, negative _n_u_m too. If value of
+    _t_h_i_r_d consists of space separated words then it will be splitted to
+    first word and rest. Returns 0 if binding returned 0 or 1 otherwise.
+    Any error processing should be done by interpreter module.
 	Reenterability: none  (binding must be since Check_Bindtable)
 
   int LLnnaammee__IIssOOnn (const char *_p_u_b_l_i_c, const char *_l_n_a_m_e,
@@ -626,7 +633,7 @@ Listfile API:
     _f_n is a special name then that name must be prepended with '@' to
     make difference with custom field names and custom field name should
     not have '@' nor ':' within it. Note3: maximum length of resulted
-    field is limited to 256 bytes.
+    field is limited to 1024 bytes.
 	Reenterability: none
 
   int AAdddd__MMaasskk (clrec_t *_u_s_e_r, const unsigned char *_m_a_s_k);
@@ -696,7 +703,8 @@ Listfile API:
     special or composite names) or user-defined field names will be sent.
     Returns number of requests that were sent. Note: it's required that
     you get your _i_d right away so there will be no chance to get another
-    record on that LID.
+    record on that LID. Note2: special names in reports will be prepended
+    with '@' to make difference with custom field names.
 	Reenterability: none
   
   userflag MMaattcchh__CClliieenntt (char *_h_o_s_t, char *_i_d_e_n_t, const char *_n_a_m_e);
@@ -713,7 +721,7 @@ Listfile API:
     pointer. Note: buffer must be long enough to get the string.
 	Reenterability: async-safe
 
-  unsigned short Get_Clienthash (const char *lname, const char *host);
+  unsigned short Get_Hosthash (const char *lname, const char *host);
 	Reenterability: none
 
 Wtmp API:
@@ -967,22 +975,9 @@ Direct client's connections API:
 --------------------------------
 #include "direct.h"
 
-  void CChhaatt__JJooiinn (INTERFACE *_i_f_a_c_e, userflag _u_f, int _b_o_t_c_h, int _i_d_x,
-		   char *host);
-    Runs bindtable "chat-join" when user that has interface _i_f_a_c_e and
-    flags _u_f and is connected from some _h_o_s_t via socket _i_d_x joins botnet
-    channel _b_o_t_c_h. Returns nothing.
-	Reenterability: none
-
-  void CChhaatt__PPaarrtt (INTERFACE *_i_f_a_c_e, int _b_o_t_c_h, int _i_d_x, char *_q_m_s_g);
-    Runs bindtable "chat-part" when user that has interface _i_f_a_c_e and is
-    connected via socket _i_d_x parts botnet channel _b_o_t_c_h with quit message
-    _q_m_s_g. Returns nothing.
-	Reenterability: none
-
   void DDcccc__PPaarrssee (peer_t *_s, char *_n_a_m_e, char *_c_m_d, userflag _g_f,
 		  userflag _c_f, int _i_d_x, int _b_o_t_c_h, bindtable_t *_s_s_b_t,
-		  char *_s_e_r_v_i_c_e)
+		  char *_s_e_r_v_i_c_e, INTERFACE *_s_r_c);
     Parses text line _c_m_d that came from session _s. If first char of _c_m_d
     is not period ('.') then sends text line to botnet channel _b_o_t_c_h.
     Else if there is service specific bindtable _s_s_b_t (for _s_e_r_v_i_c_e) then
@@ -991,7 +986,9 @@ Direct client's connections API:
     of the line in bindtable "dcc". If there is appropriate command then
     runs function for it. Does logging if command was successful. Login
     _n_a_m_e, direct access flags _g_f, service access flags _c_f, and socket ID
-    _i_d_x are for client of the session _s. Returns nothing.
+    _i_d_x are for client of the session _s. If _s_r_c isn't NULL then it will
+    be set as source interface before sending the message to botnet.
+    Returns nothing.
 	Reenterability: none
 
   idx_t LLiisstteenn__PPoorrtt (char *_c_l_n, char *_h_o_s_t, unsigned short *_p,
@@ -1135,12 +1132,12 @@ Charset conversions API:
 Calling of bindings:
 --------------------
 Flags:
-  KEYWORD    for keyword (followed by space)
-  MASK       for string wildcards matching
-  MATCHCASE  case-sensitive wildcards matching
-  UNIQ       unique (replacing) binding for keyword
+  KEYWORD    matching of keyword (followed by space) to literal
+  MASK       matching of string to mask
+  MATCHCASE  case-sensitive matching of keyword to mask
+  UNIQ       unique (replacing) binding for matching of keyword to literal
   UCOMPL     the same with completion
-  UNIQMASK   unique (replacing) binding for keymask
+  UNIQMASK   unique (replacing) binding for matching of string to mask
 
 All int func() returns 0 if binding did not executed. If binding
 arguments are correct but no logs needed, func() may return -1. All
@@ -1152,7 +1149,9 @@ Interpreter entrance for bindings:
     the "Script args:" label below and if there is no such label on the
     bindtable then interpreter bindings will be never called even if some
     of them exist). If _f_n_a_m_e is "-" then interpreter should return its
-    name. Note: _a_r_g_c value can be from 0 to 6.
+    name. If binding returns text then that text should go into variable
+    BindResult. In case of error it should put message describing error
+    into log. Note: _a_r_g_c value can be from 0 to 8.
 
 Builted in bindings: since C does not have possibility to have typedef for
   function, only way to have type control is to insert line composited from

@@ -1,3 +1,7 @@
+if test x"$MODLIBS" = x; then
+    MODLIBS=true
+fi
+
 AC_OUTPUT(Makefile \
         doc/Makefile \
         help/Makefile \

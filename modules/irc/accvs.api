@@ -3,8 +3,8 @@
  -------------
 
 RAW   "iirrcc--rraaww"        MATCHCASE
-  int func (INTERFACE *_i_f_a_c_e, char *_s_e_r_v_n_a_m_e, char *_m_e, char *_p_r_e_f_i_x,
-	    int _n, char **_p_a_r_a_m_s, size_t (*_l_c) (char *, const char *, size_t));
+  int func(INTERFACE *_i_f_a_c_e, char *_s_e_r_v_n_a_m_e, char *_m_e, char *_p_r_e_f_i_x,
+	   int _n, char **_p_a_r_a_m_s, size_t (*_l_c) (char *, const char *, size_t));
     Used when we get any message from server _s_e_r_v_n_a_m_e on the network
     _i_f_a_c_e. Optional _p_r_e_f_i_x is message source (see the RFC). Message is
     parsed and binding gets own nick _m_e, number _n of _p_a_r_a_m_s, and server
@@ -14,8 +14,8 @@ RAW   "iirrcc--rraaww"        MATCHCASE
       Script args: network sender command (params)...
 
 -     "iirrcc--ccoonnnneecctteedd"  MASK
-  (int) void func (INTERFACE *_i_f_a_c_e, char *_s_e_r_v_n_a_m_e, char *_n_i_c_k,
-		   size_t (*_l_c) (char *, const char *, size_t));
+  (int) void func(INTERFACE *_i_f_a_c_e, char *_s_e_r_v_n_a_m_e, char *_n_i_c_k,
+		  size_t (*_l_c) (char *, const char *, size_t));
     Used when we are succesfully connected to server _s_e_r_v_n_a_m_e on some
     network _i_f_a_c_e. Binding gets _n_i_c_k that we got and server-specific
     case conversion function _l_c. Note: bindings may be recalled when the
@@ -24,8 +24,8 @@ RAW   "iirrcc--rraaww"        MATCHCASE
       Script args: network servname nick
 
 -     "iirrcc--ddiissccoonnnneecctteedd" MASK
-  (int) void func (INTERFACE *_i_f_a_c_e, char *_s_e_r_v_n_a_m_e, char *_n_i_c_k,
-		   size_t (*_l_c) (char *, const char *, size_t));
+  (int) void func(INTERFACE *_i_f_a_c_e, char *_s_e_r_v_n_a_m_e, char *_n_i_c_k,
+		  size_t (*_l_c) (char *, const char *, size_t));
     Used when we are disconnected from server _s_e_r_v_n_a_m_e on some network
     _i_f_a_c_e. Binding gets _n_i_c_k that we have last and server-specific case
     conversion function _l_c.
@@ -33,8 +33,8 @@ RAW   "iirrcc--rraaww"        MATCHCASE
       Script args: network servname nick
 
 PUBM  "iirrcc--ppuubb--mmssgg--mmaasskk" MASK
-  (int) void func (INTERFACE *_c_l_i_e_n_t, unsigned char *_w_h_o, char *_l_n_a_m_e,
-		   char *_u_n_i_c_k, char *_c_h_a_n, char *_m_s_g);
+  (int) void func(INTERFACE *_c_l_i_e_n_t, unsigned char *_w_h_o, char *_l_n_a_m_e,
+		  char *_u_n_i_c_k, char *_c_h_a_n, char *_m_s_g);
     Used when we got a message _m_s_g that came for IRC channel _c_h_a_n from
     someone _c_l_i_e_n_t with nick!user@host _w_h_o (_u_n_i_c_k is his/her nickname
     that is converted to lower case) and is identified as _l_n_a_m_e. _c_h_a_n is
@@ -42,16 +42,16 @@ PUBM  "iirrcc--ppuubb--mmssgg--mmaasskk" MASK
     "!chan@network" gets short name). Note: matching uses network+global
     flags instead of global ones.
       Matching: "chan msg" string.
-      Script args: nick@net user@host Lname chan msg
+      Script args: nick user@host Lname chan@net msg
 
 -     "iirrcc--ppuubb--nnoottiiccee--mmaasskk" MASK
-  (int) void func (INTERFACE *_c_l_i_e_n_t, unsigned char *_w_h_o, char *_l_n_a_m_e,
-		   char *_u_n_i_c_k, char *_c_h_a_n, char *_m_s_g);
+  (int) void func(INTERFACE *_c_l_i_e_n_t, unsigned char *_w_h_o, char *_l_n_a_m_e,
+		  char *_u_n_i_c_k, char *_c_h_a_n, char *_m_s_g);
     Used the same as above but for notice.
 
 PUB   "iirrcc--ppuubb--mmssgg--ccmmdd" UNIQ
-  int func (INTERFACE *_c_l_i_e_n_t, unsigned char *_w_h_o, char *_l_n_a_m_e,
-	    char *_u_n_i_c_k, char *_c_h_a_n, char *_m_s_g);
+  int func(INTERFACE *_c_l_i_e_n_t, unsigned char *_w_h_o, char *_l_n_a_m_e,
+	   char *_u_n_i_c_k, char *_c_h_a_n, char *_m_s_g);
     Used when we got a message that came for IRC channel _c_h_a_n from
     someone _c_l_i_e_n_t with nick!user@host _w_h_o (_u_n_i_c_k is his/her nickname
     that is converted to lower case) which is identified as _l_n_a_m_e if
@@ -60,42 +60,45 @@ PUB   "iirrcc--ppuubb--mmssgg--ccmmdd" UNIQ
     gets short name) and _m_s_g is arguments string to command. Note:
     matching uses network+global flags instead of global ones.
       Matching: command.
-      Script args: nick@net user@host Lname chan args
+      Script args: nick user@host Lname chan@net args
 
 -     "iirrcc--ppuubb--nnoottiiccee--ccmmdd" UNIQ
-  int func (INTERFACE *_c_l_i_e_n_t, unsigned char *_w_h_o, char *_l_n_a_m_e,
-	    char *_u_n_i_c_k, char *_c_h_a_n, char *_m_s_g);
+  int func(INTERFACE *_c_l_i_e_n_t, unsigned char *_w_h_o, char *_l_n_a_m_e,
+	   char *_u_n_i_c_k, char *_c_h_a_n, char *_m_s_g);
     Used the same as above but for notice.
 
 CTCP  "iirrcc--ppuubb--mmssgg--ccttccpp" MATCHCASE
-  int func (INTERFACE *_c_l_i_e_n_t, unsigned char *_w_h_o, char *_l_n_a_m_e,
-	    char *_u_n_i_c_k, char *_c_h_a_n, char *_m_s_g);
-    Used the same as above but for ctcp.
+  int func(INTERFACE *_c_l_i_e_n_t, unsigned char *_w_h_o, char *_l_n_a_m_e,
+	   char *_u_n_i_c_k, char *_c_h_a_n, char *_m_s_g);
+    Used the same as above but for ctcp and with another script arguments
+    list.
+      Matching: command.
+      Script args: nick user@host Lname chan@net command [args]
 
 CTCR  "iirrcc--ppuubb--nnoottiiccee--ccttccpp" MATCHCASE
-  int func (INTERFACE *_c_l_i_e_n_t, unsigned char *_w_h_o, char *_l_n_a_m_e,
-	    char *_u_n_i_c_k, char *_c_h_a_n, char *_m_s_g);
+  int func(INTERFACE *_c_l_i_e_n_t, unsigned char *_w_h_o, char *_l_n_a_m_e,
+	   char *_u_n_i_c_k, char *_c_h_a_n, char *_m_s_g);
     Used the same as above but for ctcp notice.
 
 MSGM  "iirrcc--pprriivv--mmssgg--mmaasskk" MASK
-  (int) void func (INTERFACE *_c_l_i_e_n_t, unsigned char *_w_h_o, char *_l_n_a_m_e,
-		   char *_u_n_i_c_k, char *_m_s_g);
+  (int) void func(INTERFACE *_c_l_i_e_n_t, unsigned char *_w_h_o, char *_l_n_a_m_e,
+		  char *_u_n_i_c_k, char *_m_s_g);
     Used when we got a message _m_s_g on IRC network that came for me from
     someone _c_l_i_e_n_t with nick!user@host _w_h_o (_u_n_i_c_k is his/her nickname
     that is converted to lower case) and is identified as _l_n_a_m_e. Note:
     matching flags are global+network instead of just global and direct
     service as service ones.
       Matching: msg.
-      Script args: nick@net user@host Lname msg
+      Script args: nick user@host Lname msg
 
 NOTC  "iirrcc--pprriivv--nnoottiiccee--mmaasskk" MASK
-  (int) void func (INTERFACE *_c_l_i_e_n_t, unsigned char *_w_h_o, char *_l_n_a_m_e,
-		   char *_u_n_i_c_k, char *_m_s_g);
+  (int) void func(INTERFACE *_c_l_i_e_n_t, unsigned char *_w_h_o, char *_l_n_a_m_e,
+		  char *_u_n_i_c_k, char *_m_s_g);
     Used the same as above but for notice.
 
 MSG   "iirrcc--pprriivv--mmssgg--ccmmdd" UNIQ
-  int func (INTERFACE *_c_l_i_e_n_t, unsigned char *_w_h_o, char *_l_n_a_m_e,
-	    char *_u_n_i_c_k, char *_m_s_g);
+  int func(INTERFACE *_c_l_i_e_n_t, unsigned char *_w_h_o, char *_l_n_a_m_e,
+	   char *_u_n_i_c_k, char *_m_s_g);
     Used when we got a message that came on IRC network for me from
     someone _c_l_i_e_n_t with nick!user@host _w_h_o (_u_n_i_c_k is his/her nickname
     that is converted to lower case) which is identified as _l_n_a_m_e if
@@ -103,32 +106,35 @@ MSG   "iirrcc--pprriivv--mmssgg--ccmmdd" UNIQ
     to command. Note: matching flags are global+network instead of just
     global and direct service as service ones.
       Matching: command.
-      Script args: nick@net user@host Lname args
+      Script args: nick user@host Lname args
 
 -     "iirrcc--pprriivv--nnoottiiccee--ccmmdd" UNIQ
-  int func (INTERFACE *_c_l_i_e_n_t, unsigned char *_w_h_o, char *_l_n_a_m_e,
-	    char *_u_n_i_c_k, char *_m_s_g);
+  int func(INTERFACE *_c_l_i_e_n_t, unsigned char *_w_h_o, char *_l_n_a_m_e,
+	   char *_u_n_i_c_k, char *_m_s_g);
     Used the same as above but for notice.
 
 CTCP  "iirrcc--pprriivv--mmssgg--ccttccpp" MATCHCASE
-  int func (INTERFACE *_c_l_i_e_n_t, unsigned char *_w_h_o, char *_l_n_a_m_e,
-	    char *_u_n_i_c_k, char *_m_s_g);
-    Used the same as above but for ctcp.
+  int func(INTERFACE *_c_l_i_e_n_t, unsigned char *_w_h_o, char *_l_n_a_m_e,
+	   char *_u_n_i_c_k, char *_m_s_g);
+    Used the same as above but for ctcp and with another script arguments
+    list.
+      Matching: command.
+      Script args: nick user@host Lname mynick command [args]
 
 CTCR  "iirrcc--pprriivv--nnoottiiccee--ccttccpp" MATCHCASE
-  int func (INTERFACE *_c_l_i_e_n_t, unsigned char *_w_h_o, char *_l_n_a_m_e,
-	    char *_u_n_i_c_k, char *_m_s_g);
+  int func(INTERFACE *_c_l_i_e_n_t, unsigned char *_w_h_o, char *_l_n_a_m_e,
+	   char *_u_n_i_c_k, char *_m_s_g);
     Used the same as above but for notice ctcp.
 
 FLUD  "iirrcc--fflloooodd"      MASK
-  int func (unsigned char *_w_h_o, char *_l_n_a_m_e, char *_f_t, char *_c_h_a_n);
+  int func(unsigned char *_w_h_o, char *_l_n_a_m_e, char *_f_t, char *_c_h_a_n);
     Used before message from someone _l_n_a_m_e with nick!user@host _w_h_o are
     checked for flood so if binding returns not 0 then message must skip
     flood checking. If message target is IRC channel then name of that
     channel is _c_h_a_n, else if target is me then _c_h_a_n contains NULL. Type
     of flood _f_t may be one of "ctcp" or "msg".
       Matching: flood type.
-      Script args: nick@net user@host Lname ft chan
+      Script args: nick user@host Lname ft chan
 
 NICK  "iirrcc--nniicckkcchhgg"    MASK
   (int) void func(INTERFACE *_n_e_t, char *_l_n_a_m_e, unsigned char *_w_h_o,

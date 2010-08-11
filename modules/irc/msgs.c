@@ -98,6 +98,7 @@ static void _pmsgout_send (char *to, char *msg, flag_t flag, char *dog)
   register unsigned int i;
   unsigned char *c;
 
+  StrTrim (msg);			/* remove ending spaces, CR, LF */
   if (dog && msg[0])			/* don't send empty messages */
   {
     *dog = 0;
@@ -244,7 +245,7 @@ int irc_privmsgout_default (INTERFACE *pmsgout, REQUEST *req)
   if (strchr (req->to, ',') || strchr (req->to, '%') ||
       strchr (req->to, '@') != dog ||
       (req->to[0] < 0x41 && strchr (CHANNFIRSTCHAR, req->to[0])) ||
-      (req->to[0] > 0x7d && req->to[0] < 0xa0))
+      (req->to[0] > 0x7d && (uchar)req->to[0] < 0xa0))
   {
     _pmsgout_send (req->to, req->string, req->flag, dog);
     return REQ_OK;
@@ -374,10 +375,10 @@ int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
   bind = NULL;
   ft = (msg_type & 2) ? "ctcp" : "msg";			/* action as msg too */
   i = 0;
-  while ((bind = Check_Bindtable (BT_Flood, ft, uf, -1, bind)))
+  while ((bind = Check_Bindtable (BT_Flood, ft, uf, U_ANYCH, bind)))
   {
     if (bind->name)
-      i = RunBinding (bind, client->name, lname ? lname : "*", ft, -1,
+      i = RunBinding (bind, from, lname ? lname : "*", ft, NULL, -1,
 		      to ? to : "*");
     else
       i = bind->func (from, lname, ft, to);
@@ -477,9 +478,9 @@ int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
       /* do mask bindtable */
       for (bind = NULL; (bind = Check_Bindtable (btmask, chmask, uf, cf, bind)); )
       {
-	if (bind->name)
-	  RunBinding (bind, client->name, lname ? lname : "*",
-		      to ? tocl : NULL, -1, msg);
+	if (bind->name)	/* TODO: make scripts multinet-capable? */
+	  RunBinding (bind, from, lname ? lname : "*",
+		      to ? tocl : NULL, NULL, -1, msg);
 	else if (to)
 	  bind->func (client, from, lname, lcnick, tocl, msg);
 	else
@@ -488,17 +489,20 @@ int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
       if (msg_type >= 2)
 	msg[msglen] = 0;
       /* check for command */
-      if (msg_type == 0 && !allow_cmdpmsg)
-	bind = NULL;
-      else
-	bind = Check_Bindtable (to ? *PmsginTable[msg_type].pub_bt :
-				*PmsginTable[msg_type].priv_bt,
-				&msg[PmsginTable[msg_type].shift], uf, cf, NULL);
+      bind = Check_Bindtable (to ? *PmsginTable[msg_type].pub_bt :
+			      *PmsginTable[msg_type].priv_bt,
+			      &msg[PmsginTable[msg_type].shift], uf, cf, NULL);
       if (bind)
       {
-	if (bind->name)
-	  i = RunBinding (bind, client->name, lname ? lname : "*",
-			  to ? tocl : NULL, -1,
+	if (bind->name && (msg_type & 2)) /* another args for ctcp/ctcr */
+	{
+	  i = RunBinding (bind, from, lname ? lname : "*",
+			  to ? tocl : irc_mynick(&pmsgout->name[1]),
+			  &msg[PmsginTable[msg_type].shift], -1, NULL);
+	}
+	else if (bind->name)
+	  i = RunBinding (bind, from, lname ? lname : "*",
+			  to ? tocl : NULL, NULL, -1,
 			  NextWord(&msg[PmsginTable[msg_type].shift]));
 	else if (to)
 	  i = bind->func (client, from, lname, lcnick, tocl,

@@ -182,7 +182,7 @@ static int _scan_wtmp (const char *path, wtmp_t *wtmp, int wn,
 	}
 	else if (buff[i].uid == myid[n])
 	{
-	  DBG ("_scan_wtmp: found: event %hd, from %hd, time %lu", buff[i].event, buff[i].fuid, buff[i].time);
+	  DBG ("_scan_wtmp: found: event %hd, from %hd, time %u", buff[i].event, buff[i].fuid, buff[i].time);
 	  if (buff[i].event == W_CHG)	/* something joined, add to myids */
 	  {
 	    if (*idn < MYIDS_MAX)

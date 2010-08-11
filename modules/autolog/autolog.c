@@ -89,7 +89,7 @@ static iftype_t _autolog_nolog_s (INTERFACE *iface, ifsig_t sig)
 
 static int flush_autolog (autologdata_t *log)
 {
-  size_t x;
+  ssize_t x;
   struct flock lck;
   int es;
 

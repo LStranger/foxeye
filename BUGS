@@ -46,3 +46,4 @@
 #00047	14.07.2010  15.07.2010	dispatcher error: found unhandled PQ ...
 #00048	14.07.2010  15.07.2010	bindings "ss-irc" are not always deleted
 #00049	14.07.2010  15.07.2010	safe_free(0x282f0292) after .who #channel@irc
+#00050	29.07.2010  30.07.2010	nonamed bans don't work

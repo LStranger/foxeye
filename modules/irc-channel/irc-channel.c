@@ -317,8 +317,7 @@ inline static void _ircch_format_chname (IRC *net, const char *chname,
     unistrlower (&ch[1], &chname[6], s - 1);
   else
     unistrlower (&ch[1], &chname[1], s - 1);
-//  if (safe_strcmp (strrchr (ch, '@'), net->name))
-    strfcat (ch, net->name, s);
+  strfcat (ch, net->name, s);
 }
 
 /* if you provide real then chan will be created */
@@ -632,7 +631,7 @@ static void _ircch_update_link (NICK *nick, LINK *link, char *lname, lid_t lid)
     {
       _ircch_add_lname (nick, lname);
       nick->id = lid;
-      hash = Get_Clienthash (lname, nick->host);
+      hash = Get_Hosthash (lname, nick->host);
       for (nl = nick->channels; nl; nl = nl->prevchan)
 	if (nl != link && nl->chan->id != ID_REM)	/* all but this link */
 	  NewEvent (W_START, nl->chan->id, nick->id, hash);
@@ -652,7 +651,6 @@ static void _ircch_recheck_link (IRC *net, LINK *link, char *lname,
   LINK *nl;
   wtmp_t wtmp;
 
-//  link->chan->id = GetLID (link->chan->chi->name); /* hmm, id may be changed? */
   _ircch_update_link (link->nick, link, lname, id);
   if (!(link->mode & (A_ISON | A_ME)))			/* just joined */
   {
@@ -672,7 +670,7 @@ static void _ircch_recheck_link (IRC *net, LINK *link, char *lname,
     ircch_recheck_modes (net, link, uf, cf, info, nl ? 0 : 1);
     if (lname && link->chan->id != ID_REM)		/* and now this too */
       NewEvent (W_START, link->chan->id, link->nick->id,
-		Get_Clienthash (lname, link->nick->host));
+		Get_Hosthash (lname, link->nick->host));
   }
   dprint (4, "_ircch_recheck_link: success on %s[%ld]", lname, link->nick->id);
   link->activity = Time;
@@ -686,7 +684,7 @@ static void _ircch_quit_bindings (char *lname, userflag uf, userflag cf,
   /* run script bindings */
   for (bind = NULL; (bind = Check_Bindtable (BT_IrcSignoff, who, uf, cf, bind)); )
     if (bind->name)
-      RunBinding (bind, who, lname ? lname : "*", chname, -1, msg);
+      RunBinding (bind, who, lname ? lname : "*", chname, NULL, -1, msg);
 }
 
 
@@ -716,7 +714,7 @@ static void _ircch_joined (LINK *link, char *nuh, char *atuh, userflag uf,
   {
     if (bind->name)
       i = RunBinding (bind, nuh, link->nick->lname ? link->nick->lname : "*",
-		      link->chan->chi->name, -1, NULL);
+		      link->chan->chi->name, NULL, -1, NULL);
     else
       i = bind->func (nuh, link->nick->lname, link->chan->chi);
   }
@@ -807,7 +805,7 @@ static void _ircch_netsplit_report (IRC *net, netsplit *split)
 {
   SplitMember *m, *cchm;
   size_t s, nl;
-  char *c;
+  char *c, *h;
   char x;
   char buf[STRING];
 
@@ -827,11 +825,13 @@ static void _ircch_netsplit_report (IRC *net, netsplit *split)
       }
       x = _ircch_get_userchar (net, m->member->mode);
       m->member->mode = 0;
-      c = strchr (m->member->nick->host, '!');
+      if (!(h = m->member->nick->host))
+	h = m->member->nick->name;		/* channel not sync yet! */
+      c = strchr (h, '!');
       if (c)
-	nl = c - m->member->nick->host;
+	nl = c - h;
       else
-	nl = strlen (m->member->nick->host);
+	nl = strlen (h);
       if (s + nl + (x ? 1 : 0) >= sizeof(buf))
       {
 	_ircch_netsplit_channellog (split, m->member->chan, buf, s);
@@ -843,7 +843,7 @@ static void _ircch_netsplit_report (IRC *net, netsplit *split)
 	buf[s++] = ',';
       if (x)
 	buf[s++] = x;
-      memcpy (&buf[s], m->member->nick->host, nl);
+      memcpy (&buf[s], h, nl);
       s += nl;			/* s < sizeof(buf) */
     }
     if (s)
@@ -930,7 +930,7 @@ static void _ircch_netjoin_report (IRC *net, netsplit *split, CHANNEL *chan)
     {
       if (bind->name)
 	RunBinding (bind, nick->host, nick->lname ? nick->lname : "*",
-		    chan->chi->name, -1, NULL);
+		    chan->chi->name, NULL, -1, NULL);
       else
 	bind->func (nick->host, nick->lname, chan->chi);
     }
@@ -970,10 +970,8 @@ static void _ircch_netsplit_lost_report (IRC *net, SplitMember **sm, char *msg)
 		       nick->lname ? (Get_Clientflags (nick->lname, NULL) |
 				Get_Clientflags (nick->lname, &net->name[1])) : 0,
 		       s->member, nick->host, msg);
-    // remove link
-    n = _ircch_destroy_link (s->member);
-    // remove from list
-    *sm = s->next;
+    n = _ircch_destroy_link (s->member);	/* remove link */
+    *sm = s->next;				/* remove from list */
     free_SplitMember (s);
     if (n)
     {
@@ -1442,7 +1440,7 @@ static iftype_t _ircch_sig (INTERFACE *iface, ifsig_t sig)
 	memcpy (&nick[1], link->nick->host, s);
 	nick[s+1] = 0;
 	/* lname might be changed since last event */
-	if (link->nick != net->me)
+	if (link->nick == net->me)
 	  lname = NULL;
 	else
 	  lname = _ircch_get_lname (link->nick->host, NULL, NULL, NULL, NULL,
@@ -1469,6 +1467,7 @@ static iftype_t _ircch_sig (INTERFACE *iface, ifsig_t sig)
       net = _ircch_get_network2 (strrchr (iface->name, '@'));
       ircch_expire (net, (CHANNEL *)iface->data);
       break;
+    //TODO: react on deleting networks/channels (S_FLUSH)
     case S_SHUTDOWN:
       /* nothing to do: module will do all itself */
     default: ;
@@ -1707,6 +1706,8 @@ static int irc_join (INTERFACE *iface, char *svname, char *me, char *prefix,
   nick->umode |= A_ISON;
   if (!nick->host && !(net->features & L_NOUSERHOST))	/* to check umode */
     New_Request (net->neti, 0, "USERHOST %s", prefix);
+  else if (!nick->host)
+    New_Request (net->neti, 0, "WHO %s", prefix);
   if (ch)
     *ch = '!';
   CHECKHOSTSET (nick, prefix);
@@ -1723,8 +1724,10 @@ static int irc_join (INTERFACE *iface, char *svname, char *me, char *prefix,
       FREE (&net->invited);
     }
     chan = _ircch_get_channel (net, parv[0], 1);
-    if (net->features & L_NOUSERHOST)		/* it's slow but what we can? */
-      New_Request (iface, 0, "WHO %s", parv[0]);
+#if 0
+    if (net->features & L_NOUSERHOST)	
+#endif
+    New_Request (iface, 0, "WHO %s", parv[0]);
     New_Request (iface, 0, "MODE %s\r\nMODE %s b\r\nMODE %s e\r\nMODE %s I",
 		 parv[0], parv[0], parv[0], parv[0]);
     if (chan->id != ID_REM)
@@ -1750,8 +1753,6 @@ static int irc_join (INTERFACE *iface, char *svname, char *me, char *prefix,
     link->mode = A_ME;
   else					/* it should be zero, isn't it? */
     link->mode = 0;
-//  if (nick->lname && link->chan->id != ID_REM)	/* first try for it */
-//    NewEvent (W_START, link->chan->id, nick->id, 0);
   /* do rest with lname and wtmp */
   _ircch_recheck_link (net, link, lname, uf, cf, r, id);
   /* check for netjoin and else run bindings */
@@ -1835,10 +1836,11 @@ static int irc_kick (INTERFACE *iface, char *svname, char *me, char *prefix,
     NewEvent (W_DOWN, ch->id, ID_ME, tlink->count);
   /* run bindings, log it, destroy link... */
   snprintf (str, sizeof(str), "%s %s", ch->chi->name, parv[1]);
-  for (bind = NULL; (bind = Check_Bindtable (BT_IrcKick, str, -1, -1, bind)); )
+  bind = NULL;
+  while ((bind = Check_Bindtable (BT_IrcKick, str, U_ALL, U_ANYCH, bind)))
   {
     if (bind->name)
-      RunBinding (bind, prefix, lname ? lname : "*", str, -1,
+      RunBinding (bind, prefix, lname ? lname : "*", ch->chi->name, parv[1], -1,
 		  parc > 2 ? parv[2] : "");
     else
       bind->func (prefix, lname, ch->chi, parv[1], parv[2]);
@@ -2089,7 +2091,8 @@ static int irc_part (INTERFACE *iface, char *svname, char *me, char *prefix,
   for (bind = NULL; (bind = Check_Bindtable (BT_IrcPart, str, uf, cf, bind)); )
   {
     if (bind->name)
-      RunBinding (bind, prefix, lname ? lname : "*", ch->chi->name, -1, parv[1]);
+      RunBinding (bind, prefix, lname ? lname : "*", ch->chi->name, NULL, -1,
+		  parv[1]);
     else
       bind->func (prefix, lname, ch->chi, parv[1]);
   }
@@ -2179,7 +2182,8 @@ static int irc_topic (INTERFACE *iface, char *svname, char *me, char *prefix,
   for (bind = NULL; (bind = Check_Bindtable (BT_IrcTopic, str, uf, cf, bind)); )
   {
     if (bind->name)
-      RunBinding (bind, prefix, lname ? lname : "*", ch->chi->name, -1, parv[1]);
+      RunBinding (bind, prefix, lname ? lname : "*", ch->chi->name, NULL, -1,
+		  parv[1]);
     else
       bind->func (prefix, lname, ch->chi, parv[1]);
   }
@@ -2490,8 +2494,8 @@ static int irc_rpl_whoreply (INTERFACE *iface, char *svname, char *me,
     snprintf (userhost, sizeof(userhost), "%s!%s@%s", parv[5], parv[2], parv[3]);
     if (nick->host)
     {
-      WARNING ("irc_rpl_whoreply: replacing host %s with %s", nick->host,
-	       userhost);
+      dprint (4, "irc_rpl_whoreply: replacing host %s with %s", nick->host,
+	      userhost);
       FREE (&nick->host);
     }
     nick->host = safe_strdup (userhost);
@@ -2531,17 +2535,24 @@ static int irc_rpl_namreply (INTERFACE *iface, char *svname, char *me,
   LINK *link;
   char *c, *cc, *cx;
   char nn;
+#if 0
   int i;
-  size_t sz, sl;
+  size_t sl;
+#endif
+  size_t sz;
   char lcn[MBNAMEMAX+1];
+#if 0
   char nicklist[STRING];
+#endif
 
   if (parc != 4 || !(net = _ircch_get_network (iface->name, 0, lc)))
     return -1;		/* it's impossible, I think */
   chan = _ircch_get_channel (net, parv[2], 0);
   if (chan)
   {
+#if 0
     i = 0;
+#endif
     sz = 0;
     for (c = parv[3]; c && *c; c = cc)
     {
@@ -2567,7 +2578,6 @@ static int irc_rpl_namreply (INTERFACE *iface, char *svname, char *me,
 	link->joined[0] = 0;			/* join time is unknown now */
 	link->activity = 0;
       }
-      /* TODO: do something with events if it's our join! - see CHECKHOSTSET */
       /* TODO: may it be at time of netjoin? have to handle that? */
       link->mode = A_ISON;			/* it's simple :) */
       if (nn == 0);
@@ -2579,8 +2589,10 @@ static int irc_rpl_namreply (INTERFACE *iface, char *svname, char *me,
 	link->mode |= A_HALFOP;
       else
 	link->mode |= A_VOICE;
+#if 0
       if (!link->nick->host && !(net->features & L_NOUSERHOST))
       {
+      /* TODO: do something with events if it's our join! - see CHECKHOSTSET */
 	sl = strlen (c);			/* query userhosts */
 	if (i == 5 || sz + sl + 1 >= sizeof(nicklist))
 	{
@@ -2597,14 +2609,16 @@ static int irc_rpl_namreply (INTERFACE *iface, char *svname, char *me,
 	sz += sl;
 	i++;
       }
-      // CHECKHOSTSET (link->nick, c);		/* it's not host really! */
+#endif
       if (cc) *cc++ = ' ';
     }
+#if 0
     if (i)					/* query userhosts */
     {
       nicklist[sz] = 0;
       New_Request (net->neti, 0, "USERHOST %s", nicklist);
     }
+#endif
   }
   return 0;
 }
@@ -2866,8 +2880,8 @@ static void ircch_nick (INTERFACE *iface, char *lname, unsigned char *who,
     for (bind = NULL;
 		(bind = Check_Bindtable (BT_IrcNChg, newnick, uf, cf, bind)); )
       if (bind->name)
-	RunBinding (bind, who, lname ? lname : "*", link->chan->chi->name, -1,
-		    newnick);
+	RunBinding (bind, who, lname ? lname : "*", link->chan->chi->name,
+		    NULL, -1, newnick);
   }
   dprint (4, "ircch_nick: deleting %s%s", nick->name, net->name);
   if (Delete_Key (net->nicks, nick->name, nick))
@@ -2928,11 +2942,8 @@ static void ircch_netsplit (INTERFACE *iface, char *lname, unsigned char *who,
   else
     uf = 0;
   _ircch_netsplit_add (net, servers, nick);	/* it will check for re-split */
-//  if (nick->lname)
-//    nick->id = GetLID (nick->lname);		/* it might be changed */
   for (link = nick->channels; link; link = link->prevchan)
   {
-//    link->chan->id = GetLID (link->chan->chi->name); /* it might be changed? */
     if (nick->lname && link->chan->id != ID_REM) /* ignore new lname! */
       NewEvent (W_END, link->chan->id, nick->id, link->count);
     link->count = 0;
@@ -2941,17 +2952,9 @@ static void ircch_netsplit (INTERFACE *iface, char *lname, unsigned char *who,
     for (bind = NULL; (bind = Check_Bindtable (BT_IrcNSplit, who, uf, cf,
 					       bind)); )
       if (bind->name)
-	RunBinding (bind, who, lname ? lname : "*", link->chan->chi->name, -1, NULL);
+	RunBinding (bind, who, lname ? lname : "*", link->chan->chi->name,
+		    NULL, -1, NULL);
   }
-#if 0 // what the hell???
-  if (safe_strcmp (nick->lname, lname))
-  {
-    FREE (&nick->lname);
-    nick->lname = safe_strdup (lname);
-    if (lname)
-      nick->id = GetLID (lname);
-  }
-#endif
 }
 
 

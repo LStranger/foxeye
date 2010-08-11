@@ -1,0 +1,9 @@
+CVS
+*/CVS
+*/*/CVS
+*/*.o
+*/*.a
+modules/*/*.so
+Makefile
+*/Makefile
+configure

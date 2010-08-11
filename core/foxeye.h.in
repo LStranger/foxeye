@@ -164,13 +164,8 @@ void free ();
 #define HOSTLEN		63	/* by RFC1123 */
 #define	MBNAMEMAX	MB_LEN_MAX*NAMEMAX /* it is part of HOSTMASKLEN */
 #define HOSTMASKLEN	MBNAMEMAX+IDENTLEN+HOSTLEN+2
-//#define CHANNAMEMAX	50	/* channel name length */
-//#define CHANNFIRSTCHAR	"&#+!"	/* channel name first char */
-//#define SPECIALCHARS	CHANNFIRSTCHAR "@:" /* first char of special names */
 #define RESTRICTEDCHARS	" ,\007\r\n" /* cannot be in names */
 #define MESSAGEMAX	512	/* including CR-LF at end */
-//#define BLOCKMAX	2*MESSAGEMAX /* must be 2 MESSAGEMAX */
-//#define SAVEMSGMAX	450	/* max size of privmsg for save */
 #define	FORMATMAX	120	/* max lenght of format string */
 
 /* common Tcl/internal function prototype */
@@ -193,7 +188,7 @@ typedef enum
   I_SHEDULE	= (1<<11),	/* sheduler request */
   I_TEMP	= (1<<12),	/* temporary interface */	/* 0x001000 */
   I_LOG		= (1<<13),	/* logfile or chat console log */
-  I_DCCALIAS	= (1<<14),	/* DCC chat alias for TCL requests */
+  I_DCCALIAS	= (1<<14),	/* DCC chat alias for requests (botnet chat) */
   I_QUERY	= (1<<15),	/* private query */
   I_PENDING	= (1<<16),	/* tmp, unset after request */	/* 0x010000 */
   I_FINWAIT	= (1<<17),	/* from thread for dispatcher: terminate me */
@@ -265,7 +260,7 @@ typedef struct req_t
 typedef struct conversion_t conversion_t;
 #endif
 
-typedef enum __attribute__ ((__packed__))
+typedef enum
 {
   S_REPORT = 1,			/* generate report to loggers */
   S_FLUSH,			/* flush the interface */
@@ -276,7 +271,7 @@ typedef enum __attribute__ ((__packed__))
   S_CONTINUE,			/* continue stopped job */
   S_SHUTDOWN,			/* flush and terminate interface (quick) */
   S_TERMINATE			/* terminate interface and release resources */
-} ifsig_t;
+} __attribute__ ((__packed__)) ifsig_t;
 
 /* return values for _if_t::IFRequest */
 #define REQ_OK		0
@@ -337,15 +332,17 @@ typedef enum
 
 #define USERFLAG "kaefvhomsn*idqABCDEFGHuI"
 
-#define U_GLOBALS (U_INVITE | U_FRIEND | U_VOICE | U_MASTER | \
+#define U_GLOBALS (U_DENY | U_INVITE | U_FRIEND | U_VOICE | U_MASTER | \
 		   U_OWNER | U_NOAUTH | U_QUIET | U_IGNORED | U_SPECIAL | U_ANY)
 
-#define U_AND	U_ALIAS	/* channel flag, means 'global AND channel' instead of */
-			    /* default OR behavior for flags */
-#define U_EQUAL	U_SPECIAL /* channel flag, means all flags and mask are matched */
-			    /* in Check_Bindtable() when they are equal */
+#define U_AND	U_ALIAS	/* channel flag, for Add_Binding() only, means match */
+			/*'global AND channel' instead of default OR behavior */
+#define U_EQUAL	U_ALIAS	/* channel flag, for Check_Bintable() only, means */
+			/*all flags and mask are matched when they are equal */
 
-#define U_NONE  (~(U_NEGATE | U_ALIAS)) /* for bindings */
+#define U_NONE  (~(U_NEGATE | U_ALIAS))	/* for Add_Binding() */
+#define U_ALL	(~U_NEGATE)		/* global for Check_Bindtable() */
+#define U_ANYCH	(~(U_NEGATE | U_EQUAL))	/* channel for Check_Bindtable() */
 
 #define U_IMMUTABLE (U_NEGATE | U_ALIAS | U_SPECIAL | U_ANY) /* cannot be changed */
 

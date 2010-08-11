@@ -90,8 +90,6 @@ static size_t _Inamessize = 0;
 
 static NODE *ITree = NULL;
 
-//static INTERFACE _FromGone = {0, "?", NULL, NULL, NULL, NULL, NULL};
-
 static INTERFACE *Console = NULL;
 
 static ifi_t *Current;
@@ -246,8 +244,6 @@ static int add2queue (ifi_t *to, request_t *req)
     to->tail = newq;
   }
   to->a.qsize++;
-//  DBG ("dispatcher:add2queue: added 0x%08x to 0x%08x: new head=0x%08x tail=0x%08x qsize=%d",
-//       newq, to, to->head, to->tail, to->a.qsize);
   if (lastdebuglog)
   {
     fprintf (lastdebuglog, "::dispatcher:add2queue: req 0x%08x: added 0x%08x to 0x%08x: new head=0x%08x tail=0x%08x qsize=%d\n",
@@ -327,7 +323,6 @@ static request_t *alloc_request_t (void)
 static void free_request_t (request_t *req)
 {
   req->x.next = FreeReq;		/* shift free queue up */
-//  req->a.mask_if = 0; // why to touch it ever?
   FreeReq = req;			/* this one is first to use now */
   _Rnum--;
   if (lastdebuglog)
@@ -524,7 +519,7 @@ static int delete_request (ifi_t *i, queue_t *q)
     for (last = i->head; last->next && last->next != q; last = last->next);
     if (!last->next)
     {
-      ERROR ("dispatcher:delete_request: 0x%08x from 0x%08x: not found", q, i);
+      ERROR ("dispatcher:delete_request: 0x%08x from 0x%08x: not found", (int)q, (int)i);
       return 0;					/* not found??? */
     }
     last->next = q->next;
@@ -595,7 +590,7 @@ static int _get_current (void)
   else
   {
     if (Current->a.qsize)
-      ERROR ("Interface 0x%08x: qsize is %d but no head!", &Current->a,
+      ERROR ("Interface 0x%08x: qsize is %d but no head!", (int)&Current->a,
 	     Current->a.qsize);
     out = Current->a.IFRequest (&Current->a, NULL);
   }
@@ -657,7 +652,7 @@ static int unknown_iface (INTERFACE *cur)
     for (; i < _Inum; i++)
       if (Interface[i] == (ifi_t *)cur)
 	return 0;
-  WARNING ("unknown_iface(0x%08x)", cur);
+  WARNING ("unknown_iface(0x%08x)", (int)cur);
   return -1;
 }
 
@@ -670,8 +665,6 @@ int Get_Request (void)
   pthread_mutex_lock (&LockIface);
   i = _get_current();
   pthread_mutex_unlock (&LockIface);
-//  if (lastdebuglog)
-//    fprintf (lastdebuglog, "!%d", i);
   return i;
 }
 
@@ -707,8 +700,8 @@ Add_Iface (iftype_t ift, const char *name, iftype_t (*sigproc) (INTERFACE*, ifsi
   if (Interface[i]->a.name)
     if (Insert_Key (&ITree, Interface[i]->a.name, Interface[i], 0))
       ERROR ("interface add: dispatcher tree error");
-  dprint (2, "added iface %u(0x%08x): 0x%x name \"%s\"", i, &Interface[i]->a,
-	  Interface[i]->a.ift, NONULL((char *)Interface[i]->a.name));
+  dprint (2, "added iface %u(0x%08x): 0x%x name \"%s\"", i, (int)&Interface[i]->a,
+	  (int)Interface[i]->a.ift, NONULL((char *)Interface[i]->a.name));
   pthread_mutex_unlock (&LockIface);
   return (&Interface[i]->a);
 }
@@ -726,7 +719,6 @@ static int _delete_iface (unsigned int r)
     for (i = 0; i < REQBLSIZE; i++)	/* well, IFSignal could sent anything */
       if (rbl->req[i].a.from == todel && rbl->req[i].a.mask_if)
 	return 1;			/* just put it on hold right now */
-//	rbl->req[i].a.from = &_FromGone;
   pthread_mutex_lock (&LockInum);
   _Inum--;
   if (r < _Inum)
@@ -762,11 +754,6 @@ static INTERFACE *stack_iface (INTERFACE *newif, int set_current)
 {
   ifst_t *newst;
 
-//  if (lastdebuglog)
-//  {
-//    fprintf (lastdebuglog, "!+");
-//    fflush (lastdebuglog);
-//  }
   if (!StCur)
   {
     if (!StAll)
@@ -804,11 +791,6 @@ static INTERFACE *stack_iface (INTERFACE *newif, int set_current)
 /* returns previous interface in stack, NULL if this was first */
 static INTERFACE *unstack_iface (void)
 {
-//  if (lastdebuglog)
-//  {
-//    fprintf (lastdebuglog, "!-");
-//    fflush (lastdebuglog);
-//  }
   if (!StCur)
   {
     bot_shutdown ("OOPS! interface stack exhausted! Extra Unset_Iface() called?", 7);
@@ -829,11 +811,6 @@ static void iface_run (unsigned int i)
       pthread_mutex_unlock (&LockIface);
       return;
     }
-//  if (lastdebuglog)
-//  {
-//    fprintf (lastdebuglog, "%x", i);
-//    fflush (lastdebuglog);
-//  }
   /* all rest are died? return now! */
   if (Interface[i]->pq)
   {
@@ -880,7 +857,7 @@ void Add_Request (iftype_t ift, const char *mask, flag_t fl, const char *text, .
   {
     int savestate = O_GENERATECONF;
 
-    if (ift != -1)		/* we assume only init will call it with -1 */
+    if (ift != (iftype_t)-1)	/* we assume only init will call it with -1 */
       O_GENERATECONF = FALSE;			/* don't make config now */
     inum = _Inum;				/* don't sent to created now! */
     if (Have_Wildcard (mask) < 0)
@@ -1000,7 +977,7 @@ INTERFACE *Find_Iface (iftype_t ift, const char *name)
 {
   LEAF *l = NULL;
   ifi_t *i = NULL;
-  int n;
+  size_t n;
 
   pthread_mutex_lock (&LockIface);
   if (name == NULL)
@@ -1038,7 +1015,7 @@ int Rename_Iface (INTERFACE *iface, const char *newname)
     pthread_mutex_unlock (&LockIface);
     return 0;
   }
-  dprint (2, "renaming iface 0x%x: \"%s\" --> \"%s\"", iface,
+  dprint (2, "renaming iface 0x%x: \"%s\" --> \"%s\"", (int)iface,
 	  NONULL((char *)iface->name), NONULL(newname));
   /* don't rename requests to empty target or if target is "*" */
   if (iface->name && newname && strcmp (iface->name, "*"))
@@ -1064,7 +1041,7 @@ int Rename_Iface (INTERFACE *iface, const char *newname)
 
 void Status_Interfaces (INTERFACE *iface)
 {
-  register int i;
+  register size_t i;
 
   pthread_mutex_lock (&LockIface);
   for (i = 0; i < _Inum; i++)
@@ -1076,12 +1053,12 @@ void Status_Interfaces (INTERFACE *iface)
 		 NONULL((char *)Interface[i]->a.name), Interface[i]->a.qsize);
   }
   New_Request (iface, 0,
-	       "Total: %u/%u interfaces (%lu bytes), %u/%u requests (%lu bytes)",
+	       "Total: %u/%u interfaces (%u bytes), %u/%u requests (%u bytes)",
 	       _Inum, _Ialloc, _Ialloc * sizeof(ifi_t *) +
 			       _IFIalloc * sizeof(ifi_t) +
 			       StNum * sizeof(ifst_t) + _Inamessize,
 	       _Rnum, _Ralloc * REQBLSIZE, _Ralloc * sizeof(reqbl_t));
-  New_Request (iface, 0, "       %u/%u queue slots (%lu bytes)", _Qnum, _Qalloc,
+  New_Request (iface, 0, "       %u/%u queue slots (%u bytes)", _Qnum, _Qalloc,
 	       _Qalloc * sizeof(queue_t));
   pthread_mutex_unlock (&LockIface);
 }
@@ -1403,7 +1380,7 @@ int dispatcher (INTERFACE *start_if)
 	pthread_mutex_lock (&LockIface);
 	n = Interface[count]->a.qsize;
 	pthread_mutex_unlock (&LockIface);
-	if (n > (max >> 2) + 1)		/* criteria for forcing */
+	if (n > ((int)max >> 2) + 1)	/* criteria for forcing */
 	  break;
       }
       if (count < max)

@@ -46,15 +46,15 @@ chban
  previous expiration time and/or reason will be kept for the ban. See also\
  %yhelp +ban%n for more details.
 
-banreason
+comment
 :%* lname [text]
 :
-:Shows or sets info (ban reason) on some client %_lname%_. If %_text%_ is\
- omitted then shows current value, else sets value of info (ban reason) with\
- %_text%_. See also %yhelp +ban%n.
+:Shows or sets comment (it is mostly ban reason) on some client %_lname%_. If\
+ %_text%_ is omitted then shows current value, else resets value of comment\
+ with %_text%_. See also %yhelp +ban%n.
 
 set default-ban-time
 :%* <seconds>
 :
-:
+:Defines default expiration time for command %c+ban%n.
  Default: 172800.

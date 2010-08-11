@@ -43,18 +43,17 @@ typedef struct peer_t
   idx_t socket;                         /* what socket we have messages to */
   time_t last_input;
   INTERFACE *iface;			/* main interface of this session */
+					/* function to parse/broadcast line */
   void (*parse) (struct peer_t *, char *, char *, userflag, userflag, int, int,
-		 bindtable_t *, char *);/* function to parse/broadcast line */
+		 bindtable_t *, char *, INTERFACE *);
   connchain_i *connchain;		/* connchain instance */
   char start[13];			/* chat-on time */
 } peer_t;
 
-void Chat_Join (INTERFACE *, userflag, int, int, char *); /* wrappers */
-void Chat_Part (INTERFACE *, int, int, char *);
 int Check_Passwd (const char *, char *);		/* plain, encrypted */
 
 void Dcc_Parse (struct peer_t *, char *, char *, userflag, userflag, int, int,
-		bindtable_t *, char *);			/* default parser */
+		bindtable_t *, char *, INTERFACE *);	/* default parser */
 
 idx_t Listen_Port (char *, char *, unsigned short *, char *,
 		   void (*) (pthread_t, idx_t, idx_t),

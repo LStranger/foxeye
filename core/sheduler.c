@@ -57,7 +57,7 @@ int CheckFlood (short *ptr, short floodtype[2])
 /* delete cells for ptr from Floodtable */
 void NoCheckFlood (short *ptr)
 {
-  register int i;
+  register size_t i;
 
   for (i = 0; i < _SFnum; i++)
     if (Floodtable[i].ptr == ptr)
@@ -166,7 +166,7 @@ void NewShedule (iftype_t ift, const char *name, ifsig_t sig,
 void KillShedule (iftype_t ift, const char *name, ifsig_t sig,
 		  char *min, char *hr, char *ds, char *mn, char *wk)
 {
-  register int i;
+  register size_t i;
   register shedentry_t *ct;
   uint32_t mask[2];
 
@@ -300,10 +300,10 @@ static int Sheduler (INTERFACE *ifc, REQUEST *req)
       if (lasttime)			/* if it's on start then it's ok */
       {
 	WARNING ("system time was slipped by %d seconds!", drift);
-	while ((bind = Check_Bindtable (BT_TimeShift, "*", -1, -1, bind)))
+	while ((bind = Check_Bindtable (BT_TimeShift, "*", U_ALL, U_ANYCH, bind)))
 	{
 	  if (bind->name)
-	    RunBinding (bind, NULL, NULL, NULL, drift, NULL);
+	    RunBinding (bind, NULL, NULL, NULL, NULL, drift, NULL);
 	  else
 	    bind->func (drift);
 	}

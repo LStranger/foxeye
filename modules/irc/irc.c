@@ -330,10 +330,10 @@ static void _irc_run_conn_bind (irc_server *serv, bindtable_t *bt)
   binding_t *bind = NULL;
   char *name = _irc_current_server (serv, NULL);
 
-  while ((bind = Check_Bindtable (bt, serv->p.iface->name, -1, -1, bind)))
+  while ((bind = Check_Bindtable (bt, serv->p.iface->name, U_ALL, U_ANYCH, bind)))
   {
     if (bind->name)
-      RunBinding (bind, NULL, serv->p.iface->name, name, -1, serv->mynick);
+      RunBinding (bind, NULL, serv->p.iface->name, name, NULL, -1, serv->mynick);
     else
       bind->func (serv->p.iface, name, serv->mynick, serv->lc);
   }
@@ -409,7 +409,7 @@ static int _irc_try_server (irc_server *serv, const char *tohost, int banned,
       if (c) *c = 0;
       if (Connect_Host (name, c ? atoi (&c[1]) : defaultport, &await->th,
 			&serv->p.socket, &_irc_connection_ready, await))
-	LOG_CONN (_("Connecting to %s, port %hu..."), name,
+	LOG_CONN (_("Connecting to %s, port %ld..."), name,
 		  c ? atoi (&c[1]) : defaultport);
       else
 	await->th = 0;
@@ -560,7 +560,7 @@ static char *_irc_get_lname (char *nuh, userflag *uf, char *net)
 
 /* --- Server interface ----------------------------------------------------- */
 
-/* supported: S_REPORT, S_SHUTDOWN, S_TERMINATE */
+/* supported: S_REPORT, S_SHUTDOWN, S_TERMINATE, S_FLUSH */
 static iftype_t _irc_signal (INTERFACE *iface, ifsig_t sig)
 {
   irc_server *serv = (irc_server *)iface->data;
@@ -569,6 +569,7 @@ static iftype_t _irc_signal (INTERFACE *iface, ifsig_t sig)
   size_t bufpos, inbuf;
   INTERFACE *tmp;
   binding_t *bind;
+  clrec_t *nclr;
   char report[STRING];
 
   switch (sig)
@@ -586,6 +587,17 @@ static iftype_t _irc_signal (INTERFACE *iface, ifsig_t sig)
       iface->ift |= I_DIED;
       serv->p.iface = NULL;
       break;
+    case S_FLUSH:
+      nclr = Lock_Clientrecord (iface->name);
+      if (nclr)
+      {
+	Unlock_Clientrecord (nclr);
+	break;
+      }
+      else
+	Add_Request (I_LOG, "*", F_CONN | F_WARN,
+		     "Network %s deleted, so shutting down now.", iface->name);
+      /* they deleted us from Listfile so stop */
     case S_TERMINATE: /* QUIT :leaving */
       if (serv->p.state != P_LOGIN && serv->p.state != P_TALK &&
 	  serv->p.state != P_IDLE)
@@ -601,13 +613,14 @@ static iftype_t _irc_signal (INTERFACE *iface, ifsig_t sig)
 	reason = "leaving";
 	report[0] = 0;
 	bind = NULL;
-	while ((bind = Check_Bindtable (BT_IrcMyQuit, iface->name, -1, -1, bind)))
+	while ((bind = Check_Bindtable (BT_IrcMyQuit, iface->name, U_ALL,
+					U_ANYCH, bind)))
 	  if (!bind->name)
 	  {
 	    if (bind->func (iface, report, sizeof(report)))
 	      reason = report;
 	  }
-	  else if (RunBinding (bind, NULL, iface->name, report, -1, NULL))
+	  else if (RunBinding (bind, NULL, iface->name, report, NULL, -1, NULL))
 	  {
 	    strfcpy (report, BindResult, sizeof(report));
 	    reason = report;
@@ -934,7 +947,7 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
       }
       /* run bindings */
       bind = NULL;
-      while ((bind = Check_Bindtable (BT_Irc, params[2], -1, -1, bind)))
+      while ((bind = Check_Bindtable (BT_Irc, params[2], U_ALL, U_ANYCH, bind)))
       {
 	if (bind->name) /* cannot use RunBinding here! */
 	  i = bind->func (bind->name, i+3, params);
@@ -1190,7 +1203,7 @@ static int irc_quit (INTERFACE *net, char *sv, char *me, char *src,
     if (gone)	/* restore status quo */
       *gone = ' ';
     for (bind = NULL; (bind = Check_Bindtable (s ? BT_IrcNSplit : BT_IrcSignoff,
-						target, uf, -1, bind)); )
+						target, uf, U_ANYCH, bind)); )
       if (!bind->name)
 	bind->func (net, lname, src, target, parv[0]);
     FREE (&lname);
@@ -1366,7 +1379,8 @@ static int irc_nick (INTERFACE *net, char *sv, char *me, char *src,
     uf = -1;
   }
   /* call all internal bindings */
-  for (bind = NULL; (bind = Check_Bindtable (BT_IrcNChg, newnick, uf, -1, bind)); )
+  bind = NULL;
+  while ((bind = Check_Bindtable (BT_IrcNChg, newnick, uf, U_ANYCH, bind)))
     if (!bind->name)
       bind->func (net, lname, src, oldnick, parv[0], lc ? newnick : parv[0]);
   FREE (&lname);
@@ -1429,8 +1443,6 @@ static int irc_rpl_isupport (INTERFACE *net, char *sv, char *me, char *src,
     return 0;
   nicklen = topiclen = maxbans = maxchannels = modes = maxtargets = 0;
   lc = &unistrlower; /* assume it's default for me */
-//  value[0] = '@';
-//  strfcpy (&value[1], net->name, sizeof(value) - 1);
   clr = Lock_Clientrecord (net->name);
   if (!clr)
     return 0;		/* it's impossible */
@@ -1476,7 +1488,7 @@ static int irc_rpl_isupport (INTERFACE *net, char *sv, char *me, char *src,
     }
     if (c) *c++ = ' ';
   }
-  for (i = 1; i < parc - 1; i++)
+  for (i = 1; (int)i < parc - 1; i++)
   {
     cv = strchr (parv[i], '=');
     if (cv)
@@ -1597,7 +1609,6 @@ static void ic_default (INTERFACE *iface, char *server, char *nick,
 
   if (*irc_umode != 0)
     New_Request (iface, 0, "MODE %s :%s", nick, irc_umode);
-//  clr = Lock_Clientrecord (((irc_server *)iface->data)->pmsgout->name);
   clr = Lock_Clientrecord (iface->name);
   if (clr)
   {

@@ -35,7 +35,7 @@ typedef struct USERRECORD clrec_t;
 int Get_Clientlist (INTERFACE *, userflag, const char *, char *);
 int Get_Hostlist (INTERFACE *, lid_t);
 int Get_Fieldlist (INTERFACE *, lid_t);
-unsigned short Get_Clienthash (const char *, const char *);
+unsigned short Get_Hosthash (const char *, const char *);
 userflag Match_Client (char *, char *, const char *);
 userflag Get_Clientflags (const char *, const char *);
 clrec_t *Find_Clientrecord (const uchar *, char **, userflag *, char *);

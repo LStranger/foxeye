@@ -120,7 +120,7 @@ UNLD  "uunnllooaadd"         MASK
       Matching: network type.  (any channel userflags are ignored)
 
 -     "ccoonnnneecctt"        MASK
-  int func (const char *_l_i_n_k, char *_a_r_g_s);
+  int func(const char *_l_i_n_k, char *_a_r_g_s);
     Used on "connect" command to network/server/channel/bot _l_i_n_k with
     optional parameters _a_r_g_s. Note that channel has the same type as
     it's network but binding for connect channel must have any channel
@@ -153,13 +153,13 @@ UNLD  "uunnllooaadd"         MASK
       Matching: none
 
 -     "ssccrriipptt"         UNIQMASK
-  int func (char *_n_a_m_e);
+  int func(char *_n_a_m_e);
     Used when config parser attempts to load script file _n_a_m_e.
       Matching: filename.
 
 -     "iissoonn"           UNIQ
-  int func (const char *_n_e_t, const char *_p_u_b_l_i_c, const char *_l_n_a_m_e,
-	    const char **_n_a_m_e);
+  int func(const char *_n_e_t, const char *_p_u_b_l_i_c, const char *_l_n_a_m_e,
+	   const char **_n_a_m_e);
     Used by Lname_IsOn() function for calling network-specific procedure
     for community _p_u_b_l_i_c on the network _n_e_t. If _p_u_b_l_i_c is NULL then
     check should be performed for network itself and else _p_u_b_l_i_c is
@@ -168,9 +168,9 @@ UNLD  "uunnllooaadd"         MASK
       Matching: network type.
 
 -     "iinnssppeecctt--cclliieenntt" UNIQ
-  (int) modeflag func (const char *_n_e_t, const char *_p_u_b_l_i_c,
-		       const char *_n_a_m_e, const char **_l_n_a_m_e,
-		       const char **_h_o_s_t, time_t *_i_d_l_e, short *_c_n_t);
+  (int) modeflag func(const char *_n_e_t, const char *_p_u_b_l_i_c,
+		      const char *_n_a_m_e, const char **_l_n_a_m_e,
+		      const char **_h_o_s_t, time_t *_i_d_l_e, short *_c_n_t);
     Used by Inspect_Client() function for calling network-specific
     procedure for community _p_u_b_l_i_c on the network _n_e_t. If _p_u_b_l_i_c is NULL
     then check should be performed for network itself and else _p_u_b_l_i_c is
