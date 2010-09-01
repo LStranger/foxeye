@@ -82,6 +82,16 @@ What is in the core?
     - eventsfile manager (wtmp.c)
     - base character transcoding API (conversion.c)
 
+What modules have to care about in interaction with "ui" module?
+    As soon as module "ui" is loaded it have to get not only text that
+  comes into logs but also it should be informed about each client status
+  change, i.e. each service opening, each client connection, each client
+  disconnection (such as joining or parting channels) and each changing
+  of status. That should be done either by sending signal S_FLUSH from
+  interface of service or client that got the change or by sending a
+  message with name of client and appropriate flag (if that status change
+  was for client on some service not for service itself) to module "ui".
+
 What modules are available?
     Currently available modules are:
    logs		- customisable saving and rotating of log files.

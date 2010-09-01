@@ -20,7 +20,7 @@ pkgdatadir = $(datadir)/@PACKAGE@
 helpdir = $(pkglibdir)/help
 docdir = $(datadir)/doc/@PACKAGE@-@VERSION@
 
-INCLUDES = -I${top_srcdir}/tree -I${top_srcdir}/core
+INCLUDES = -I${top_srcdir}/tree -I${top_srcdir}/core -I${top_srcdir}/ui
 INSTALL = @INSTALL@ -m 644
 mkinstalldirs = $(SHELL) ${top_srcdir}/mkinstalldirs
 DEFS = @DEFS@ -DSCRIPTSDIR=\"$(pkgdatadir)\"

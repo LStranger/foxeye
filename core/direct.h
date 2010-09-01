@@ -32,40 +32,45 @@ typedef enum
   P_LASTWAIT				/* closed session */
 } _peer_state;
 
+typedef struct peer_priv peer_priv;
 typedef struct connchain_i connchain_i;
 typedef struct connchain_buffer connchain_buffer;
 
 typedef struct peer_t
 {
   _peer_state state;
-  userflag uf;
+  userflag uf;				/* global+direct flags */
   char *dname;				/* user away message / dest. name */
   idx_t socket;                         /* what socket we have messages to */
   time_t last_input;
   INTERFACE *iface;			/* main interface of this session */
-					/* function to parse/broadcast line */
   void (*parse) (struct peer_t *, char *, char *, userflag, userflag, int, int,
-		 bindtable_t *, char *, INTERFACE *);
+		 bindtable_t *, char *); /* function to parse/broadcast line */
   connchain_i *connchain;		/* connchain instance */
-  char start[13];			/* chat-on time */
+  peer_priv *priv;			/* session-specific data */
+  char start[20];			/* chat-on time */
 } peer_t;
 
 int Check_Passwd (const char *, char *);		/* plain, encrypted */
 
 void Dcc_Parse (struct peer_t *, char *, char *, userflag, userflag, int, int,
-		bindtable_t *, char *, INTERFACE *);	/* default parser */
+		bindtable_t *, char *);			/* default parser */
 
 idx_t Listen_Port (char *, char *, unsigned short *, char *,
 		   void (*) (pthread_t, idx_t, idx_t),
-		   void (*) (char *, char *, char *, idx_t));
+		   void (*) (char *, char *, char *, idx_t))
+			__attribute__((warn_unused_result));
 int Connect_Host (char *, unsigned short, pthread_t *, idx_t *,
-		  void (*) (int, void *), void *);
+		  void (*) (int, void *), void *)
+			__attribute__((warn_unused_result));
 
 #define CONNCHAIN_READY	1	/* may be return from Connchain_Put(c,i,"",0) */
 
 int Connchain_Grow (peer_t *, char);
-ssize_t Connchain_Put (connchain_i **, idx_t, const char *, size_t *);
-ssize_t Connchain_Get (connchain_i **, idx_t, char *, size_t);
+ssize_t Connchain_Put (connchain_i **, idx_t, const char *, size_t *)
+			__attribute__((warn_unused_result));
+ssize_t Connchain_Get (connchain_i **, idx_t, char *, size_t)
+			__attribute__((warn_unused_result));
 
 #define Connchain_Kill(peer) Connchain_Get(&peer->connchain,peer->socket,NULL,0)
 #define Peer_Put(peer,buf,s) Connchain_Put(&peer->connchain,peer->socket,buf,s)

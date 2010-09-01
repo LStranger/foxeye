@@ -1,0 +1,16 @@
+This directory is place where you can put different user interfaces to FoxEye.
+
+User interface (UI below) is some application that uses UI protocol defined
+here and in file "ui.h" in this directory.
+
+If there is module "ui" loaded into running FoxEye then it creates an Unix
+socket which application can connect to and start to exchange packets. Each
+packet contains data. If packet comes from UI to socket then it contains
+some data that either is a command similar to 'direct service' or data to
+send to network or client. If packet comes from socket to UI then it will
+contain data to display (window open, filling, close, etc.) by application.
+No handshake is required to start. As soon as application is connected to
+socket, FoxEye sends windows list and data to fill each window (including
+clients list, chat history and content of prompt line) so application have
+no needs to care about own crash if it sends each keyboard event into the
+socket - FoxEye will care about it on next connect.

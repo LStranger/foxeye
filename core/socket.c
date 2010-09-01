@@ -21,6 +21,7 @@
 #include "foxeye.h"
 
 #include <netinet/in.h>
+#include <sys/un.h>
 #include <netdb.h>
 #include <sys/socket.h>
 #include <sys/poll.h>
@@ -49,9 +50,6 @@ typedef struct
   char *domain;			/* if free then this is NULL */
   unsigned short port;
   int ready;
-//  ssize_t bufpos;
-//  size_t available;
-//  char inbuf[2*MB_LEN_MAX*MESSAGEMAX]; /* cyclic input buffer */
 } socket_t;
 
 static pid_t _mypid;
@@ -67,104 +65,6 @@ static void sigio_handler (int signo)
 {
   poll (Pollfd, _Snum, 0);
 }
-
-#if 0
-static void dmemcpy (void *d, socket_t *s, size_t l)
-{
-  DBG ("dmemcpy(%u+%u)[%-*.*s]", s->bufpos, l, l, l, &s->inbuf[s->bufpos]);
-  memcpy (d, &s->inbuf[s->bufpos], l);
-}
-
-/* warning: does not check anything! */
-static void _socket_get_line (char *buf, socket_t *s, size_t l)
-{
-  register size_t available, bufpos;
-
-  if (s->bufpos + l >= sizeof(s->inbuf))
-  {
-    /* get tail of buffer */
-    bufpos = sizeof(s->inbuf) - s->bufpos;
-    //memcpy (buf, &s->inbuf[s->bufpos], bufpos);
-    dmemcpy (buf, s, bufpos);
-    buf += bufpos;
-    l -= bufpos;
-    s->available -= bufpos;
-    s->bufpos = 0;
-    /* get head of buffer now */
-  }
-  if (l)
-    //memcpy (buf, &s->inbuf[s->bufpos], l);
-    dmemcpy (buf, s, l);
-  bufpos = s->bufpos + l;
-  available = s->available - l;
-  if (available && s->inbuf[bufpos] == '\r')
-  {
-    bufpos++;
-    available--;
-    /* reached EOB? */
-    if (bufpos == sizeof(s->inbuf))
-      bufpos = 0;
-  }
-  if (available && s->inbuf[bufpos] == '\n')
-  {
-    bufpos++;
-    available--;
-  }
-  s->available = available;
-  if (available == 0 || bufpos == sizeof(s->inbuf))
-    s->bufpos = 0;
-  else
-    s->bufpos = bufpos;
-}
-
-/* returns: -1 if not found, 0+ (strlen) if found */
-static ssize_t _socket_find_line (socket_t *s)
-{
-  register ssize_t p;
-  register char *c;
-
-  if (!s->available)
-    return (-1);
-  if (s->bufpos + s->available > sizeof(s->inbuf))	/* YZ.....X */
-  {
-    /* check tail first */
-    c = memchr (&s->inbuf[s->bufpos], '\n', sizeof(s->inbuf) - s->bufpos);
-    /* if not found then check head */
-    if (!c)
-      c = memchr (s->inbuf, '\n', s->bufpos + s->available - sizeof(s->inbuf));
-  }
-  else							/* ...XYZ.. */
-    c = memchr (&s->inbuf[s->bufpos], '\n', s->available);
-  if (!c)
-  {
-    if (s->available < sizeof(s->inbuf)) /* there is still a chance of LF */
-      return (-1);
-    c = &s->inbuf[s->bufpos];		/* full buffer for out */
-    p = sizeof(s->inbuf);
-  }
-  else
-    p = c - &s->inbuf[s->bufpos];
-  if (p < 0)
-  {
-    p += sizeof(s->inbuf);
-    DBG ("found in buffer: %d(%u:%u)[%-*.*s]...", p, s->bufpos, s->available,
-	 sizeof(s->inbuf) - s->bufpos, sizeof(s->inbuf) - s->bufpos,
-	 &s->inbuf[s->bufpos]);
-  }
-  else
-    DBG ("found in buffer: %d(%u:%u)[%-*.*s]", p, s->bufpos, s->available, p,
-	 p, &s->inbuf[s->bufpos]);
-  if (!p)
-    return 0;
-  if (c > s->inbuf)
-    c--;
-  else
-    c = &s->inbuf[sizeof(s->inbuf)-1];
-  if (*c != '\r')
-    return (p);
-  return (p-1);
-}
-#endif
 
 void CloseSocket (idx_t idx)
 {
@@ -195,7 +95,6 @@ static idx_t allocate_socket ()
   Pollfd[idx].events = POLLIN | POLLPRI | POLLOUT | POLLHUP | POLLERR;
   Pollfd[idx].revents = 0;
   Socket[idx].domain = NULL;
-//  Socket[idx].bufpos = Socket[idx].available = 0;
   Socket[idx].ready = FALSE;
   if (idx == _Snum)
     _Snum++;
@@ -220,7 +119,6 @@ ssize_t ReadSocket (char *buf, idx_t idx, size_t sr, int mode)
     rev = POLLERR;
   else
     rev = Pollfd[idx].revents;
-//  mode -= M_RAW;
   /* now check for incomplete connection... */
   if (sock->ready == FALSE)
   {
@@ -231,104 +129,31 @@ ssize_t ReadSocket (char *buf, idx_t idx, size_t sr, int mode)
       CloseSocket (idx);
       return (E_ERRNO - errno);	/* connection timeout or other error */
     }
-//    else if (read (Pollfd[idx].fd, sock->inbuf, 0) < 0)
-//    {
-//      CloseSocket (idx);
-//      return (E_ERRNO - errno);	/* connection timeout or other error */
-//    }
     sock->ready = TRUE;		/* connection established! */
   }
-#if 0
-  if (mode)
-    sg = _socket_find_line (sock);
-  if (sg < 0)
+  if (!rev && mode == M_POLL)
   {
-#endif
-    if (!rev && mode == M_POLL)
-    {
-      poll (&Pollfd[idx], 1, POLL_TIMEOUT);
-      rev = Pollfd[idx].revents;
-    }
-    if (rev & POLLNVAL)
-      CloseSocket (idx);
-    if (rev & (POLLNVAL | POLLERR))
-    {
-//      if (!(sg = sock->available))	/* let's give a chance to get data */
-	return (E_NOSOCKET);
-    }
-    else if (rev & (POLLIN | POLLPRI))
-    {
-	DBG ("trying read socket %d", idx);
-//      sg = sock->bufpos + sock->available;
-#if 0
-      if (mode)				/* non-raw socket, read into inbuf */
-      {
-	/* fill tail first */
-	DBG ("trying read socket %d:(%u:%u)", idx, sock->bufpos, sock->available);
-	if (sg < sizeof(sock->inbuf))
-	{
-	  sg = read (Pollfd[idx].fd, &sock->inbuf[sg], (sizeof(sock->inbuf) - sg));
-	  /* could we fill head too? */
-	  if (sg > 0)
-	    DBG ("got from socket %d:[%-*.*s]", idx, sg, sg,
-		 &sock->inbuf[sock->bufpos + sock->available]);
-	  if (sg > 0 && sock->bufpos &&
-	      sock->bufpos + sock->available + sg == sizeof(sock->inbuf))
-	  {
-	    sock->available += sg;
-	    sg = read (Pollfd[idx].fd, sock->inbuf, sock->bufpos);
-	    if (sg > 0)
-	      DBG ("got from socket %d:[%-*.*s]", idx, sg, sg, sock->inbuf);
-	  }
-	}
-	/* could we still fill head? */
-	else if (sock->available < sizeof(sock->inbuf))
-	{
-	  sg = read (Pollfd[idx].fd, &sock->inbuf[sg-sizeof(sock->inbuf)],
-		     sizeof(sock->inbuf) - sock->available);
-	  if (sg > 0)
-	    DBG ("got from socket %d:[%-*.*s]", idx, sg, sg,
-		 &sock->inbuf[sock->bufpos + sock->available - sizeof(sock->inbuf)]);
-	}
-	else	/* no free space available */
-	  sg = 0;
-	if (sg > 0)
-	  sock->available += sg;
-      }
-      else				/* raw socket, just read it */
-#endif
-      if ((sg = read (Pollfd[idx].fd, buf, sr)) > 0 && mode != M_RAW)
-	DBG ("got from socket %d:[%-*.*s]", idx, sg, sg, buf);
-      if (sg < 0)
-      {
-	CloseSocket (idx);		/* if socket died then close it */
-	return (E_ERRNO - errno);		
-      }
-      Pollfd[idx].revents = 0;		/* we read socket, reset state */
-//      if (mode)
-//	sg = _socket_find_line (sock);
-//      if (sg < 0)
-//	return 0;
-    }
-    else
-      return 0;
-#if 0
+    poll (&Pollfd[idx], 1, POLL_TIMEOUT);
+    rev = Pollfd[idx].revents;
   }
-  if (mode)
+  if (rev & POLLNVAL)
+    CloseSocket (idx);
+  if (rev & (POLLNVAL | POLLERR))
+    return (E_NOSOCKET);
+  else if (rev & (POLLIN | POLLPRI))
   {
-    if (sg >= sr)
-      sg = sr - 1;
+    DBG ("trying read socket %d", idx);
+    if ((sg = read (Pollfd[idx].fd, buf, sr)) > 0 && mode != M_RAW)
+      DBG ("got from socket %d:[%-*.*s]", idx, sg, sg, buf);
+    if (sg < 0)
+    {
+      CloseSocket (idx);		/* if socket died then close it */
+      return (E_ERRNO - errno);		
+    }
+    Pollfd[idx].revents = 0;		/* we read socket, reset state */
   }
-//  else if (sg > sr)
-//    sg = sr;
-  if (mode)
-  {
-    if (sg >= 0)			/* some line found! */
-      _socket_get_line (buf, sock, sg);
-    buf[sg] = 0;			/* line terminator */
-    sg++;				/* in text modes it includes 0 */
-  }
-#endif
+  else
+    return 0;
   return (sg);
 }
 
@@ -347,7 +172,7 @@ ssize_t WriteSocket (idx_t idx, const char *buf, size_t *ptr, size_t *sw, int mo
     return 0;
   rev = Pollfd[idx].revents;
   sock = &Socket[idx];
-  if (!rev)				/* TODO: try not to poll it? */
+  if (!rev)	/* we need to poll it since we never get SIGIO for that */
   {
     poll (&Pollfd[idx], 1, mode == M_POLL ? POLL_TIMEOUT : 0);
     rev = Pollfd[idx].revents;
@@ -363,8 +188,8 @@ ssize_t WriteSocket (idx_t idx, const char *buf, size_t *ptr, size_t *sw, int mo
     if (!(rev & POLLOUT))
       return 0;
     sg = write (Pollfd[idx].fd, &buf[*ptr], *sw);
-    if (sg > 0 && mode != M_RAW)
-      DBG ("put to socket %d:[%-*.*s]", idx, sg, sg, &buf[*ptr]);
+//    if (sg > 0 && mode != M_RAW)
+//      DBG ("put to socket %d:[%-*.*s]", idx, sg, sg, &buf[*ptr]);
     Pollfd[idx].revents = 0;		/* we wrote socket, reset state */
     if (sg <= 0)			/* EAGAIN */
       return 0;
@@ -392,7 +217,7 @@ int KillSocket (idx_t *idx)
   return 0;
 }
 
-idx_t GetSocket (void)
+idx_t GetSocket (unsigned short type)
 {
   idx_t idx;
   int sockfd;
@@ -400,6 +225,8 @@ idx_t GetSocket (void)
   pthread_mutex_lock (&LockPoll);
   if ((idx = allocate_socket()) < 0)
     sockfd = -1; /* too many sockets */
+  else if (type == M_UNIX)
+    Pollfd[idx].fd = sockfd = socket (AF_UNIX, SOCK_STREAM, 0);
   else
     Pollfd[idx].fd = sockfd = socket (AF_INET, SOCK_STREAM, 0);
   pthread_mutex_unlock (&LockPoll);
@@ -408,44 +235,59 @@ idx_t GetSocket (void)
      close() and resetting Pollfd[idx].fd */
   if (sockfd == -1)
     return (E_NOSOCKET);
+  Socket[idx].port = type;
   return idx;
 }
 
 /* For a listening process - we have to get ECONNREFUSED to own port :) */
-int SetupSocket (idx_t idx, int type, char *domain, unsigned short port)
+int SetupSocket (idx_t idx, char *domain, unsigned short port)
 {
   struct sockaddr_in sin;
+  struct sockaddr_un sun;
+  struct sockaddr *sa;
+  socklen_t len;
   struct hostent *hptr = NULL;
   struct linger ling;
-  int i = 1, sockfd = Pollfd[idx].fd;
+  int i = 1, sockfd = Pollfd[idx].fd, type = (int)Socket[idx].port;
 
   /* check for errors! */
   if (!domain && type != M_LIST && type != M_LINP)
     return (E_UNDEFDOMAIN);
-  memset (&sin, 0, sizeof(sin));
-  sin.sin_family = AF_INET;
-  sin.sin_port = htons (port);
-  if (!domain)
+  if (type == M_UNIX)
   {
-    sin.sin_addr.s_addr = htonl (INADDR_ANY);
+    sun.sun_family = AF_UNIX;
+    strfcpy (sun.sun_path, domain, sizeof(sun.sun_path));
+    if (unlink (sun.sun_path))
+      return (E_ERRNO - errno);
+    sa = (struct sockaddr *)&sun;
+    len = SUN_LEN (&sun);
+    Socket[idx].port = 0;		/* should be 0 for Unix socket */
   }
   else
   {
-    hptr = gethostbyname (domain);
-    if (!hptr || !hptr->h_addr_list[0])
-      return (E_NOSUCHDOMAIN);
-    memcpy (&sin.sin_addr, hptr->h_addr_list[0], hptr->h_length);
+    memset (&sin, 0, sizeof(sin));
+    sin.sin_family = AF_INET;
+    sin.sin_port = htons (port);
+    sa = (struct sockaddr *)&sin;
+    len = sizeof(sin);
+    if (!domain)
+      sin.sin_addr.s_addr = htonl (INADDR_ANY);
+    else
+    {
+      hptr = gethostbyname (domain);
+      if (!hptr || !hptr->h_addr_list[0])
+	return (E_NOSUCHDOMAIN);
+      memcpy (&sin.sin_addr, hptr->h_addr_list[0], hptr->h_length);
+    }
   }
-  Socket[idx].port = port;
   setsockopt (sockfd, SOL_SOCKET, SO_KEEPALIVE, (void *) &i, sizeof(i));
   setsockopt (sockfd, SOL_SOCKET, SO_REUSEADDR, (void *) &i, sizeof(i));
   ling.l_onoff = 1;
   ling.l_linger = 0;
   setsockopt (sockfd, SOL_SOCKET, SO_LINGER, (void *) &ling, sizeof(ling));
   fcntl (sockfd, F_SETOWN, _mypid);
-  if (type == M_LIST || type == M_LINP)
+  if (type == M_LIST || type == M_LINP || type == M_UNIX)
   {
-    socklen_t len = sizeof(sin);
     int backlog = 3;
 
     if (type == M_LINP)
@@ -454,16 +296,14 @@ int SetupSocket (idx_t idx, int type, char *domain, unsigned short port)
 	listen (sockfd, backlog) < 0 ||
 	getsockname (sockfd, (struct sockaddr *)&sin, &len) < 0)
       return (E_ERRNO - errno);
-    Socket[idx].port = ntohs (sin.sin_port);
+    if (type != M_UNIX)
+      Socket[idx].port = ntohs (sin.sin_port);
   }
   else
   {
-//    while ((i = connect (sockfd, (struct sockaddr *)&sin, sizeof(sin))) < 0 &&
-//	    errno == EAGAIN);
-//    if (errno != EINPROGRESS)
     if ((i = connect (sockfd, (struct sockaddr *)&sin, sizeof(sin))) < 0)
       return (E_ERRNO - errno);
-//    Socket[idx].ready = i;
+    Socket[idx].port = port;
   }
 #ifdef HAVE_SYS_FILIO_H		/* non-BSDish systems have not O_ASYNC flag */
   i = 1;
@@ -472,9 +312,12 @@ int SetupSocket (idx_t idx, int type, char *domain, unsigned short port)
 #else
   fcntl (sockfd, F_SETFL, O_NONBLOCK | O_ASYNC);
 #endif
-  hptr = gethostbyaddr ((char *)&sin.sin_addr, sizeof(sin.sin_addr), AF_INET);
-  if (hptr && hptr->h_name)
-    domain = hptr->h_name;	/* subst canonical name */
+  if (type != M_UNIX)
+  {
+    hptr = gethostbyaddr ((char *)&sin.sin_addr, sizeof(sin.sin_addr), AF_INET);
+    if (hptr && hptr->h_name)
+      domain = hptr->h_name;	/* subst canonical name */
+  }
   Socket[idx].domain = safe_strdup (domain);
   return 0;
 }
@@ -483,10 +326,11 @@ idx_t AnswerSocket (idx_t listen)
 {
   idx_t idx;
   struct sockaddr_in cliaddr;
+  struct sockaddr_un cliua;
   struct hostent *hptr = NULL;
   int sockfd;
   short rev;
-  socklen_t len = sizeof(cliaddr);
+  socklen_t len;
 
   pthread_testcancel();				/* for non-POSIX systems */
   if (listen < 0 || listen >= _Snum || Pollfd[listen].fd < 0)
@@ -511,13 +355,21 @@ idx_t AnswerSocket (idx_t listen)
   pthread_mutex_lock (&LockPoll);
   if ((idx = allocate_socket()) < 0)
     sockfd = -1;
+  else if (Socket[listen].port == 0)	/* Unix socket */
+  {
+    len = sizeof(cliua);
+    Pollfd[idx].fd = sockfd = accept (Pollfd[listen].fd, (struct sockaddr *)&cliua, &len);
+    Socket[idx].port = 0;
+  }
   else
+  {
+    len = sizeof(cliaddr);
     Pollfd[idx].fd = sockfd = accept (Pollfd[listen].fd, (struct sockaddr *)&cliaddr, &len);
+  }
   pthread_mutex_unlock (&LockPoll);
   Pollfd[listen].revents = 0;		/* we accepted socket, reset state */
   if (sockfd == -1)
     return (E_AGAIN);
-  Socket[idx].port = ntohs (cliaddr.sin_port);
   fcntl (sockfd, F_SETOWN, _mypid);
 #ifdef HAVE_SYS_FILIO_H		/* non-BSDish systems have not O_ASYNC flag */
   {
@@ -528,6 +380,9 @@ idx_t AnswerSocket (idx_t listen)
 #else
   fcntl (sockfd, F_SETFL, O_NONBLOCK | O_ASYNC);
 #endif
+  if (Socket[listen].port == 0)
+    return (idx);		/* no domains for Unix sockets */
+  Socket[idx].port = ntohs (cliaddr.sin_port);
   hptr = gethostbyaddr ((char *)&cliaddr.sin_addr, sizeof(cliaddr.sin_addr),
 			AF_INET);
   if (hptr && hptr->h_name)

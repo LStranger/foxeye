@@ -28,6 +28,7 @@
 #include "direct.h"
 #include "tree.h"
 #include "list.h"
+#include "wtmp.h"
 
 struct bindtable_t
 {
@@ -198,7 +199,7 @@ binding_t *Add_Binding (const char *table, const char *mask, userflag gf,
       }
       bind->prev = NULL;
     }
-    DBG ("init.c:+bind:0x%08x shifted 0x%08x/tree", (int)bind, (int)bind->prev);
+    DBG ("init.c:+bind:%p shifted %p/tree", bind, bind->prev);
   }
   else /* not B_UNIQ */
   {
@@ -233,7 +234,7 @@ binding_t *Add_Binding (const char *table, const char *mask, userflag gf,
       last->next = bind;			/* insert as last binding */
     else
       bt->list.bind = bind;			/* insert as first binding */
-    DBG ("init.c:+bind:0x%08x shifted 0x%08x nextto 0x%08x", (int)bind, (int)bind->prev, (int)last);
+    DBG ("init.c:+bind:%p shifted %p nextto %p", bind, bind->prev, last);
   }
   bind->gl_uf = gf;
   bind->ch_uf = cf;
@@ -283,8 +284,7 @@ void Delete_Binding (const char *table, Function func, const char *name)
 	{
 	  dprint (2, "binds: deleting binding from bindtable \"%s\" with key \"%s\"",
 		  table, b->key);
-	  DBG ("init.c:-bind:0x%08x unshifting 0x%08x after 0x%08x/tree",
-		(int)b, (int)b->prev, (int)last);
+	  DBG ("init.c:-bind:%p unshifting %p after %p/tree", b, b->prev, last);
 	  if (last)			/* it's not first binding - remove */
 	  {
 	    last->prev = bind = b->prev;
@@ -325,8 +325,8 @@ void Delete_Binding (const char *table, Function func, const char *name)
       {
 	dprint (2, "binds: deleting binding from bindtable \"%s\" with mask \"%s\"",
 		table, bind->key);
-	DBG ("init.c:-bind:0x%08x unshifting 0x%08x after 0x%08x nextto 0x%08x",
-		(int)bind, (int)bind->prev, (int)next, (int)last);
+	DBG ("init.c:-bind:%p unshifting %p after %p nextto %p",
+		bind, bind->prev, next, last);
 	if (next)			/* it's not first binding */
 	{
 	  next->prev = bind->prev;
@@ -488,7 +488,7 @@ binding_t *Check_Bindtable (bindtable_t *bt, const char *str, userflag gf,
   if (bt->type == B_UCOMPL && !i)
     b = bind;			/* completion */
   if (b)
-    dprint (3, "binds: bindtable \"%s\" string \"%s\", flags 0x%x/0x%x, found mask \"%s\"",
+    dprint (3, "binds: bindtable \"%s\" string \"%s\", flags %#x/%#x, found mask \"%s\"",
 	    bt->name, str, gf, cf, b->key);
   else if (bt->type == B_UNIQ && bt->lr)
   {
@@ -510,13 +510,13 @@ const char *Bindtable_Name (bindtable_t *bt)
 /* define functions & variables first */
 #include "init.h"
 
-int RunBinding (binding_t *bind, const uchar *uh, char *fst, char *sec,
-		char *third, int num, char *last)
+int RunBinding (binding_t *bind, const uchar *uh, const char *fst,
+		const char *sec, char *third, int num, const char *last)
 {
   char *tt0;
   char uhost[STRING] = "";
   char n[16];
-  char *a[8];
+  const char *a[8];
   register int i = 0;
 
   if (!bind || !bind->name || !bind->func)	/* checking... */
@@ -530,7 +530,7 @@ int RunBinding (binding_t *bind, const uchar *uh, char *fst, char *sec,
     strfcpy (uhost, (char *)uh, sizeof(uhost));	/* nick!user@host -> */
     a[0] = uhost;				/* -> nick user@host */
     if ((a[1] = safe_strchr (uhost, '!')))
-      *(a[1]++) = 0;
+      *(((char **)a)[1]++) = 0;
     else
       a[1] = "*";
     i = 2;
@@ -585,10 +585,14 @@ static iftype_t confirm_sig (INTERFACE *iface, ifsig_t sig)
 
 static int confirm_req (INTERFACE *iface, REQUEST *req)
 {
+  char buf[MB_LEN_MAX+1];
+
   if (req)				/* only requests are accepting */
   {
     pthread_mutex_lock (&((confirm_t *)iface->data)->mutex);
-    if (req->string[0] == 'y')				/* yes */
+    unistrlower (buf, req->string, sizeof(buf));
+    buf[unistrcut (buf, sizeof(buf), 1)] = 0;
+    if (buf[0] == 'y' || !strcmp (buf, _("y")))		/* yes */
       ((confirm_t *)iface->data)->res = TRUE;
     else if (req->string[0] != 0)			/* no */
       ((confirm_t *)iface->data)->res = FALSE;
@@ -634,8 +638,8 @@ bool Confirm (char *message, bool defl)
   _confirm_num++;
   newif = Add_Iface (I_TEMP, n, &confirm_sig, &confirm_req, &ct);
   Set_Iface (newif);
-  New_Request (ui, F_ASK, _("%s (y/n)?[%c] "), message,
-	      (defl & 1) == TRUE ? 'y' : 'n');
+  New_Request (ui, F_ASK | F_ASK_BOOL, _("%s (y/n)?[%s] "), message,
+	      (defl & 1) == TRUE ? _("y") : _("n"));
   Unset_Iface();	/* newif */
   Unset_Iface();	/* ui */
   tp.tv_sec = 0;
@@ -818,10 +822,6 @@ static void Get_ConfigFromConsole (const char *name, void *ptr, size_t s)
 	break;
       }
     } while (!(cons->ift & I_DIED));
-#if 0
-  if (ConfigFileIface)
-    _add_var_to_config (name, ptr, s);
-#endif
 }
 
 static int Start_FunctionFromConsole
@@ -853,19 +853,8 @@ static int Start_FunctionFromConsole
   if (_usage[0] == '?')
     Get_Help ("function", name, cons, -1, -1, NULL, NULL, 2);
   /* start - check if valid */
-#if 0
-  else if ((*func) (_usage) > 0 && ConfigFileIface)
-  {
-    if (_usage[0])
-      New_Request (ConfigFileIface, F_REPORT, "%s %s", name, _usage);
-    Set_Iface (ConfigFileIface);
-    while (Get_Request());		/* add to config file */
-    Unset_Iface();
-  }
-#else
   else
     (*func) (_usage);
-#endif
   return 1;
 }
 
@@ -1274,7 +1263,7 @@ int Config_Exec (const char *cmd, const char *args)
   return data->f.n (NONULL(args));
 }
 
-static int _set (VarData *data, register char *val)
+static int _set (VarData *data, register const char *val)
 {
   bool ask;
 
@@ -1300,7 +1289,7 @@ static int _set (VarData *data, register char *val)
     case 2:					/* r/o string */
       return 0;
     default:					/* string */
-      NextWord_Unquoted ((char *)data->data, val, data->len);
+      NextWord_Unquoted ((char *)data->data, (char *)val, data->len);
   }
   return 1;
 }
@@ -1320,7 +1309,7 @@ static ScriptFunction (cfg_set)		/* to config - by registering */
     data = Find_Key (VTree, var);
     if (!data)
       return 0;
-    return _set (data, NextWord ((char *)args));
+    return _set (data, NextWord ((char *)args)); /* it's still const */
   }
   return 0;
 }
@@ -1358,7 +1347,7 @@ static ScriptFunction (cfg_flood_type)	/* to config - by ask after all */
     data = Find_Key (TTree, var);
     if (!data)
       return 0;
-    c = NextWord ((char *)args);
+    c = NextWord ((char *)args);	/* it's still const */
     c2 = strchr (c, ':');
     if (c2 && *(++c2))
     {
@@ -1444,7 +1433,7 @@ static int dc_set (peer_t *dcc, char *args)
   char var[STRING];
   VarData *data = NULL;
 
-  if (args)				/* any variable */
+  if (args && Have_Wildcard (args) < 0)	/* any variable */
   {
     register char *c;
 
@@ -1471,33 +1460,30 @@ static int dc_set (peer_t *dcc, char *args)
   else					/* list of variables */
   {
     char *name;
-    register char *c;
     LEAF *leaf = NULL;
-    register size_t s;
+    register size_t s, t = 0;
 
-    c = var;
-    *c = 0;
-    New_Request (dcc->iface, 0, _("List of variables:"));
+    New_Request (dcc->iface, 0, _("List of variables%s%s:"),
+		 args ? _(" by mask ") : "", NONULL(args));
     while ((leaf = Next_Leaf (VTree, leaf, &name)))
     {
-      s = safe_strlen (name) + 16 - (c - var)%16;
-      if (&c[s] > &var[72])
+      if (args && match (args, name) <= 0)
+	continue;
+      s = safe_strlen (name) + 16 - t%16;
+      if (s + t > 72 && t)
       {
 	New_Request (dcc->iface, 0, "%s", var);
-	c = var;
-	strfcpy (var, name, sizeof(var));
+	t = strfcpy (var, name, sizeof(var));
       }
       else
       {
-	do {
-	  *c++ = ' ';
-	} while ((c - var) % 16);
-	*c = 0;
-	strfcat (var, name, sizeof(var));
+	if (t) do {
+	  var[t++] = ' ';
+	} while (t % 16);
+	t += strfcpy (&var[t], name, sizeof(var) - t);
       }
-      c = &var[strlen(var)];
     }
-    if (*var)
+    if (t)
       New_Request (dcc->iface, 0, "%s", var);
   }
   return 1;
@@ -1510,7 +1496,7 @@ static int dc_fset (peer_t *dcc, char *args)
   char var[STRING];
   VarData2 *data = NULL;
 
-  if (args)				/* any format */
+  if (args && Have_Wildcard (args) < 0)	/* any format */
   {
     register char *c;
 
@@ -1528,33 +1514,30 @@ static int dc_fset (peer_t *dcc, char *args)
   else					/* list of formats */
   {
     char *name;
-    register char *c;
     LEAF *leaf = NULL;
-    register size_t s;
+    register size_t s, t = 0;
 
-    c = var;
-    *c = 0;
-    New_Request (dcc->iface, 0, _("List of formats:"));
+    New_Request (dcc->iface, 0, _("List of formats%s%s:"),
+		 args ? _(" by mask ") : "", NONULL(args));
     while ((leaf = Next_Leaf (FTree, leaf, &name)))
     {
-      s = safe_strlen (name) + 16 - (c - var)%16;
-      if (&c[s] > &var[72])
+      if (args && match (args, name) <= 0)
+	continue;
+      s = safe_strlen (name) + 16 - t%16;
+      if (s + t > 72 && t)
       {
 	New_Request (dcc->iface, 0, "%s", var);
-	c = var;
-	strfcpy (var, name, sizeof(var));
+	t = strfcpy (var, name, sizeof(var));
       }
       else
       {
-	do {
-	  *c++ = ' ';
-	} while ((c - var) % 16);
-	*c = 0;
-	strfcat (var, name, sizeof(var));
+	if (t) do {
+	  var[t++] = ' ';
+	} while (t % 16);
+	t += strfcpy (&var[t], name, sizeof(var) - t);
       }
-      c = &var[strlen(var)];
     }
-    if (*var)
+    if (t)
       New_Request (dcc->iface, 0, "%s", var);
   }
   return 1;
@@ -1564,7 +1547,6 @@ static int dc_fset (peer_t *dcc, char *args)
 BINDING_TYPE_dcc (dc_status);
 static int dc_status (peer_t *dcc, char *args)
 {
-  char ifsig[sizeof(ifsig_t)] = {S_REPORT};
   char buff[STRING];
 
   if (args && !strcmp (args, "-a"))
@@ -1573,7 +1555,7 @@ static int dc_status (peer_t *dcc, char *args)
 _("Universal network client " PACKAGE ", version " VERSION ".\r\n\
 Started %* on %s at host %@."),
 	  0, NULL, hostname, Nick, NULL, 0L, 0, 0, ctime (&StartTime));
-  New_Request (dcc->iface, 0, buff);
+  New_Request (dcc->iface, 0, "%s", buff);
   if (!args)
   {
     Status_Interfaces (dcc->iface);
@@ -1582,11 +1564,14 @@ Started %* on %s at host %@."),
 #ifdef HAVE_ICONV
     Status_Encodings (dcc->iface);
 #endif
+    Status_Connchains (dcc->iface);
+    ReportFormat = "%L @%@: %*";
+    Send_Signal (I_LISTEN, "*", S_REPORT);
   }
   else
   {
     ReportFormat = "%*";
-    Add_Request (I_MODULE, args, F_SIGNAL, ifsig);
+    Send_Signal (I_MODULE, args, S_REPORT);
   }
   return 1;
 }
@@ -1763,12 +1748,10 @@ static int dc_module (peer_t *dcc, char *args)
 BINDING_TYPE_dcc (dc_rehash);
 static int dc_rehash (peer_t *dcc, char *args)
 {
-  char i[sizeof(ifsig_t)] = {S_FLUSH};
-
   New_Request (dcc->iface, 0, "Rehashing...");
   if (ParseConfig (Config, 0))
     bot_shutdown (BindResult, 3);
-  Add_Request (-1, "*", F_SIGNAL, i);	/* flush all interfaces */
+  Send_Signal (-1, "*", S_FLUSH);	/* flush all interfaces */
   return 1;
 }
 
@@ -1778,7 +1761,7 @@ static int dc_restart (peer_t *dcc, char *args)
 {
   New_Request (dcc->iface, 0, "Restarting...");
   kill (getpid(), SIGINT);
-  return -1;	/* don't log it :) */ /* TODO: decide if we have to log it */
+  return 1;
 }
 
 		/* .die [<reason>] */
@@ -1795,8 +1778,6 @@ static int dc_die (peer_t *dcc, char *args)
   }
   else
     bot_shutdown (args, 0);
-  exit (0);
-  return 0; /* never reached but to avoid warnings... */
 }
 
 /* ----------------------------------------------------------------------------
@@ -1900,7 +1881,6 @@ void init (void)
   int g = O_GENERATECONF;
   char new_path[PATH_MAX+FILENAME_LENGTH+2];
   char *msg;
-  char ifsig[sizeof(ifsig_t)] = {S_TERMINATE};
   bindtable_t *bt;
   binding_t *b;
   INTERFACE *stub;
@@ -1932,7 +1912,7 @@ void init (void)
   stub = Add_Iface (I_TEMP, NULL, NULL, NULL, NULL);
   Set_Iface (stub);				/* and we want logging */
   /* kill all modules */
-  Add_Request (I_MODULE, "*", F_SIGNAL, ifsig);
+  Send_Signal (I_MODULE, "*", S_TERMINATE);
   /* I think I need to destroy trees ? */
   Destroy_Tree (&VTree, free);
   Destroy_Tree (&STree, free);
@@ -1991,41 +1971,19 @@ void init (void)
 //          запросить значения всех переменных, в т.ч. из модулей по конфигу
 //
   /* if generation is true, start new config */
-#if 0 // moved
-  if (g != FALSE)
-  {
-    snprintf (new_path, sizeof(new_path), "%s.new", Config);
-    ConfigFileFile = fopen (new_path, "w+");
-    if (!ConfigFileFile)
-      bot_shutdown (_("Cannot create configuration file."), 3);
-    fprintf (ConfigFileFile, "#!%s\n# Generated by itself on %s\n", RunPath,
-	     ctime (&Time));
-    Unset_Iface();		/* have to change current, see main.c */
-    ConfigFileIface = Add_Iface (I_TEMP, NULL, NULL, &_cfile_req, NULL);
-    ConfigFileIface->ift = I_TEMP;		/* force flags */
-    Set_Iface (ConfigFileIface);		/* we are now current */
-  }
-#endif
   if (g != FALSE || O_DEFAULTCONF != FALSE)
   {
     /* reregister all and ask, not write to config yet */
-    ifsig[0] = S_REG;
     O_GENERATECONF = TRUE;
-    Add_Request (-1, "*", F_SIGNAL, ifsig);
+    Send_Signal (-1, "*", S_REG);
     _set_floods ();
     /* ask to include any new scripts */
     while (Start_FunctionFromConsole ("script", &cfg_script, "filename"));
     O_GENERATECONF = FALSE;
-#if 0 // moved
-    /* put all "script" calls to new config */
-    if (_Scripts_List)
-    {
-      fprintf (ConfigFileFile, "%s\n", _Scripts_List);
-      FREE (&_Scripts_List);
-    }
-#endif
     /* ending */
   }
+  /* before any event, do Wtmp rotating if it needs rotation */
+  RotateWtmp();
 //
 // постэтап - сохранение нового конфига, если указан "-g"
 //
@@ -2050,8 +2008,7 @@ void init (void)
     ConfigFileIface->ift = I_TEMP;		/* force flags */
     Set_Iface (ConfigFileIface);		/* it's current again */
     /* it's time to write to config so signal to register again */
-    ifsig[0] = S_REG;
-    Add_Request (-1, "*", F_SIGNAL, ifsig);
+    Send_Signal (-1, "*", S_REG);
     Set_Iface (Init);				/* flush everything now */
     while (Get_Request());
     Unset_Iface();

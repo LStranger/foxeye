@@ -7,20 +7,32 @@ module irc-ctcp
 :
 :Basic support for main CTCP DCC (Client-To-Client-Protocol Direct Client\
  Connection) commands: CHAT and SEND, and also few CTCP commands: CHAT, TIME,\
- VERSION. Receiving files (i.e. DCC SEND support) includes support for mIRC\
- extension RESUME/ACCEPT which allows transfer restore after disruption.
+ PING, VERSION, HELP, CLIENTINFO. Sending and receiving files (i.e. DCC SEND\
+ support) includes support for two mIRC extensions: one is RESUME/ACCEPT\
+ which allows transfer restore after disruption and second is passive mode\
+ which helps to send files through firewall. Module also includes IRC network\
+ specitic file sending command.
+
+ss-irc send
+:send ["-passive"] ["-flush"] nick [path/]file
+:
+:Sends some %_file%_ to some target (%_nick%_) that present in current IRC\
+ network. It can accept mIRC style command RESUME if neither modifier "-flush"\
+ specified nor variable %cdcc-enable-resume%n set to "no". To enable RESUME\
+ or passive mode you should specify %_nick%_ in case sensitive manner (i.e.\
+ exactly as it is).
 
 set incoming-path
 :%* <path>
-:Path for uploading files
+:Path for uploading files.
 :This variable specifies the directory where uploaded files will be put. It\
  used also by users sharing for temporary files. If unset then you cannot\
  download any files.
  Default: "~/.foxeye/files".
 
 set dcc-ahead
-:%* [0-32]
-:DCC turbo mode
+:%* [0-16]
+:Number of ahead packets on DCC SEND to speed up transfer.
 :This variable defines how much packets will be send in predictable manner\
  to speed-up file transfer. It will have effect on fast connections with\
  inappropriate delay (satellite connections for example). If set it to 0\
@@ -29,7 +41,7 @@ set dcc-ahead
 
 set dcc-get-maxsize
 :%* <number>
-:Max size of file on DCC get
+:Max size of file on DCC get.
 :This variable defines maximum size of getting file in bytes. You never can\
  get file that is longer than this value. Setting it to negative value means\
  "unlimited" and maximum size will be 4GiB.
@@ -37,14 +49,14 @@ set dcc-get-maxsize
 
 set dcc-resume-min
 :%* <number>
-:Minimum size of existing file for resume
+:Minimum size of existing file for resume.
 :This variable defines how large file part you have to have to get this file\
- auto-resumed (mIRC style resume). See also %yhelp set dcc-resume%n.
+ auto-resumed (mIRC "RESUME" extension). See also %yhelp set dcc-resume%n.
  Default: 10'000.
 
 set dcc-resume
-:%* [yes|no|ask-yes|ask-no]
-:Enable or not mIRC style resume
+:%* <yes|no|ask-yes|ask-no>
+:Enable or not mIRC "RESUME" extension on receiving files.
 :This variable determines behavior when anyone send you some file via DCC.\
  If you set it to %^yes%^ and the same file already exists and is larger than\
  %cdcc-resume-min%n bytes in size then the file will be resumed for you.\
@@ -52,17 +64,25 @@ set dcc-resume
  will be asked if you wish to resume it. See also %yhelp set dcc-get%n.
  Default: yes.
 
+set dcc-connection-timeout
+:%* <seconds>
+:Timeout for DCC connection opening.
+:This variable defines how long we will wait for connection with remote side.\
+ If connection is not established within that time then we will abort our\
+ DCC connection attempt.
+ Default: 60.
+
 set dcc-resume-timeout
 :%* <seconds>
-:Timeout for DCC ACCEPT (in seconds)
+:Timeout for DCC ACCEPT (in seconds).
 :This variable defines how long we will wait for ACCEPT after we sent RESUME\
  to remote side. If we don't get ACCEPT in that time then we will abort\
  our waiting and get file without resume (i.e. reget it from scratch).
  Default: 30.
 
 set dcc-get
-:%* [yes|no|ask-yes|ask-no]
-:Enable or not DCC SEND requests
+:%* <yes|no|ask-yes|ask-no>
+:Enable or not DCC SEND requests.
 :This variable determines behavior when you get DCC file send request from\
  anyone. If you set it to %^on%^ then you will have auto-get files. If you\
  set it to %^off%^ then you will never get files and that request will be\
@@ -72,16 +92,16 @@ set dcc-get
  Default: yes.
 
 set dcc-accept-chat
-:%* [yes|no|ask-yes|ask-no]
-:Enable or not incoming DCC CHAT requests
+:%* <yes|no|ask-yes|ask-no>
+:Enable or not incoming DCC CHAT requests.
 :This variable defines if we should accept incoming DCC CHAT requests from IRC\
  network. If you set it with %^ask%^ and you have the active user interface\
  then you will be asked whether you wish to accept that request or not.
  Default: ask-yes.
 
 set dcc-get-overwrite
-:%* [yes|no|ask-yes|ask-no]
-:Overwrite or not existing files when downloading over IRC
+:%* <yes|no|ask-yes|ask-no>
+:Overwrite or not existing files when downloading over IRC.
 :This variable defines behavior when we got a DCC SEND request for some file\
  that already exists. If you set it to %^yes%^ then existing file will be\
  overwritten, and you set it to %^no%^ then that request will be ignored. And\
@@ -92,11 +112,26 @@ set dcc-get-overwrite
  Default: no.
 
 set dcc-allow-ctcp-chat
-:%* [yes|no]
-:Enable or not CTCP "CHAT" command
+:%* <yes|no>
+:Enable or not CTCP "CHAT" command.
 :This variable defines if we will allow users to ask for incoming connection\
  by sending CTCP CHAT command to us. If enabled then we may open listening\
  port and send CTCP DCC CHAT command to that user.
+ Default: yes.
+
+set dcc-blocksize
+:%* <number>
+:Size of block on DCC SEND (in bytes).
+:This variable defines size of each data block which will be sent when we\
+ sending some file via DCC SEND protocol, in bytes. Valid values are from\
+ 256 to 16384. Usually it's safe to leave it untouched.
+ Default: 2048.
+
+set dcc-allow-resume
+:%* <yes|no>
+:Enable or not mIRC "RESUME" extension on sending files.
+:This wariable defines whether "DCC RESUME" command would be accepted when\
+ sending files to others or not.
  Default: yes.
 
 fset dcc_got_file
@@ -105,6 +140,13 @@ fset dcc_got_file
 :Used when someone successfully uploaded some file to you. Macros: %%L, %%@,\
  %%N, %%I, %%* (file name).
  Default: "DCC GET of %%* from %%N completed.".
+
+fset dcc_sent_file
+:
+:
+:Used when someone successfully uploaded some file to you. Macros: %%L, %%@,\
+ %%N, %%I, %%* (file name).
+ Default: "DCC SEND of %%* to %%N completed.".
 
 CHAT
 :

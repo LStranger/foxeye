@@ -55,6 +55,6 @@ comment
 
 set default-ban-time
 :%* <seconds>
-:
+:Default expiration time for bans (in seconds).
 :Defines default expiration time for command %c+ban%n.
  Default: 172800.

@@ -24,8 +24,10 @@
 
 /* in case it's included into protos.h it has to be declared static */
 #ifdef HAVE_INLINE
-# define INLINE static inline
+# define INLINE_I static inline
+# define INLINE __attribute__((warn_unused_result)) static inline
 #else
+# define INLINE_I
 # define INLINE
 #endif
 
@@ -66,7 +68,7 @@ INLINE char *safe_strdup (const char *s)
   return (p);
 }
 
-INLINE char *strfcat (char *dst, const char *src, size_t n)
+INLINE_I char *strfcat (char *dst, const char *src, size_t n)
 {
   register size_t n1;
 
@@ -81,9 +83,9 @@ INLINE char *strfcat (char *dst, const char *src, size_t n)
   return dst;
 }
 
-INLINE char *safe_strchr (const char *s, int c)
+INLINE char *safe_strchr (char *s, int c)
 {
-  register char *r = (char *)s;
+  register char *r = s;
   register char ch = c;
 
   if (r)
@@ -95,20 +97,20 @@ INLINE char *safe_strchr (const char *s, int c)
   return r;
 }
 
-INLINE char *NextWord (const char *msg)
+INLINE char *NextWord (char *msg)
 {
-  if (msg == NULL) return (char *)msg;
+  if (msg == NULL) return msg;
   while (*msg && *msg != ' ') msg++;
   while (*msg == ' ') msg++;
-  return (char *)msg;
+  return msg;
 }
 
-INLINE char *NextWord_Unquoted (char *name, const char *line, size_t s)
+INLINE_I char *NextWord_Unquoted (char *name, char *line, size_t s)
 {
   register char *c;
   char ch;
 
-  if ((c = (char *)line) == NULL)
+  if ((c = line) == NULL)
     return NULL;
   if (*c == '"')
   {
@@ -134,7 +136,7 @@ INLINE char *NextWord_Unquoted (char *name, const char *line, size_t s)
   return c;
 }
 
-INLINE void StrTrim (char *cmd)
+INLINE_I void StrTrim (char *cmd)
 {
   register char *ch;
 
@@ -181,4 +183,5 @@ INLINE char *gettoken (char *ptr, char **eow)
 }
 
 /* cleanup */
+#undef INLINE_I
 #undef INLINE

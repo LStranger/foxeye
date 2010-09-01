@@ -41,9 +41,12 @@ typedef struct
   time_t time;
 } wtmp_t;
 
-short Event (const char *);				/* user event name -> event */
-int FindEvent (wtmp_t *, const char *, short, lid_t, time_t); /* Lname, event, from, upto */
-int FindEvents (wtmp_t *, int, const char *, short, lid_t, time_t); /* size, ... */
+short Event (const char *)
+		__attribute__((warn_unused_result));	/* user event name -> event */
+int FindEvent (wtmp_t *, const char *, short, lid_t, time_t)
+		__attribute__((warn_unused_result));	/* Lname, event, from, upto */
+int FindEvents (wtmp_t *, int, const char *, short, lid_t, time_t)
+		__attribute__((warn_unused_result));	/* size, ... */
 void NewEvent (short, lid_t, lid_t, short);		/* event, from, lid, count */
 void NewEvents (short, lid_t, size_t, lid_t[], short[]);
 void RotateWtmp (void);					/* called monthly */

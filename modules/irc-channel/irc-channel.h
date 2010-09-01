@@ -66,7 +66,7 @@ typedef struct LIST
   time_t since;
   char *what;
   char by[1];			/* WARNING: structure of variable size! */
-} LIST;
+} __attribute__ ((packed)) LIST;
 
 typedef struct LINK
 {
@@ -77,14 +77,14 @@ typedef struct LINK
   modeflag mode;
   time_t activity;
   time_t lmct;			/* last modechange time by me */
-  char joined[13];
+  char joined[20];
   short count;
 } LINK;
 
 typedef struct CHANNEL
 {
   INTERFACE *chi;		/* name "channel@network", lower case, short */
-  char *real;			/* Channel@network from our JOIN as is */
+  char *real;			/* Channel from our JOIN as is */
   LINK *nicks;
   char *key;
   LIST *topic, *bans, *exempts, *invites;
@@ -105,7 +105,7 @@ typedef struct NICK
   netsplit *split;		/* not NULL if it's on netsplit or netjoined */
   struct IRC *net;
   modeflag umode;
-  lid_t id;
+  lid_t id;			/* valid only if lname != NULL */
 } NICK;
 
 typedef struct IRC
@@ -126,6 +126,7 @@ typedef struct IRC
 
 CHANNEL *ircch_find_service (const char *, IRC **);
 LINK *ircch_find_link (IRC *, char *, CHANNEL *);
+NICK *ircch_retry_nick (IRC *, const char *);
 int ircch_add_mask (LIST **, char *, size_t, char *);
 LIST *ircch_find_mask (LIST *, char *);
 void ircch_remove_mask (LIST **, LIST *);

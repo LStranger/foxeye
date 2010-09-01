@@ -38,7 +38,7 @@
 #00038	08.07.2010  15.07.2010	.restart gives lot of junk free()!
 #00039	08.07.2010  08.07.2010	irc_mode: either strange server or I'm dumb
 #00040	08.07.2010  08.07.2010	foxeye in free(): warning: junk pointer...
-#00042	09.07.2010		mask for banned aren't searched in listfile
+#00042	09.07.2010  24.08.2010	mask for banned aren't searched in listfile
 #00043	10.07.2010  10.07.2010	wRAR.() has quit irc () - since 08.07!
 #00044	12.07.2010  15.07.2010	it gives voices on ops!
 #00045	12.07.2010  15.07.2010	SIGSEGV in alloc_request_t()
@@ -47,3 +47,4 @@
 #00048	14.07.2010  15.07.2010	bindings "ss-irc" are not always deleted
 #00049	14.07.2010  15.07.2010	safe_free(0x282f0292) after .who #channel@irc
 #00050	29.07.2010  30.07.2010	nonamed bans don't work
+#00051	30.08.2010  31.08.2010	does not reconnect to IRC after DNS error

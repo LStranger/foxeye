@@ -4,7 +4,7 @@
 # This file is part of FoxEye distribution.
 # Copiright (C) 1999-2010 Andrej Gritsenko <andrej@rep.kiev.ua>
 
-SHELL = @SHELL@
+SHELL = @BASH@
 
 LD_MODS = @LD_MODS@
 

@@ -13,7 +13,7 @@ channel names are presented in arguments of foxeye's module procedures in
 form TheNick@Network not just TheNick but eggdrop's procedures have them
 just TheNick. Third difference is matching model, in FoxEye patterns are
 in shell style so there can be some 'strange' chars in masks such as '['
-for example.
+and '{' but there is no support for '%' and '~' patterns.
     Note about encoding in Tcl. In last versions of Tcl it's strict about
 UTF-8 as internal encoding so it's advisable to change 'charset' variable
 in config file to UTF-8 if you run into any problems in your Tcl scripts.

@@ -8,13 +8,15 @@
 # direct.c bindings:
 
 function port
-:port ["-b"|"-d"] <1024-65535>
+:port ["-b"|"-d"] ["+"flag] <1024-65535>
 :
 :Opens or closes listening port for direct connections. Usage:
  port <x>     opens port x for direct connections
  port -b <x>  opens port x for direct connections from bots only
  port -d <x>  closes port x for direct connections
     <x> may be in range 1024...65535
+ Optional %_flag%_ is char for mandatory connection chain first link (see\
+ technical documentation for more details about connection chain).
 
 away
 :%* [message]
@@ -48,7 +50,8 @@ chat
 :
 :Changes your current botnet channel. If %_channel%_ is omitted then changes\
  to channel 0 (default). You can sit in silence while nobody knows where\
- you are. It's about as secure IRC channels.
+ you are. It's about as secure IRC channels. May not work outside of telnet\
+ or dcc chat.
 
 color
 :%* [mode]
@@ -58,7 +61,8 @@ color
    mono   supress color codes
    ansi   convert any color/etc. mIRC sequences to ANSI ones
    mirc   pass all as is
- If %_mode%_ is omitted then it shows your current color mode.
+ If %_mode%_ is omitted then it shows your current color mode. May not work\
+ outside of telnet or dcc chat.
 
 console
 :%* [service|"*"] [flags change]
@@ -84,7 +88,8 @@ console
    d  display debug messages that only coders would care about
  Note that %_service%_ also defines what service-specific set of commands\
  you have enabled at the time. Value of "%^*%^" leaves you without any of\
- service-specific commands but lets you get all logs on your console.
+ service-specific commands but lets you get all logs on your console. May\
+ not work outside of telnet or dcc chat.
 
 cstat
 :%*
@@ -100,7 +105,7 @@ echo
  channel. If you set it to %^on%^ then all you say will be displayed to you\
  as other people on your botnet channel will see it. If you set it to %^off%^\
  then you will not see your messages. If no parameters given then just shows\
- your current echo mode.
+ your current echo mode. May not work outside of telnet or dcc chat.
 
 help
 :%* [topic]
@@ -109,13 +114,14 @@ help
  template argument(s) in square brackets is optional, argument(s) in quotes\
  must be entered literally, string(s) in angle brackets is what values are\
  allowed for argument(s), and read description of usage in next line(s) of\
- detailed help.
+ detailed help. May not work outside of telnet or dcc chat.
 
 me
 :%* action
 :
 :Sends %_action%_ message to the botnet channel. It will be displayed as
  %^* %N does something.%^
+ May not work outside of telnet or dcc chat.
 
 motd
 :%*

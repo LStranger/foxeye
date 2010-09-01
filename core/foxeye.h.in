@@ -132,6 +132,11 @@ void free ();
 # define INITVAL(x) 
 #endif
 
+/* If we're not using GNU C, elide __attribute__ */
+#ifndef __GNUC__
+# define __attribute__(x) 
+#endif
+
 #define TRUE 1
 #define FALSE 0
 
@@ -157,16 +162,16 @@ void free ();
  * IRC restrictions
  */
 
-#define	LNAMELEN	18	/* preferred name max width */
-#define	NAMEMAX		63	/* client name max, valid values LNAMELEN->63 */
-#define	IFNAMEMAX	2*NAMEMAX+1 /* interface name length (dcc.c: 127 max) */
-#define	IDENTLEN	10	/* user login name max width */
+#define LNAMELEN	32	/* Lname max width */
+#define NAMEMAX		63	/* single name max width, must be >= LNAMELEN */
+#define PASSWDMAX	NAMEMAX	/* still reserved 3 bytes for connchain flags */
+#define IFNAMEMAX	2*NAMEMAX+1 /* interface name length */
+#define IDENTLEN	10	/* user login name max width */
 #define HOSTLEN		63	/* by RFC1123 */
-#define	MBNAMEMAX	MB_LEN_MAX*NAMEMAX /* it is part of HOSTMASKLEN */
-#define HOSTMASKLEN	MBNAMEMAX+IDENTLEN+HOSTLEN+2
+#define HOSTMASKLEN	NAMEMAX+IDENTLEN+HOSTLEN+2 /* n!i@h or :p@h/n%f */
 #define RESTRICTEDCHARS	" ,\007\r\n" /* cannot be in names */
-#define MESSAGEMAX	512	/* including CR-LF at end */
-#define	FORMATMAX	120	/* max lenght of format string */
+#define MESSAGEMAX	1024	/* including '\0' at end */
+#define FORMATMAX	120	/* max lenght of format string */
 
 /* common Tcl/internal function prototype */
 typedef int (*Function)();
@@ -209,7 +214,7 @@ typedef enum
 	/* message flags */
   F_PUBLIC	= (1<<4),	/* p   public msg/notice/ctcp    --- dests ---*/
   F_PRIV	= (1<<5),	/* m   msg/notice/ctcp from/to bot */
-  F_BOTNET	= (1<<6),	/* n   botnet notices */
+  F_BOTNET	= (1<<6),	/* n   botnet messages */
   F_USERS	= (1<<7),	/* u   user changes information  --- logs ----*/
   F_CMDS	= (1<<8),	/* c   any user command */
   F_CONN	= (1<<9),	/* b   clients connections/shares */
@@ -239,6 +244,10 @@ typedef enum
 
 #define F_MIN		F_PUBLIC
 #define F_T_MASK	(F_MIN-1)
+
+#define F_ASK_BOOL	0	/* message types for F_ASK */
+#define F_ASK_NUMBER	1
+#define F_ASK_STRING	2
 
 #define F_PREFIXED (F_USERS | F_CMDS | F_CONN | F_SERV | F_ERROR | F_WARN | \
 		    F_JOIN | F_MODES) /* those must be prefixed in some cases */
@@ -271,7 +280,7 @@ typedef enum
   S_CONTINUE,			/* continue stopped job */
   S_SHUTDOWN,			/* flush and terminate interface (quick) */
   S_TERMINATE			/* terminate interface and release resources */
-} __attribute__ ((__packed__)) ifsig_t;
+} __attribute__ ((packed)) ifsig_t;
 
 /* return values for _if_t::IFRequest */
 #define REQ_OK		0
@@ -323,14 +332,15 @@ typedef enum
   U_FLH		= (1<<21),	/* H   */
   /* record attributes */
   U_UNSHARED	= (1<<22),	/* u   private, not shared with sharebots */
-  U_IGNORED	= (1<<23),	/* I   user's messages are ignored */
-  U_NEGATE	= (1<<24),	/*     (pseudo-user) inverse matching */
-  U_ALIAS	= (1<<25),	/*     (pseudo-user) alias */
-  U_SPECIAL	= (1<<26),	/*     (pseudo-user) network/service/channel */
-  U_ANY		= (1<<27)	/*     set 1 for any regular user */
+  U_SECRET	= (1<<23),	/* x   ignored by "autolog" module */
+  U_IGNORED	= (1<<24),	/* I   user's messages are ignored */
+  U_NEGATE	= (1<<25),	/*     (pseudo-user) inverse matching */
+  U_ALIAS	= (1<<26),	/*     (pseudo-user) alias */
+  U_SPECIAL	= (1<<27),	/*     (pseudo-user) network/service/channel */
+  U_ANY		= (1<<28)	/*     set 1 for any regular user */
 } userflag;
 
-#define USERFLAG "kaefvhomsn*idqABCDEFGHuI"
+#define USERFLAG "kaefvhomsn*idqABCDEFGHuxI"
 
 #define U_GLOBALS (U_DENY | U_INVITE | U_FRIEND | U_VOICE | U_MASTER | \
 		   U_OWNER | U_NOAUTH | U_QUIET | U_IGNORED | U_SPECIAL | U_ANY)

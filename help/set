@@ -6,42 +6,42 @@
 
 set nick
 :%* <string>
-:Name of bot to use on the botnet
+:Name of bot to use on the botnet.
 :This is a name of bot to use on the botnet. Also it is default nickname\
  for connection to servers.
  No default.
 
 set my-hostname
 :%* <string>
-:Network DNS name used to identify itself on servers
+:Network DNS name used to identify itself on servers.
 :If your machine has multiple hostnames and you would like to use a\
  particular one then set this variable to preferred host.
  Default: ""
 
 set locale
 :%* <locale name>
-:Locale name for messages and case conversions
+:Locale name for messages and case conversions.
 :This variable changes your preferred language for messages, help files\
  and case (upper<->lower) conversions. Affects only [re]boot.
  Default: locale part of value of LANG environment variable.
 
 set charset
 :%* <charset>
-:Charset name for current locale
+:Charset name for current locale (not changeable in runtime).
 :This variable changes character set name for any character conversions:\
  server, dcc recodings, scripting languages (such as Tcl), etc.
  Default: charset part of value of LANG environment variable.
 
 set listfile
 :%* <path>
-:Filename for main Listfile
+:Filename for main Listfile.
 :Listfile has all info about users, passwords, servers, channels, etc. This\
  variable points to the file which has such info.
  Default: "listfile".
 
 set connection-timeout
 :%* <seconds>
-:Direct connection start timeout
+:Direct connection start timeout.
 :This variable defines how much amount of time core will keep connection\
  until connection is complete. If client still doesn't enter login name or\
  password but spends that time then connection will be terminated.
@@ -49,7 +49,7 @@ set connection-timeout
 
 set ident-timeout
 :%* <seconds>
-:Ident timeout
+:Ident timeout (in seconds).
 :This variable defines how much amount of time core will wait for ident\
  answer from remote side. If still was not answer after that time since\
  connection was made then connection will be terminated and ident assumed\
@@ -66,7 +66,7 @@ set protect-telnet
 
 set motd
 :%* <path>
-:Filename for MOTD file
+:Filename of MOTD file.
 :MOTD (message of the day) is message that is usually shown to user when\
  he/she logins to partyline. This variable points to a file which contains\
  text of MOTD in %^printl%^() format (see documentation for details).
@@ -74,21 +74,21 @@ set motd
 
 set cache-time
 :%* <seconds>
-:Write-cache hold time
+:Write-cache hold time (in seconds).
 :This variable defines how much amount of time unsaved changes are keeping\
  in listfile, logfile, etc. internal buffers until save on disk, in seconds.
  Default: 300.
 
 set wtmpfile
 :%* <path>
-:Filename for bot statistics
+:Filename for statistics save.
 :Wtmpfile has info about all events - logins, joins, parts, requests, any\
  statistics. This variable points to the file which collects such data.
  Default: "Wtmp".
 
 set wtmps
 :%* <number>
-:Number of Wtmp files to keep
+:Number of Wtmp files to keep.
 :This variable defines number of Wtmp files to keep when rotating. Each\
  Wtmp file can contain data for one month so this defines how much\
  statistics you want to have. Set that to 0 says keep only current\
@@ -97,7 +97,7 @@ set wtmps
 
 set formatsfile
 :%* <path>
-:Filename for formats
+:Filename for format strings.
 :Formats are directives which defines how different events will be logged\
  into logfiles or user interface (see documentation for details). This\
  variable points to a file where these formats are saved.
@@ -105,7 +105,7 @@ set formatsfile
 
 set replace-unknown-char
 :%* <char>
-:Replacer for unconvertable characters
+:Replacement char for unconvertable characters.
 :This character will replace any characters in output of charset conversion\
  if these characters cannot be converted. If set empty then unconvertable\
  characters will be silently omitted.
@@ -163,7 +163,7 @@ fset who_master
 :
 :
 :That is format of each line of output of %^who%^ command for masters.\
- (see S_REPORT in\ docs).
+ (see S_REPORT in docs).
  Default: "%%16L %%4I %%12# %%@%%?- (idle %%-)??".
 
 fset who_head

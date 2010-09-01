@@ -66,7 +66,7 @@ static int _lua_getbinding (lua_State *L, int n, const char *name) /* -> n f */
 /*
  * Calls from FoxEye to Lua (bindings)
  */
-static int binding_lua (char *name, int argc, char *argv[])
+static int binding_lua (char *name, int argc, const char *argv[])
 {
   int i = 0;
 
@@ -169,7 +169,7 @@ static int _lua_find_binding (lua_State *L, int n, const char *t) /* f -> f n f 
   FOREVER
   {
     lua_pop (L, 2); /* f */
-    if (i++ == 999)	/* TODO: free names on foxeye.unbind */
+    if (i++ == 999)
       luaL_error (L, "incorrectable error in bind for %s, is it cycled?", t);
     snprintf (name, sizeof(name), "%s#%d", t, i);
     DBG ("lua:_lua_find_binding: trying %s", name);
@@ -272,6 +272,7 @@ static int _lua_unbind (lua_State *L) /* foxeye.unbind(table[,func]) */
       Delete_Binding (table, &binding_lua, lua_tostring (L, 4));
   }
   else					/* remove all functions */
+    /* unfortunately, there is no way to gather unused names here :( */
     Delete_Binding (table, &binding_lua, NULL);
   return 0;
 }
@@ -294,12 +295,16 @@ static int _lua_nick (lua_State *L) /* nick = foxeye.client.nick(client) */
 
 static int _lua_sendto (lua_State *L, iftype_t to, flag_t fl)
 {
+  const char *target;
+
   if (lua_gettop (L) != 2)
     return luaL_error (L, "bad number of parameters");
-  // TODO: implement sending to direct service/botnet
   luaL_argcheck (L, lua_isstring (L, 1), 1, NULL);
   luaL_argcheck (L, lua_isstring (L, 2), 2, NULL);
-  Add_Request (to, (char *)lua_tostring (L, 1), fl, "%s", lua_tostring (L, 2));
+  target = lua_tostring (L, 1);
+  if (to == I_CLIENT && target[0] == ':')
+    to = I_DCCALIAS;	/* sending to direct service/botnet */
+  Add_Request (to, target, fl, "%s", lua_tostring (L, 2));
   return 0;
 }
 
@@ -489,7 +494,7 @@ static const luaL_Reg luatable_net[] = {
  */
 static int lua_call_function (lua_State *L) /* int = func(arg) */
 {
-  int (*fn) (char *);
+  int (*fn) (const char *);
   register int i;
 
   // args: [1] string
@@ -498,7 +503,7 @@ static int lua_call_function (lua_State *L) /* int = func(arg) */
       !lua_islightuserdata (Lua, lua_upvalueindex (1)))
     return luaL_error (Lua, "incorrect function call");
   fn = lua_touserdata (Lua, lua_upvalueindex (1));
-  i = fn ((char *)lua_tostring (Lua, 1));
+  i = fn (lua_tostring (Lua, 1));
   lua_pushinteger (Lua, i);
   return 1;
 }
@@ -526,7 +531,7 @@ static void _lua_fe_name (const char *name)
 }
 
 BINDING_TYPE_function (lua_register_function);
-static int lua_register_function (const char *name, int (*fn) (char *))
+static int lua_register_function (const char *name, int (*fn) (const char *))
 {
   _lua_getfoxeye (Lua); /* T */
   _lua_fe_name (name); /* T k */		/* convert name /-/_/ */
@@ -746,8 +751,6 @@ static iftype_t lua_module_signal (INTERFACE *iface, ifsig_t sig)
  */
 Function ModuleInit (char *args)
 {
-  char sig[sizeof(ifsig_t)] = {S_REG};
-
   CheckVersion;
   Lua = lua_open();
   luaL_openlibs (Lua);	/* open standard libraries */
@@ -773,7 +776,7 @@ Function ModuleInit (char *args)
   Add_Binding ("unregister", NULL, 0, 0, &lua_unregister_variable, NULL);
   Add_Binding ("unfunction", NULL, 0, 0, &lua_unregister_function, NULL);
   Add_Binding ("dcc", "lua", U_OWNER, U_NONE, &dc_lua, NULL);
-  Add_Request (I_MODULE | I_INIT, "*", F_SIGNAL, sig);
+  Send_Signal (I_MODULE | I_INIT, "*", S_REG);
   Add_Help ("lua");
   return ((Function)&lua_module_signal);
 }

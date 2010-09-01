@@ -20,6 +20,15 @@ DCC   "ddcccc"            UCOMPL
       Matching: first word of partyline command without leading '.'.
       Script args: Lname Dcc-idx args
 
+-     "ssss--**"           UCOMPL
+  int func(peer_t *_w_h_o, INTERFACE *_w_h_e_r_e, char *_a_r_g_s);
+    Used when user _w_h_o enters server-specific command on user interface.
+    Other side (I_SERVICE or I_CLIENT) is specified by _w_h_e_r_e. Arguments
+    _a_r_g_s to command are stripped from leading spaces. "**" in the name
+    means network type (i.e. "irc", etc.). That's similar to and is
+    extension of "ddcccc" bindtable.
+      Matching: first word of command without leading '.'.
+
 CHAT  "cchhaatt"           MASK
   (int) void func(peer_t *_f_r_o_m, char *_m_s_g);
     Used when somebody says anything (text _m_s_g) on the partyline/botnet.
@@ -88,7 +97,8 @@ CHPT  "cchhaatt--ppaarrtt"      MASK
 
 NKCH  "nneeww--llnnaammee"      MASK
   (int) void func(char *_n_e_w_l_n, char *_o_l_d_l_n);
-    Used when user Lname _o_l_d_l_n changed to Lname _n_e_w_l_n.
+    Used when user Lname _o_l_d_l_n changed to Lname _n_e_w_l_n or if that _o_l_d_l_n is
+    deleted from Listfile.
       Matching: old Lname.  (userflags are ignored)
       Script args: oldln newln
 
@@ -106,17 +116,20 @@ UNLD  "uunnllooaadd"         MASK
       Script args: mod
 
 -     "llooggiinn"          MASK
-  (int) void func(char *_w_h_o, char *_i_d_e_n_t, char *_h_o_s_t, idx_t _i_d_x,
+  (int) void func(char *_w_h_o, char *_i_d_e_n_t, char *_h_o_s_t, peer_t *_p_e_e_r,
 		  char _b_u_f[SHORT_STRING], char **_m_s_g);
-    Used when someone with Lname _w_h_o is about to enter telnet with bot.
-    The binding is always called from thread but dispatcher is locked so
-    first thing you must to do is call Unset_Iface(). If first char in
-    _b_u_f isn't 0 then you are called from irc module on DCC CHAT. The
-    binding makes password checking and creates the interface if there
-    was no errors. Else it returns error message _m_s_g. Parameters
-    _i_d_e_n_t, and _h_o_s_t are coming from connection socket _i_d_x. Buffer _b_u_f
-    may be used by binding. Note: the binding must be thread-safe!
-    Don't use it please, until you know how it works!!!
+    Used when connection with someone is established and we got their
+    Lname _w_h_o. The binding is always called from thread but dispatcher is
+    locked so very first thing the binding must do is to make call
+    Unset_Iface(). Connection chain is already created, filter 'x' is
+    included, and it is bound to _p_e_e_r but there is no 'iface' or 'priv'
+    fields set in it. The binding makes password checking if it is
+    required and creates an interface if there were no errors. Else it
+    should return an error message in _m_s_g so _p_e_e_r will be destroyed on
+    return. Parameters _i_d_e_n_t, and _h_o_s_t are coming from peer connection
+    socket. If _b_u_f contains empty string then it's telnet session. Buffer
+    _b_u_f can be used by the binding. Note: the binding must be
+    thread-safe! Don't use it please, until you know how it works!!!
       Matching: network type.  (any channel userflags are ignored)
 
 -     "ccoonnnneecctt"        MASK
@@ -141,7 +154,7 @@ UNLD  "uunnllooaadd"         MASK
       Matching: none
 
 -     "ffuunnccttiioonn"       MASK
-  int func(const char *_n_a_m_e, int (* _f_n) (char *));
+  int func(const char *_n_a_m_e, int (* _f_n) (const char *));
     Used when any module attempts to register any function _f_n with
     symbolic name _n_a_m_e.
       Matching: none
@@ -177,15 +190,6 @@ UNLD  "uunnllooaadd"         MASK
     composite name. See description of the Inspect_Client() function for
     more details.
       Matching: network type.
-
--     "ssss--**"           UNIQ
-  int func(peer_t *_w_h_o, INTERFACE *_w_h_e_r_e, char *_a_r_g_s);
-    Used when user _w_h_o enters server-specific command on user interface.
-    Other side (I_SERVICE or I_CLIENT) is specified by _w_h_e_r_e. Arguments
-    _a_r_g_s to command are stripped from leading spaces. "**" in the name
-    means network type (i.e. "irc", etc.). That's similar to and is
-    extension of "ddcccc" bindtable.
-      Matching: first word of command without leading '.'.
 
 -     "ttiimmee--sshhiifftt"     MASK
   (int) void func(int _d_e_l_t_a);
@@ -223,10 +227,11 @@ UNLD  "uunnllooaadd"         MASK
     pointer to sending buffer then it have to try to send what is still
     left in own buffer and it will never receive data again. It still may
     get calls but as soon as own buffer is empty or if it get error from
-    next link it should always return error. If send() got pointer to
+    next link it should always return error. If _s_e_n_d() got pointer to
     sending buffer not equal to NULL but count of bytes to send equal to
     0 then it should return value CONNCHAIN_READY if it can take data for
-    sending on next call and some other value otherwise. If there were no
+    sending on next call (that includes checking next link in chain for
+    ability to work) or some other value otherwise. If there were no
     errors then _s_e_n_d() should return number of bytes were sent and change
     counter (by argument's pointer) appropriately.
       Matching: connchain flag char.

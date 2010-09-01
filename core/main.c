@@ -157,7 +157,6 @@ static int _request (INTERFACE *iface, REQUEST *req)
   console_peer *dcc = (console_peer *)iface->data;
   ssize_t sw;
   char buff[MESSAGEMAX];
-  volatile int to_all;
 
   /* first time? */
   if (!dcc->s.iface)
@@ -166,30 +165,26 @@ static int _request (INTERFACE *iface, REQUEST *req)
     close (Fifo_Inp[1]);
     close (Fifo_Out[0]);
   }
-  if (req)
-  {
-    to_all = Have_Wildcard (req->to) + 1;
-    /* check if this is: not for me exactly but from me */
-    if (req->from == iface && (req->mask_if & I_DCCALIAS) && to_all)
-      req = NULL;
-  }
+  /* don't echo back own botnet messages */
+  if (req && req->from == iface && (req->mask_if & I_DCCALIAS) &&
+      !strncmp (req->to, ":*:", 3))
+    req = NULL;
   /* check if we have empty output buf */
   while (dcc->buf[0] || req)
   {
     if (req && !dcc->buf[0])
     {
       /* for logs - if not from me */
-      if (to_all && (req->mask_if & I_LOG))
+      if (req->mask_if & I_LOG)
       {
 	if (req->flag & CONSOLE_LOGLEV)
-	{
-	  printl (dcc->buf, sizeof(dcc->buf) - 1, "[%t] %*", 0,
-		  NULL, NULL, NULL, NULL, 0, 0, 0, req->string);
-	}
+	  sw = printl (dcc->buf, sizeof(dcc->buf) - 1, "[%t] %*", 0,
+		       NULL, NULL, NULL, NULL, 0, 0, 0, req->string);
+	else
+	  sw = 0;
       }
       /* for chat channel messages */
-      else if (req->from && (req->from->ift & I_DIRECT) && to_all &&
-	       (req->mask_if & I_DCCALIAS))
+      else if (req->mask_if & I_DCCALIAS)
       {
 	char *prefix = "";
 	char *suffix = "";
@@ -207,18 +202,20 @@ static int _request (INTERFACE *iface, REQUEST *req)
 	    prefix = "<";
 	    suffix = ">";
 	}
-	snprintf (dcc->buf, sizeof(dcc->buf) - 1, "%s%s%s %s", prefix,
-		  req->from->name, suffix, str);
+	sw = snprintf (dcc->buf, sizeof(dcc->buf) - 1, "%s%s%s %s", prefix,
+		       req->from->name, suffix, str);
+	if ((size_t)sw >= sizeof(dcc->buf) - 1)
+	  sw = sizeof(dcc->buf) - 2;
       }
       /* direct messages */
       else
-	strfcpy (dcc->buf, req->string, sizeof(dcc->buf) - 1);
-      sw = strlen (dcc->buf);
+	sw = strfcpy (dcc->buf, req->string, sizeof(dcc->buf) - 1);
       if (sw && !(req->from->ift & I_INIT))	/* ending with newline */
-	strfcpy (&dcc->buf[sw], "\n", 2);
+	strfcpy (&dcc->buf[sw++], "\n", 2);
       req = NULL;		/* request done */
     }
-    sw = strlen (dcc->buf);
+    else
+      sw = strlen (dcc->buf);
     /* write the buffer to pipe, same as Write_Socket() does */
     if (sw)
       sw = _write_pipe (dcc->buf, (size_t *)&sw);
@@ -240,7 +237,7 @@ static int _request (INTERFACE *iface, REQUEST *req)
     return REQ_OK;
   /* run command or send to 0 channel of botnet */
   else
-    Dcc_Parse (&dcc->s, "", buff, -1, -1, -2, 0, NULL, NULL, NULL);
+    Dcc_Parse (&dcc->s, "", buff, -1, -1, -2, 0, NULL, NULL);
   return REQ_OK;
 }
 
@@ -266,8 +263,8 @@ static iftype_t _signal (INTERFACE *iface, ifsig_t signal)
     case S_SHUTDOWN:
       if (ShutdownR)
       {
-	write (Fifo_Out[1], ShutdownR, safe_strlen (ShutdownR));
-	write (Fifo_Out[1], "\n", 1);
+	if(write (Fifo_Out[1], ShutdownR, safe_strlen (ShutdownR)))*buff=*buff;
+	if(write (Fifo_Out[1], "\n", 1))*buff=*buff; /* make compiler happy */
       }
       _kill_pipe (iface);
     default: ;
@@ -297,7 +294,8 @@ static void *_stdin2pipe (void *bbbb)
 #endif
     if (!(cc = fgets (buff, sizeof(buff), stdin)))
       break;
-    write (Fifo_Inp[1], buff, strlen(buff));
+    if (write (Fifo_Inp[1], buff, strlen(buff)) < 0)
+      break;
   };
   close (Fifo_Inp[1]);
   return (NULL);
@@ -329,23 +327,28 @@ static int _get_RunPath (char *callpath)
       path = "/bin:/usr/bin";			/* default PATH */
     while (path && *path)
     {
+      register size_t s;
+
       if (path[0] == ':')
 	path++;
       if (path[0] == 0)
 	break;
-      strfcpy (buff, path, sizeof(buff) - 3);
-      c = strchr (buff, ':');
-      if (!c)
-	c = &buff[strlen(buff)];
-      *c++ = '/';
-      *c = 0;
-      strfcat (buff, callpath, sizeof(buff));
+      c = strchr (path, ':');
+      if (c)
+	s = c - path;
+      else
+	s = strlen(path);
+      if (s > sizeof(buff) - 4)
+	s = sizeof(buff) - 4;
+      memcpy (buff, path, s);
+      buff[s++] = '/';
+      strfcpy (&buff[s], callpath, sizeof(buff) - s);
       if (stat (buff, &st) == 0 &&		/* check permission for me */
 	  ((st.st_uid == uid && (st.st_mode & S_IXUSR)) ||	/* owner */
 	  (st.st_gid == gid && (st.st_mode & S_IXGRP)) ||	/* group */
 	  (st.st_mode & S_IXOTH)))				/* world */
 	break;
-      path = strchr (buff, ':');		/* next in PATH */
+      path += s;				/* next in PATH */
     }
     if (!path || !path[0])			/* no such file */
       return -1;

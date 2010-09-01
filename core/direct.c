@@ -21,10 +21,10 @@
  */
 
 #include "foxeye.h"
-#include <fcntl.h>
-#include <errno.h>
-#include <netinet/in.h>
-#include <netdb.h>
+//#include <fcntl.h>
+//#include <errno.h>
+//#include <netinet/in.h>
+//#include <netdb.h>
 
 #ifdef HAVE_CRYPT_H
 # include <crypt.h>
@@ -38,9 +38,8 @@
 #include "wtmp.h"
 #include "conversion.h"
 
-typedef struct
+struct peer_priv
 {
-  peer_t s;
   flag_t loglev;
   int botnet;				/* botnet channel, chat off if < 0 */
   short floodcnt;			/* flood counter */
@@ -48,7 +47,7 @@ typedef struct
   INTERFACE *alias;			/* interface for botnet channel */
   char *netname;			/* service name (for "ss-*") */
   bindtable_t *ssbt;			/* network-specitic bindtable */
-} session_t;
+};
 
 static bindtable_t *BT_Crypt;
 static bindtable_t *BT_Dcc;
@@ -63,7 +62,7 @@ static bindtable_t *BT_Chatjoin;
 static bindtable_t *BT_Chatpart;
 static bindtable_t *BT_Connect;
 
-#define DccIdx(a) (int)(((peer_t *)a)->socket + 1)
+#define DccIdx(a) ((a)->socket + 1)
 
 /*
  * Direct session management.
@@ -82,7 +81,7 @@ static char _userdccflag (userflag uf)
   return '-';
 }
 
-static void _chat_join (session_t *dcc)
+static void _chat_join (peer_t *dcc)
 {
   register binding_t *bind = NULL;
   char *on_bot;
@@ -92,19 +91,19 @@ static void _chat_join (session_t *dcc)
   char ch[16];
 
   /* start getting the messages from botnet channel */
-  snprintf (ch, sizeof(ch), ":%d:%d", DccIdx(dcc), dcc->botnet);
-  Rename_Iface (dcc->alias, ch);
-  name = dcc->s.iface->name;
+  snprintf (ch, sizeof(ch), ":%d:%d", DccIdx(dcc), dcc->priv->botnet);
+  Rename_Iface (dcc->priv->alias, ch);
+  name = dcc->iface->name;
   if ((on_bot = safe_strchr (name, '@')))
     on_bot++;
   else
     on_bot = Nick;
-  snprintf (ch, sizeof(ch), ":*:%d %c", dcc->botnet, _userdccflag (dcc->s.uf));
+  snprintf (ch, sizeof(ch), ":*:%d %c", dcc->priv->botnet, _userdccflag (dcc->uf));
   cc = strchr (ch, ' ');		/* between botch and flag */
-  dprint (4, "dcc:_chat_join: %s joining %d", name, dcc->botnet);
+  dprint (4, "dcc:_chat_join: %s joining %d", name, dcc->priv->botnet);
   /* run bindtable */
-  h = SocketDomain (dcc->s.socket, NULL);
-  Set_Iface (dcc->s.iface);
+  h = SocketDomain (dcc->socket, NULL);
+  Set_Iface (dcc->iface);
   do
   {
     *cc = '\0';
@@ -114,43 +113,39 @@ static void _chat_join (session_t *dcc)
       if (bind->name)
         RunBinding (bind, NULL, on_bot, name, &ch[3], DccIdx(dcc), h);
       else
-        bind->func (dcc->s.iface, dcc->botnet, h);
+        bind->func (dcc->iface, dcc->priv->botnet, h);
     }
   } while (bind);
   Unset_Iface();
   *cc = '\0';
   /* notify local botnet users! */
-  Set_Iface (dcc->alias);
-  if (dcc->botnet >= 0)
+  if (dcc->priv->botnet >= 0)
     Add_Request (I_DCCALIAS, ch, F_T_NOTICE, _("joined this botnet channel."));
-  Unset_Iface();
 }
 
-static void _chat_part (session_t *dcc, char *quit)
+static void _chat_part (peer_t *dcc, char *quit)
 {
   register binding_t *bind = NULL;
   char *on_bot;
   char ch[16];
   char *name = NULL;
 
-  name = dcc->s.iface->name;
+  name = dcc->iface->name;
   if ((on_bot = safe_strchr (name, '@')))
     on_bot++;
   else
     on_bot = Nick;
-  dprint (4, "dcc:_chat_part: %s parting %d", name, dcc->botnet);
-  snprintf (ch, sizeof(ch), ":*:%d", dcc->botnet);
+  dprint (4, "dcc:_chat_part: %s parting %d", name, dcc->priv->botnet);
+  snprintf (ch, sizeof(ch), ":*:%d", dcc->priv->botnet);
   /* notify the botnet! */
-  Set_Iface (dcc->alias);
   /* if quit - send the formed notice */
-  if (dcc->botnet < 0);
+  if (dcc->priv->botnet < 0);
   else if (quit)
     Add_Request (I_DCCALIAS, ch, F_T_NOTICE, _("quit botnet: %s"), quit);
   else
     Add_Request (I_DCCALIAS, ch, F_T_NOTICE, _("left this botnet channel."));
-  Unset_Iface();
   /* run bindtable */
-  Set_Iface (dcc->s.iface);
+  Set_Iface (dcc->iface);
   do
   {
     if ((bind = Check_Bindtable (BT_Chatpart, &ch[3], U_ALL, U_ANYCH, bind)))
@@ -158,13 +153,13 @@ static void _chat_part (session_t *dcc, char *quit)
       if (bind->name)
         RunBinding (bind, NULL, on_bot, name, NULL, DccIdx(dcc), &ch[3]);
       else
-        bind->func (dcc->s.iface, dcc->botnet);
+        bind->func (dcc->iface, dcc->priv->botnet);
     }
   } while (bind);
   Unset_Iface();
   /* stop getting the messages */
   snprintf (ch, sizeof(ch), ":%d:", DccIdx(dcc));
-  Rename_Iface (dcc->alias, ch);
+  Rename_Iface (dcc->priv->alias, ch);
 }
 
 static char _Flags[] = FLAG_T;
@@ -172,14 +167,10 @@ static char _Flags[] = FLAG_T;
 /*
  * Set console state from saved value: "loglevel IRCchannel BotChannel"
  */
-static void setconsole (session_t *dcc)
+static void setconsole (peer_t *dcc)
 {
   register flag_t logl = F_COLOR;	/* color mirc by default */
-#if 1
   flag_t maskfl = (F_JOIN | F_MODES | F_ECHO | F_COLOR | F_COLORCONV);
-#else
-  flag_t maskfl = -1;
-#endif
   register char *fl;
   int botch;
   char chan[128];
@@ -188,14 +179,14 @@ static void setconsole (session_t *dcc)
   char *line;
 
   /* return if arguments are invalid */
-  if ((user = Lock_Clientrecord (dcc->s.iface->name)))
+  if ((user = Lock_Clientrecord (dcc->iface->name)))
     line = Get_Field (user, "", NULL);
   else
     line = NULL;
   if (user)
-    dcc->s.uf = Get_Flags (user, "");	/* global+direct service flags */
+    dcc->uf = Get_Flags (user, "");	/* global+direct service flags */
   else
-    dcc->s.uf = 0;			/* did someone deleted you? */
+    dcc->uf = 0;			/* did someone deleted you? */
   if (line && sscanf (line, "%*s %127s %d", chan, &botch) == 2)
   {
     /* get flags from line */
@@ -229,86 +220,77 @@ static void setconsole (session_t *dcc)
     }
     else
       cf = 0;
-#if 1
-    if (dcc->s.uf & U_OWNER)
+    if (dcc->uf & U_OWNER)
       maskfl |= (F_BOOT | F_DEBUG);
-    if ((dcc->s.uf & U_MASTER) || (cf & U_MASTER))
+    if ((dcc->uf & U_MASTER) || (cf & U_MASTER))
       maskfl |= (F_CMDS | F_USERS | F_ERROR | F_WARN);
-    if ((dcc->s.uf & U_OP) || (cf & U_OP))
+    if ((dcc->uf & U_OP) || (cf & U_OP))
       maskfl |= (F_CONN | F_PUBLIC | F_WALL | F_PRIV | F_SERV);
-#else
-    if (!(dcc->s.uf & U_OWNER))
-      maskfl &= ~(F_BOOT | F_DEBUG);
-    if (!(dcc->s.uf & U_MASTER) && !(cf & U_MASTER))
-      maskfl &= ~(F_CMDS | F_USERS | F_ERROR | F_WARN);
-    if (!(dcc->s.uf & U_OP) && !(cf & U_OP))
-      maskfl &= ~(F_CONN | F_PUBLIC | F_WALL | F_PRIV | F_SERV);
-#endif
     logl &= maskfl;
     if ((logl & F_DEBUG) && O_DLEVEL > 2)
     {
-      New_Request (dcc->s.iface, F_T_NOTICE,
+      New_Request (dcc->iface, F_T_NOTICE,
 	      "Debug level is too high for DCC CHAT, switching debug log off");
       logl &= ~F_DEBUG;
     }
     /* set DCC session console parameters */
-    dcc->botnet = botch;
-    if (dcc->log)
+    dcc->priv->botnet = botch;
+    if (dcc->priv->log)
     {
-      Rename_Iface (dcc->log, chan);
+      Rename_Iface (dcc->priv->log, chan);
       /* now get network name and "ss-*" bindtable */
-      if (dcc->log->name && (line = strrchr (dcc->log->name, '@')))
+      if (dcc->priv->log->name && (line = strrchr (dcc->priv->log->name, '@')))
 	line++;
       else
-	line = dcc->log->name;
+	line = dcc->priv->log->name;
       if ((user = Lock_Clientrecord (line)))
       {
 	if (Get_Flags (user, "") & U_SPECIAL)
 	{
-	  dcc->netname = dcc->log->name;
+	  dcc->priv->netname = dcc->priv->log->name;
 	  if ((line = Get_Field (user, ".logout", NULL)))
 	  {
 	    snprintf (chan, sizeof(chan), "ss-%s", line);
-	    dcc->ssbt = Add_Bindtable (chan, B_UCOMPL);
+	    dcc->priv->ssbt = Add_Bindtable (chan, B_UCOMPL);
 	  }
 	}
 	else
-	  dcc->netname = NULL;
+	  dcc->priv->netname = NULL;
 	Unlock_Clientrecord (user);
       }
       else
-	dcc->netname = NULL;
+	dcc->priv->netname = NULL;
     }
   }
   else if (user)
     Unlock_Clientrecord (user);
-  dcc->loglev = logl;
+  dcc->priv->loglev = logl;
 }
 
-static char *getconsole (session_t *dcc, char *str, size_t sz)
+static char *getconsole (peer_t *dcc, char *str, size_t sz)
 {
   register int i;
   register char *s = str;
   register flag_t f = F_MIN;
 
   sz -= 3;
-  if (dcc->loglev & F_ECHO)
+  if (dcc->priv->loglev & F_ECHO)
     *s++ = '+';
   else
     sz++;
-  if (!(dcc->loglev & F_COLOR))
+  if (!(dcc->priv->loglev & F_COLOR))
   {
-    if (dcc->loglev & F_COLORCONV)
+    if (dcc->priv->loglev & F_COLORCONV)
       *s++ = '#';
     else
       *s++ = '$';
   }
-  else if (dcc->loglev & F_COLORCONV)
+  else if (dcc->priv->loglev & F_COLORCONV)
     *s++  = '%';
   else
     sz++;
   for (i = 0; _Flags[i] && sz > 1; i++, f += f)
-    if (dcc->loglev & f)
+    if (dcc->priv->loglev & f)
     {
       *s++ = _Flags[i];
       sz--;
@@ -325,47 +307,38 @@ static short *flood_dcc;
 static void _died_iface (INTERFACE *iface, char *buf, size_t s)
 {
   binding_t *bind = NULL;
-  session_t *dcc = (session_t *)iface->data;
+  peer_t *dcc = iface->data;
   userflag cf = 0;
 
-  if (!dcc || dcc->s.socket == -1)		/* is it already killed? */
+  if (!dcc || dcc->socket == -1)		/* is it already killed? */
     return;
-  iface = dcc->s.iface;				/* to the right one! */
+  iface = dcc->iface;				/* to the right one! */
   iface->ift |= I_DIED;
-  dcc->s.state = P_LASTWAIT;
-  if (dcc->log)					/* down log interface */
-  {
-    dcc->log->data = NULL;
-    dcc->log->ift |= I_DIED;
-    dcc->netname = NULL;
-    dcc->ssbt = NULL;
-  }
-  if (dcc->alias)				/* down script alias for iface */
-  {
-    dcc->alias->data = NULL;
-    dcc->alias->ift |= I_DIED;
-  }
-  CloseSocket (dcc->s.socket);			/* kill the socket */
+  dcc->state = P_LASTWAIT;
+  CloseSocket (dcc->socket);			/* kill the socket */
   if (s == 0)					/* is this shutdown call? */
     return;
   dprint (4, "dcc:_died_iface: %s", iface->name);
-  Connchain_Kill ((&dcc->s));
-  KillSocket (&dcc->s.socket);
+  if(Connchain_Kill (dcc))cf=cf;		/* condition to avoid warn */
+  KillSocket (&dcc->socket);
   /* %L - login nick, %@ - hostname */
   printl (buf, s, format_dcc_lost, 0, NULL,
-	  SocketDomain (dcc->s.socket, NULL), iface->name, NULL, 0, 0, 0, NULL);
+	  SocketDomain (dcc->socket, NULL), iface->name, NULL, 0, 0, 0, NULL);
   LOG_CONN ("%s", buf);
-  NoCheckFlood (&dcc->floodcnt);		/* remove all flood timers */
-  if (dcc->s.state == P_LOGIN)			/* if it was fresh connection */
+  NoCheckFlood (&dcc->priv->floodcnt);		/* remove all flood timers */
+  if (dcc->state == P_LOGIN)			/* if it was fresh connection */
+  {
+    FREE (&dcc->priv);
     return;
+  }
   NewEvent (W_END, ID_ME, FindLID (iface->name), 0); /* log to Wtmp */
   /* now run "chat-part" and "chat-off" bindings... */
-  if (dcc->log)
-    cf = Get_Clientflags (iface->name, dcc->log->name);
+  if (dcc->priv->log)
+    cf = Get_Clientflags (iface->name, dcc->priv->log->name);
   _chat_part (dcc, ShutdownR ? ShutdownR : _("no reason.")); /* NONULL */
   do
   {
-    if ((bind = Check_Bindtable (BT_Chatoff, iface->name, dcc->s.uf, cf, bind)))
+    if ((bind = Check_Bindtable (BT_Chatoff, iface->name, dcc->uf, cf, bind)))
     {
       if (bind->name)
         RunBinding (bind, NULL, iface->name, NULL, NULL, DccIdx(dcc), NULL);
@@ -373,13 +346,12 @@ static void _died_iface (INTERFACE *iface, char *buf, size_t s)
         bind->func (dcc);
     }
   } while (bind);
+  FREE (&dcc->priv);		/* dispatcher will get rid of subinterfaces */
 }
 
 /* it's really static but it's used by console too :( */
-/* note that first argument is really session_t * type unless it's console */
 void Dcc_Parse (peer_t *dcc, char *name, char *cmd, userflag gf, userflag cf,
-		int dccidx, int botch, bindtable_t *ssbt, char *service,
-		INTERFACE *source)
+		int dccidx, int botch, bindtable_t *ssbt, char *service)
 {
   char *arg;
   binding_t *bind;
@@ -435,12 +407,8 @@ void Dcc_Parse (peer_t *dcc, char *name, char *cmd, userflag gf, userflag cf,
 	RunBinding (bind, NULL, name, NULL, NULL, botch, cmd);
       else
 	bind->func (dcc, cmd);
-    if (source)
-      Set_Iface (source);
     snprintf (to, sizeof(to), ":*:%d", botch);
-    Add_Request (I_DCCALIAS, to, F_T_MESSAGE, "%s", cmd);
-    if (source)
-      Unset_Iface();
+    Add_Request (I_DCCALIAS | I_LOG, to, F_T_MESSAGE | F_BOTNET, "%s", cmd);
   }
 }
 
@@ -451,33 +419,33 @@ void Dcc_Parse (peer_t *dcc, char *name, char *cmd, userflag gf, userflag cf,
  */
 static int dcc_request (INTERFACE *iface, REQUEST *req)
 {
-  session_t *dcc = (session_t *)iface->data;
+  peer_t *dcc = iface->data;
   ssize_t sw;
   binding_t *bind = NULL;
   userflag cf = 0;
   char *cmd;
-  char buf[MESSAGEMAX];
+  char buf[MESSAGEMAX+LNAMELEN+4];	/* increased for possible prifix */
 #ifdef HAVE_ICONV
-  char sbuf[MESSAGEMAX];
+  char sbuf[MESSAGEMAX+LNAMELEN+4];
 #endif
 
-  if (dcc->s.state == P_LASTWAIT)	/* already killed */
+  if (dcc->state == P_LASTWAIT)	/* already killed */
     return REQ_OK;
-  if (dcc->s.state == P_LOGIN)		/* init the client session */
+  if (dcc->state == P_LOGIN)		/* init the client session */
   {
-    register char *name = dcc->s.iface->name;
+    register char *name = dcc->iface->name;
 
-    dcc->s.state = P_TALK;
+    dcc->state = P_TALK;
     setconsole (dcc);
-    if (dcc->log)
-      cf = Get_Clientflags (name, dcc->log->name);
+    if (dcc->priv->log)
+      cf = Get_Clientflags (name, dcc->priv->log->name);
     else
       cf = 0;
     /* run "chat-on" and "chat-join" bindings... */
     bind = NULL;
-    if (!dcc->s.iface->prev) do		/* it might be tricked so check it */
+    if (!dcc->iface->prev) do		/* it might be tricked so check it */
     {
-      if ((bind = Check_Bindtable (BT_Chaton, name, dcc->s.uf, cf, bind)))
+      if ((bind = Check_Bindtable (BT_Chaton, name, dcc->uf, cf, bind)))
       {
 	if (bind->name)
 	  RunBinding (bind, NULL, name, NULL, NULL, DccIdx(dcc), NULL);
@@ -490,26 +458,22 @@ static int dcc_request (INTERFACE *iface, REQUEST *req)
     /* log to Wtmp */
     NewEvent (W_START, ID_ME, FindLID (name), 0);
   }
-  /* check if this is mine but echo disabled */
-  if (req)
-  {
-    /* check if this is botnet mesage from me but echo disabled */
-    if (req->from == dcc->alias && (req->mask_if & I_DCCALIAS) &&
-	!(dcc->loglev & F_ECHO))
-      req = NULL;
-  }
-  if (dcc->log && dcc->log->name)
-    cf = Get_Clientflags (dcc->s.iface->name, dcc->log->name);
+  /* check if this is my botnet message but echo disabled */
+  if (req && req->from == iface && (req->mask_if & I_DCCALIAS) &&
+      !strncmp (req->to, ":*:", 3) && !(dcc->priv->loglev & F_ECHO))
+    req = NULL;
+  if (dcc->priv->log && dcc->priv->log->name)
+    cf = Get_Clientflags (dcc->iface->name, dcc->priv->log->name);
   sw = 0;
-  if ((sw = Peer_Put ((&dcc->s), "", &sw)) > 0 && /* connchain is ready */
+  if ((sw = Peer_Put (dcc, "", &sw)) > 0 && /* connchain is ready */
       req)				/* do we have something to out? */
   {
-    DBG ("process request: type 0x%x, flag 0x%x, to %s, starts %.10s",
+    DBG ("process request: type %#x, flag %#x, to %s, starts %.10s",
 	 req->mask_if, req->flag, req->to, req->string);
     /* for logs... formatted, just add timestamp */
     if (req->mask_if & I_LOG)
     {
-      if (req->flag & dcc->loglev)
+      if (req->flag & dcc->priv->loglev)
 	printl (buf, sizeof(buf), "[%t] %*", 0, NULL, NULL, NULL, NULL,
 		0, 0, 0, req->string);
       else
@@ -519,13 +483,12 @@ static int dcc_request (INTERFACE *iface, REQUEST *req)
     /* flush command - see the users.c, ignore commands for non-bots */
     else if (req->string[0] == '\010')
     {
-      dcc->s.iface->IFSignal (dcc->s.iface, S_FLUSH);
+      dcc->iface->IFSignal (dcc->iface, S_FLUSH);
       buf[0] = 0;
       req = NULL;
     }
     /* for chat channel messages */
-    else if (req->from && (req->from->ift & I_DCCALIAS) &&
-	     (req->mask_if & I_DCCALIAS))
+    else if (req->mask_if & I_DCCALIAS)
     {
       char *prefix;
       char *suffix = "";
@@ -558,7 +521,7 @@ static int dcc_request (INTERFACE *iface, REQUEST *req)
     else
       cmd = buf;
     sw = strlen (cmd);
-    sw = Peer_Put ((&dcc->s), cmd, &sw);
+    sw = Peer_Put (dcc, cmd, &sw);
     /* and it had to accept all string not part of it! */
     req = NULL;				/* request done! */
   }
@@ -576,12 +539,12 @@ static int dcc_request (INTERFACE *iface, REQUEST *req)
   if (!(iface->ift & I_CONNECT))
     return REQ_OK;
   /* we sent the message, can P_INITIAL -> P_LOGIN */
-  if (dcc->s.state == P_INITIAL)
+  if (dcc->state == P_INITIAL)
   {
-    dcc->s.state = P_LOGIN;
+    dcc->state = P_LOGIN;
     return REQ_OK;
   }
-  sw = Peer_Get ((&dcc->s), buf, sizeof(buf));
+  sw = Peer_Get (dcc, buf, sizeof(buf));
   if (sw < 0)
   {
     ShutdownR = _("session lost");
@@ -591,9 +554,9 @@ static int dcc_request (INTERFACE *iface, REQUEST *req)
   }
   if (sw < 2)				/* ignore empty input too */
     return REQ_OK;
-  dcc->s.last_input = Time;		/* timestamp for idle */
+  dcc->last_input = Time;		/* timestamp for idle */
   /* check the "dcc" flood... need just ignore or break connection? TODO? */
-  if (CheckFlood (&dcc->floodcnt, flood_dcc) > 0)
+  if (CheckFlood (&dcc->priv->floodcnt, flood_dcc) > 0)
     return REQ_OK;
   sw--;					/* skip ending '\0' */
 #ifdef HAVE_ICONV
@@ -605,8 +568,8 @@ static int dcc_request (INTERFACE *iface, REQUEST *req)
   cmd = buf;
 #endif
   /* run "dcc" and "chat" bindings... */
-  dcc->s.parse (&dcc->s, iface->name, cmd, dcc->s.uf, cf, DccIdx(dcc),
-		dcc->botnet, dcc->ssbt, dcc->netname, dcc->alias);
+  dcc->parse (dcc, iface->name, cmd, dcc->uf, cf, DccIdx(dcc),
+	      dcc->priv->botnet, dcc->priv->ssbt, dcc->priv->netname);
   return REQ_OK;
 }
 
@@ -617,7 +580,7 @@ static int dcc_request (INTERFACE *iface, REQUEST *req)
  */
 static iftype_t dcc_signal (INTERFACE *iface, ifsig_t signal)
 {
-  session_t *dcc = (session_t *)iface->data;
+  peer_t *dcc = iface->data;
   char c[LNAMELEN+2];
   char buf[STRING];
   int idle;
@@ -625,43 +588,43 @@ static iftype_t dcc_signal (INTERFACE *iface, ifsig_t signal)
   unsigned short p;
   char *dom, *desc;
 
-  if (!dcc || dcc->s.socket == -1)	/* already killed? */
+  if (!dcc || dcc->socket == -1)	/* already killed? */
     return I_DIED;
   if (dcc) switch (signal)
   {
     case S_FLUSH:
       if (iface->name && *iface->name)
-	/* check the IRC and botnet channels, set dcc->s.uf */
+	/* check the IRC and botnet channels, set dcc->uf */
 	setconsole (dcc);
       break;
     case S_REPORT:
-      switch (dcc->s.state)
+      switch (dcc->state)
       {
         case P_LOGIN:
 	  /* %@ - hostname, %L and %N - Lname, %* - state */
 	  printl (buf, sizeof(buf), ReportFormat, 0,
-		  dcc->s.iface->name, SocketDomain (dcc->s.socket, NULL),
-		  dcc->s.iface->name, NULL, (uint32_t)dcc->s.socket + 1, 0,
+		  dcc->iface->name, SocketDomain (dcc->socket, NULL),
+		  dcc->iface->name, NULL, (uint32_t)DccIdx(dcc), 0,
 		  0, "logging in");
 	  break;
 	default:
-	  idle = Time - dcc->s.last_input;
-	  dom = SocketDomain (dcc->s.socket, &p);
-	  if (dcc->s.dname && !(dcc->s.iface->ift & I_LOCKED))
+	  idle = Time - dcc->last_input;
+	  dom = SocketDomain (dcc->socket, &p);
+	  if (dcc->dname && !(dcc->iface->ift & I_LOCKED))
 	  {
-	    desc = safe_malloc (strlen (dcc->s.dname) + 7);
+	    desc = safe_malloc (strlen (dcc->dname) + 7);
 	    strcpy (desc, "away: ");
-	    strcpy (&desc[6], dcc->s.dname);
+	    strcpy (&desc[6], dcc->dname);
 	  }
 	  else
 	    desc = NULL;
-	  c[0] = _userdccflag (dcc->s.uf);
-	  strfcpy (&c[1], dcc->s.iface->name, sizeof(c)-1);
-	  /* %@ - hostname, %L - Lname, %# - start time, %I - socket number,
-	     %P - port, %- - idle time, %* - state */
+	  c[0] = _userdccflag (dcc->uf);
+	  strfcpy (&c[1], dcc->iface->name, sizeof(c)-1);
+	  /* %@ - hostname, %L and %N - Lname, %# - start time,
+	     %I - socket number, %P - port, %- - idle time, %* - state */
 	  printl (buf, sizeof(buf), ReportFormat, 0,
-		  c, dom, c, dcc->s.start, (uint32_t)dcc->s.socket + 1, p,
-		  idle, (dcc->s.iface->ift & I_LOCKED) ? "chat off" : desc);
+		  c, dom, &c[1], dcc->start, (uint32_t)DccIdx(dcc), p,
+		  idle, (dcc->iface->ift & I_LOCKED) ? "chat off" : desc);
 	  FREE (&desc);
       }
       tmp = Set_Iface (iface);
@@ -671,25 +634,23 @@ static iftype_t dcc_signal (INTERFACE *iface, ifsig_t signal)
     case S_STOP:
       /* stop the interface */
       iface->ift |= I_LOCKED;
-      dcc->log->ift |= I_LOCKED;
       _chat_part (dcc, NULL);			/* has left botnet channel */
       break;
     case S_CONTINUE:
       /* restart the interface - only if user has partyline access */
       dcc_signal (iface, S_FLUSH);		/* recursive call */
-      dcc->s.parse = &Dcc_Parse;
+      dcc->parse = &Dcc_Parse;
       iface->ift &= ~I_LOCKED;
-      dcc->log->ift &= ~I_LOCKED;
-      if (dcc->s.state != P_LASTWAIT)		/* has socket died? */
+      if (dcc->state != P_LASTWAIT)		/* has socket died? */
       {
-	dcc->s.state = P_TALK;
+	dcc->state = P_TALK;
 	_chat_join (dcc);			/* has returned to channel */
 	break;
       }						/* else terminate it */
     case S_TERMINATE:
       /* using already filled ShutdownR - can it be weird? */
       _died_iface (iface, buf, sizeof(buf));
-      FREE (&dcc->s.dname);
+      FREE (&dcc->dname);
       return I_DIED;
     case S_SHUTDOWN:
       /* try to sent shutdown message and quiet shutdown anyway */
@@ -701,7 +662,7 @@ static iftype_t dcc_signal (INTERFACE *iface, ifsig_t signal)
 	strfcat (buf, "\r\n", sizeof(buf));
 	inbuf = strlen (buf);
 	bufpos = 0;
-	WriteSocket (dcc->s.socket, buf, &bufpos, &inbuf, M_RAW);
+	WriteSocket (dcc->socket, buf, &bufpos, &inbuf, M_RAW);
       }
       _died_iface (iface, NULL, 0);
     default: ;
@@ -709,36 +670,7 @@ static iftype_t dcc_signal (INTERFACE *iface, ifsig_t signal)
   return 0;
 }
 
-#define IS_SESSION(a) (((peer_t *)a)->iface->IFSignal == dcc_signal)
-
-static iftype_t dcclog_signal (INTERFACE *iface, ifsig_t signal)
-{
-  if (signal == S_TERMINATE)
-  {
-    iface->data = NULL;
-    iface->ift |= I_DIED;
-    return I_DIED;
-  }
-  return 0;
-}
-
-static iftype_t dccalias_signal (INTERFACE *iface, ifsig_t signal)
-{
-  peer_t *dcc = (peer_t *)iface->data;
-
-  if (dcc == NULL || signal == S_TERMINATE)
-  {
-    iface->data = NULL;
-    iface->ift |= I_DIED;
-    return I_DIED;
-  }
-  else if (signal == S_REPORT)
-  {
-    if (dcc->iface && dcc->iface->IFSignal)
-      dcc->iface->IFSignal (iface, signal);
-  }
-  return 0;
-}
+#define IS_SESSION(a) (a->iface->IFSignal == dcc_signal)
 
 int Check_Passwd (const char *pass, char *encrypted)
 {
@@ -756,6 +688,12 @@ int Check_Passwd (const char *pass, char *encrypted)
 /*
  * Filter 'y' - RFC854 (i.e. telnet) handler.
  */
+struct connchain_buffer
+{
+  char data[24];
+  size_t tosend;
+};
+
 static ssize_t _ccfilter_y_send (connchain_i **ch, idx_t id, const char *str,
 				 size_t *sz, connchain_buffer **b)
 {
@@ -765,15 +703,27 @@ static ssize_t _ccfilter_y_send (connchain_i **ch, idx_t id, const char *str,
   if (*b == NULL)			/* already terminated */
     return E_NOSOCKET;
   if (str == NULL ||			/* got termination */
-      (i = Connchain_Put (ch, id, "", &i)) < 0)	/* dead end */
+      (i = Connchain_Put (ch, id, "", &i)) < 0)	/* check next link */
   {
-    *b = NULL;
-    return E_NOSOCKET;
+    FREE (b);
+    return i;
   }
-  if (i != CONNCHAIN_READY)		/* next chain isn't ready */
+  if (i != CONNCHAIN_READY)		/* next link in chain isn't ready */
     return 0;				/* we don't ready too, of course */
   if ((left = *sz) == 0)		/* it's a test! */
     return CONNCHAIN_READY;
+  if ((*b)->tosend)			/* there was something to send */
+  {
+    i = Connchain_Put (ch, id, (*b)->data, &(*b)->tosend);
+    if (i < 0)				/* has it died? */
+      return i;
+    if ((*b)->tosend)			/* still something left */
+    {
+      if (i > 0)			/* but we send something */
+	memmove ((*b)->data, &(*b)->data[i], (*b)->tosend);
+      return 0;				/* we don't ready to do anything */
+    }
+  }
   while ((i = left) != 0)		/* cycle line+IAC */
   {
     c = memchr (str, '\377', i);	/* IAC */
@@ -785,6 +735,8 @@ static ssize_t _ccfilter_y_send (connchain_i **ch, idx_t id, const char *str,
     {
       c = NULL;
       ii += 3;				/* process IAC * ECHO as is */
+      if (str[ii-2] == '\373')		/* we have disabled far echo? */
+	left = ii;			/* skip rest of it now */
     }
     i = Connchain_Put (ch, id, str, &ii);
     if (i < 0)
@@ -875,25 +827,21 @@ static size_t _do_rfc854_input (char *str, size_t sz, char *tosend, size_t *s)
 static ssize_t _ccfilter_y_recv (connchain_i **ch, idx_t id, char *str,
 				 size_t sz, connchain_buffer **b)
 {
-  char buftosend[24];
-  char *bts;
-  ssize_t sr, sw, st;
+  ssize_t sr, sw;
 
   if (str == NULL)			/* they killed me */
+  {
+    FREE (b);
     return E_NOSOCKET;
+  }
   sr = Connchain_Get (ch, id, str, sz);
+  if (sr < 0)				/* got an error */
+    FREE (b);
   if (sr <= 0)				/* error or no data */
     return sr;
-  sw = sizeof(buftosend);
-  sr = _do_rfc854_input (str, sr, buftosend, &sw);
-  sw = sizeof(buftosend) - sw;		/* reverse meaning */
-  bts = buftosend;
-  while (sw > 0)			/* can it be forever? TODO? */
-  {
-    if ((st = Connchain_Put (ch, id, bts, &sw)) < 0)
-      return st;			/* error ? */
-    bts += st;
-  }
+  sw = sizeof((*b)->data) - (*b)->tosend; /* free space in buffer */
+  sr = _do_rfc854_input (str, sr, &(*b)->data[(*b)->tosend], &sw);
+  (*b)->tosend = sizeof((*b)->data) - sw; /* reverse calculation */
   return sr;
 }
 
@@ -906,7 +854,8 @@ static int _ccfilter_y_init (peer_t *peer,
   *recv = &_ccfilter_y_recv;
   *send = &_ccfilter_y_send;
   /* we will use buffer as marker, yes */
-  *b = (void *)1;
+  *b = safe_malloc (sizeof(connchain_buffer));
+  (*b)->tosend = 0;
   return 1;
 }
 
@@ -946,7 +895,7 @@ static ssize_t _ccfilter_b_send (connchain_i **ch, idx_t id, const char *str,
     {
       if (bind->name)
       {
-	RunBinding (bind, NULL, NULL, NULL, NULL, DccIdx(*b), buf);
+	RunBinding (bind, NULL, NULL, NULL, NULL, DccIdx((peer_t *)*b), buf);
 	strfcpy (buf, BindResult, sizeof(buf));
       }
       else
@@ -983,7 +932,7 @@ static ssize_t _ccfilter_b_recv (connchain_i **ch, idx_t id, char *str,
       {
 	if (bind->name)
 	{
-	  RunBinding (bind, NULL, NULL, NULL, NULL, DccIdx(*b), str);
+	  RunBinding (bind, NULL, NULL, NULL, NULL, DccIdx((peer_t *)*b), str);
 	  strfcpy (str, BindResult, sz);
 	}
 	else
@@ -1018,15 +967,12 @@ static int _ccfilter_b_init (peer_t *peer,
 /* called from threads and dispatcher is locked! */
 /* buf is Lname if this is CTCP CHAT answer or empty string */
 BINDING_TYPE_login (get_chat);
-static void get_chat (char *name, char *ident, char *host, idx_t socket,
+static void get_chat (char *name, char *ident, char *host, peer_t *dcc,
 		      char buf[SHORT_STRING], char **msg)
 {
-  ssize_t sz;
-  size_t sp;
+  ssize_t sz, sp, pp;
   time_t t;
-  int telnet;
-  userflag uf;
-  session_t *dcc;
+  int telnet = 0;
   clrec_t *user;
 
   /* turn off echo if telnet and check password */
@@ -1046,51 +992,29 @@ static void get_chat (char *name, char *ident, char *host, idx_t socket,
     *msg = "user has no password yet";
     return;
   }
-  if (*buf)
-    telnet = 0;
-  else
+  if (buf[0] == 0)
     telnet = 1;
-  snprintf (buf, SHORT_STRING, "Password: %s", telnet ? "\377\373\001" : "\r\n");
-  sz = strlen (buf);					/* IAC WILL ECHO */
+  snprintf (buf, SHORT_STRING, "Password: %s",
+	    telnet ? "\377\373\001" : "");	/* IAC WILL ECHO */
+  sz = strlen (buf);
   sp = 0;
-  while (sz &&
-	 WriteSocket (socket, buf, &sp, (size_t *)&sz, M_POLL) >= 0 &&
-	 time(NULL) < t);
+  while (sz && time(NULL) < t && (pp = Peer_Put (dcc, &buf[sp], &sz)) >= 0)
+    sp += pp;
   /* wait password and check it */
-  sp = 0;
   while (time(NULL) < t)
-  {
-    sz = ReadSocket (&buf[sp], socket, SHORT_STRING - sp, M_POLL);
-    if (sz < 0)
-      break;
-    while (sz)
-      if (buf[sp] == '\r' || buf[sp] == '\n')
-      {
-	buf[sp] = 0;
-	break;
-      }
-      else
-      {
-	sz--;
-	sp++;
-      }
-    if (sz)
-      break;
-  }
-  if (sz == 0 || sz == E_AGAIN)
+    if ((sp = Peer_Put (dcc, "", &sz)) < 0 ||	/* push connchain buffers */
+	(sp = Peer_Get (dcc, buf, SHORT_STRING)))
+      break;				/* in both cases on error or success */
+  if (sp == 0)
   {
     *msg = "login timeout";
     return;
   }
-  else if (sz < 0)
+  else if (sp < 0)
   {
     *msg = "connection lost";
     return;
   }
-  if (telnet && !strncmp (buf, "\377\375\001", 3))
-    sz = 3;
-  else
-    sz = 0;
   user = Lock_Clientrecord (name);
   if (!user)
   {
@@ -1102,7 +1026,7 @@ static void get_chat (char *name, char *ident, char *host, idx_t socket,
   host = safe_strdup (Get_Field (user, "charset", NULL));
 #endif
   name = safe_strdup (Get_Field (user, NULL, NULL)); /* unaliasing */
-  uf = Get_Flags (user, "");
+  dcc->uf = Get_Flags (user, "");
   Unlock_Clientrecord (user);
   Set_Iface (NULL);			/* lock dispatcher to get bindtable */
   sz = Check_Passwd (&buf[sz], ident);
@@ -1118,43 +1042,32 @@ static void get_chat (char *name, char *ident, char *host, idx_t socket,
     return;
   }
   /* now it logged in so enable echo, create session and interface */
-  dcc = safe_malloc (sizeof(session_t));
-  dcc->s.state = P_LOGIN;
-  dcc->s.uf = uf;
-  dcc->s.dname = NULL;
-  dcc->s.socket = socket;
-  dcc->s.parse = &Dcc_Parse;
-  dcc->s.connchain = NULL;
-  time (&dcc->s.last_input);
-  dcc->floodcnt = 0;
-  dcc->netname = NULL;
-  dcc->ssbt = NULL;
+  dcc->priv = safe_malloc (sizeof(peer_priv));
+  dcc->priv->floodcnt = 0;
+  dcc->priv->netname = NULL;
+  dcc->priv->ssbt = NULL;
   /* create interfaces - lock dispatcher to syncronize */
   Set_Iface (NULL);
-  strfcpy (dcc->s.start, DateString, sizeof(dcc->s.start));
-  dcc->s.iface = Add_Iface (I_DIRECT | I_CONNECT, name, &dcc_signal,
-			    &dcc_request, dcc);
-  /* try to create the alias for scripts :) */
-  dcc->alias = Add_Iface (I_DCCALIAS, NULL, &dccalias_signal, &dcc_request, dcc);
+  dcc->iface = Add_Iface (I_DIRECT | I_CONNECT, name, &dcc_signal,
+			  &dcc_request, dcc);
+  /* try to create a clone for scripts :) */
+  dcc->priv->alias = Add_Iface (I_DCCALIAS, NULL, NULL, NULL, NULL);
+  dcc->priv->alias->prev = dcc->iface;
   /* the same for logs */
-  dcc->log = Add_Iface (I_LOG, NULL, &dcclog_signal, &dcc_request, dcc);
+  dcc->priv->log = Add_Iface (I_LOG, NULL, NULL, NULL, NULL);
+  dcc->priv->log->prev = dcc->iface;
 #ifdef HAVE_ICONV
-  dcc->s.iface->conv = Get_Conversion (host);
-  dcc->alias->conv = Clone_Conversion (dcc->s.iface->conv);
-  dcc->log->conv = Clone_Conversion (dcc->s.iface->conv);
+  dcc->iface->conv = Get_Conversion (host);
 #endif
   if (telnet)
-    /* Adding telnet filter 'y' now! */
-    Connchain_Grow ((&dcc->s), 'y');	/* TODO: diagnostics on that? */
-  Connchain_Grow ((&dcc->s), 'x');	/* text parser! TODO: see above */
-  if (telnet)			/* dispatcher is locked, can do connchain */
   {
     dprint (5, "enabling echo for user");
     sp = 3;						/* set it manually */
-    Peer_Put ((&dcc->s), "\377\374\001", &sp);		/* IAC WON'T ECHO */
+    if(Peer_Put (dcc, "\377\374\001", &sp))sp=sp;	/* IAC WON'T ECHO */
+	/* ignoring result, it should work at this point */
   }
-  /* TODO: add some connchains too? */
-  Connchain_Grow ((&dcc->s), 'b');	/* bindtables filter */
+  if (Connchain_Grow (dcc, 'b') <= 0)	/* bindtables filter */
+    Add_Request (I_LOG, "*", F_WARN, "direct.c:get_chat: error with filter 'b'.");
   Unset_Iface();
   FREE (&name);
 #ifdef HAVE_ICONV
@@ -1168,12 +1081,12 @@ static void get_chat (char *name, char *ident, char *host, idx_t socket,
  * internal handler for peer_t (in a thread!)
  *   client is NULL since it's listening port
  *   ident, host, and socket are from connection
+ *   adds 'x' connection chain link in any case
  */
-static char *session_handler_main (char *ident, char *host, idx_t socket,
+static char *session_handler_main (char *ident, char *host, peer_t *dcc,
 				   int botsonly, char buf[SHORT_STRING],
-				   char client[NAMEMAX+1])
+				   char client[LNAMELEN+1])
 {
-  userflag uf;
   binding_t *bind;
   size_t sz, sp;
   ssize_t get = 0;
@@ -1182,60 +1095,45 @@ static char *session_handler_main (char *ident, char *host, idx_t socket,
   clrec_t *clr;
 
   /* we have no client name at this point */  
-  uf = Match_Client (host, ident, NULL);	/* check ident@domain */
-  if (drop_unknown)
+  dcc->uf = Match_Client (host, ident, NULL);	/* check ident@domain */
+  Set_Iface (NULL);
+  if (drop_unknown && !(Check_Bindtable (BT_Login, "*", dcc->uf, 0, NULL) &&
+			(!botsonly || (dcc->uf & U_SPECIAL))))
   {
-    Set_Iface (NULL);
-    bind = Check_Bindtable (BT_Login, "*", uf, 0, NULL);
+    Connchain_Grow (dcc, 'x');	/* adding text parser */
     Unset_Iface();
-    if (!(bind && (!botsonly || (uf & U_SPECIAL))))
-      return ("not allowed");
+    return ("not allowed");
   }
+  Unset_Iface();
   /* get Lname of user */
-  strfcpy (buf, "\r\nFoxEye network node\r\n\r\nlogin: ", SHORT_STRING);
-  sz = strlen (buf);
+  sz = strfcpy (buf, "\r\nFoxEye network node\r\n\r\nlogin: ", SHORT_STRING);
   sp = 0;
   time (&t);
   Set_Iface (NULL);
   t += dcc_timeout;
   Unset_Iface();
-  while (sz && (get = WriteSocket (socket, buf, &sp, &sz, M_POLL)) >= 0)
-    if (time(NULL) > t) break;
+  /* connchain may be bufferized but may be not */
+  while (sz && (get = Peer_Put (dcc, &buf[sp], &sz)) >= 0)
+    if (time(NULL) > t)
+      break;
+    else
+      sp += get;
+  Set_Iface (NULL);
+  Connchain_Grow (dcc, 'x');	/* adding text parser now! */
+  Unset_Iface();
   if (get > 0)		/* everything sent and sz == 0 */
-    while (time(NULL) < t)
-    {
-      get = ReadSocket (&client[sz], socket, NAMEMAX - sz, M_POLL);
-      if (get < 0)
-	break;
-      while (get)
-	if (client[sz] == '\r' || client[sz] == '\n')
-	  break;
-	else
-	{
-	  sz++;
-	  get--;
-	}
-      if (get)
-	break;
-    }
+    while (time(NULL) < t) /* push chain buffer if there is some */
+      if ((get = Peer_Put (dcc, "", &sz)) < 0 ||
+	  (get = Peer_Get (dcc, client, LNAMELEN+1)))
+	break;		/* both cases of error and success */
   if (get > 0)
-  {
-    get = sz;
-    sz = SHORT_STRING;
-    get = _do_rfc854_input (client, get, buf, &sz); /* RFC854 */
-    client[get] = 0;
     DBG ("direct.c:session_handler: lname=%s", client);
-    sz = SHORT_STRING - sz;
-    sp = 0;
-    while (sz && (get = WriteSocket (socket, buf, &sp, &sz, M_POLL)) >= 0)
-      if (time(NULL) > t) break;
-  }
-  if (get <= 0)
+  else
     return ("connection lost");
   /* check of allowance */
-  uf = Match_Client (host, ident, client);
+  dcc->uf = Match_Client (host, ident, client);
   /* for services we have to check network type */
-  if ((uf & U_SPECIAL) && (clr = Lock_Clientrecord (client)))
+  if ((dcc->uf & U_SPECIAL) && (clr = Lock_Clientrecord (client)))
   {
     msg = safe_strdup (Get_Field (clr, ".logout", NULL));
     Unlock_Clientrecord (clr);
@@ -1243,12 +1141,13 @@ static char *session_handler_main (char *ident, char *host, idx_t socket,
   else
     msg = NULL;
   Set_Iface (NULL);
-  bind = Check_Bindtable (BT_Login, msg ? msg : "*", uf, 0, NULL);
+  bind = Check_Bindtable (BT_Login, msg ? msg : "*", dcc->uf, 0, NULL);
   FREE (&msg);
-  if (bind && !bind->name && (!botsonly || (uf & U_SPECIAL))) /* allowed to logon */
+  /* log in if they allowed to */
+  if (bind && !bind->name && (!botsonly || (dcc->uf & U_SPECIAL))) 
   {
     buf[0] = 0;
-    bind->func (client, ident, host, socket, buf, &msg); /* it will unlock dispatcher */
+    bind->func (client, ident, host, dcc, buf, &msg); /* it will unlock dispatcher */
   }
   else
   {
@@ -1258,23 +1157,44 @@ static char *session_handler_main (char *ident, char *host, idx_t socket,
   return msg;
 }
 
-static void session_handler (char *ident, char *host, idx_t socket, int botsonly)
+static void session_handler (char *ident, char *host, idx_t socket, int flag)
 {
   char buf[SHORT_STRING];
-  char client[NAMEMAX+1];
-  size_t sz, sp;
+  char client[LNAMELEN+1];
+  size_t sz;
+  peer_t *dcc;
   register char *msg;
 
-  msg = session_handler_main (ident, host, socket, botsonly, buf, client);
-  if (msg)					/* was error on connection */
+  dcc = safe_malloc (sizeof(peer_t));
+  dcc->socket = socket;
+  dcc->state = P_LOGIN;
+  dcc->dname = NULL;
+  dcc->parse = &Dcc_Parse;
+  dcc->connchain = NULL;
+  dcc->iface = NULL;
+  dcc->priv = NULL;
+  time (&dcc->last_input);
+  Set_Iface (NULL);
+  client[0] = 0; /* terminate it for case of error */
+  snprintf (dcc->start, sizeof(dcc->start), "%s %s", DateString, TimeString);
+  /* dispatcher is locked, can do connchain */
+  if (!Connchain_Grow (dcc, (flag & 0xff))) /* adding mandatory filters now */
+    msg = "connection chain error";	/* ouch... it should die */
+  else
+    msg = NULL;
+  Connchain_Grow (dcc, 'y');		/* adding telnet filter */
+  Unset_Iface();
+  if (msg == NULL)
+    msg = session_handler_main (ident, host, dcc, (flag & 256), buf, client);
+  if (msg)				/* was error on connection */
   {
     unsigned short p;
 
     LOG_CONN (_("Connection from %s terminated: %s"), host, msg);
-    snprintf (buf, sizeof(buf), "Access denied: %s\r\n", msg);
+    snprintf (buf, sizeof(buf), "Access denied: %s", msg);
     sz = strlen (buf);
-    sp = 0;
-    while (!(WriteSocket (socket, buf, &sp, &sz, M_POLL)));
+    if (Peer_Put (dcc, buf, &sz) > 0)	/* it should be OK */
+      while (!(Peer_Put (dcc, NULL, &sz))); /* wait it to die */
     SocketDomain (socket, &p);
     /* %L - Lname, %P - port, %@ - hostname, %* - reason */
     Set_Iface (NULL);
@@ -1283,18 +1203,9 @@ static void session_handler (char *ident, char *host, idx_t socket, int botsonly
     Unset_Iface();
     /* cannot create connection */
     LOG_CONN ("%s", buf);
-    KillSocket (&socket);
+    if(Connchain_Kill (dcc))p=p;
+    FREE (&dcc);
   }
-}
-
-static void session_handler_any (char *client, char *ident, char *host, idx_t socket)
-{
-  session_handler (ident, host, socket, 0);
-}
-
-static void session_handler_bots (char *client, char *ident, char *host, idx_t socket)
-{
-  session_handler (ident, host, socket, 1);
 }
 
 typedef struct
@@ -1319,11 +1230,11 @@ static iftype_t port_signal (INTERFACE *iface, ifsig_t signal)
   switch (signal)
   {
     case S_REPORT:
-      /* %@ - hostname, %I - socket num, %P - port, %* - state */
+      /* %@ - hostname, %L - name, %I - socket num, %P - port, %* - state */
       snprintf (msg, sizeof(msg), _("listening on port %hu"), acptr->lport);
       printl (buf, sizeof(buf), ReportFormat, 0,
-	      NULL, SocketDomain (acptr->socket, NULL), NULL, NULL,
-	      (uint32_t)acptr->socket + 1, acptr->lport, 0, msg);
+	      NULL, SocketDomain (acptr->socket, NULL), iface->name, NULL,
+	      (uint32_t)DccIdx(acptr), acptr->lport, 0, msg);
       tmp = Set_Iface (iface);
       New_Request (tmp, F_REPORT, "%s", buf);
       Unset_Iface();
@@ -1378,8 +1289,8 @@ static void *_accept_port (void *input_data)
     domain = NULL;
   /* get ident of user */
   *ident = 0;
-  acptr->id = GetSocket();
-  if (acptr->id > 0 && SetupSocket (acptr->id, M_RAW, domain, 113) == 0)
+  acptr->id = GetSocket (M_RAW);
+  if (acptr->id >= 0 && SetupSocket (acptr->id, domain, 113) == 0)
   {
     snprintf (buf, sizeof(buf), "%hu, %hu\n", p, acptr->lport);
     dprint (5, "ask host %s for ident: %s", domain, buf);
@@ -1509,10 +1420,10 @@ Listen_Port_main (char *client, char *host, unsigned short port, char *confline,
   if (!handler ||			/* stupidity check ;) */
       (port && port < 1024))		/* don't try system ports! */
     return -1;
-  p = GetSocket();
+  p = GetSocket (M_LIST);
   /* check for two more sockets - accepted and ident check */
   if (p < 0 || p >= SOCKETMAX - 2 ||
-      (n = SetupSocket (p, M_LIST, (host && *host) ? host : NULL, port)) < 0)
+      (n = SetupSocket (p, (host && *host) ? host : NULL, port)) < 0)
   {
     KillSocket (&p);
     return (idx_t)n;
@@ -1593,8 +1504,8 @@ static void *_connect_host (void *input_data)
 
   /* set cleanup for the thread before any cancellation point */
   pthread_cleanup_push (&_connect_host_cleanup, input_data);
-  if ((*cptr->idx = GetSocket()) >= 0)
-    i = SetupSocket (*cptr->idx, M_RAW, cptr->host, cptr->port);
+  if ((*cptr->idx = GetSocket (M_RAW)) >= 0)
+    i = SetupSocket (*cptr->idx, cptr->host, cptr->port);
   if (i == 0)
     dprint (4, "direct:_connect_host: connected to %s at port %hu: new socket %d",
 	    cptr->host, cptr->port, (int)*cptr->idx);
@@ -1638,7 +1549,6 @@ int Connect_Host (char *host, unsigned short port, pthread_t *th, idx_t *idx,
 /*
  * Internal dcc bindings:
  * int func(peer_t *from, char *args)
- * int func(session_t *from, char *args)
  */
 
 static void _say_current (peer_t *dcc, const char *msg)
@@ -1658,16 +1568,14 @@ static int dc_away (peer_t *dcc, char *args)
   FREE (&dcc->dname);
   if (args)
     dcc->dname = safe_strdup (args);
-  if (!IS_SESSION(dcc) || ((session_t *)dcc)->botnet < 0)
+  if (!IS_SESSION(dcc) || dcc->priv->botnet < 0)
     return -1; /* nobody to notify */
   /* send notify to botnet */
-  Set_Iface (((session_t *)dcc)->alias);
-  snprintf (ch, sizeof(ch), ":*:%d", ((session_t *)dcc)->botnet);
+  snprintf (ch, sizeof(ch), ":*:%d", dcc->priv->botnet);
   if (args)
     Add_Request (I_DCCALIAS, ch, F_T_NOTICE, _("now away: %s"), args);
   else
     Add_Request (I_DCCALIAS, ch, F_T_NOTICE, _("returned to life."));
-  Unset_Iface();
   return -1;	/* don't log it */
 }
 
@@ -1680,7 +1588,7 @@ static int dc_me (peer_t *dcc, char *args)
 
   if (!args)
     return 0;
-  if (!IS_SESSION(dcc) || ((session_t *)dcc)->botnet < 0)
+  if (!IS_SESSION(dcc) || dcc->priv->botnet < 0)
     return -1;				/* ignore it from not-sessions */
   do
   {
@@ -1692,10 +1600,8 @@ static int dc_me (peer_t *dcc, char *args)
 	bind->func (dcc, args);
     }
   } while (bind);
-  Set_Iface (((session_t *)dcc)->alias);
-  snprintf (ch, sizeof(ch), ":*:%d", ((session_t *)dcc)->botnet);
-  Add_Request (I_DCCALIAS, ch, F_T_ACTION, "%s", args);
-  Unset_Iface();
+  snprintf (ch, sizeof(ch), ":*:%d", dcc->priv->botnet);
+  Add_Request (I_DCCALIAS | I_LOG, ch, F_T_ACTION | F_BOTNET, "%s", args);
   return -1;	/* no log it */
 }
 
@@ -1739,13 +1645,18 @@ static int dc_boot (peer_t *dcc, char *args)
 }
 
 static void
-_set_console_parms (session_t *dcc, clrec_t *user, char *fl, char *chan, int botch)
+_set_console_parms (peer_t *dcc, clrec_t *user, char *fl, char *chan, int botch)
 {
   char cons[SHORT_STRING];
 
   snprintf (cons, sizeof(cons), "%s %s %d",
 	    fl[0] ? fl : "-", chan ? chan : "-", botch);
-  Set_Field (user, "", cons, 0);
+  if (!Set_Field (user, "", cons, 0))
+  {
+    Unlock_Clientrecord (user);
+    ERROR ("direct.c:_set_console_parms: error on saving parameters!");
+    return;
+  }
   Unlock_Clientrecord (user);
   setconsole (dcc);
   dprint (4, "dcc:_set_console_parms: %s", cons);
@@ -1768,16 +1679,6 @@ static int dc_charset (peer_t *dcc, char *args)
     {
       Free_Conversion (dcc->iface->conv);
       dcc->iface->conv = conv;
-      if (IS_SESSION(dcc) && ((session_t *)dcc)->alias)
-      {
-	Free_Conversion (((session_t *)dcc)->alias->conv);
-	((session_t *)dcc)->alias->conv = Clone_Conversion (conv);
-      }
-      if (IS_SESSION(dcc) && ((session_t *)dcc)->log)
-      {
-	Free_Conversion (((session_t *)dcc)->log->conv);
-	((session_t *)dcc)->log->conv = Clone_Conversion (conv);
-      }
       if ((u = Lock_Clientrecord (dcc->iface->name)))
       {
 	Set_Field (u, "charset", charset, 0);
@@ -1810,21 +1711,18 @@ static int dc_chcharset (peer_t *dcc, char *args)
     if (*charset) *c = ' '; /* restore after gettoken() */
     return 0;
   }
-  if (*charset)
-    Set_Field (u, "charset", charset, 0); /* set field for client */
-  else
+  if (!*charset ||
+      !Set_Field (u, "charset", charset, 0)) /* failed to set field? */
     charset = Get_Field (u, "charset", NULL);
   Unlock_Clientrecord (u);
   New_Request (dcc->iface, 0, "Charset for %s is now %s.", args,
 	       charset ? charset : "NONE");
-  // TODO: can we update charset for user right now?
   if (*charset)
     *c = ' '; /* restore after gettoken() */
   return 1;
 }
 #endif
 
-#define session ((session_t *)dcc)
 		/* .chat [<botnet channel #>] */
 BINDING_TYPE_dcc (dc_chat);
 static int dc_chat (peer_t *dcc, char *args)
@@ -1834,24 +1732,24 @@ static int dc_chat (peer_t *dcc, char *args)
   int botch = atoi (NONULL(args));
   clrec_t *user;
 
-  if (!IS_SESSION(session))			/* aliens can have only channel 0 */
+  if (!IS_SESSION(dcc))			/* aliens can have only channel 0 */
     return 0;
-  else if (botch == session->botnet)
+  else if (botch == dcc->priv->botnet)
     return 1;
-  _chat_part (session, NULL);
-  user = Lock_Clientrecord (session->s.iface->name);
+  _chat_part (dcc, NULL);
+  user = Lock_Clientrecord (dcc->iface->name);
   consfl[0] = 0;
   if (user)
   {
     register char *c = Get_Field (user, "", NULL);
     sscanf (NONULL(c), "%63s %127s", consfl, chan);
-    _set_console_parms (session, user, consfl, chan, botch);
+    _set_console_parms (dcc, user, consfl, chan, botch);
   }
-  _chat_join (session);
+  _chat_join (dcc);
   return 1;
 }
 
-static void _console_fl (session_t *dcc, char *plus, char *minus, char *ch)
+static void _console_fl (peer_t *dcc, char *plus, char *minus, char *ch)
 {
   char flags[64];
   char *cons = flags;
@@ -1861,8 +1759,8 @@ static void _console_fl (session_t *dcc, char *plus, char *minus, char *ch)
   register int it = 0;
 
   minus = NONULL(minus);
-  dprint (4, "dcc:_console_fl: %s %s %s %s", dcc->s.iface->name, plus, minus, NONULL(ch));
-  user = Lock_Clientrecord (dcc->s.iface->name);
+  dprint (4, "dcc:_console_fl: %s %s %s %s", dcc->iface->name, plus, minus, NONULL(ch));
+  user = Lock_Clientrecord (dcc->iface->name);
   if (!user)
     return;				/* hmm, could it be? */
   cons = Get_Field (user, "", NULL);	/* default color to mirc */
@@ -1896,7 +1794,7 @@ static void _console_fl (session_t *dcc, char *plus, char *minus, char *ch)
     plus++;
   }
   if (it || safe_strcmp (ch, chan))
-    _set_console_parms (dcc, user, flags, ch, dcc->botnet);
+    _set_console_parms (dcc, user, flags, ch, dcc->priv->botnet);
   else
     Unlock_Clientrecord (user);
 }
@@ -1905,9 +1803,9 @@ static void _console_fl (session_t *dcc, char *plus, char *minus, char *ch)
 BINDING_TYPE_dcc (dc_color);
 static int dc_color (peer_t *dcc, char *args)
 {
-  flag_t fl = session->loglev & (F_COLORCONV | F_COLOR);
+  flag_t fl = dcc->priv->loglev & (F_COLORCONV | F_COLOR);
 
-  if (!IS_SESSION(session))			/* aliens cannot change this */
+  if (!IS_SESSION(dcc))			/* aliens cannot change this */
     return 0;
   if (!args)
   {
@@ -1922,18 +1820,18 @@ static int dc_color (peer_t *dcc, char *args)
     }
     else if (fl & F_COLORCONV)
       msg = "mono";
-    _say_current (&session->s, msg);
+    _say_current (dcc, msg);
   }
   else
   {
     if (!strcmp (args, "mirc"))
-      _console_fl (session, "", "#$%", NULL);
+      _console_fl (dcc, "", "#$%", NULL);
     else if (!strcmp (args, "mono"))
-      _console_fl (session, "#", "$%", NULL);
+      _console_fl (dcc, "#", "$%", NULL);
     else if (!strcmp (args, "ansi"))
-      _console_fl (session, "%", "#$", NULL);
+      _console_fl (dcc, "%", "#$", NULL);
     else if (!strcmp (args, "off"))
-      _console_fl (session, "$", "#%", NULL);
+      _console_fl (dcc, "$", "#%", NULL);
     else return 0;
   }
   return 1;
@@ -1951,7 +1849,7 @@ static int dc_console (peer_t *dcc, char *args)
   flag_t f, fl;
   int i = 0;
 
-  if (!IS_SESSION(session))		/* you cannot change console logging */
+  if (!IS_SESSION(dcc))			/* you cannot change console logging */
     return 0;
   if (args)
   {
@@ -1970,7 +1868,7 @@ static int dc_console (peer_t *dcc, char *args)
 	cc = args;
       if (!Find_Iface (I_SERVICE, cc) || Unset_Iface())
       {
-	New_Request (session->s.iface, 0, _("No such active service found: %s"),
+	New_Request (dcc->iface, 0, _("No such active service found: %s"),
 		     cc);
 	return -1;
       }
@@ -1978,8 +1876,8 @@ static int dc_console (peer_t *dcc, char *args)
     }
     else if (*args == '*')		/* reset channel */
       args = NextWord (args);
-    else if (session->log && session->log->name)
-      cc = session->log->name;
+    else if (dcc->priv->log && dcc->priv->log->name)
+      cc = dcc->priv->log->name;
     pm[1] = cl[0] = cl[64] = 0;
     for (; *args; args++)
     {
@@ -1996,11 +1894,11 @@ static int dc_console (peer_t *dcc, char *args)
 	  strfcat (&cl[64], pm, 64);
       }
     }
-    _console_fl (session, cl, &cl[64], cc);
+    _console_fl (dcc, cl, &cl[64], cc);
   }
-  fl = session->loglev & (F_PRIV | F_CMDS | F_CONN | F_SERV | F_WALL | F_USERS | F_DEBUG | F_BOOT | F_ERROR | F_WARN | F_PUBLIC | F_JOIN | F_MODES | F_BOTNET);
-  if (session->log && session->log->name && (fl & (F_PUBLIC | F_JOIN | F_MODES)))
-    cc = session->log->name;
+  fl = dcc->priv->loglev & (F_PRIV | F_CMDS | F_CONN | F_SERV | F_WALL | F_USERS | F_DEBUG | F_BOOT | F_ERROR | F_WARN | F_PUBLIC | F_JOIN | F_MODES);
+  if (dcc->priv->log && dcc->priv->log->name && (fl & (F_PUBLIC | F_JOIN | F_MODES)))
+    cc = dcc->priv->log->name;
   else
     cc = "";
   /* reset result */
@@ -2053,9 +1951,6 @@ static int dc_console (peer_t *dcc, char *args)
 	case F_JOIN:
 	  m2 = _("joins/parts");
 	  break;
-	case F_BOTNET:
-	  m2 = _("botnet notices");
-	  break;
 	default: /* F_MODES */
           m2 = _("mode changes");
       }
@@ -2074,21 +1969,16 @@ static int dc_console (peer_t *dcc, char *args)
     }
   }
   if (*cc && *cl)
-    New_Request (session->s.iface, 0, "%s: %s%s%s %s %s", _("Your console logs"),
+    New_Request (dcc->iface, 0, "%s: %s%s%s %s %s", _("Your console logs"),
 		 *msg ? msg : "", *msg ? _(", and ") : "", cl,
 		 _("on the channel"), cc);
   else
-    New_Request (session->s.iface, 0, "%s: %s", _("Your console logs"),
+    New_Request (dcc->iface, 0, "%s: %s", _("Your console logs"),
 		 *msg ? msg : "none");
   return 1;
 }
 
-static void _report_req (iftype_t iface, char *who)
-{
-  char t[sizeof(ifsig_t)] = {S_REPORT};
-
-  Add_Request (iface, who, F_SIGNAL, t);
-}
+#define _report_req(iface,who) Send_Signal (iface, who, S_REPORT)
 
 		/* .cstat */
 BINDING_TYPE_dcc (dc_cstat);
@@ -2107,30 +1997,30 @@ static int dc_cstat (peer_t *dcc, char *args)
 BINDING_TYPE_dcc (dc_echo);
 static int dc_echo (peer_t *dcc, char *args)
 {
-  flag_t fl = session->loglev & F_ECHO;
+  flag_t fl = dcc->priv->loglev & F_ECHO;
 
-  if (!IS_SESSION(session))		/* aliens cannot on/off echo ;) */
+  if (!IS_SESSION(dcc))			/* aliens cannot on/off echo ;) */
     return 0;
   if (args)
   {
     if (!strcmp (args, "on"))
     {
       if (!fl)
-	_console_fl (session, "+", NULL, NULL);
+	_console_fl (dcc, "+", NULL, NULL);
     }
     else if (!strcmp (args, "off"))
     {
       if (fl)
-	_console_fl (session, NULL, "+", NULL);
+	_console_fl (dcc, NULL, "+", NULL);
     }
     else
       return -1;
-    fl = session->loglev & F_ECHO;
+    fl = dcc->priv->loglev & F_ECHO;
   }
   if (fl)
-    _say_current (&session->s, "on");
+    _say_current (dcc, "on");
   else
-    _say_current (&session->s, "off");
+    _say_current (dcc, "off");
   return 1;
 }
 
@@ -2143,33 +2033,34 @@ static int dc_help (peer_t *dcc, char *args)
   bindtable_t *ssbt;
   userflag df;
 
-  if (!IS_SESSION(session))
+  if (!IS_SESSION(dcc))
     return 1;
-  if (session->log && session->log->name)
-    df = Get_Clientflags (session->s.iface->name, session->log->name);
+  if (dcc->priv->log && dcc->priv->log->name)
+    df = Get_Clientflags (dcc->iface->name, dcc->priv->log->name);
   else
     df = 0;
   if ((fst = args))
     sec = gettoken (args, &args);
   else
     sec = NULL;
-  DBG ("dc_help for %s on %c%s", fst, session->ssbt ? '*' : '!', session->netname);
-  if ((!sec || !*sec) && session->netname && session->ssbt &&
-      (!fst || Check_Bindtable (session->ssbt, fst, session->s.uf, df, NULL)))
-    ssbt = session->ssbt;
+  DBG ("dc_help for %s on %c%s", fst, dcc->priv->ssbt ? '*' : '!',
+       dcc->priv->netname);
+  if ((!sec || !*sec) && dcc->priv->netname && dcc->priv->ssbt &&
+      (!fst || Check_Bindtable (dcc->priv->ssbt, fst, dcc->uf, df, NULL)))
+    ssbt = dcc->priv->ssbt;
   else
     ssbt = NULL;
   /* usage - not required if no arguments */
-  if (args && !(ssbt && Get_Help (NULL, fst, session->s.iface,
-				  session->s.uf, df, ssbt, _("Usage: "), -1)) &&
-      !Get_Help (fst, sec, session->s.iface, session->s.uf, df, BT_Dcc,
+  if (args && !(ssbt && Get_Help (NULL, fst, dcc->iface,
+				  dcc->uf, df, ssbt, _("Usage: "), -1)) &&
+      !Get_Help (fst, sec, dcc->iface, dcc->uf, df, BT_Dcc,
 		 _("Usage: "), 0))
     return -1;
   /* full help */
   if (ssbt)
-    Get_Help (NULL, fst ? fst : "*", session->s.iface, session->s.uf, df, ssbt, NULL, 2);
+    Get_Help (NULL, fst ? fst : "*", dcc->iface, dcc->uf, df, ssbt, NULL, 2);
   if (!ssbt || !fst)
-    Get_Help (fst, sec, session->s.iface, session->s.uf, df, BT_Dcc, NULL, 2);
+    Get_Help (fst, sec, dcc->iface, dcc->uf, df, BT_Dcc, NULL, 2);
   if (sec && *sec)
     *args = ' ';
   return 1;			/* return 1 because usage at least displayed */
@@ -2183,16 +2074,17 @@ static int dc_motd (peer_t *dcc, char *args)
   char buff[HUGE_STRING];
   register FILE *file;
   char *c, *end;
+  ssize_t s = 0;
 
   /* get motd file to buffer msg */
   msg[0] = 0;
   if ((file = fopen (expand_path (buff, motd, sizeof(buff)), "r")))
-    fread (msg, 1, sizeof(msg), file);
+    s = fread (msg, 1, sizeof(msg) - 1, file);
   if (file)
     fclose (file);
-  if (!*msg)
+  if (s <= 0)
     return -1;	/* no log it */
-  msg[sizeof(msg)-1] = 0;
+  msg[s] = 0;
   /* convert all macros and out MOTD */
   printl (buff, sizeof(buff), msg, 0, NULL, SocketDomain (dcc->socket, NULL),
 	  dcc->iface->name, NULL, 0L, 0, 0, args);
@@ -2211,9 +2103,9 @@ static int dc_motd (peer_t *dcc, char *args)
 BINDING_TYPE_dcc (dc_simul);
 static int dc_simul (peer_t *dcc, char *args)
 {
-  session_t *ud;
+  peer_t *ud;
   INTERFACE *iface;
-  char name[IFNAMEMAX+1];
+  char name[LNAMELEN+1];
 
   if (!args)
     return 0;
@@ -2226,10 +2118,10 @@ static int dc_simul (peer_t *dcc, char *args)
   }
   else if (iface->IFSignal == &dcc_signal)	/* it should not be alien */
   {
-    ud = (session_t *)iface->data;
+    ud = iface->data;
     Set_Iface (iface);
-    ud->s.parse (&ud->s, name, args, ud->s.uf, 0, DccIdx(ud), ud->botnet, ud->ssbt,
-		 ud->netname, ud->alias);
+    ud->parse (ud, name, args, ud->uf, 0, DccIdx(ud), ud->priv->botnet,
+	       ud->priv->ssbt, ud->priv->netname);
     Unset_Iface();		/* from Set_Iface() */
   }
   else
@@ -2271,13 +2163,13 @@ static int dc_w (peer_t *dcc, char *args)
   char b[SHORT_STRING];
 
   printl (b, sizeof(b), format_w_head, 0, NULL, NULL, NULL, NULL, 0, 0, 0, NULL);
-  New_Request (session->s.iface, 0, "%s", b);
+  New_Request (dcc->iface, 0, "%s", b);
   if (args)
     snprintf (b, sizeof(b), ":*:%s", args);
-  else if (!IS_SESSION(session))
+  else if (!IS_SESSION(dcc))
     strcpy (b, ":*:0");
   else
-    snprintf (b, sizeof(b), ":*:%d", session->botnet);
+    snprintf (b, sizeof(b), ":*:%d", dcc->priv->botnet);
   ReportFormat = format_w;
   _report_req (I_DCCALIAS, b);
   if (args)
@@ -2291,7 +2183,7 @@ static int dc_quit (peer_t *dcc, char *args)
 {
   ShutdownR = args;
   if (dcc->iface->IFSignal)
-    dcc->iface->IFSignal (dcc->iface, S_TERMINATE);
+    dcc->iface->ift |= dcc->iface->IFSignal (dcc->iface, S_TERMINATE);
   ShutdownR = NULL;
   return 1;
 }
@@ -2403,7 +2295,7 @@ static void IntCrypt (const char *pass, char **cr)
   register char *c = *cr;
   register unsigned int i;
   char salt[3];
-  
+
   if (c)
     strfcpy (salt, &c[2], sizeof(salt));
   else					/* generate a new password */
@@ -2488,7 +2380,7 @@ static size_t _reset_colormode (register char *s, register int colormode)
   return i;
 }
 
-int mirccolors[] = {__BOLD|7, 0, 4, 2, 1, 3, 5, __BOLD|1, __BOLD|3, __BOLD|2,
+int mirccolors[] = {__BOLD|7, 0, 4, 2, __BOLD|1, 1, 5, 3, __BOLD|3, __BOLD|2,
 		    6, __BOLD|6, __BOLD|4, __BOLD|5, __BOLD|0, 7};
 
 BINDING_TYPE_out_filter (ConvertColors);
@@ -2499,10 +2391,10 @@ static void ConvertColors (peer_t *dcc, char *msg, size_t msglen)
   register flag_t fl;
   int colormode;
 
-  if (!IS_SESSION(session))
+  if (!IS_SESSION(dcc))
     return;
   colormode = 0;
-  fl = (session->loglev & (F_COLOR | F_COLORCONV));
+  fl = (dcc->priv->loglev & (F_COLOR | F_COLORCONV));
   msg[msglen-1] = 0;
   if (fl == F_COLOR)			/* mirc color - don't convert */
     return;
@@ -2656,10 +2548,44 @@ static int _dellistenport (char *pn)
   return 1;
 }
 
+static int _s_h_value[8] = {0,0,0,0,0,0,0,0};
+
+static void session_handler_0 (char *client, char *ident, char *host, idx_t socket) {
+  session_handler (ident, host, socket, 0); }
+static void session_handler_1 (char *client, char *ident, char *host, idx_t socket) {
+  session_handler (ident, host, socket, _s_h_value[0]); }
+static void session_handler_2 (char *client, char *ident, char *host, idx_t socket) {
+  session_handler (ident, host, socket, _s_h_value[1]); }
+static void session_handler_3 (char *client, char *ident, char *host, idx_t socket) {
+  session_handler (ident, host, socket, _s_h_value[2]); }
+static void session_handler_4 (char *client, char *ident, char *host, idx_t socket) {
+  session_handler (ident, host, socket, _s_h_value[3]); }
+static void session_handler_5 (char *client, char *ident, char *host, idx_t socket) {
+  session_handler (ident, host, socket, _s_h_value[4]); }
+static void session_handler_6 (char *client, char *ident, char *host, idx_t socket) {
+  session_handler (ident, host, socket, _s_h_value[5]); }
+static void session_handler_7 (char *client, char *ident, char *host, idx_t socket) {
+  session_handler (ident, host, socket, _s_h_value[6]); }
+static void session_handler_8 (char *client, char *ident, char *host, idx_t socket) {
+  session_handler (ident, host, socket, _s_h_value[7]); }
+
+typedef void (*_s_h_proc_type)(char *,char *,char *,idx_t);
+
+static _s_h_proc_type _s_h_proc[8] = {
+  &session_handler_1,
+  &session_handler_2,
+  &session_handler_3,
+  &session_handler_4,
+  &session_handler_5,
+  &session_handler_6,
+  &session_handler_7,
+  &session_handler_8
+};
+
 typedef struct
 {
   unsigned short port;
-  userflag u;
+  int u;
   int cnt;
   tid_t tid;
 } _port_retrier;
@@ -2677,25 +2603,25 @@ static iftype_t _port_retrier_s (INTERFACE *iface, ifsig_t signal)
       return I_DIED;
     case S_TIMEOUT:
       r = (_port_retrier *)iface->data;
-      if (r->u & U_ANY)
-	socket = Listen_Port (NULL, hostname, &r->port, iface->name, NULL, &session_handler_any);
+      if (r->u == -1)
+	socket = Listen_Port (NULL, hostname, &r->port, iface->name, NULL, &session_handler_0);
       else
-	socket = Listen_Port (NULL, hostname, &r->port, iface->name, NULL, &session_handler_bots);
+	socket = Listen_Port (NULL, hostname, &r->port, iface->name, NULL, _s_h_proc[r->u]);
       if (socket >= 0)
       {
 	LOG_CONN (_("Listening on port %hu%s."), r->port,
-		  (r->u & U_ANY) ? "" : _(" for bots"));
+		  (!(_s_h_value[r->u] & 256)) ? "" : _(" for bots"));
 	return I_DIED;			/* it done... */
       }
       else if (--r->cnt == 0)
       {
 	LOG_CONN (_("Too many retries to listen port %hu%s, aborted."),
-		  r->port, (r->u & U_ANY) ? "" : _(" for bots"));
+		  r->port, (!(_s_h_value[r->u] & 256)) ? "" : _(" for bots"));
 	return I_DIED;			/* it done... */
       }
       r->tid = NewTimer (iface->ift, iface->name, S_TIMEOUT, 10, 0, 0, 0);
       LOG_CONN (_("Could not open listening port %hu%s, retrying in 10 seconds."),
-		r->port, (r->u & U_ANY) ? "" : _(" for bots"));
+		r->port, (!(_s_h_value[r->u] & 256)) ? "" : _(" for bots"));
       break;
     default: ;
   }
@@ -2709,6 +2635,7 @@ ScriptFunction (FE_port)	/* to config - see thrdcc_signal() */
   INTERFACE *tmp;
   static char msg[SHORT_STRING];
   userflag u = U_ANY | U_SPECIAL;
+  int ii, ch = 0;
 
   if (!args || !*args)
     return 0;
@@ -2718,13 +2645,24 @@ ScriptFunction (FE_port)	/* to config - see thrdcc_signal() */
       u = 0;
     else if (args[1] == 'b')
       u &= ~U_ANY;
-    args = NextWord (args);
+    args = NextWord ((char *)args);	/* it's still const */
+  }
+  if (*args == '+')
+  {
+    args++;
+    if (*args != 'x' && *args != 'y' && *args != 'b')	/* forbidden flags */
+      ch = *args;
+    args = NextWord ((char *)args);	/* it's const really */
   }
   port = atoi (args);
   if (port < 1024)
     return 0;
-  snprintf (msg, sizeof(msg), "port %s%hu", (u & U_ANY) ? "" : "-b ", port);
-  args = NextWord (args);
+  if (ch)
+    snprintf (msg, sizeof(msg), "port %s+%c %hu", (u & U_ANY) ? "" : "-b ",
+	      (char)ch, port);
+  else
+    snprintf (msg, sizeof(msg), "port %s%hu", (u & U_ANY) ? "" : "-b ", port);
+//  args = NextWord ((char *)args);	/* it's still const */
   if (u == 0)
     return _dellistenport (msg);
   /* check if already exist */
@@ -2735,20 +2673,37 @@ ScriptFunction (FE_port)	/* to config - see thrdcc_signal() */
     LOG_CONN (_("Already listening on port %hu!"), port);
     return port;
   }
-  if (u & U_ANY)
-    socket = Listen_Port (NULL, hostname, &port, msg, NULL, &session_handler_any);
+  if (!(u & U_ANY))
+    ch |= 256;
+  if (ch == 0)
+  {
+    ii = -1;
+    socket = Listen_Port (NULL, hostname, &port, msg, NULL, &session_handler_0);
+  }
   else
-    socket = Listen_Port (NULL, hostname, &port, msg, NULL, &session_handler_bots);
+  {
+    socket = -1;
+    for (ii = 0; ii < 8; ii++)
+    {
+      if (_s_h_value[ii] == 0)		/* vacant */
+	_s_h_value[ii] = ch;
+      if (_s_h_value[ii] == ch)
+      {
+	socket = Listen_Port (NULL, hostname, &port, msg, NULL, _s_h_proc[ii]);
+	break;
+      }
+    }
+  }
   if (socket < 0)
   {
     /* check if we are called from init() */
-    if (Set_Iface (NULL) == NULL)
+    if (ii < 8 && Set_Iface (NULL) == NULL)
     {
       INTERFACE *i;
       register _port_retrier *x = safe_malloc (sizeof(_port_retrier));
 
       x->port = port;
-      x->u = u;
+      x->u = ii;
       x->cnt = 0;
       i = Add_Iface (I_TEMP, msg, _port_retrier_s, NULL, x);
       x->tid = NewTimer (i->ift, i->name, S_TIMEOUT, 10, 0, 0, 0);

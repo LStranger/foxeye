@@ -73,6 +73,7 @@ static irc_server *IrcServers = NULL;
 static long int irc_timeout = 180;	/* 3 minutes by default */
 static long int irc_connect_timeout = 300;
 static long int irc_retry_timeout = 120;
+static long int irc_retry_server = 60;	/* in minutes */
 static long int defaultport = 6667;
 static long int maxpenalty = 10;	/* in seconds, see ircd sources */
 static long int irc_pmsg_keep = 30;
@@ -137,10 +138,9 @@ static size_t irc_rfc1459_strlower (char *dst, const char *o, size_t s)
 
 /* --- Internal functions --------------------------------------------------- */
 
-// TODO: implement [%flags] and connchain use
 /*
  * form of hostrecord:
- * [[*]:passwd@]domain.net[/port]
+ * [[*]:passwd@]domain.net[/port][%flags]
  *
  * returns server real name if connected, else host/port and password
  *
@@ -265,7 +265,7 @@ static char *_irc_getnext_server (irc_server *serv, const char *add,
     }
     /* form serv->servlist */
     if (add) i++;
-    for (c = tmp->data; c && *c; c = NextWord (c)) i++;
+    for (c = tmp->data; c && *c; c = NextWord ((char *)c)) i++;
     serv->servlist = cc = ccn = safe_malloc ((i+1) * sizeof(char *));
     for (c = tmp->data; c && *c; cc++)
       c = _irc_parse_hostline (c, cc);
@@ -330,6 +330,9 @@ static void _irc_run_conn_bind (irc_server *serv, bindtable_t *bt)
   binding_t *bind = NULL;
   char *name = _irc_current_server (serv, NULL);
 
+  Set_Iface (serv->p.iface);
+  Send_Signal (I_MODULE, "ui", S_FLUSH); /* inform UIs about [dis]connect */
+  Unset_Iface();
   while ((bind = Check_Bindtable (bt, serv->p.iface->name, U_ALL, U_ANYCH, bind)))
   {
     if (bind->name)
@@ -353,14 +356,14 @@ static int _irc_try_server (irc_server *serv, const char *tohost, int banned,
 			    char *reason)
 {
   userflag uf;
-  char *name, *c;
+  char *name, *c, *c2;
   irc_await *await;
 
   /* if already connected then break connection first */
 //  dprint (4, "_irc_try_server: was socket %d, server %s, state %u",
 //	  serv->p.socket, serv->p.dname ? serv->p.dname : "[undef]",
 //	  serv->p.state);
-  Connchain_Kill ((&serv->p));
+  if(Connchain_Kill ((&serv->p)))uf=uf;		/* condition to avoid warn */
   if (serv->p.socket >= 0)
     KillSocket(&serv->p.socket);
   FREE (&serv->p.dname);
@@ -370,7 +373,7 @@ static int _irc_try_server (irc_server *serv, const char *tohost, int banned,
     _irc_disconnected (serv); /* registered and disconnected so run bindings */
   if (!serv->pmsgout)
   {
-    char lname[IFNAMEMAX+1];
+    char lname[NAMEMAX+2];
 
     lname[0] = '@';
     strfcpy (&lname[1], serv->p.iface->name, sizeof(lname) - 1);
@@ -404,9 +407,11 @@ static int _irc_try_server (irc_server *serv, const char *tohost, int banned,
     }
     await->serv = serv;
     serv->await = await;
+    c2 = NULL;		/* make gcc -O2 happy */
     do {		/* fake cycle to get continue working */
       c = strchr (name, '/');	/* ':' may be used in IPv6 notation later */
       if (c) *c = 0;
+      else if ((c2 = strchr (name, '%'))) *c2 = 0; /* split flags */
       if (Connect_Host (name, c ? atoi (&c[1]) : defaultport, &await->th,
 			&serv->p.socket, &_irc_connection_ready, await))
 	LOG_CONN (_("Connecting to %s, port %ld..."), name,
@@ -414,6 +419,7 @@ static int _irc_try_server (irc_server *serv, const char *tohost, int banned,
       else
 	await->th = 0;
       if (c) *c = '/';
+      else if (c2) *c2 = '%';
       if (await->th == 0 && (uf & U_ACCESS) &&
 	  (name = _irc_getnext_server (serv, NULL, 0)))
 	continue;
@@ -435,7 +441,7 @@ static int _irc_try_server (irc_server *serv, const char *tohost, int banned,
 static char *_irc_try_nick (irc_server *serv, clrec_t *clr)
 {
   register char *c;
-  char nn[LNAMELEN+1];
+  char nn[NAMEMAX+1];
   char *nlist;
 
   nlist = Get_Field (clr, "nick", NULL);
@@ -468,6 +474,8 @@ static char *_irc_try_nick (irc_server *serv, clrec_t *clr)
     if (*c)
       nlist = NextWord (c);
     FREE (&serv->mynick);
+    for (c = nn; *nlist && c < &nn[sizeof(nn)-1]; nlist++) *c++ = *nlist++;
+    *c = 0;
     serv->mynick = safe_strdup (nn);
   }
   dprint (4, "_irc_try_nick: trying %s", serv->mynick);
@@ -479,7 +487,8 @@ static int _irc_send (irc_server *serv, char *line)
   char *c;
   ssize_t sw, sd;
   int i;
-  char buf[MB_LEN_MAX*MESSAGEMAX];
+  char buf[MB_LEN_MAX*IRCMSGLEN];
+  register char *cc;
 
   if (serv->p.socket < 0)		/* nothing to do */
     return -1;
@@ -502,25 +511,25 @@ static int _irc_send (irc_server *serv, char *line)
   if (Time + maxpenalty < serv->last_output + serv->penalty + 2 * i)
     return 0;
   /* format the line now */
+  for (c = line, cc = buf; *c && cc < &buf[sizeof(buf)-2]; c++)
   {
-    register char *cc;
-
-    for (c = line, cc = buf; *c && cc < &buf[sizeof(buf)-2]; c++)
-    {
-      if (*c == '\r' && c[1] == '\n')	/* already CR+LF pair so pass it */
-	*cc++ = *c++;
-      else if (*c == '\n')		/* only LF so convert to CR+LF */
-	*cc++ = '\r';
-      *cc++ = *c;			/* copy char */
-    }
-    if (cc != buf && *(cc-1) == '\n')	/* was ended with CR+LF? */
-      cc -= 2;				/* skip CR+LF at end */
-    sw = cc - buf;
-    if (sw == 0)
-      return 1;				/* nothing to do */
-    dprint (4, "_irc_send: buffer filled for %s: %d bytes",
-	    serv->p.iface->name, sw);
+    if (*c == '\r' && c[1] == '\n')	/* already CR+LF pair so pass it */
+      *cc++ = *c++;
+    else if (*c == '\n')		/* only LF so convert to CR+LF */
+      *cc++ = '\r';
+    *cc++ = *c;				/* copy char */
+    /* it would be nice to split too long lines with unsistrcut but:
+       - we don't know hot to work with server encoding
+       - line isn't just text and we don't know how to recover protocol after
+       but it can be handled by msgs.c */
   }
+  if (cc != buf && *(cc-1) == '\n')	/* was ended with CR+LF? */
+    cc -= 2;				/* skip CR+LF at end */
+  sw = cc - buf;
+  if (sw == 0)
+    return 1;				/* nothing to do */
+  dprint (4, "_irc_send: buffer filled for %s: %d bytes",
+	  serv->p.iface->name, sw);
   /* try to send buffer */
   sd = Peer_Put ((&serv->p), buf, &sw);
   if (sd < 0)				/* error here */
@@ -731,10 +740,10 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
 			    M_RAW)) >= 0)
       {
 	clrec_t *clr;
-	char *ident, *realname;
+	char *ident, *realname, *sl;
 
 	LOG_CONN (_("Connected to %s, registering..."), iface->name);
-	_irc_current_server (serv, &ident);	/* have to send PASS? */
+	sl = _irc_current_server (serv, &ident); /* have to send PASS? */
 	c = ident;
 	clr = Lock_Clientrecord (iface->name);
 	if (!clr)		/* it was already deleted??? */
@@ -780,8 +789,16 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
 #endif
 	/* setup the state */
 	serv->p.state = P_LOGIN;
-	/* TODO: add some nice filter from % in host - SSL, etc. */
-	Connchain_Grow ((&serv->p), 'x'); /* RAW -> TXT filter */
+	/* add some nice filter from % in host - SSL, etc. */
+	if ((c = strchr (sl, '%')))		/* flags found */
+	  while (*++c)
+	    if (*c != 'x' && *c != 'y' &&	/* forbidden flags */
+	      !Connchain_Grow ((&serv->p), *c))	/* try filter */
+	      {
+		ERROR ("irc:_irc_request_main: cannot create filter %c", *c);
+		return _irc_try_server (serv, NULL, 0, NULL); /* abort it */
+	      }
+	Connchain_Grow ((&serv->p), 'x');	/* RAW -> TXT filter */
 	_irc_send (serv, thebuf); /* no errors should be here yet */
       }
       else if (serv->p.socket < 0 || sw != E_AGAIN)
@@ -844,6 +861,8 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
       FREE (&serv->servlist);
       FREE (&serv->mynick);
       iface->ift |= I_DIED;
+      /* shedule retry of autoconnects (in 1 hour by default) */
+      NewTimer (I_MODULE, "irc", S_FLUSH, 0, irc_retry_server, 0, 0);
       return 0;
   }
   /* get input if it's possible */
@@ -851,9 +870,9 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
       serv->p.state == P_IDLE)
   {
 #ifdef HAVE_ICONV
-    char sbuf[MB_LEN_MAX*MESSAGEMAX];
+    char sbuf[MB_LEN_MAX*IRCMSGLEN];
 #endif
-    char inbuf[MB_LEN_MAX*MESSAGEMAX];
+    char inbuf[MB_LEN_MAX*IRCMSGLEN];
     char uhb[HOSTMASKLEN+1]; /* nick!user@host */
     char *params[19]; /* network sender command args ... NULL */
     char *prefix, *p, *uh;
@@ -879,7 +898,7 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
 		 Time - serv->p.last_input > 2 * irc_timeout)
 	{
 	  LOG_CONN (_("Timeout for IRC server %s (%d seconds)..."),
-		    serv->p.dname, Time - serv->p.last_input);
+		    serv->p.dname, (int)(Time - serv->p.last_input));
 	  serv->p.state = P_DISCONNECTED;
 	}
 	reject = 1;
@@ -1001,7 +1020,7 @@ char *irc_mynick (char *servname)
 
 /*
  * "irc-raw" bindings:
- *   int func(INTERFACE *net, char *sv, char *me, char *src,
+ *   int func(INTERFACE *net, char *sv, char *me, unsigned char *src,
  *		int parc, char **parv, size_t (*lc)(char *, const char *, size_t))
  *
  * note that src is NULL if message has no prefix or originatin from server
@@ -1010,7 +1029,7 @@ char *irc_mynick (char *servname)
  * lc is used for server-specific lowercase conversion
  */
 BINDING_TYPE_irc_raw (irc_ping);
-static int irc_ping (INTERFACE *net, char *sv, char *me, char *src,
+static int irc_ping (INTERFACE *net, char *sv, char *me, unsigned char *src,
 		int parc, char **parv, size_t (*lc)(char *, const char *, size_t))
 {
 // Parameters: server [server-to]
@@ -1018,7 +1037,7 @@ static int irc_ping (INTERFACE *net, char *sv, char *me, char *src,
     New_Request (net, F_QUICK, "PONG %s :%s", sv, src);
   else
     New_Request (net, F_QUICK, "PONG :%s",
-		 src ? src : ((irc_server *)net->data)->p.dname);
+		 src ? (char *)src : ((irc_server *)net->data)->p.dname);
   return 1;
 }
 
@@ -1038,7 +1057,7 @@ static int irc_ping (INTERFACE *net, char *sv, char *me, char *src,
  * ERR_NOTREGISTERED
  */
 BINDING_TYPE_irc_raw (irc__nextnick);
-static int irc__nextnick (INTERFACE *net, char *sv, char *me, char *src,
+static int irc__nextnick (INTERFACE *net, char *sv, char *me, unsigned char *src,
 		int parc, char **parv, size_t (*lc)(char *, const char *, size_t))
 {
 // Parameters: current new text
@@ -1057,7 +1076,7 @@ static int irc__nextnick (INTERFACE *net, char *sv, char *me, char *src,
 }
 
 BINDING_TYPE_irc_raw (irc_rpl_bounce);
-static int irc_rpl_bounce (INTERFACE *net, char *sv, char *me, char *src,
+static int irc_rpl_bounce (INTERFACE *net, char *sv, char *me, unsigned char *src,
 		int parc, char **parv, size_t (*lc)(char *, const char *, size_t))
 {
 // Parameters: me host port text
@@ -1075,7 +1094,7 @@ static int irc_rpl_bounce (INTERFACE *net, char *sv, char *me, char *src,
  * ERR_NOPERMFORHOST ERR_PASSWDMISMATCH ERR_YOUREBANNEDCREEP
  */
 BINDING_TYPE_irc_raw (irc__fatal);
-static int irc__fatal (INTERFACE *net, char *sv, char *me, char *src,
+static int irc__fatal (INTERFACE *net, char *sv, char *me, unsigned char *src,
 		int parc, char **parv, size_t (*lc)(char *, const char *, size_t))
 {
 // Parameters: me text
@@ -1087,7 +1106,7 @@ static int irc__fatal (INTERFACE *net, char *sv, char *me, char *src,
  * we got 001 (RPL_WELCOME) so connection is completed now
  */
 BINDING_TYPE_irc_raw (irc_rpl_welcome);
-static int irc_rpl_welcome (INTERFACE *net, char *sv, char *me, char *src,
+static int irc_rpl_welcome (INTERFACE *net, char *sv, char *me, unsigned char *src,
 		int parc, char **parv, size_t (*lc)(char *, const char *, size_t))
 {
 // Parameters: me text
@@ -1096,22 +1115,31 @@ static int irc_rpl_welcome (INTERFACE *net, char *sv, char *me, char *src,
   /* do all bindings */
   _irc_connected (serv);
   /* change state */
-  strfcpy (serv->p.start, DateString, sizeof(serv->p.start));
+  snprintf (serv->p.start, sizeof(serv->p.start), "%s %s", DateString,
+	    TimeString);
   serv->p.state = P_TALK;
   LOG_CONN (_("Registered on %s."), net->name);
   return 0;
 }
 
+/* declaration */
+static void _irc_update_isupport (INTERFACE *, int, char **);
+
 BINDING_TYPE_irc_raw (irc_rpl_myinfo);
-static int irc_rpl_myinfo (INTERFACE *net, char *sv, char *me, char *src,
+static int irc_rpl_myinfo (INTERFACE *net, char *sv, char *me, unsigned char *src,
 		int parc, char **parv, size_t (*lc)(char *, const char *, size_t))
 {
 // Parameters: me srvname version umodes chanmodes
+  char umodes[SHORT_STRING];
+
   if (parc != 5)
-    return 0;
+    return -1;
   ((irc_server *)net->data)->p.dname = safe_strdup (parv[1]);
   LOG_CONN (_("Got version from %s: %s"), parv[1], parv[2]);
-  return 1;
+  snprintf (umodes, sizeof(umodes), IRCPAR_UMODES "=%s", parv[3]);
+  me = umodes;	/* use it as pointer */
+  _irc_update_isupport (net, 1, &me);
+  return 0;
 }
 
 static size_t _irc_check_domain_part (char *domain)
@@ -1155,7 +1183,7 @@ static int _irc_check_domain (char *domain)
 }
 
 BINDING_TYPE_irc_raw (irc_quit);
-static int irc_quit (INTERFACE *net, char *sv, char *me, char *src,
+static int irc_quit (INTERFACE *net, char *sv, char *me, unsigned char *src,
 		int parc, char **parv, size_t (*lc)(char *, const char *, size_t))
 {
 // Parameters: text
@@ -1170,14 +1198,18 @@ static int irc_quit (INTERFACE *net, char *sv, char *me, char *src,
 // Quit reason in netsplit: leftserver goneserver
     char *gone;
     char *lname;
-    char target[HOSTMASKLEN+1];	/* assume it's not less than IFNAMEMAX+1 */
+#if IFNAMEMAX > HOSMASKLEN
+    char target[IFNAMEMAX+1];
+#else
+    char target[HOSTMASKLEN+1];
+#endif
     userflag uf;
     int s;
     binding_t *bind;
 
 //    if ((gone = safe_strchr (src, '!'))) /* using *gone as temp char* var */
 //      *gone = 0;
-    strfcpy (target, src, MBNAMEMAX+1); /* use old nick for interfaces */
+    strfcpy (target, src, NAMEMAX+1); /* use old nick for interfaces */
     irc_privmsgout_cancel (((irc_server *)net->data)->pmsgout, src);
     strfcat (target, ((irc_server *)net->data)->pmsgout->name, sizeof(target));
     if (Find_Iface (I_LOG, target))
@@ -1186,7 +1218,7 @@ static int irc_quit (INTERFACE *net, char *sv, char *me, char *src,
       Add_Request (I_LOG, target, F_PRIV | F_END, _("%s quits: %s"), src, parv[0]);
     }
     if (lc)
-      lc (target, src, MBNAMEMAX+1);
+      lc (target, src, NAMEMAX+1);
     else
       target[safe_strlen(src)] = 0;	/* leave only nick there for bindings */
     if (cc)
@@ -1218,7 +1250,7 @@ static int irc_quit (INTERFACE *net, char *sv, char *me, char *src,
 }
 
 BINDING_TYPE_irc_raw (irc_error);
-static int irc_error (INTERFACE *net, char *sv, char *me, char *src,
+static int irc_error (INTERFACE *net, char *sv, char *me, unsigned char *src,
 		int parc, char **parv, size_t (*lc)(char *, const char *, size_t))
 {
 // Parameters: text
@@ -1227,7 +1259,7 @@ static int irc_error (INTERFACE *net, char *sv, char *me, char *src,
 }
 
 BINDING_TYPE_irc_raw (irc_kill);
-static int irc_kill (INTERFACE *net, char *sv, char *me, char *src,
+static int irc_kill (INTERFACE *net, char *sv, char *me, unsigned char *src,
 		int parc, char **parv, size_t (*lc)(char *, const char *, size_t))
 {
 // Parameters: nick text
@@ -1244,11 +1276,11 @@ static int irc_kill (INTERFACE *net, char *sv, char *me, char *src,
 }
 
 BINDING_TYPE_irc_raw (irc_privmsg);
-static int irc_privmsg (INTERFACE *net, char *sv, char *me, char *src,
+static int irc_privmsg (INTERFACE *net, char *sv, char *me, unsigned char *src,
 		int parc, char **parv, size_t (*lc)(char *, const char *, size_t))
 {
 // Parameters: nick text
-  char f[IFNAMEMAX+1], m[IFNAMEMAX+1];
+  char f[NAMEMAX+1], m[NAMEMAX+1];
   char *cc;
 
   if (parc != 2 || !src)
@@ -1266,7 +1298,7 @@ static int irc_privmsg (INTERFACE *net, char *sv, char *me, char *src,
 }
 
 BINDING_TYPE_irc_raw (irc_err_nosuchnick);
-static int irc_err_nosuchnick (INTERFACE *net, char *sv, char *me, char *src,
+static int irc_err_nosuchnick (INTERFACE *net, char *sv, char *me, unsigned char *src,
 		int parc, char **parv, size_t (*lc)(char *, const char *, size_t))
 {
 // Parameters: me nick text
@@ -1286,11 +1318,11 @@ static int irc_err_nosuchnick (INTERFACE *net, char *sv, char *me, char *src,
 }
 
 BINDING_TYPE_irc_raw (irc_notice);
-static int irc_notice (INTERFACE *net, char *sv, char *me, char *src,
+static int irc_notice (INTERFACE *net, char *sv, char *me, unsigned char *src,
 		int parc, char **parv, size_t (*lc)(char *, const char *, size_t))
 {
 // Parameters: nick text
-  char f[IFNAMEMAX+1], m[IFNAMEMAX+1];
+  char f[NAMEMAX+1], m[NAMEMAX+1];
   char *cc;
 
   if (parc != 2 || !src)
@@ -1311,7 +1343,7 @@ static int irc_notice (INTERFACE *net, char *sv, char *me, char *src,
  * may be it's my nick was changed?
  */
 BINDING_TYPE_irc_raw (irc_nick);
-static int irc_nick (INTERFACE *net, char *sv, char *me, char *src,
+static int irc_nick (INTERFACE *net, char *sv, char *me, unsigned char *src,
 		int parc, char **parv, size_t (*lc)(char *, const char *, size_t))
 {
 // Parameters: newnick
@@ -1343,8 +1375,7 @@ static int irc_nick (INTERFACE *net, char *sv, char *me, char *src,
     if (lc)
     {
       lc (oldnick, src, sizeof(oldnick));
-      lc (newnick, parv[0], MBNAMEMAX+1);
-      s = safe_strlen (newnick);
+      s = lc (newnick, parv[0], NAMEMAX+1);
     }
     else
     {
@@ -1369,7 +1400,7 @@ static int irc_nick (INTERFACE *net, char *sv, char *me, char *src,
     if (lc)
     {
       lc (oldnick, src, sizeof(oldnick));
-      lc (newnick, parv[0], MBNAMEMAX+1);
+      lc (newnick, parv[0], NAMEMAX+1);
     }
     else
       strfcpy (oldnick, src, sizeof(oldnick));
@@ -1415,11 +1446,8 @@ static void _set_isupport_string (char *value, size_t s, size_t *i,
   *i += strlen (value);
 }
 
-BINDING_TYPE_irc_raw (irc_rpl_isupport);
-static int irc_rpl_isupport (INTERFACE *net, char *sv, char *me, char *src,
-		int parc, char **parv, size_t (*ilc)(char *, const char *, size_t))
+static void _irc_update_isupport (INTERFACE *net, int parc, char **parv)
 {
-// Parameters: me param=value ... "are supported by this server"
   char *c, *cs, *cf, *cv;
   size_t i;
   int nicklen, topiclen, maxbans, maxchannels, modes, maxtargets;
@@ -1427,68 +1455,61 @@ static int irc_rpl_isupport (INTERFACE *net, char *sv, char *me, char *src,
   clrec_t *clr;
   char chanmodes[SHORT_STRING];
   char prefix[32];
+  char umodes[32];
   char value[LONG_STRING];
 
-  dprint (4, "irc_rpl_isupport: %d params, first one is %s.", parc-2, parv[1]);
-  if (parc < 3)
-    return 0;		/* something other than ISUPPORT */
-  for (c = parv[1]; *c; c++)
-  {
-    if (*c == '=')
-      break;
-    else if (*c < 'A' || *c > 'Z')
-      return 0;		/* invalid */
-  }
-  if (!*c)
-    return 0;
+  dprint (4, "irc_update_isupport: %d params, first one is %s.", parc, parv[0]);
   nicklen = topiclen = maxbans = maxchannels = modes = maxtargets = 0;
   lc = &unistrlower; /* assume it's default for me */
   clr = Lock_Clientrecord (net->name);
   if (!clr)
-    return 0;		/* it's impossible */
+    return;		/* it's impossible */
   cs = c = Get_Field (clr, IRCPAR_FIELD, NULL);
   while (c)
   {
-    cv = strchr (c, '=');
     cf = c;
-    if (cv)
-      c = strchr (cv++, ' ');
-    else
-      c = NULL;
-    if (c) *c = 0;
+    cv = strchr (c, '=');
+    if (cv && (c = strchr (cv, ' ')))
+      i = c++ - cv;
+    else if (cv)
+      i = strlen (cv);
     if (cv)
     {
-      if (!strcmp (cf, IRCPAR_NICKLEN))
+      register size_t xx = (cv++ - cf);
+      DBG ("irc_update_isupport: found saved %.*s=\"%.*s\"", xx, cf, i-1, cv);
+      strfcpy (value, cf, xx >= sizeof(value) ? sizeof(value) : xx + 1);
+      if (!strcmp (value, IRCPAR_NICKLEN))
 	nicklen = atoi (cv);
-      else if (!strcmp (cf, IRCPAR_TOPICLEN))
+      else if (!strcmp (value, IRCPAR_TOPICLEN))
 	topiclen = atoi (cv);
-      else if (!strcmp (cf, IRCPAR_MAXBANS))
+      else if (!strcmp (value, IRCPAR_MAXBANS))
 	maxbans = atoi (cv);
-      else if (!strcmp (cf, IRCPAR_CHANNELS))
+      else if (!strcmp (value, IRCPAR_CHANNELS))
 	maxchannels = atoi (cv);
-      else if (!strcmp (cf, IRCPAR_MODES))
+      else if (!strcmp (value, IRCPAR_MODES))
 	modes = atoi (cv);
-      else if (!strcmp (cf, IRCPAR_TARGETS))
+      else if (!strcmp (value, IRCPAR_TARGETS))
 	maxtargets = atoi (cv);
-      else if (!strcmp (cf, IRCPAR_PREFIX))
-	strfcpy (prefix, cv, sizeof(prefix));
-      else if (!strcmp (cf, IRCPAR_CHANMODES))
-	strfcpy (chanmodes, cv, sizeof(chanmodes));
-      else if (!strcmp (cf, IRCPAR_CASEMAPPING))
+      else if (!strcmp (value, IRCPAR_PREFIX))
+	strfcpy (prefix, cv, i > sizeof(prefix) ? sizeof(prefix) : i);
+      else if (!strcmp (value, IRCPAR_CHANMODES))
+	strfcpy (chanmodes, cv, i > sizeof(chanmodes) ? sizeof(chanmodes) : i);
+      else if (!strcmp (value, IRCPAR_UMODES))
+	strfcpy (umodes, cv, i > sizeof(umodes) ? sizeof(umodes) : i);
+      else if (!strcmp (value, IRCPAR_CASEMAPPING))
       {
-	if (!strcasecmp (cv, "none"))
+	if (!strncasecmp (cv, "none", 4))
 	  lc = NULL;
-	else if (!strcasecmp (cv, "ascii"))
+	else if (!strncasecmp (cv, "ascii", 5))
 	  lc = &irc_ascii_strlower;
-	else if (!strcasecmp (cv, "rfc1459"))
+	else if (!strncasecmp (cv, "rfc1459", 7))
 	  lc = &irc_rfc1459_strlower;
 	else
 	  lc = &unistrlower;
       }
     }
-    if (c) *c++ = ' ';
   }
-  for (i = 1; (int)i < parc - 1; i++)
+  for (i = 0; (int)i < parc; i++)
   {
     cv = strchr (parv[i], '=');
     if (cv)
@@ -1511,6 +1532,8 @@ static int irc_rpl_isupport (INTERFACE *net, char *sv, char *me, char *src,
       strfcpy (prefix, cv, sizeof(prefix));
     else if (!strcmp (parv[i], IRCPAR_CHANMODES))
       strfcpy (chanmodes, cv, sizeof(chanmodes));
+    else if (!strcmp (parv[i], IRCPAR_UMODES))
+      strfcpy (umodes, cv, sizeof(umodes));
     else if (!strcmp (parv[i], IRCPAR_CASEMAPPING))
     {
       if (!strcasecmp (cv, "none"))
@@ -1522,6 +1545,8 @@ static int irc_rpl_isupport (INTERFACE *net, char *sv, char *me, char *src,
       else /* assume any other are locale dependent */
 	lc = &unistrlower;
     }
+    else
+      DBG ("irc_update_isupport: ignoring %s=%s.", parv[i], cv);
   }
   i = 0;
 #define _set_isupport(a,b) _set_isupport_num (value, sizeof(value), &i, \
@@ -1537,6 +1562,7 @@ static int irc_rpl_isupport (INTERFACE *net, char *sv, char *me, char *src,
 						a, sizeof(a), b)
   _set_isupport (IRCPAR_PREFIX, prefix);
   _set_isupport (IRCPAR_CHANMODES, chanmodes);
+  _set_isupport (IRCPAR_UMODES, umodes);
   if (lc == NULL)
     _set_isupport (IRCPAR_CASEMAPPING, "none");
   else if (lc == &irc_ascii_strlower)
@@ -1545,11 +1571,34 @@ static int irc_rpl_isupport (INTERFACE *net, char *sv, char *me, char *src,
     _set_isupport (IRCPAR_CASEMAPPING, "rfc1459");
 #undef _set_isupport
   value[i] = 0;
-  DBG ("irc_rpl_isupport: [%s]->[%s]", cs, value);
-  if (safe_strcmp (cs, value))
-    Set_Field (clr, IRCPAR_FIELD, value, 0);
+  DBG ("irc_update_isupport: [%s]->[%s]", cs, value);
+  if (safe_strcmp (cs, value) &&
+    !Set_Field (clr, IRCPAR_FIELD, value, 0))
+      Add_Request (I_LOG, "*", F_WARN, "irc:irc_update_isupport: could not save.");
   Unlock_Clientrecord (clr);
   ((irc_server *)net->data)->lc = lc;
+}
+
+BINDING_TYPE_irc_raw (irc_rpl_isupport);
+static int irc_rpl_isupport (INTERFACE *net, char *sv, char *me, unsigned char *src,
+		int parc, char **parv, size_t (*ilc)(char *, const char *, size_t))
+{
+// Parameters: me param=value ... "are supported by this server"
+  char *c;
+
+  dprint (4, "irc_rpl_isupport: %d params, first one is %s.", parc-2, parv[1]);
+  if (parc < 3)
+    return 0;		/* something other than ISUPPORT */
+  for (c = parv[1]; *c; c++)
+  {
+    if (*c == '=')
+      break;
+    else if (*c < 'A' || *c > 'Z')
+      return 0;		/* invalid */
+  }
+  if (!*c)
+    return 0;
+  _irc_update_isupport (net, parc-2, &parv[1]);
   return 1;
 }
 
@@ -1643,6 +1692,7 @@ static void module_irc_regall (void)
   RegisterInteger ("irc-timeout", &irc_timeout);
   RegisterInteger ("irc-connect-timeout", &irc_connect_timeout);
   RegisterInteger ("irc-retry-timeout", &irc_retry_timeout);
+  RegisterInteger ("irc-next-try", &irc_retry_server);
   RegisterInteger ("irc-default-port", &defaultport);
   RegisterInteger ("irc-max-penalty", &maxpenalty);
   RegisterInteger ("irc-privmsg-keep", &irc_pmsg_keep);
@@ -1674,6 +1724,7 @@ static int module_irc_signal (INTERFACE *iface, ifsig_t sig)
       UnregisterVariable ("irc-timeout");
       UnregisterVariable ("irc-connect-timeout");
       UnregisterVariable ("irc-retry-timeout");
+      UnregisterVariable ("irc-next-try");
       UnregisterVariable ("irc-default-port");
       UnregisterVariable ("irc-max-penalty");
       UnregisterVariable ("irc-privmsg-keep");

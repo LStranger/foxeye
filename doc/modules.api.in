@@ -5,7 +5,9 @@ Preamble.
   All modules have the same interface - initialisation via ModuleInit()
     function, destroying via the signal S_TERMINATE. When module going
     to unload, all binds that were made on init must be deleted. Note:
-    module being initialised on startup then no listfile is loaded yet.
+    because module is being initialised on startup, neither listfile is
+    loaded yet nor Wtmp is ready to get any events so don't use them on
+    module initialization.
     Files in the module source: *.c, *.h - to compile, never installed;
     *.help - will be installed to help directory without last name part
     (i.e.".help"); accvs.m4, accvs.api, accvs.cfg and accvs.POTFILES -
@@ -26,17 +28,38 @@ What is an interface.
 --------------------
   The interface is part of code what communicate with some resource(s).
     This may be: log file, session, IRC channel, another bot, etc. Each
-    interface may have two functions, one for requests (data message for
-    interface), and one for signal (simple command for interface to do
-    something: shutdown, flush buffers, user programmed function, stop,
-    etc.). Each interface has appropriated INTERFACE structure that
-    contains all data of that interface. These data may be accessed
-    only from bindings, from request function or from signal function.
-    To access data from threads you must lock dispatcher first (by call
-    Set_Iface() function). When you want terminate interface then you
-    have to set I_DIED flag from the same thread that called function
-    Add_Iface() before. After that you CANNOT access any field of the
-    INTERFACE structure!
+    interface has appropriated INTERFACE structure that contains all data
+    of that interface. Each interface may have two functions, one for
+    requests (data message for interface), and one for signals (simple
+    commands for interface to do something: shutdown, flush buffers, user
+    programmed function, stop, etc.). If both of those functions are not
+    set then this interface is considered as clone and in this case
+    'prev' member of interface structure should be set to main interface.
+    Another case when 'prev' member of interface structure is set is when
+    you nesting some other interface locking previous and in that case
+    you should set both signal function and request function. Case when
+    there is no main interface for a clone is undefined and you should
+    never create such interfaces. Data of the interface structure may be
+    accessed only from bindings, from request function, or from signal
+    function. To access data from threads you must lock dispatcher first
+    (by calling Set_Iface() function). When you want to terminate some
+    interface then you have to either send S_TERMINATE signal to it or
+    set I_FINWAIT flag on it and dispatcher will terminate it by sending
+    S_TERMINATE signal to it shortly. When interface has finished its job
+    it has to set I_DIED flag on it within the same thread that called
+    function Add_Iface() before. After that you CANNOT access any field
+    of INTERFACE structure! As soon as I_DIED flag is set this interface
+    will never get any signals or requests but some other things will be
+    done by dispatcher:
+    - any requests to it will be purged;
+    - interface and his clones (if there are any) will be deleted from
+      dispatcher;
+    - 'data' member of the interface structure will be freed;
+    - if that interface was nested then previous (stopped) interface will
+      be awaken;
+    - if that interface has nested interfaces then every of them will get
+      S_TERMINATE signal;
+
 
 What is a bind table.
 -------------------
@@ -89,10 +112,13 @@ Signals to interfaces.
     API). If it's not I_MODULE then report must be formatted via format
     string ReportFormat (see printl() for any details). If it's I_SERVICE
     then report for each client that has one of modeflags of ReportMask.
-    Note that some directives have other meanings in report format:
+    Note that directive %N should be prepended with network specific char
+    (flag) for the nick and some directives have other meanings in report
+    format:
       %@ - generally "from" name not only host (bot name for example);
-      %# - connection time string (in format of DateString);
+      %# - connection time string (in format of DateString+TimeString);
       %I - socket id (starting from 1, i.e. 0 means there is no socket);
+      %L - if it's not I_SERVICE or I_CLIENT then interface name;
       %* - other descriptive text.
   SS__RREEGG:
     Reregister all module variables. If interface have to have line in
@@ -115,13 +141,13 @@ Signals to interfaces.
     Terminate the interface. It must stop any job doing by interface and
     release every resource that was touched on creating or in process
     (i.e. allocated memory, bindings, etc.) except associated data (it
-    will be released by dispatcher itself). If that interface was nested
-    then previous (stopped) interface will be continued by dispatcher.
-    The signal receiver function must either set interface flag I_DIED or
-    return I_DIED value. The message in variable SShhuuttddoowwnnRR may be used as
-    termination reason.
-  SS__TTIIMMEEOOUUTT and SS__LLOOCCAALL:
-    For interface internal use.
+    will be released by dispatcher itself). The signal receiver function
+    must either set interface flag I_DIED or return I_DIED value. The
+    message in variable SShhuuttddoowwnnRR may be used as termination reason.
+  SS__TTIIMMEEOOUUTT:
+    For interface internal usage.
+  SS__LLOOCCAALL:
+    For interface internal usage. Will use BindResult for parameters.
 
 Shutdown process.
 ---------------
@@ -190,10 +216,16 @@ Common API:
     from dispatcher list after interface flag I_DIED is set, _d_a_t_a will
     be deallocated by dispatcher then. Function _r_e_q___f_u_n_c() returns either
     REQ_OK if the request was accepted or REQ_REJECTED if it was not.
-    Function _s_i_g___f_u_n_c returns additional flags that MUST be set for
-    interface by caller. Note: when module terminating then you have to
+    Function _s_i_g___f_u_n_c() returns additional flags that MUST be set for
+    interface by caller. Calling this with both _s_i_g___f_u_n_c and _r_e_q___f_u_n_c set
+    to NULL is undefined behavior and should be used only if you want to
+    use created interface as clone so you should set field 'prev' in the
+    interface structure so dispatcher will use it for sending requests
+    and signals instead. Note: when module terminating then you have to
     set interface flag I_DIED for each interface that was added on the
-    module init.
+    module init. Note2: if you will use this interface as nested one so
+    will set field 'prev' in the interface structure then you have define
+    both _s_i_g___f_u_n_c and _r_e_q___f_u_n_c handlers.
 	Reenterability: reenterable
 
   int RReennaammee__IIffaaccee (INTERFACE *_i_f_a_c_e, const char *_n_e_w_n_a_m_e);
@@ -226,13 +258,22 @@ Common API:
   void AAdddd__RReeqquueesstt (iftype_t _t_y_p_e, const char *_t_o, flag_t _f_l,
 		    const char *_t_e_x_t, _._._.);
     Adds request for interfaces matched mask _t_o and flags _t_y_p_e. Request
-    has mode flags _f_l. Data of request (from _t_e_x_t) is formated string.
-    See simple_match() for mask details. Returns nothing.
+    has mode flags _f_l. Data of request (from _t_e_x_t) is formated string or
+    interface signal number if _f_l is F_SIGNAL. Request is recoded into
+    target interface charset when added to queue. See simple_match() for
+    mask details. Returns nothing.
+	Reenterability: reenterable
+
+  void SSeenndd__SSiiggnnaall (iftype_t _t_y_p_e, const char *_t_o, ifsig_t _s_i_g);
+    Macro, defined as Add_Request(_t_y_p_e, _t_o, F_SIGNAL, (char *)_s_i_g)
+    Used for sending signals instead of text messages.
 	Reenterability: reenterable
 
   void NNeeww__RReeqquueesstt (INTERFACE *_i_f_a_c_e, flag_t _f_l, const char *_t_e_x_t, _._._.);
-    Adds request for interface _i_f_a_c_e. Request has mode flags _f_l. Data
-    of request (from _t_e_x_t) is formated string. Returns nothing.
+    Adds request for interface _i_f_a_c_e. Request has mode flags _f_l. Data of
+    request (from _t_e_x_t) is formated string or interface signal number if
+    _f_l is F_SIGNAL. Request is recoded into target interface charset when
+    added to queue. Returns nothing.
 	Reenterability: reenterable
 
   int RReellaayy__RReeqquueesstt (iftype_t _i_f_t, char *_n_a_m_e, REQUEST *_r_e_q);
@@ -274,9 +315,9 @@ Common API:
     found topics.
 	Reenterability: none
 
-  void ddpprriinntt (int _l_e_v_e_l, const char *_t_e_x_t, _._._.)
-  void WWAARRNNIINNGG (const char *_t_e_x_t, _._._.)
-  void EERRRROORR (const char *_t_e_x_t, _._._.)
+  void ddpprriinntt (int _l_e_v_e_l, const char *_t_e_x_t, _._._.);
+  void WWAARRNNIINNGG (const char *_t_e_x_t, _._._.);
+  void EERRRROORR (const char *_t_e_x_t, _._._.);
     Prints debug message _t_e_x_t of given _l_e_v_e_l to all log interfaces. If
     _l_e_v_e_l is too high then message is discarded. WARNING() and ERROR()
     does the same with debug level 1 and 0 respectively but these levels
@@ -314,19 +355,20 @@ Common API:
     Note: this function does not perform case-insensitive comparison!
 	Reenterability: async-safe
 
-  char *ssttrrffccppyy (char *_d_s_t, const char *_s_r_c, size_t _n)
+  size_t ssttrrffccppyy (char *_d_s_t, const char *_s_r_c, size_t _n);
     Copies null-terminated text string _s_r_c to end of text string in the
     _d_s_t but don't exceed maximum string length _n of _d_s_t. In difference of
-    strncpy() resulted string is always null-terminated. Returns _d_s_t.
+    strncpy() resulted string is always null-terminated. Returns size of
+    filled _d_s_t (without null char).
 	Reenterability: async-safe
 
-  char *ssttrrffccaatt (char *_d_s_t, const char *_s_r_c, size_t _n)
+  char *ssttrrffccaatt (char *_d_s_t, const char *_s_r_c, size_t _n);
     If _d_s_t is NULL or _n is 0 then returns 0. Else adds null-terminated
     text string _s_r_c to end of null-terminated text string in the _d_s_t but
     don't exceed maximum string length _n of _d_s_t. Returns _d_s_t.
 	Reenterability: async-safe
 
-  char *ggeettttookkeenn (char *_p_t_r, char **_e_o_w)
+  char *ggeettttookkeenn (char *_p_t_r, char **_e_o_w);
     Parses null-terminated string _p_t_r, puts terminated null char after
     first word of it and if _e_o_w is not NULL then puts pointer to this
     termination char into _e_o_w. Returns pointer to next token in parsed
@@ -334,28 +376,32 @@ Common API:
     to null char. Delimiter of words on parsing is space char.
 	Reenterability: async-safe
 
-  char *NNeexxttWWoorrdd (const char *_m_s_g)
-  char *NNeexxttWWoorrdd__UUnnqquuootteedd (char *_m_s_g, const char *_l_i_n_e, size_t _s)
+  char *NNeexxttWWoorrdd (char *_m_s_g);
     Finds and returns next space-separated word in the text string _m_s_g.
-    NextWord_Unquoted() also puts copy of skipped word in text array in
-    _l_i_n_e of size _s. If first char in _m_s_g is double quotation mark then
-    extract all text up to next quotation mark in _l_i_n_e and skip both
-    quotation marks.
-  	Reenterability: async-safe
+    String _m_s_g is never modified by call.
+	Reenterability: async-safe
 
-  void SSttrrTTrriimm (char *_c_m_d)
+  char *NNeexxttWWoorrdd__UUnnqquuootteedd (char *_a_r_g, char *_m_s_g, size_t _s);
+    If first char in _m_s_g is double quotation mark then extracts all text
+    up to next quotation mark into array _a_r_g of size _s and skip both
+    quotation marks. Otherwise puts copy of space-separated word from the
+    _m_s_g into _a_r_g. Returns pointer to the next word after extracted one.
+    String _m_s_g is never modified by call.
+	Reenterability: async-safe
+
+  void SSttrrTTrriimm (char *_c_m_d);
     Chops all trailing spaces from string _c_m_d. Returns nothing.
 	Reenterability: async-safe
 
-  int HHaavvee__WWiillddccaarrdd (const char *_s_t_r)
+  int HHaavvee__WWiillddccaarrdd (const char *_s_t_r);
     Checks null-terminated string _s_t_r for wildcards (see match() function
     for details). Returns value 0 or more if there is one, -1 otherwise.
 	Reenterability: async-safe
 
-  void pprriinnttll (char *_b_u_f, size_t _s, char *_t_e_m_p_l, size_t _s_t_r_l_e_n,
-	       char *_n_i_c_k, const char *_u_h_o_s_t, const char *_l_n_a_m_e,
-	       char *_c_h_a_n, uint32_t _i_p, unsigned short _p_o_r_t, int _i_d_l_e,
-	       const char *_m_e_s_s_a_g_e)
+  size_t pprriinnttll (char *_b_u_f, size_t _s, char *_t_e_m_p_l, size_t _s_t_r_l_e_n,
+		 char *_n_i_c_k, const char *_u_h_o_s_t, const char *_l_n_a_m_e,
+		 char *_c_h_a_n, uint32_t _i_p, unsigned short _p_o_r_t, int _i_d_l_e,
+		 const char *_m_e_s_s_a_g_e);
     Produces output in character array _b_u_f with size _s according to a
     format _t_e_m_p_l. Format string is composed of zero or more directives:
     ordinary characters (not %), which are copied unchanged to the output
@@ -366,26 +412,28 @@ Common API:
     for %I conversion, _p_o_r_t is argument for %P conversion, _m_e_s_s_a_g_e is
     argument for %* conversion, _i_d_l_e is argument for %- conversion. All
     other details see in doc/help.format file. Argument _s_t_r_l_e_n is maximum
-    size of each line (between LFs) in output. Returns nothing.
+    size of each line (between LFs) in output. Returns size of produced
+    string (without terminating null char).
 	Reenterability: none
 
-  const char *eexxppaanndd__ppaatthh (char *_b_u_f, const char *_s_t_r, size_t _s)
+  const char *eexxppaanndd__ppaatthh (char *_b_u_f, const char *_s_t_r, size_t _s);
     If path _s_t_r begins from "~/" then substitutes that "~" by value of
     environment variable "HOME" in buffer _b_u_f with size _s and returns
     pointer to _b_u_f. Otherwise returns _s_t_r.
 	Reenterability: async-safe
 
-  size_t uunniissttrrlloowweerr (char *_d_s_t, const char *_s_r_c, size_t _s_z)
+  size_t uunniissttrrlloowweerr (char *_d_s_t, const char *_s_r_c, size_t _s_z);
     Copies string text from _s_r_c to array in _d_s_t that has size _s_z and
     converts copied text to lower case according to current locale.
-    Returns size of filled _d_s_t.
+    Returns size of filled _d_s_t (without null char).
 	Reenterability: async-safe
 
-  size_t uunniissttrrccuutt (char *_l_i_n_e, size_t _l_e_n, int _m_a_x_c_h_a_r_s);
-    Truncates null-terminated string in _l_i_n_e to contain not more than _l_e_n
+  size_t uunniissttrrccuutt (const char *_l_i_n_e, size_t _l_e_n, int _m_a_x_c_h_a_r_s);
+    Checks null-terminated string in _l_i_n_e to contain not more than _l_e_n
     bytes (including termination byte) and also not more than _m_a_x_c_h_a_r_s
     characters (without null char) according to current locale. Returns
-    size of truncated string in bytes (without null char).
+    size of chunk of string that complies to those conditions in bytes
+    (without null char) so caller can truncate it. Does not modify _l_i_n_e.
 	Reenterability: async-safe
 
   void *ssaaffee__ccaalllloocc (size_t _n_m_e_m_b, size_t _s_i_z_e);
@@ -407,7 +455,7 @@ Common API:
 	Reenterability: thread-safe
 
   size_t ssaaffee__ssttrrlleenn (const char *_s);
-  char *ssaaffee__ssttrrcchhrr(const char *_s, int _c);
+  char *ssaaffee__ssttrrcchhrr(char *_s, int _c);
   int ssaaffee__ssttrrccmmpp (const char *_s_1, const char *_s_2);
   int ssaaffee__ssttrrnnccmmpp (const char *_s_1, const char *_s_2, size_t _n);
   int ssaaffee__ssttrrccaasseeccmmpp (const char *_s_1, const char *_s_2);
@@ -484,8 +532,9 @@ Bindings API:
     each binding added on module init.
 	Reenterability: none
 
-  int RRuunnBBiinnddiinngg (binding_t *_b_i_n_d, const unsigned char *_u_s_e_r, char *_f_s_t,
-		  char *_s_e_c, char *_t_h_i_r_d, int _n_u_m, char *_l_a_s_t);
+  int RRuunnBBiinnddiinngg (binding_t *_b_i_n_d, const unsigned char *_u_s_e_r,
+		  const char *_f_s_t, const char *_s_e_c, char *_t_h_i_r_d, int _n_u_m,
+		  const char *_l_a_s_t);
     Runs script binding defined at _b_i_n_d, with arguments, formed from _u_s_e_r
     splitted to nick and user@host, strings _f_s_t, _s_e_c, _t_h_i_r_d, _l_a_s_t, and
     integer _n_u_m in order they are in function call. Any NULL values or
@@ -507,8 +556,9 @@ Bindings API:
   modeflag IInnssppeecctt__CClliieenntt (const char *_p_u_b_l_i_c, const char *_n_a_m_e,
 			   const char **_l_n_a_m_e, const char **_h_o_s_t,
 			   time_t *_i_d_l_e, short *_c_n_t);
-    Checks if someone with nick _n_a_m_e is currently in community _p_u_b_l_i_c
-    and returns his modeflags. If _l_n_a_m_e is not NULL then on return it
+    Checks if someone with nick _n_a_m_e is currently in community _p_u_b_l_i_c.
+    Returns modeflags of _n_a_m_e and if _n_a_m_e is NULL then returns modeflags
+    the community currently has. If _l_n_a_m_e is not NULL then on return it
     will point to string that contains Lname of this client. If _h_o_s_t is
     not NULL then on return it will point to string that contains host
     string (host or user@host) of this client. If _i_d_l_e is not NULL then
@@ -516,7 +566,7 @@ Bindings API:
     If _c_n_t is not NULL then on return it will contain service-specific
     data counter (see also NewEvent() function). If _n_a_m_e is NULL then
     _h_o_s_t will point to string that contains community topic. If _n_a_m_e is
-    hostmask (nick!user@host) then _h_o_s_t point to string that contains
+    hostmask (nick!user@host) then _h_o_s_t will point to string containing
     matched mode for the community (for example, ban mask). In last two
     cases _l_n_a_m_e will point to string that contains nick of client who
     added that change. If _p_u_b_l_i_c is special name (i.e. name of network)
@@ -541,7 +591,7 @@ Listfile API:
     Deletes user/alias with Lname _n_a_m_e from Listfile. Returns nothing.
 	Reenterability: none
 
-  int CChhaannggee__LLnnaammee (char *_n_n_e_w, char *_n_o_l_d);
+  int CChhaannggee__LLnnaammee (const char *_n_n_e_w, const char *_n_o_l_d);
     Changes user Lname _n_o_l_d with new Lname _n_n_e_w in Listfile. Returns 1
     if successful, 0 otherwise.
 	Reenterability: none
@@ -665,7 +715,9 @@ Listfile API:
 	Reenterability: none
 
   lid_t GGeett__LLIIDD (clrec_t *_u_s_e_r);
-    Returns LID for client with internal Listfile record _u_s_e_r.
+    Returns LID for client with internal Listfile record _u_s_e_r. Returned
+    LID is valid until it deleted from Listfile (you can be notified on
+    that via bindtable "new-lname").
 	Reenterability: thread-safe
 
   userflag GGeett__CClliieennttffllaaggss (const char *_n_a_m_e, const char *_s_e_r_v);
@@ -713,7 +765,9 @@ Listfile API:
 	Reenterability: thread-safe
 
   lid_t FFiinnddLLIIDD (const char *_n_a_m_e);
-    Returns LID for client with Lname _n_a_m_e.
+    Returns LID for client with Lname _n_a_m_e. Returned LID is valid until
+    it deleted from Listfile (you can be notified on that via bindtable
+    "new-lname").
 	Reenterability: thread-safe
 
   char *uusseerrffllaaggttoossttrr (userflag _f_l_a_g_s, char *_b_u_f_f);
@@ -822,8 +876,11 @@ Scripts API:
 	Reenterability: none
 
   char *DDaatteeSSttrriinngg;
-    Contains current date and time in the form "%e %b %H:%M" (see man
-    strftime).
+    Contains current date in the form "%e %b" (see man strftime).
+	Reenterability: none
+
+  char *TTiimmeeSSttrriinngg;
+    Contains current time in the form "%H:%M" (see man strftime).
 	Reenterability: none
 
   time_t TTiimmee;
@@ -909,19 +966,21 @@ Sockets API:
 ------------
 #include "socket.h"
 
-  idx_t GGeettSSoocckkeett (void);
-    Creates new socket. Socket must be sets up by SetupSocket() later.
-    Returns new socket identifier or -1 if failed. Note: that socket must
-    be owned by thread that call AddSocket() and closed only by it.
+  idx_t GGeettSSoocckkeett (unsigned short _m_o_d_e);
+    Creates new socket. Socket must be sets up by SetupSocket() later and
+    it will have requested _m_o_d_e. Returns new socket identifier or -1 if
+    failed. Note: that socket must be owned by thread that called this
+    GetSocket() and closed only by it.
     	Reenterability: thread-safe
 
-  int SSeettuuppSSoocckkeett (idx_t _i_d_x, int _m_o_d_e, char *_d_o_m_a_i_n,
-		   unsigned short _p_o_r_t);
+  int SSeettuuppSSoocckkeett (idx_t _i_d_x, char *_d_o_m_a_i_n, unsigned short _p_o_r_t);
     Sets up new socket in non-block mode, establishes connection with
-    Internet address with name _d_o_m_a_i_n to port _p_o_r_t if _m_o_d_e is M_RAW or
-    or opens new listening socket if _m_o_d_e is M_LIST or M_LINP. If _m_o_d_e
-    is M_LINP then listening socket will be opened for single connection.
-    Returns 0 if success or error code otherwise.
+    Internet address with name _d_o_m_a_i_n to port _p_o_r_t if its mode is M_RAW
+    or opens a new listening socket if its mode is M_LIST, M_LINP, or
+    M_UNIX. If socket mode is M_LINP then listening socket will be opened
+    only for single connection. Parameter _p_o_r_t is ignored when listening
+    Unix socket (socket mode is M_UNIX). Returns 0 if success or error
+    code otherwise.
     	Reenterability: thread-safe
 
   idx_t AAnnsswweerrSSoocckkeett (idx_t _i_d_x);
@@ -977,7 +1036,7 @@ Direct client's connections API:
 
   void DDcccc__PPaarrssee (peer_t *_s, char *_n_a_m_e, char *_c_m_d, userflag _g_f,
 		  userflag _c_f, int _i_d_x, int _b_o_t_c_h, bindtable_t *_s_s_b_t,
-		  char *_s_e_r_v_i_c_e, INTERFACE *_s_r_c);
+		  char *_s_e_r_v_i_c_e);
     Parses text line _c_m_d that came from session _s. If first char of _c_m_d
     is not period ('.') then sends text line to botnet channel _b_o_t_c_h.
     Else if there is service specific bindtable _s_s_b_t (for _s_e_r_v_i_c_e) then
@@ -986,9 +1045,7 @@ Direct client's connections API:
     of the line in bindtable "dcc". If there is appropriate command then
     runs function for it. Does logging if command was successful. Login
     _n_a_m_e, direct access flags _g_f, service access flags _c_f, and socket ID
-    _i_d_x are for client of the session _s. If _s_r_c isn't NULL then it will
-    be set as source interface before sending the message to botnet.
-    Returns nothing.
+    _i_d_x are for client of the session _s. Returns nothing.
 	Reenterability: none
 
   idx_t LLiisstteenn__PPoorrtt (char *_c_l_n, char *_h_o_s_t, unsigned short *_p,
@@ -1048,7 +1105,18 @@ Connection chain API:
     You should always call this at least once before you can use any of
     Connchain_Put(), Connchain_Get(), Connchain_Kill(), Peer_Put(), or
     Peer_Get() functions. You must always call Connchain_Kill() for any
-    peer where you creted connection chain with Connchain_Grow().
+    peer where you created connection chain with Connchain_Grow(). Note:
+    adding filters 'x' or 'y' that are implemented in core will always be
+    successful.
+    * Filter 'x' : on send adds CR+LF to end of line, accepts line with
+      at most MB_LEN_MAX*MESSAGEMAX-1 chars including terminating null
+      byte; on receive accepts raw stream, selects lines that are ended
+      with LF or CR+LF and returns them one by one, replacing LF or CR+LF
+      with null byte (that byte counts in return).
+    * Filter 'y' : on send replaces each 0xFF byte with two 0xFF+0xFF as
+      stated in RFC854; on receive does backward conversion into 0xFF,
+      ignores any ECHO commands, answers "Y" on AYT, DON'T on WILL, WON'T
+      on DO, and skips other RFC854 codes.
 	Reenterability: none
 
   ssize_t CCoonnnncchhaaiinn__PPuutt (connchain_i **_c_c, idx_t _i_d_x, const char *_l_i_n_e,
@@ -1061,7 +1129,7 @@ Connection chain API:
     _s contains 0 then it returns value CONNCHAIN_READY in case when chain
     can take data for sending on next call or some other value otherwise.
     If there are data to send and there were no errors encountered then
-    appropriately updates counter at s and returns number of bytes that
+    appropriately updates counter at _s and returns number of bytes that
     were sent.
 	Reenterability: thread-safe
 
@@ -1075,17 +1143,18 @@ Connection chain API:
 	Reenterability: thread-safe
 
   CCoonnnncchhaaiinn__KKiillll (peer_t *_p_e_e_r);
-    Macro, defined as: Connchain_Get(&peer->connchain,peer->socket,NULL,0)
-    Used for terminating connection chain.
+    Macro, defined as: Connchain_Get(&_p_e_e_r->connchain,_p_e_e_r->socket,NULL,0)
+    Used for terminating connection chain. Returns value E_NOSOCKET but
+    generates warning if that value left unused.
 	Reenterability: thread-safe
 
   PPeeeerr__PPuutt (peer_t *_p_e_e_r, const char *_b_u_f, size_t *_s);
-    Macro, defined as: Connchain_Put(peer->connchain,peer->socket,buf,s)
+    Macro, defined as: Connchain_Put(&_p_e_e_r->connchain,_p_e_e_r->socket,_b_u_f,_s)
     Used for putting data on the top of connection chain.
 	Reenterability: thread-safe
 
   PPeeeerr__GGeett (peer_t *_p_e_e_r, char *_b_u_f, size_t _s);
-    Macro, defined as: Connchain_Get(&peer->connchain,peer->socket,buf,s)
+    Macro, defined as: Connchain_Get(&_p_e_e_r->connchain,_p_e_e_r->socket,_b_u_f,_s)
     Used for the getting data from the top of connection chain.
 	Reenterability: thread-safe
 
@@ -1144,7 +1213,7 @@ arguments are correct but no logs needed, func() may return -1. All
 bindings may be non-reenterable if another wasn't declared.
 
 Interpreter entrance for bindings:
-  int func(char *_f_n_a_m_e, int _a_r_g_c, char *_a_r_g_v[]);
+  int func(char *_f_n_a_m_e, int _a_r_g_c, const char *_a_r_g_v[]);
     Call interpreter function _f_n_a_m_e with _a_r_g_c arguments array _a_r_g_v (see
     the "Script args:" label below and if there is no such label on the
     bindtable then interpreter bindings will be never called even if some

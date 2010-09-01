@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2008  Andrej N. Gritsenko <andrej@@rep.kiev.ua>
+ * Copyright (C) 2006-2010  Andrej N. Gritsenko <andrej@@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -16,7 +16,6 @@
  *     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * The FoxEye autolog module - auto creating log files for client traffic.
- *   TODO: "autolog by lname" feature.
  *   TODO: "U_SECRET" feature.
  */
 
@@ -38,7 +37,8 @@ static char autolog_open[64];			/* set on init */
 static char autolog_close[64];
 static char autolog_daychange[64];
 static char autolog_timestamp[32] = "[%H:%M] ";	/* with ending space */
-//static bool autolog_by_lname = TRUE;
+static char autolog_lname_prefix[8] = "=";
+static bool autolog_by_lname = TRUE;
 static long int autolog_autoclose = 600;	/* in seconds */
 
 
@@ -49,6 +49,7 @@ typedef struct
   time_t timestamp;
   int reccount;
   int day;
+  char *lname;
   size_t inbuf;
   char buf[HUGE_STRING];
 } autologdata_t;
@@ -145,6 +146,18 @@ static int __flush_autolog (autolog_t *log, int quiet)
   return 1;
 }
 
+/* inline substitution to disable warnings */
+#if __GNUC__ >= 4
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
+#endif
+static inline size_t __strftime (char *l, size_t s, char *f, struct tm *t)
+{
+  return strftime (l, s, f, t);
+}
+#if __GNUC__ >= 4
+#pragma GCC diagnostic error "-Wformat-nonliteral"
+#endif
+
 /*
  * puts text to logfile with optional timestamp ts and prefix
  * prefix if skipped if sp==0
@@ -166,7 +179,7 @@ static int autolog_add (autolog_t *log, char *ts, char *text, size_t sp,
     return 0;		/* try assuming that timestamp is ts long */
   if (*ts)						/* do timestamp */
   {
-    sts = strftime (&log->d->buf[ptr], sizeof(log->d->buf) - ptr - 1, ts, tm);
+    sts = __strftime (&log->d->buf[ptr], sizeof(log->d->buf) - ptr - 1, ts, tm);
     if (sts >= sizeof(log->d->buf) - ptr)
       sts = sizeof(log->d->buf) - 1;
   }
@@ -187,6 +200,89 @@ static int autolog_add (autolog_t *log, char *ts, char *text, size_t sp,
   return 1;	/* it already in buffer */
 }
 
+static int _autolog_makepath (char *buf, size_t sb, char *net, const char *tgt,
+			      size_t st, const char *prefix, struct tm *tm)
+{
+  char *c, *t, *tc;
+  size_t sn, s, sp;
+  char templ[PATH_MAX+1];
+
+  sn = safe_strlen (net);
+  sp = safe_strlen (prefix);
+  tc = NULL;
+  c = templ;
+  if (!st)					/* tgt is service */
+    t = autolog_serv_path;
+  else
+    t = autolog_path;
+  do
+  {
+    if (&c[1] >= &templ[sizeof(templ)])		/* no space for a char */
+      return -1;
+    if (t[0] == '%' && t[1] == 0)		/* correcting wrong syntax */
+      t[0] = 0;
+    if (t[0] == '%')
+    {
+      if (t[1] == '@')
+      {
+	s = &templ[sizeof(templ)] - c;
+	if (tc)
+	{
+	  *t = 0;
+	  s = __strftime (c, s, tc, tm);
+	  *t = '%';
+	  c += s;
+	  s = &templ[sizeof(templ)] - c;
+	}
+	if (sn >= s)
+	  return -1;				/* no space for network name */
+	memcpy (c, net, sn);
+	c += sn;
+      }
+      else if (t[1] == 'N')
+      {
+	s = &templ[sizeof(templ)] - c;
+	if (tc)
+	{
+	  *t = 0;
+	  s = __strftime (c, s, tc, tm);
+	  *t = '%';
+	  c += s;
+	  s = &templ[sizeof(templ)] - c;
+	}
+	if (st + sp >= s)
+	  return -1;				/* no space for target name */
+	if (sp)
+	  memcpy (c, prefix, sp);
+	c += sp;
+	if (st)
+	  memcpy (c, tgt, st);
+	c += st;
+      }
+      else if (t[1] == '%')			/* "%%" --> "%" */
+      {
+	if (!tc)				/* strftime will do it */
+	  *c++ = '%';
+      }
+      else if (!tc)				/* it's strftime syntax */
+	tc = t;
+      t++;					/* skip char next to '%' */
+    }
+    else if (!*t)				/* end of line */
+    {
+      if (tc)					/* finishing strftime part */
+	c += __strftime (c, &templ[sizeof(templ)] - c, tc, tm);
+    }
+    else if (!tc)				/* no strftime syntax yet */
+      *c++ = *t;				/* just copy next char */
+  } while (*t++);
+  *c = 0;
+  t = (char *)expand_path (buf, templ, sb);
+  if (t != buf)
+    strfcpy (buf, templ, sb);
+  return 0; /* all OK */
+}
+
 /* TODO: make subdirectories for path? */
 #define open_log_file(path) open (path, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP)
 
@@ -195,6 +291,7 @@ static iftype_t _autolog_name_signal (INTERFACE *iface, ifsig_t sig)
 {
   autolog_t *log = (autolog_t *)iface->data;
   struct tm tm;
+  struct timeval tv0, tv;
 
   if (!(iface->ift & I_DIED)) switch (sig)	/* is it terminated already? */
   {
@@ -210,11 +307,19 @@ static iftype_t _autolog_name_signal (INTERFACE *iface, ifsig_t sig)
       }			/* else terminate it on flush to get right timestamps */
     case S_TERMINATE:
       localtime_r (&log->d->timestamp, &tm);
-      /* TODO: check if file is locked and retry? */
-      autolog_add (log, autolog_close, NULL, 0, &tm, 0); /* ignored result */
+      gettimeofday (&tv0, NULL);
+      if (autolog_add (log, autolog_close, NULL, 0, &tm, 0) >= 0)
+	while (__flush_autolog (log, 0) == 0)	/* retry if file is locked */
+	  if (gettimeofday (&tv, NULL) ||
+	      tv.tv_usec > tv0.tv_usec + 100000) /* wait up to 100 ms */
+	  {
+	    ERROR ("autolog: time out on closing %s.", log->d->path);
+	    break;
+	  }
       if (log->d->fd != -1)
 	close (log->d->fd);
       FREE (&log->d->path);
+      FREE (&log->d->lname);
       log->iface = NULL;
       iface->data = NULL;
       iface->ift |= I_DIED;
@@ -238,6 +343,7 @@ static int _autolog_name_request (INTERFACE *iface, REQUEST *req)
   ssize_t x;
   autolog_t *log;
   struct tm tm;
+  struct timeval tv0, tv;
 
   if (req) DBG ("_autolog_name_request: message for %s", req->to);
   log = (autolog_t *)iface->data;
@@ -248,18 +354,78 @@ static int _autolog_name_request (INTERFACE *iface, REQUEST *req)
     return REQ_OK;
   }
   localtime_r (&Time, &tm);
+  if (autolog_by_lname == TRUE)
+  {
+    unsigned char *n;
+    const char *l;
+#if PATH_MAX > IFNAMEMAX
+    char path[PATH_MAX+1];
+#else
+    char path[IFNAMEMAX+1];
+#endif
+
+    /* make path and open file */
+    n = strrchr (req->to, '@');
+    if (n)
+    {
+      n++;
+      strfcpy (path, req->to, (n - req->to));
+      if (Inspect_Client (n, path, &l, NULL, NULL, NULL) &&
+	  safe_strcmp (l, log->d->lname))	/* Lname was changed? */
+      {
+	gettimeofday (&tv0, NULL);
+	if (autolog_add (log, autolog_close, NULL, 0, &tm, 0) >= 0)
+	  while (__flush_autolog (log, 0) == 0)	/* retry if file is locked */
+	    if (gettimeofday (&tv, NULL) ||
+		tv.tv_usec > tv0.tv_usec + 100000) /* wait up to 100 ms */
+	    {
+	      ERROR ("autolog: time out on closing %s.", log->d->path);
+	      break;
+	    }
+	if (log->d->fd != -1)
+	  close (log->d->fd);
+	FREE (&log->d->path);
+	FREE (&log->d->lname);
+	if (_autolog_makepath (path, sizeof(path), n, l ? l : (char *)req->to,
+			       l ? strlen(l) : (size_t)(n - req->to - 1),
+			       l ? autolog_lname_prefix : NULL, &tm))
+	{
+	  ERROR ("autolog: could not make path for %s.", req->to);
+	  log->d->fd = -1;
+	}
+	else if ((log->d->fd = open_log_file (path)) == -1)
+	  ERROR ("autolog: could not open log file %s: %s", path, strerror (errno));
+	if (log->d->fd < 0)
+	{
+	  dprint (3, "autolog:_autolog_name_request: halted logger \"%s\"",
+		  log->iface->name);
+	  return REQ_OK;
+	}
+	log->d->path = safe_strdup (path);
+	log->d->reccount = 0;
+	log->d->inbuf = 0;
+	log->d->day = tm.tm_mday;
+	log->d->lname = safe_strdup (l);
+	autolog_add (log, autolog_open, NULL, 0, &tm, 0); /* ignore result */
+	dprint (3, "autolog:_autolog_name_request: changed path for %s.",
+		iface->name);
+      }
+    }
+  }
   if (log->d->day != tm.tm_mday)
   {
     if (*autolog_daychange &&
 	autolog_add (log, autolog_daychange, NULL, 0, &tm, 0) <= 0)
     {
       iface->ift |= _autolog_name_signal (iface, S_TERMINATE);
-      WARNING ("autolog:_autolog_name_request: %s terminated", iface->name);
+      WARNING ("autolog:_autolog_name_request: %s terminated.", iface->name);
       return REQ_REJECTED;				/* could not add it */
     }
     else
       log->d->day = tm.tm_mday;
-    /* TODO: check for rotation (_autolog_makepath()...) */
+    /* we would check for rotation (by strftime in _autolog_makepath)
+       but we let conversation still go until timeout (autolog_autoclose)
+       and it will be reopened next time with new rotated name */
   }
   x = autolog_add (log, autolog_timestamp, req->string,
 		   (req->flag & F_PREFIXED) ? strlen (autolog_ctl_prefix) : 0,
@@ -310,85 +476,6 @@ static autolog_t *_find_autolog_t (autolog_t *tail, char *name)
   return tail;
 }
 
-static int _autolog_makepath (char *buf, size_t sb, char *net, char *tgt,
-			      size_t st, struct tm *tm)
-{
-  char *c, *t, *tc;
-  size_t sn, s;
-  char templ[PATH_MAX+1];
-
-  sn = safe_strlen (net);
-  tc = NULL;
-  c = templ;
-  if (!st)					/* tgt is service */
-    t = autolog_serv_path;
-  else
-    t = autolog_path;
-  do
-  {
-    if (&c[1] >= &templ[sizeof(templ)])		/* no space for a char */
-      return -1;
-    if (t[0] == '%' && t[1] == 0)		/* correcting wrong syntax */
-      t[0] = 0;
-    if (t[0] == '%')
-    {
-      if (t[1] == '@')
-      {
-	s = &templ[sizeof(templ)] - c;
-	if (tc)
-	{
-	  *t = 0;
-	  s = strftime (c, s, tc, tm);
-	  *t = '%';
-	  c += s;
-	  s = &templ[sizeof(templ)] - c;
-	}
-	if (sn >= s)
-	  return -1;				/* no space for network name */
-	memcpy (c, net, sn);
-	c += sn;
-      }
-      else if (t[1] == 'N')
-      {
-	s = &templ[sizeof(templ)] - c;
-	if (tc)
-	{
-	  *t = 0;
-	  s = strftime (c, s, tc, tm);
-	  *t = '%';
-	  c += s;
-	  s = &templ[sizeof(templ)] - c;
-	}
-	if (st >= s)
-	  return -1;				/* no space for target name */
-	if (st)
-	  memcpy (c, tgt, st);
-	c += st;
-      }
-      else if (t[1] == '%')			/* "%%" --> "%" */
-      {
-	if (!tc)				/* strftime will do it */
-	  *c++ = '%';
-      }
-      else if (!tc)				/* it's strftime syntax */
-	tc = t;
-      t++;					/* skip char next to '%' */
-    }
-    else if (!*t)				/* end of line */
-    {
-      if (tc)					/* finishing strftime part */
-	c += strftime (c, &templ[sizeof(templ)] - c, tc, tm);
-    }
-    else if (!tc)				/* no strftime syntax yet */
-      *c++ = *t;				/* just copy next char */
-  } while (*t++);
-  *c = 0;
-  t = (char *)expand_path (buf, templ, sb);
-  if (t != buf)
-    strfcpy (buf, templ, sb);
-  return 0; /* all OK */
-}
-
 static iftype_t _autolog_net_signal (INTERFACE *iface, ifsig_t sig)
 {
   autolog_t *log;
@@ -400,7 +487,7 @@ static iftype_t _autolog_net_signal (INTERFACE *iface, ifsig_t sig)
       while ((log = ((autolognet_t *)iface->data)->log))
       {
 	if (log->iface)
-	  log->iface->IFSignal (log->iface, sig);
+	  log->iface->ift |= log->iface->IFSignal (log->iface, sig);
 	((autolognet_t *)iface->data)->log = log->prev;
 	if (sig != S_SHUTDOWN)
 	  FREE (&log);
@@ -422,9 +509,14 @@ static int _autolog_net_request (INTERFACE *iface, REQUEST *req)
     autolog_t *log;
     int fd;
     struct tm tm;
-    char *tpath;
+    const char *tpath;
+    char *p;
     size_t s;
+#if PATH_MAX > NAMEMAX
     char path[PATH_MAX+1];
+#else
+    char path[NAMEMAX+1];
+#endif
 
     if (Find_Iface (I_FILE | I_LOG, req->to))
     {
@@ -432,11 +524,6 @@ static int _autolog_net_request (INTERFACE *iface, REQUEST *req)
       Unset_Iface();
       return REQ_OK;
     }
-    tpath = strrchr (req->to, '@');
-    if (tpath)
-      s = tpath - (char *)req->to;
-    else				/* hmm, how it can be possible? */
-      s = strlen (req->to);
     /* check if I_LOG for target already exists then bounce it */
     if ((log = _find_autolog_t (((autolognet_t *)iface->data)->log, req->to)))
     {
@@ -447,11 +534,29 @@ static int _autolog_net_request (INTERFACE *iface, REQUEST *req)
       return REQ_OK;
     }
     /* make path and open file */
+    tpath = strrchr (req->to, '@');
+    if (tpath)
+      s = tpath - (char *)req->to;
+    else				/* hmm, how it can be possible? */
+      s = strlen (req->to);
+    /* if enabled then get client Lname and do with it */
+    if (autolog_by_lname == TRUE && strfcpy (path, req->to, s+1) &&
+	Inspect_Client (&iface->name[1], path, &tpath, NULL, NULL, NULL) &&
+	tpath)				/* it's client with Lname */
+    {
+      s = strlen (tpath);
+      p = autolog_lname_prefix;
+    }
+    else
+    {
+      tpath = req->to;
+      p = NULL;
+    }
     localtime_r (&Time, &tm);
-    if (_autolog_makepath (path, sizeof(path), &iface->name[1], req->to, s,
+    if (_autolog_makepath (path, sizeof(path), &iface->name[1], tpath, s, p,
 			   &tm))
     {
-      ERROR ("autolog: could not make path for %s", req->to);
+      ERROR ("autolog: could not make path for %s", tpath);
       fd = -1;
     }
     else if ((fd = open_log_file (path)) == -1)
@@ -473,6 +578,9 @@ static int _autolog_net_request (INTERFACE *iface, REQUEST *req)
     log->d->reccount = 0;
     log->d->inbuf = 0;
     log->d->day = tm.tm_mday;
+    log->d->lname = NULL;
+    if (tpath != (char *)req->to)
+      log->d->lname = safe_strdup (tpath);
     log->iface = Add_Iface (I_LOG | I_FILE, req->to, &_autolog_name_signal,
 			    &_autolog_name_request, log);
     autolog_add (log, autolog_open, NULL, 0, &tm, 0);	/* ignore result */
@@ -509,6 +617,8 @@ static autolognet_t *_find_autolognet_t (autolognet_t *tail, char *name)
   return tail;
 }
 
+static INTERFACE *_autolog_mass = NULL;
+
 static iftype_t _autolog_mass_signal (INTERFACE *iface, ifsig_t sig)
 {
   autolognet_t *net;
@@ -520,11 +630,12 @@ static iftype_t _autolog_mass_signal (INTERFACE *iface, ifsig_t sig)
       while ((net = (autolognet_t *)iface->data))
       {
 	if (net->net)
-	  net->net->IFSignal (net->net, sig);
+	  net->net->ift |= net->net->IFSignal (net->net, sig);
 	iface->data = net->prev;
 	if (sig != S_SHUTDOWN)
 	  FREE (&net);
       }
+      _autolog_mass = NULL;
       return I_DIED;
     default: ;
   }
@@ -556,8 +667,6 @@ static int _autolog_mass_request (INTERFACE *iface, REQUEST *req)
  *	common module interface
  */
 
-static INTERFACE *_autolog_mass = NULL;
-
 static void autolog_register (void)
 {
   /* register module itself */
@@ -574,7 +683,9 @@ static void autolog_register (void)
 		  sizeof(autolog_daychange), 0);
   RegisterString ("autolog-timestamp", autolog_timestamp,
 		  sizeof(autolog_timestamp), 0);
-  //RegisterBoolean ("autolog-by-lname", &autolog_by_lname);
+  RegisterString ("autolog-lname-prefix", autolog_lname_prefix,
+		  sizeof(autolog_lname_prefix), 0);
+  RegisterBoolean ("autolog-by-lname", &autolog_by_lname);
   RegisterInteger ("autolog-autoclose", &autolog_autoclose);
 }
 
@@ -599,7 +710,8 @@ static int module_autolog_signal (INTERFACE *iface, ifsig_t sig)
       UnregisterVariable ("autolog-close");
       UnregisterVariable ("autolog-daychange");
       UnregisterVariable ("autolog-timestamp");
-      //UnregisterVariable ("autolog-by-lname");
+      UnregisterVariable ("autolog-lname-prefix");
+      UnregisterVariable ("autolog-by-lname");
       UnregisterVariable ("autolog-autoclose");
       return I_DIED;
     case S_REG:
@@ -607,7 +719,23 @@ static int module_autolog_signal (INTERFACE *iface, ifsig_t sig)
       autolog_register();
       break;
     case S_REPORT:
-      // TODO:
+      if (_autolog_mass)
+      {
+	int i = 0;
+	autolog_t *log;
+	autolognet_t *net;
+	INTERFACE *tmp = Set_Iface (iface);
+
+	for (net = (autolognet_t *)_autolog_mass->data; net; net = net->prev)
+	  for (log = net->log; log; log = log->prev)
+	    if (log->iface && log->d && log->d->fd != -1)
+	      New_Request (tmp, F_REPORT,
+			   _("Auto log #%d: file \"%s\" for client %s."),
+			   ++i, log->d->path, log->iface->name);
+	if (i == 0)
+	  New_Request (tmp, F_REPORT, _("Module autolog: no opened logs."));
+	Unset_Iface();
+      }
       break;
     default: ;
   }

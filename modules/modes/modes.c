@@ -42,8 +42,7 @@ static int _modes_bancmp (lid_t id, const char *mask, INTERFACE *tmp)
   Set_Iface (tmp);
   while (Get_Request());
   Unset_Iface();
-  dprint (4, "modes:_modes_bancmp: check id %hd: got \"%s\".", (short)id,
-	  _modes_got);
+  dprint (4, "modes:_modes_bancmp: check id %hd: got \"%s\".", id, _modes_got);
   return safe_strcmp (mask, _modes_got);
 }
 
@@ -91,7 +90,7 @@ static int dc_chban (peer_t *from, char *args)
   }
   else
     reason = NULL;
-  DBG ("modes:dc_chban:found id=%d flags=0x%x", (int)id, (int)uf);
+  DBG ("modes:dc_chban:found id=%hd flags=%#x", id, uf);
   /* check if found record is exactly the unnamed mode */
   tmp = Add_Iface (I_TEMP, NULL, NULL, &_modes_receiver, NULL);
   if (!u || _modes_bancmp (id, mask, tmp))
@@ -141,7 +140,7 @@ static int dc_chban (peer_t *from, char *args)
 	Unlock_Clientrecord (u);
 	u = NULL;			/* not change ignores/etc with this */
       }
-      DBG ("modes:dc_chban:tried %s, got flags 0x%x", lname, (int)uf);
+      DBG ("modes:dc_chban:tried %s, got flags %#x", lname, uf);
     }
     if (tgt && *c)			/* if we removed a space */
       *tgt = ' ';
@@ -154,7 +153,7 @@ static int dc_chban (peer_t *from, char *args)
     New_Request (from->iface, 0, "There is no such ban: %s", mask);
     return 0;
   }
-  Get_Field (u, lname, &expire);	/* get expiration time */
+  c = Get_Field (u, lname, &expire);	/* get expiration time */
   Unlock_Clientrecord (u);
   /* OK, ban found, now check for new target(s) */
   args = NextWord_Unquoted (&mask[1], args, sizeof(mask)-1);
@@ -171,7 +170,7 @@ static int dc_chban (peer_t *from, char *args)
       {
 	uf = Get_Flags (u, NULL);
         Unlock_Clientrecord (u);
-	DBG ("modes:dc_chban:valid target %s, flags 0x%x", lname, (int)uf);
+	DBG ("modes:dc_chban:valid target %s, flags %#x", lname, uf);
 	if (uf & U_SPECIAL)		/* target can be only service name */
 	{
 	  if (lname != tgt)
@@ -329,7 +328,7 @@ static int dc_pban (peer_t *from, char *args)
       {
 	uf = Get_Flags (u, NULL);
         Unlock_Clientrecord (u);
-	DBG ("modes:dc_pban:valid target %s, flags 0x%x", lname, (int)uf);
+	DBG ("modes:dc_pban:valid target %s, flags %#x", lname, uf);
 	if (uf & U_SPECIAL)		/* target can be only service name */
 	{
 	  if (lname != tgt)
@@ -381,7 +380,11 @@ static int dc_pban (peer_t *from, char *args)
   else
     expire = Time + modes_default_ban_time;
   /* target(s) are OK so it's time to add new record */
-  Add_Clientrecord (NULL, mask, 0);	/* nothing is set for now */
+  if (!Add_Clientrecord (NULL, mask, 0)) /* nothing is set for now */
+  {
+    ERROR ("modes:dc_pban: unexpected error, could not add %s!", mask);
+    return -1;
+  }
   u = Find_Clientrecord (mask, &tgt, NULL, NULL);
   if (!u || tgt != NULL)
   {
@@ -458,7 +461,8 @@ static int dc_mban (peer_t *from, char *args)
   tmp->ift = I_DIED;			/* we don't need it anymore */
   /* remove mask from it and record will be deleted on next save */
   u = Lock_byLID (id);
-  Delete_Mask (u, "*@*");		/* clear every host ;) */
+  if (Delete_Mask (u, "*@*"))		/* clear every host ;) */
+    id = id;				/* and ignore result */
   Unlock_Clientrecord (u);
   return 1;
 }
@@ -509,7 +513,11 @@ BINDING_TYPE_dcc (dc_greeting);
 static int dc_greeting (peer_t *who, char *args)
 {
   char sname[IFNAMEMAX+1];	/* for sname + netname */
-  char buf[MBNAMEMAX+1];
+#if IFNAMEMAX < 127
+  char buf[128];		/* for default service or Lname */
+#else
+  char buf[IFNAMEMAX+1];
+#endif
   char *netname, *tgt;
   clrec_t *u;
   userflag uf, tf;

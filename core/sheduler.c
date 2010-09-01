@@ -21,6 +21,7 @@
 #include "foxeye.h"
 #include "sheduler.h"
 #include "init.h"
+#include "wtmp.h"
 
 #define MAXTABLESIZE 20000	/* can i do it for one second? */
 
@@ -256,8 +257,7 @@ tid_t NewTimer (iftype_t ift, const char *name, ifsig_t sig, unsigned int sec,
     _STid = 0;				/* never under zero! */
   _STnum++;
   pthread_mutex_unlock (&LockShed);
-  dprint (4, "NewTimer: added for %s +%u sec (id %u)", name, j,
-	  (unsigned int)id);
+  dprint (4, "NewTimer: added for %s +%u sec (id %d)", name, j, id);
   return id;
 }
 
@@ -335,17 +335,15 @@ static int Sheduler (INTERFACE *ifc, REQUEST *req)
 	ct->timer -= drift;
       else
       {
-	char sig[sizeof(ifsig_t)];
 	iftype_t ift = ct->ift;
 	char to[IFNAMEMAX+1];
 
-	sig[0] = ct->signal;
 	strfcpy (to, ct->to, sizeof(to));
 	_STnum--;
 	if (i != _STnum)			/* move last entry here */
 	  memcpy (ct, &Timerstable[_STnum], sizeof(shedtimerentry_t));
 	pthread_mutex_unlock (&LockShed);
-	Add_Request (ift, to, F_SIGNAL, sig);
+	Send_Signal (ift, to, ct->signal);
 	pthread_mutex_lock (&LockShed);
 	j++;
       }
@@ -357,14 +355,14 @@ static int Sheduler (INTERFACE *ifc, REQUEST *req)
     if (!ifc || tm.tm_min != tm0.tm_min)	/* ifc == NULL only on start */
     {
       shedentry_t sh;
-      char ifsig[sizeof(ifsig_t)] = {S_TIMEOUT};
 
       /* update datestamp */
-      if (!strftime (DateString, sizeof(DateString), "%e %b %H:%M", &tm))
+      if (!strftime (TimeString, sizeof(TimeString), "%H:%M %e %b", &tm))
 	WARNING ("Cannot form datestamp!");
+      DateString[-1] = '\0';		/* split TimeString and DateString */
       /* flush all files */
-      Add_Request (I_FILE, "*", F_SIGNAL, ifsig);
-      /* run Crontable (?TODO: check for missed minutes?) */
+      Send_Signal (I_FILE, "*", S_TIMEOUT);
+      /* run Crontable; will not check for missed minutes due to BT_TimeShift */
       memset (&sh, 0, sizeof(sh));
       if (tm.tm_min > 31)
 	sh.min[1] = 1<<(tm.tm_min-32);
@@ -382,13 +380,11 @@ static int Sheduler (INTERFACE *ifc, REQUEST *req)
 	    (ct->hour & sh.hour) && (ct->day & sh.day) &&
 	    (ct->month & sh.month) && (ct->weekday & sh.weekday))
 	{
-	  char sig[sizeof(ifsig_t)];
 	  iftype_t ift = ct->ift;
 	  const char *to = ct->to;
 
-	  sig[0] = ct->signal;
 	  pthread_mutex_unlock (&LockShed);
-	  Add_Request (ift, to, F_SIGNAL, sig);
+	  Send_Signal (ift, to, ct->signal);
 	  pthread_mutex_lock (&LockShed);
 	}
       }
@@ -398,7 +394,12 @@ static int Sheduler (INTERFACE *ifc, REQUEST *req)
     if (j)
       dprint (4, "Sheduler: sent %u timer signal(s), remained %u/%u",
 	      j, i, MAXTABLESIZE);
-    /* TODO: check if we need Wtmp rotation: if (!ifc || tm.tm_mon != wlm) */
+    /* check if we need Wtmp rotation and do it */
+    if (ifc && tm.tm_mon != tm0.tm_mon)
+    {
+      dprint (4, "Sheduler: attempt of rotating Wtmp.");
+      RotateWtmp();
+    }
   }
   return REQ_OK;
 }

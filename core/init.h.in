@@ -44,7 +44,8 @@ WHERE modeflag ReportMask	INITVAL(0);
 
 WHERE time_t StartTime;
 
-WHERE char DateString[13]	INITVAL("");	/* "%e %b %H:%M" */
+WHERE char TimeString[20]	INITVAL("");	/* "%H:%M" "%e %b" */
+#define DateString (TimeString+6)
 WHERE time_t Time;
 
 #define ScriptFunction(a) int a (const char *args)
@@ -74,6 +75,7 @@ void Status_Clients (INTERFACE *);		/* the same (list.c) */
 #ifdef HAVE_ICONV
 void Status_Encodings (INTERFACE *);		/* the same (conversion.c) */
 #endif
+void Status_Connchains (INTERFACE *);		/* the same (connchain.c) */
 
 #ifndef DISPATCHER_C
 # define Command(a,b,c)		int b(const char *);

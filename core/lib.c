@@ -24,8 +24,8 @@
 #include "init.h"
 
 #include <ctype.h>
-#include <fcntl.h>
-#include <errno.h>
+//#include <fcntl.h>
+//#include <errno.h>
 #include <sys/utsname.h>
 #include <wchar.h>
 #include <locale.h>
@@ -105,7 +105,7 @@ void safe_free (void **p)
  * converts null-terminated string src to upper case string
  * output buffer dst with size ds must be enough for null-terminated string
  * else string will be truncated
- * returns length of output null-terminated string (with null char)
+ * returns length of output null-terminated string (without null char)
  * if dst == NULL or ds == 0 then returns 0
 */
 size_t unistrlower (char *dst, const char *src, size_t ds)
@@ -160,7 +160,7 @@ size_t unistrlower (char *dst, const char *src, size_t ds)
     }
   }
   *dst = 0;
-  return (sout + 1);
+  return (sout);
 }
 
 static bool _charset_is_utf = FALSE;
@@ -193,19 +193,19 @@ void foxeye_setlocale (void)
 }
 
 /*
- * truncate null-terminated string in line to contain not more than:
+ * checks null-terminated string in line to contain not more than:
  *  - len bytes (including termination byte)
  *  - maxchars characters (without null char)
- * returns size of truncated string in bytes without null char
+ * returns size of string to be truncated in bytes without null char
  */
-size_t unistrcut (char *line, size_t len, int maxchars)
+size_t unistrcut (const char *line, size_t len, int maxchars)
 {
   len--;			/* preserve 1 byte for '\0' */
   if (_charset_is_utf == TRUE)	/* let's count chars - works for utf* only */
   {
     register int chsize = 0;
     register unsigned char *ch = (unsigned char *)line;
-    register unsigned char *chmax = &line[len];
+    register unsigned char *chmax = (unsigned char *)&line[len];
 
     while (chsize < maxchars && ch < chmax && *ch) /* go for max chars */
     {
@@ -221,8 +221,8 @@ size_t unistrcut (char *line, size_t len, int maxchars)
   {
     register size_t cursize;
     register int chsize = 0;
-    register char *ch = line;
-    char *chmax = &line[len];
+    register const char *ch = line;
+    const char *chmax = &line[len];
     mbstate_t ms;
 
     while (chsize < maxchars && ch < chmax)
@@ -238,8 +238,8 @@ size_t unistrcut (char *line, size_t len, int maxchars)
   else				/* 8bit encoding - just let's cut it */
     if ((int)len > maxchars)		/* may be it's already ok */
       len = maxchars;
-  if (line && line[len])
-    line[len] = '\0';
+//  if (line && line[len])
+//    line[len] = '\0';
   return len;
 }
 
@@ -605,7 +605,7 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
       size_t nmax;
       char *fix;
       ssize_t nn;
-      static char mircsubst[] = "WkbgrymRYGcCBMKw";
+      static char mircsubst[] = "WkbgRrmyYGcCBMKw";
 
       if (!q || (end = strchr (t, '?')) == NULL)
         end = &t[strlen(t)];
@@ -630,7 +630,9 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
 /*	if (q && *end == '?' && cs > end)
 	  cs = end;*/
 	/* cs now is first char of unfitting word so skip end spaces */
-	for (cc = cs; cc > t && (*(cc-1) == ' ' || *(cc-1) == '\t');) cc--;
+	cc = cs;
+	if (!q || *cc != '?')
+	  while (cc > t && (*(cc-1) == ' ' || *(cc-1) == '\t')) cc--;
 	/* cc now is after last fitting word */
 	n = cc - t;
 	if (n > nn)			/* how many chars we can put here? */
@@ -704,7 +706,7 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
 	  snprintf (tbuf, sizeof(tbuf), "%hu", p->port);
 	  break;
 	case 't':			/* current time */
-	  n = _try_subst (c, nmax, &DateString[7], nn);
+	  n = _try_subst (c, nmax, TimeString, nn);
 	  break;
 	case 'n':			/* color stop */
 	  p->color = 0;
@@ -845,18 +847,18 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
   return c;
 }
 
-void printl (char *buf, size_t s, char *templ, size_t strlen,
+size_t printl (char *buf, size_t s, char *templ, size_t strlen,
 		char *nick, const char *uhost, const char *lname, char *chan,
 		uint32_t ip, unsigned short port, int idle, const char *message)
 {
   printl_t p;
 
-  if (templ == NULL || buf == NULL || s == 0)
-    return;
-  if (*templ == 0)	/* just terminate line if empty template */
+  if (buf == NULL || s == 0) /* nothing to do */
+    return 0;
+  if (templ == NULL || *templ == 0) /* just terminate line if empty template */
   {
     buf[0] = 0;
-    return;
+    return 0;
   }
   p.t = templ;
   p.nick = nick;
@@ -869,48 +871,59 @@ void printl (char *buf, size_t s, char *templ, size_t strlen,
   p.message = message;
   p.idlestr[0] = 0;
   p.i = p.bold = p.flash = p.color = p.ul = p.inv = 0;
-  _try_printl (buf, s, &p, strlen, 0);
+  return (_try_printl (buf, s, &p, strlen, 0) - buf);
 }
 
 /* thanks to glibc and gcc for showing me how to optimize it */
-char *strfcpy (char *s1, const char *s2, size_t n)
+size_t strfcpy (char *d, const char *s, size_t n)
 {
-  char *s = s1;
+  register char *s1 = d;
+  register const char *s2 = s;
+  register char c;
 
   if (n == 0)
-    return NULL;
+    return 0;
   if ((--n) >= 4)
   {
     size_t n4 = n >> 2;
 
     do {
-      if ((s1[0] = s2[0]) == '\0')
-	return s;
-      if ((s1[1] = s2[1]) == '\0')
-	return s;
-      if ((s1[2] = s2[2]) == '\0')
-        return s;
-      if ((s1[3] = s2[3]) == '\0')
-        return s;
-      s1 += 4;
-      s2 += 4;
+      if ((c = *s2) == '\0')
+	goto to_return;
+      *s1++ = c, s2++;
+      if ((c = *s2) == '\0')
+	goto to_return;
+      *s1++ = c, s2++;
+      if ((c = *s2) == '\0')
+        goto to_return;
+      *s1++ = c, s2++;
+      if ((c = *s2) == '\0')
+        goto to_return;
+      *s1++ = c, s2++;
     } while (--n4 != 0);
   }
   n &= 3;
   if (n > 0)
   {
-    if ((s1[0] = s2[0]) == '\0')
-      return s;
+    if ((c = *s2) == '\0')
+      goto to_return;
+    *s1++ = c, s2++;
     if (n > 1)
     {
-      if ((s1[1] = s2[1]) == '\0')
-	return s;
-      if (n > 2 && (s1[2] = s2[2]) == '\0')
-	return s;
+      if ((c = *s2) == '\0')
+	goto to_return;
+      *s1++ = c, s2++;
+      if (n > 2)
+      {
+	if ((c = *s2) == '\0')
+	  goto to_return;
+	*s1++ = c, s2++;
+      }
     }
   }
-  s1[n] = '\0';
-  return s;
+to_return:
+  *s1 = '\0';
+  return (s1 - d);
 }
 
 unsigned short make_hash (const char *s)

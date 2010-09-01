@@ -1,17 +1,180 @@
 TODO:
 	* core/modules.c, core/init.*: to do partial reloading of config.
-	* core/init.c: dc_set() and dc_fset() must show not exact but all
-	  matching names.
 	* tree/tree.c: to gather garbage in Delete_Key() (?).
-	* modules/logs/logs.c: to implement '-stripcolor' and '-html' modifiers.
 	* core/lib.c: to implement %{subfmt} macro and SetSubformat().
 	* core/journal.c: to implement transactions journal (for botnet, etc.).
 	* modules/irc*: to do something with ident masks?
 	* *: to get rid of #if 0/1 ... #endif blocks, // comments, and TODO notes.
 	* debian: to debianize it when comes to beta release.
-	* modules/irc/irc.c: to recheck reaction on KILL on us.
 
---- [0.8a] * to test all *
+--- [0.9a] * to test all *
+Wed Sep  1 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/lib.c: fixed parsing end of conditional substring in printl().
+	* core/wtmp.c: fixed wrong diagnostics on Wtmp rotation.
+	* modules/irc/msgs.c: added check for broadcast outgoing messages.
+	* core/init.c: implemented showing list by mask in '.set' and '.fset'
+	  commands.
+	* modules/irc-channel/irc-channel.c: fixed wrong host composition on
+	  checking lnames.
+
+Tue Aug 31 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/irc/irc.c: added retry for failed server list (in case of
+	  KILL, DNS error, etc.) after some long enough timeout (bug#51).
+	* core/lib.c, core/protos.h, core/main.c, doc/modules.api: changed
+	  return of printl() from void to size_t.
+	* modules/logs/logs.c: added possibility to change some colors of
+	  HTML output via variables.
+
+Mon Aug 30 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/direct.*, core/main.c: removed requirement that direct chat
+	  message should come from I_DCCALIAS interface.
+	* modules/log/logs.c: replaced deprecated tag FONT with CSS styles.
+
+Sat Aug 28 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/list.c: fixed errors and memory leaks on loading Listfile in
+	  case of LID conflicts.
+	* core/lib.c, doc/modules.api, modules/irc-channel/irc-channel.c:
+	  changed return value of unistrlower().
+	* core/lib.c, core/protos.h, doc/modules.api: changed return value of
+	  strfcpy().
+	* core/direct.c, core/main.c, modules/irc/irc.c, modules/irc/msgs.c, modules/irc-channel/irc-channel.c, modules/logs/logs.c:
+	  done some optimizations due to above.
+	* core/connchain.c: fixed wrong return on idle Connchain_Grow() call.
+	* core/direct.c: fixed wrong client name in case of error on answer.
+
+Fri Aug 27 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/logs/logs.c: fixed bugs in HTML output.
+	* modules/logs/logs.c: implemented '-stripcolor' modifier to 'logfile'.
+	* core/init.c: corrected localization for Confirm().
+	* core/socket.*, core/direct.c, doc/modules.api: implemented support
+	  for listening to Unix sockets.
+	* modules/irc/irc.c, modules/irc-channel/irc-channel.c: added notify
+	  for "ui" module.
+
+Thu Aug 26 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/dispatcher.c: fixed wrong clone detection on deleting interface.
+	* core/init.c: fixed error parameter in '.status'.
+	* modules/irc/irc.c: removed modifying of internal data on parsing
+	  isupport info.
+	* modules/irc-channel/chmanagement.c: fixed wrong mode formatting.
+
+Wed Aug 25 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/direct.c, core/lib.c: corrected translation of mIRC colors.
+	* modules/logs/logs.c: implemented '-html' modifier to 'logfile'.
+
+Tue Aug 24 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/irc-channel/irc-channel.c: implemented 'revenge' feature.
+	* modules/irc-channel/irc-channel.c: implemented 'cycle' feature.
+	* modules/irc-channel/irc-channel.c: added logging of topic on join.
+	* modules/irc-channel/irc-channel.c: added notify of UI at end of join
+	  process.
+	* modules/irc-channel/irc-channel.c: implemented module report.
+	* modules/irc-channel/irc-channel.c: added notifying of requestor about
+	  result of 'IDENTIFY' request.
+	* modules/irc-channel/chmanagement.c: fixed masks sent to server on
+	  raising exempts or invites.
+	* modules/irc-channel/chmanagement.c: implemented searching for ban
+	  mask in Listfile (bug#42).
+
+Mon Aug 23 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/autolog/autolog.c: implemented module report.
+	* modules/irc-channel/chmanagement.c: implemented raising exempts and
+	  invites after appropriate channel mode is set on.
+	* modules/irc-channel/*.c, modules/irc-channel/irc-channel.h:
+	  implemented checking for changes in Lnames before adding or deleting
+	  hostmasks on them.
+	* modules/irc-channel/chmanagement.c: implemented ss-irc commands
+	  'reset' and 'invite'.
+	* modules/irc/irc.c, modules/irc-channel/irc-channel.c: added saving
+	  of umodes list from version message from server.
+	* modules/irc-channel/irc-channel.c: implemented message as in irssi
+	  "Join to #XXX was synced in XXX".
+	* modules/irc-channel/irc-channel.c: added reactions on adding to or
+	  deleting active channels from Listfile.
+	* modules/irc-channel/irc-channel.c: fixed diagnostics on modes after
+	  negative netjoin detection.
+
+Sun Aug 22 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/autolog/autolog.c: implemented "autolog by Lname" feature.
+	* modules/irc/*.c: added checking out long lines sent to clients and
+	  splitting them so IRC server will never get them exceeding maximim.
+
+Sat Aug 21 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/direct.*, modules/irc-ctcp/dcc.c: changed how 'login' bindtable
+	  should work (so it can work with custom connchain from no on) and
+	  moved private fields of direct session into another struct.
+	* core/dispatcher.c, doc/modules.api, core/direct.c: added concept of
+	  interface clones and implemented it.
+	* core/direct.c: added parameter to function 'port' for connchain.
+	* core/dispatcher.c, modules/autolog/autolog.c: corrected call to
+	  IFSignal function.
+	* core/connchain.c: fixed filter 'x' test result.
+	* core/list.c: implemented removing expired subrecords from nonamed
+	  records on listfile loading.
+	* core/sheduler.c, core/wtmp.c: fixed attempt of Wtmp rotation.
+
+--- [0.8a] ok
+Fri Aug 20 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/direct.c: fixed incorrect ident socket checking.
+	* modules/irc-channel/irc-channel.c: removed wrong topic reporting on
+	  report request for channel.
+	* modules/irc-ctcp/dcc.c: implemented passive DCC SEND mode for both
+	  directions, very draft, need checking much.
+
+Thu Aug 19 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/logs/logs.c: replaced strerror with strerror_r as cleanup.
+	* modules/irc-ctcp/dcc.c: implemented ss-irc command 'send'.
+
+Wed Aug 18 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/irc-ctcp/dcc.c: fixed few things on DCC GET and added report.
+	* core/direct.c, doc/modules.api, modules/irc-ctcp/dcc.c: implemented
+	  adding mandatory filters for "login" bindtable.
+	* core/protos.h, modules/irc-channel/irc-channel.c, modules/irc-ctcp/dcc.c, modules/irc/msgs.c, modules/tcl/modtcl.c:
+	  added macro _forget_() to prevent memory leaking on module unload.
+
+Tue Aug 17 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/irc-ctcp/dcc.c: implemented 'ahead' feature on DCC GET.
+	* modules/irc-channel/irc-channel.c: fixed wrong parsing of net parms.
+
+Mon Aug 16 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* configure: added -fno-strict-aliasing for wrong guessing compilers.
+	* modules/tcl/modtcl.c: added few casts to (char *) for old libtcl.
+	* core/conversion.h, core/direct.h, core/list.h, core/protos.h, core/wtmp.h, core/inlines.h:
+	  added attribute 'warn_unused_result' to some declarations.
+	* core/foxeye.h, core/direct.c, core/list.c, modules/irc-channel.c, modules/irc-channel/chmanagement.c, modules/irc/irc.c, modules/irc/msgs.c, modules/modes/modes.c, modules/tcl/modtcl.c:
+	  revised name width constants usage.
+	* doc/modules.api: documented requests encoding conversion.
+
+Sun Aug 15 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/direct.c: fixed possible hang in connchain link 'y'.
+	* core/direct.c: added diagnostics on connchain creation errors.
+	* core/init.h, doc/modules.api, core/direct.*, core/lib.c, core/sheduler.c, modules/irc/irc.c, modules/irc-channel/irc-channel.c, modules/logs/logs.c:
+	  adapted DateString to be multibyte chars capable; added TimeString.
+	* core/protos.h, core/direct.c, core/dispatcher.c, core/init.c, core/modules.c, core/sheduler.c, modules/irc-ctcp/dcc.c, modules/lua/lua.c, modules/tcl/modtcl.c:
+	  implemented Send_Signal() macro for signals.
+	* modules/autolog/autolog.c, modules/logs/logs.c, modules/irc/msgs.c:
+	  disabled few GCC warnings about literal formats.
+	* core/direct.c: fixed dc_motd() a bit.
+	* core/dispatcher.c: fixed pid file parsing in case of error.
+	* core/list.c: adjusted errors handling on checking Listfile.
+
+Sat Aug 14 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/inlines.h, core/protos.h, doc/modules.api, core/direct.c, core/init.c, core/list.c, core/modules.c, modules/irc/irc.c, modules/irc-channel/irc-channel.c, modules/logs/logs.c, modules/lua/lua.c, modules/tcl/modtcl.c:
+	  revised few 'const' qualifiers.
+	* core/connchain.c, core/init.*: implemented report for connchains.
+
+Fri Aug 13 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/tcl/modtcl.c: added report from module.
+	* modules/lua/lua.c: implemented sending messages to direct service.
+	* modules/logs/logs.c: implemented making directory on log rotation.
+	* core/list.c: added removing expired/invalid subrecords on save.
+	* modules/irc/irc.c: fixed wrong parsing of field 'nick'.
+	* modules/irc/msgs.c: done lowercasing target name for logging.
+
+Thu Aug 12 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/connchain.c, core/direct.c, core/init.c, core/sheduler.c, modules/irc-channel/irc-channel.c, modules/irc-ctcp/dcc.c, modules/logs/logs.c, modules/modes/modes.c:
+	  corrected format parameters.
+
 Wed Aug 11 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* configure: added -Wextra when --enable-debug.
 	* tree/tree.c, core/dispatcher.c, core/help.c, core/lib.c, core/main.c, core/sheduler.c, core/list.c, core/connchain.c, modules/autolog/autolog.c, modules/irc-cgannel/*.c, modules/irc-ctcp/dcc.c, modules/irc/*.c, modules/logs/logs.c:
@@ -20,6 +183,8 @@ Wed Aug 11 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/main.c: fixed incorrect usage formatting.
 	* core/conversion.c, core/wtmp.c, core/list.c, core/lib.c, core/dispatcher.c, core/help.c, modules/tcl/modtcl.c, modules/irc/irc.c:
 	  fixed format parameters.
+	* core/foxeye.h, core/protos.h, core/init.c: added using of GNU C
+	  attribute 'noreturn' and corrected for non-GNU compilers.
 
 Fri Jul 30 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/lib.c, core/main.c, core/init.c, core/protos.h, doc/modules.api:

@@ -3,8 +3,9 @@
  -------------
 
 RAW   "iirrcc--rraaww"        MATCHCASE
-  int func(INTERFACE *_i_f_a_c_e, char *_s_e_r_v_n_a_m_e, char *_m_e, char *_p_r_e_f_i_x,
-	   int _n, char **_p_a_r_a_m_s, size_t (*_l_c) (char *, const char *, size_t));
+  int func(INTERFACE *_i_f_a_c_e, char *_s_e_r_v_n_a_m_e, char *_m_e,
+	   unsigned char *_p_r_e_f_i_x, int _n, char **_p_a_r_a_m_s,
+	   size_t (*_l_c) (char *, const char *, size_t));
     Used when we get any message from server _s_e_r_v_n_a_m_e on the network
     _i_f_a_c_e. Optional _p_r_e_f_i_x is message source (see the RFC). Message is
     parsed and binding gets own nick _m_e, number _n of _p_a_r_a_m_s, and server

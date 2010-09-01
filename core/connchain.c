@@ -82,7 +82,7 @@ static void _connchain_create (peer_t *peer)
   peer->connchain->send = &_connchain_send;
   /* ignoring ->buf since we don't need it for _this_ link */
   peer->connchain->next = NULL;
-  dprint (2, "connchain.c: created initial link 0x%08x", (int)peer->connchain);
+  dprint (2, "connchain.c: created initial link %p", peer->connchain);
 }
 
 /* ---------------------------------------------------------------------------
@@ -100,7 +100,7 @@ int Connchain_Grow (peer_t *peer, char c)
   if (!peer->connchain)
     _connchain_create (peer);		/* it's first call */
   if (c == 0)
-    return 0;				/* idle call */
+    return 1;				/* idle call */
   tc[0] = c;
   tc[1] = 0;
   b = NULL;				/* start from scratch */
@@ -117,7 +117,7 @@ int Connchain_Grow (peer_t *peer, char c)
   }
   chain->next = peer->connchain;	/* it's done OK, insert into chain */
   peer->connchain = chain;
-  dprint (2, "connchain.c: created link %c: 0x%08x", c, (int)chain);
+  dprint (2, "connchain.c: created link %c: %p", c, chain);
   return 1;
 }
 
@@ -156,8 +156,8 @@ ssize_t Connchain_Get (connchain_i **chain, idx_t idx, char *buf, size_t sz)
   i = (*chain)->recv (&(*chain)->next, idx, buf, sz, &(*chain)->buf);
   if (i >= 0)					/* everything seems OK */
     return i;
-  Connchain_Get (&(*chain)->next, idx, NULL, sz); /* it's dead, kill next */
-  dprint (2, "connchain.c: destroying link 0x%08x", (int)*chain);
+  if(Connchain_Get (&(*chain)->next, idx, NULL, 0))i=i; /* it's dead, kill next */
+  dprint (2, "connchain.c: destroying link %p", *chain);
   free_connchain_i (*chain);
   *chain = NULL;
   return i;
@@ -211,7 +211,7 @@ static ssize_t _ccfilter_x_send (connchain_i **ch, idx_t id, const char *str,
   }
   i = *sz;
   if (i == 0)				/* it was a test and we are ready */
-    return CONNCHAIN_READY;
+    return Connchain_Put (ch, id, str, sz); /* bounce test to next link */
   if (i > (ssize_t)sizeof(bb->buf) - 2)	/* line + CR/LF */
     i = sizeof(bb->buf) - 2;
   memcpy (bb->buf, str, i);
@@ -345,7 +345,12 @@ static int _ccfilter_x_init (peer_t *peer,
   return 1;
 }
 
-// TODO: something about report?
+/* simple report */
+void Status_Connchains (INTERFACE *iface)
+{
+  New_Request (iface, F_REPORT, "Connchains: %d/%d in use (max was %d).",
+	       _CC_num, _CC_alloc, _CC_max);
+}
 
 /* init all this stuff */
 void _fe_init_connchains (void)

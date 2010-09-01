@@ -35,23 +35,32 @@ typedef struct USERRECORD clrec_t;
 int Get_Clientlist (INTERFACE *, userflag, const char *, char *);
 int Get_Hostlist (INTERFACE *, lid_t);
 int Get_Fieldlist (INTERFACE *, lid_t);
-unsigned short Get_Hosthash (const char *, const char *);
-userflag Match_Client (char *, char *, const char *);
-userflag Get_Clientflags (const char *, const char *);
-clrec_t *Find_Clientrecord (const uchar *, char **, userflag *, char *);
-clrec_t *Lock_Clientrecord (const char *);
-char *Get_Field (clrec_t *, const char *, time_t *);
+unsigned short Get_Hosthash (const char *, const char *)
+			__attribute__((warn_unused_result));
+userflag Match_Client (char *, char *, const char *)
+			__attribute__((warn_unused_result));
+userflag Get_Clientflags (const char *, const char *)
+			__attribute__((warn_unused_result));
+clrec_t *Find_Clientrecord (const uchar *, char **, userflag *, char *)
+			__attribute__((warn_unused_result));
+clrec_t *Lock_Clientrecord (const char *)
+			__attribute__((warn_unused_result));
+char *Get_Field (clrec_t *, const char *, time_t *)
+			__attribute__((warn_unused_result));
 int Set_Field (clrec_t *, const char *, const char *, time_t);
 int Grow_Field (clrec_t *, const char *, const char *);
-userflag Get_Flags (clrec_t *, const char *);
+userflag Get_Flags (clrec_t *, const char *)
+			__attribute__((warn_unused_result));
 userflag Set_Flags (clrec_t *, const char *, userflag);
-int Add_Mask (clrec_t *, const uchar *);
-int Delete_Mask (clrec_t *, const uchar *);
+int Add_Mask (clrec_t *, const uchar *)
+			__attribute__((warn_unused_result));
+int Delete_Mask (clrec_t *, const uchar *)
+			__attribute__((warn_unused_result));
 void Unlock_Clientrecord (clrec_t *);
 
-lid_t FindLID (const char *);	/* Lname -> LID */
-lid_t Get_LID (clrec_t *);
-clrec_t *Lock_byLID (lid_t);
+lid_t FindLID (const char *) __attribute__((warn_unused_result)); /* Lname -> LID */
+lid_t Get_LID (clrec_t *) __attribute__((warn_unused_result));
+clrec_t *Lock_byLID (lid_t) __attribute__((warn_unused_result));
 
 char *userflagtostr (userflag, char *);
 

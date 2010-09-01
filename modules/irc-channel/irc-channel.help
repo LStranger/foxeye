@@ -87,6 +87,13 @@ set irc-default-kick-reason
  written in command %ckick%n or %ckickban%n.
  Default: "requested".
 
+set irc-kick-on-revenge
+:%* <yes|no>
+:Should we kick user on revenge?
+:This variable defines whether we should kick user out of a channel when\
+ appropriate channel flag is set or just deop them.
+ Default: no.
+
 fset irc_join
 :
 :
@@ -118,8 +125,8 @@ fset irc_lost_in_netsplit
 :
 :
 :Used when there was a netsplit on IRC network and some users didn't returned\
- to the channel after netsplit is over. Macros: %%N, %%@, %%L, %%# (network),
- \%%* (netsplit servers pair).
+ to the channel after netsplit is over. Macros: %%N, %%@, %%L, %%# (network),\
+ %%* (netsplit servers pair).
  Default: "%%^%%N%%^ has lost in netsplit (%%*)".
 
 fset irc_kick
@@ -158,6 +165,20 @@ fset irc_topic
 :Used when someone changed topic of some IRC channel. Macros: %%N, %%@, %%L,\
  %%#, %%* (topic).
  Default: "%%N %%?*changed?unset? the topic of %%#%%?* to: %%*??".
+
+fset irc_topic_is
+:
+:
+:Used when we got topic of some IRC channel from server on our join.\
+ Macros: %%#, %%* (topic).
+ Default: "Topic on %%# is: %%*"
+
+fset irc_topic_by
+:
+:
+:Used when server said us who and when set the topic of some IRC channel on\
+ our join. Macros: %%N, %%@ (when it is set), %%#.
+ Default: "Topic for %%# is set %%@ by %%N".
 
 ss-irc adduser
 :adduser ["!"]nick [lname]
@@ -258,14 +279,18 @@ ss-irc dehop
 :Removes mode +h for %_nick%_ on some IRC channel if bot have enough\
  priveleges to do that.
 
-#ss-irc greeting
-#:greeting [channel["@"net]] [--lname] [text|"none"]
-#:
-#:Changes text of greeting for any channel on any network. Value "%^none%^"\
-# removes greeting for that channel. You can omit network or channel name\
-# if you have set default channel with command %cconsole%n. If you have enough\
-# permissions (master or above) then you can change greeting for others with\
-# this command too.
+ss-irc reset
+:reset [+b|+e|+I] [channel["@"net]]
+:
+:Resets expired bans, exempts and invites on some IRC channel and enforce\
+ existing bans on users by kicking them out of a channel. If parameter\
+ "+b", "+e", or "+I" is given then do only that mode reset.
+
+ss-irc invite
+:invite nick [channel[@net]]
+:
+:Invites someone %_nick%_ to some IRC channel if bot have enough privileges\
+ to do that.
 
 IDENTIFY
 :

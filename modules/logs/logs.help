@@ -9,8 +9,8 @@ module logs
  those logs.
 
 function logfile
-:logfile [-n[ots]] [-y[early]|-m[onthly]|-w[eekly]] [-r[path] rpath] filename\
- level [service]
+:logfile [-n[ots]] [-h[tml]|-s[tripcolor]] [-y[early]|-m[onthly]|-w[eekly]]\
+ [-r[path] rpath] filename level [service]
  logfile -c[lose] filename
 :
 :Starts or stops (with -c command switch) logfile %_filename%_ which will\
@@ -22,8 +22,10 @@ function logfile
    -yearly      rotate logfile once per year
    -monthly     rotate logfile once per month
    -weekly      rotate logfile once per week
-   -rpath %_rpath%_ set log rotation path to %_rpath%_ instead of default one
-                (see %yset logrotate-path%n for details).
+   -html        write log in HTML file format using CSS tags
+   -stripcolor  remove any color codes from lines written
+   -rpath %_rpath%_ set log rotation path to %_rpath%_ instead of default
+                one (see %yset logrotate-path%n for details).
 
 set logrotate-path
 :%* <template>
@@ -32,7 +34,7 @@ set logrotate-path
  renamed with that name. Substitutions:
  %%$ - filename of rotated log (current log before rotation)
  %%d, %%b, %%y, etc - date fields as in strftime(3)
- Default: "%%$.1".
+ Default: "%%$~".
 
 set logfile-lock-attempts
 :%* <number>
@@ -54,3 +56,27 @@ set logfile-notice-prefix
  such as joining and quitting users, etc. on personal logs (i.e. logs which\
  may receive any other unprefixable log levels).
  Default: "-|- ".
+
+set log-html-color-time
+:%* <string>
+:CSS color for timestamp.
+:This variable defines what color timestamp will have in HTML log. It is\
+ really possible to add other attributes into this variable too but it can\
+ be a bit tricky.
+ Default: "red".
+
+set log-html-color-info
+:%* <string>
+:CSS color for informational lines.
+:This variable defines what main color each informational line (for example\
+ client's join) will have in HTML log. It is really possible to add other\
+ attributes into this variable too but it can be a bit tricky.
+ Default: "gray".
+
+set log-html-color-action
+:%* <string>
+:CSS color for text of actions.
+:This variable defines what main color client's action text lines will have\
+ in HTML log. It is really possible to add other attributes into this variable\
+ too but it can be a bit tricky.
+ Default: "purple".

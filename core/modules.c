@@ -55,7 +55,6 @@ ScriptFunction (FE_module)
   char name[SHORT_STRING];
   INTERFACE *tmp;
   binding_t *bind = NULL;
-  char sig[sizeof(ifsig_t)];
   Function func;
   iftype_t (*mods) (INTERFACE *, ifsig_t);
   char path[STRING];
@@ -71,25 +70,24 @@ ScriptFunction (FE_module)
   {
     if (args[1] == 'l')				/* get list of modules */
     {
-      sig[0] = S_REPORT;
       tmp = Add_Iface (I_TEMP, NULL, NULL, &scr_collect, NULL);
       ModuleList[0] = 0;
       Set_Iface (tmp);
       ReportFormat = NULL;
-      Add_Request (I_MODULE, "*", F_SIGNAL, sig);
+      Send_Signal (I_MODULE, "*", S_REPORT);
       Unset_Iface();
       tmp->ift = I_DIED;
       BindResult = ModuleList;
       return -1;
     }
     cmd = args[1];
-    args = NextWord (args);
+    args = NextWord ((char *)args);	/* it's still const */
   }
   else
     cmd = 'l';				/* load the module */
   /* find loaded module */
   strfcpy (name, args, sizeof(name));
-  args = NextWord (args);
+  args = NextWord ((char *)args);	/* it's still const */
   for (c = name; *c && *c != ' '; c++);
   *c = 0;
   tmp = Find_Iface (I_MODULE, name);
@@ -105,10 +103,9 @@ ScriptFunction (FE_module)
   {
     if (!tmp)					/* check if don't loaded */
       return 0;
-    sig[0] = S_TERMINATE;
     snprintf (path, sizeof(path), "Module %s unloaded.", name);
     ShutdownR = path;
-    New_Request (tmp, F_SIGNAL, sig);		/* kill the module */
+    tmp->IFSignal (tmp, S_TERMINATE);		/* kill the module */
     ShutdownR = NULL;
 #ifndef STATIC
     dlclose (tmp->data);			/* close dll */

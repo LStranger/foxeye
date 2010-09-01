@@ -27,9 +27,9 @@ Lname here is registration name (login name).
  net.send(network,message)
     - sends message to network.
  net.message(client,text)
-    - sends message to client.
+    - sends message to client or direct chat.
  net.notice(client,text)
-    - sends notice to client.
+    - sends notice to client or direct chat.
  ver = foxeye.version()
     - returns FoxEye version string.
  foxeye.event(type,lname[,value])

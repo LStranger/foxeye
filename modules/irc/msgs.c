@@ -84,7 +84,7 @@ static struct pmsgin_actions PmsginTable[] = {
 
 /* --- me => server part ---------------------------------------------------- */
 
-const char *_pmsgout_send_formats[] = {
+static const char *_pmsgout_send_format[] = {
   "PRIVMSG %s :%s",
   "NOTICE %s :%s",
   "PRIVMSG %s :\001%s\001",
@@ -93,10 +93,15 @@ const char *_pmsgout_send_formats[] = {
 };
 
 /* send one message from stack */
+/* be careful with formats since warnings are disabled by #pragma!!! */
+#if __GNUC__ >= 4
+#pragma GCC diagnostic ignored "-Wformat-nonliteral" /* for Add_Request below */
+#endif
 static void _pmsgout_send (char *to, char *msg, flag_t flag, char *dog)
 {
   register unsigned int i;
   unsigned char *c;
+  char buff[2*MESSAGEMAX];		/* should be enough for any message */
 
   StrTrim (msg);			/* remove ending spaces, CR, LF */
   if (dog && msg[0])			/* don't send empty messages */
@@ -105,38 +110,65 @@ static void _pmsgout_send (char *to, char *msg, flag_t flag, char *dog)
     i = (flag & F_T_MASK);
     if (i > 4)
       i = 0;				/* default */
-    Add_Request (I_SERVICE, &dog[1], 0, _pmsgout_send_formats[i], to, msg);
+    /* check out line with unistrcut */
+    c = msg;
+    do {
+      register size_t sm, sw;
+
+      snprintf (buff, sizeof(buff), _pmsgout_send_format[i], to, c);
+      sw = unistrcut (buff, sizeof(buff), IRCMSGLEN - 1); /* calculate */
+      sm = strlen (buff);
+      c = &c[strlen(c)];		/* set it at EOL */
+      if (sw < sm)			/* ouch, it exceed the size! */
+      {
+	buff[sw] = '\0';		/* terminate partial message */
+	if (i >= 2)			/* has to be ended with '\001' */
+	  buff[--sw] = '\001';
+	c -= (sm - sw);			/* go back chars that don't fit */
+      }
+      Add_Request (I_SERVICE, &dog[1], 0, "%s", buff);
+    } while (*c);			/* do it again if msg was splitted */
     /* parse all recipients */
     for (c = to; to; to = c)
     {
       int pub;
       char tocl[IFNAMEMAX+1];
-      char logmsg[MESSAGEMAX+1];
+      register size_t ss;
 
-      if ((*c >= 'A' && *c < '~') || *c >= 160)
+      if ((*c >= 'A' && *c < '~') || *c >= 160 ||
+	  ((*c == '$' || *c == '#') && strpbrk (c, "*?")))
 	pub = 0;
       else
 	pub = 1;
       c = strchr (to, ',');
       if (c)
 	*c = 0;
-      /* TODO: convert recipient to lowercase, it might be #ChaNNel */
-      /* %N - mynick, %# - target, %* - message */
+      /* convert recipient to lowercase, it might be #ChaNNel or niCK */
       if (*to == '!')		/* special support for "!XXXXXchannel" */
-	snprintf (tocl, sizeof(tocl), "!%s@%s", &to[6], &dog[1]);
+      {
+	tocl[0] = '!';
+	ss = unistrlower (&tocl[1], &to[6], sizeof(tocl)-2) + 1;
+      }
       else
-	snprintf (tocl, sizeof(tocl), "%s@%s", to, &dog[1]);
-      printl (logmsg, sizeof(logmsg), *PmsginTable[i].format, 0,
+	ss = unistrlower (tocl, to, sizeof(tocl)-1);
+      *dog = '@';
+      strfcpy (&tocl[ss], dog, sizeof(tocl) - ss);
+      *dog = 0;
+      /* %N - mynick, %# - target, %* - message */
+      printl (buff, sizeof(buff), *PmsginTable[i].format, 0,
 	      irc_mynick (&dog[1]), NULL, NULL, to, 0, 0, 0, msg);
-      if (*logmsg)
+      if (*buff)
 	Add_Request (I_LOG, tocl, (pub ? F_PUBLIC : F_PRIV) | F_MINE | i,
-		     "%s", logmsg);
+		     "%s", buff);
       if (c)
 	*c++ = ',';
     }
     *dog = '@';
   }
 }
+#if __GNUC__ >= 4
+#pragma GCC diagnostic error "-Wformat-nonliteral"
+#endif
 
 static int _pmsgout_run (INTERFACE *client, REQUEST *req)
 {
@@ -197,9 +229,10 @@ static void _pmsgout_stack_remove (pmsgout_stack **stack, pmsgout_stack *cur)
 static INTERFACE *_pmsgout_get_client (char *net, char *to)
 {
   char lcto[IFNAMEMAX+1];
+  register size_t s;
 
-  strfcpy (lcto, to, sizeof(lcto));
-  strfcat (lcto, net, sizeof(lcto));
+  s = strfcpy (lcto, to, sizeof(lcto));
+  strfcpy (&lcto[s], net, sizeof(lcto) - s);
   dprint (4, "_pmsgout_get_client: search %s", lcto);
   return Find_Iface (I_CLIENT, lcto); 
 }
@@ -318,9 +351,9 @@ int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
   if ((ae = strchr (from, '!')))
     *ae = 0;
   if (lc)
-    lc (lcnick, from, MBNAMEMAX+1);
+    lc (lcnick, from, NAMEMAX+1);
   else
-    strfcpy (lcnick, from, MBNAMEMAX+1);
+    strfcpy (lcnick, from, NAMEMAX+1);
   /* let's check if it's identified user at first */
   if (Inspect_Client (&pmsgout->name[1], from, (const char **)&lname, NULL,
 		      NULL, NULL) & A_REGISTERED)
@@ -422,7 +455,7 @@ int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
   /* parse destination (*to) - i hope it is just one but really may be not */
   do
   {
-    char tomask[MESSAGEMAX+1];
+    char tomask[NAMEMAX+MESSAGEMAX+1];
     char *chmask;
     INTERFACE *tmp;
 
@@ -436,6 +469,8 @@ int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
     /* select the target */
     if (to)
     {
+      register size_t ss;
+
       ft = strchr (to, ',');
       if (ft)
 	*ft++ = 0;
@@ -444,16 +479,16 @@ int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
 	snprintf (tomask, sizeof(tomask), "!%s %s", &to[6], msg);
 	tocl[0] = '!';
 	/* TODO: use lc() for channel name too */
-	unistrlower (&tocl[1], &to[6], sizeof(tocl) - 1);
+	ss = unistrlower (&tocl[1], &to[6], sizeof(tocl) - 1) + 1;
       }
       else
       {
 	snprintf (tomask, sizeof(tomask), "%s %s", to, msg);
 	/* TODO: use lc() for channel name too */
-	unistrlower (tocl, to, sizeof(tocl));
+	ss = unistrlower (tocl, to, sizeof(tocl));
       }
       chmask = tomask;
-      strfcat (tocl, pmsgout->name, sizeof(tocl));
+      strfcpy (&tocl[ss], pmsgout->name, sizeof(tocl) - ss);
     }
     else
       chmask = msg;
@@ -581,10 +616,11 @@ void irc_privmsgreg (void)
   format_irc_ctcr = SetFormat ("irc_ctcp_reply", "CTCP reply from %N: %*");
   format_irc_action = SetFormat ("irc_action", "* %N %*");
   format_irc_cmdmessage = SetFormat ("irc_message_command", "%?#<<?(?%N%?#>>?!%@)? !%L! %*");
-  format_irc_cmdctcp = SetFormat ("irc_ctcp_command", "");
+  format_irc_cmdctcp = SetFormat ("irc_ctcp_command", "((%N)) %?L!%L! ??%?#(CTCP to %#) ??%*");
 }
 
 void irc_privmsgunreg (void)
 {
   Delete_Binding ("irc-flood", &irc_ignflood, NULL);
+  _forget_(pmsgout_stack);
 }

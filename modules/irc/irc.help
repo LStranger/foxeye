@@ -8,6 +8,14 @@ module irc
 :Common support of client connection to IRC server: creating/destroying server\
  connection; sending output traffic; receiving and parsing input traffic;\
  handling PING-PONG command pair; handling IRC clients interface.
+ 
+ Format of hosts (servers) for network record:
+   [:password@]domain.name[/port][%flags]
+ where flags are connection-specific mandatory flags for creating connection\
+ chain (see technical documentation for details).
+ 
+ Special field "%^nick%^" in network record may contain space separated list\
+ of nicks which can be used for registering on servers in this network.
 
 set irc-timeout
 :%* <seconds>
@@ -84,6 +92,16 @@ set irc-privmsg-commands
  commands.
  Default: no.
 
+set irc-next-try
+:%* <minutes>
+:Retry IRC servers list timeout (in minutes).
+:This variable defines which timeout module will wait until it will try again\
+ to find a working server after all of them were failed due to some reason\
+ (kill list, resolver error, all servers are down). Note that retry may be\
+ ocurred before that timeout due to %crehash%n command, interference from an\
+ other timeout, or module "%^irc-channel%^" reloading.
+ Default: 60.
+
 fset irc_message
 :
 :
@@ -128,4 +146,4 @@ fset irc_ctcp_command
 :
 :Used when logging CTCP command on IRC network. Macros: %%N, %%@, %%L,\
  %%#, %%*.
- Default: ""
+ Default: "((%%N)) %%?L!%%L! ??%%?#(CTCP to %%#) ??%%*"

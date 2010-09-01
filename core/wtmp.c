@@ -20,6 +20,9 @@
 
 #include "foxeye.h"
 
+//#include <time.h>
+#include <errno.h>
+
 #include "init.h"
 #include "wtmp.h"
 
@@ -182,7 +185,7 @@ static int _scan_wtmp (const char *path, wtmp_t *wtmp, int wn,
 	}
 	else if (buff[i].uid == myid[n])
 	{
-	  DBG ("_scan_wtmp: found: event %hd, from %hd, time %u", buff[i].event, buff[i].fuid, buff[i].time);
+	  DBG ("_scan_wtmp: found: event %hd, from %hd, time %lu", buff[i].event, buff[i].fuid, (unsigned long int)buff[i].time);
 	  if (buff[i].event == W_CHG)	/* something joined, add to myids */
 	  {
 	    if (*idn < MYIDS_MAX)
@@ -333,6 +336,7 @@ void RotateWtmp (void)
   char wfp[LONG_STRING];
   char path[LONG_STRING];
   char path2[LONG_STRING];
+  char errb[STRING];
   FILE *fp, *dst = NULL;
   register size_t j;
   size_t k;
@@ -340,25 +344,49 @@ void RotateWtmp (void)
   wtmp_t buff2[64];
   uint32_t bits;
   uint32_t *GoneBitmap = NULL;
+  time_t t;
 
   Set_Iface (NULL);			/* in order to access variables */
   if (wtmps > WTMPS_MAX)
     wtmps = WTMPS_MAX; /* max wtmps */
-  if (wtmps < 1)
-    wtmps = 1; /* min wtmps */
+  if (wtmps < 0)
+    wtmps = 0; /* min wtmps - keep only current one */
   if (expand_path (wfp, Wtmp, sizeof(wfp)) == Wtmp)
     strfcpy (wfp, Wtmp, sizeof(wfp));
   wfps = wtmps;
+  t = Time;
   Unset_Iface();			/* it's thread-safe process now */
   GoneBitmap = safe_calloc (1, sizeof(uint32_t) * LID_MAX);
-  snprintf (path, sizeof(path), "%s.1", wfp);
-  snprintf (path2, sizeof(path2), "%s." WTMP_GONE_EXT, wfp);
+  i = 0;
   /* check if we need to rotate - check the first event of $Wtmp */
+  if ((fp = fopen (wfp, "rb")))
+  {
+    struct tm tm, tm0;
+
+    if (fread (buff, sizeof(wtmp_t), 1, fp) == 1) /* we have readable Wtmp */
+    {
+      localtime_r (&t, &tm0);
+      localtime_r (&buff[0].time, &tm);
+      if (tm.tm_year != tm0.tm_year || tm.tm_mon != tm0.tm_mon)
+	i = 1;					/* and it needs rotation */
+    }
+    fclose (fp);
+  }
+  if (i == 0)
+    return;				/* nothing to do yet */
+//  snprintf (path, sizeof(path), "%s.1", wfp);
+  snprintf (path2, sizeof(path2), "%s." WTMP_GONE_EXT, wfp);
   /* mark deletable events for wtmp.gone (from $Wtmp.max...$Wtmp.$wtmps) */
   for (i = WTMPS_MAX; i >= wfps; i--)
   {
-    snprintf (path, sizeof(path), "%s.%d", wfp, i);
-    if ((fp = fopen (path, "rb")))
+    if (i)
+    {
+      snprintf (path, sizeof(path), "%s.%d", wfp, i);
+      fp = fopen (path, "rb");
+    }
+    else
+      fp = fopen (wfp, "rb");
+    if (fp)
     {
       while ((k = fread (buff, sizeof(wtmp_t), 64, fp)))
 	for (j = 0; j < k; j++)
@@ -378,14 +406,18 @@ void RotateWtmp (void)
     /* delete expired events from wtmp.gone (rewrite) */
     snprintf (path, sizeof(path), "%s.0", wfp);
     fp = fopen (path2, "rb");			/* wtmp.gone */
-    if (fp) dst = fopen (path, "wb");		/* wtmp.tmp */
+    if (fp && !(dst = fopen (path, "wb")))	/* wtmp.tmp */
+    {
+      strerror_r (errno, errb, sizeof(errb));
+      ERROR ("wtmp: couldn't create %s: %s", path, errb);
+    }
     if (dst)
       while ((k = fread (buff, sizeof(wtmp_t), 64, fp)))
       {
 	for (j = 0; j < k; )
 	{
 	  bits = 1<<(buff[j].event);
-	  if (GoneBitmap[buff[j].uid] & bits)	/* expired */
+	  if (GoneBitmap[buff[j].uid] & bits)	/* event expired */
 	    memmove (&buff[j], &buff[j+1], (--k - j) * sizeof(wtmp_t));
 	  else					/* still actual */
 	    j++;
@@ -397,12 +429,15 @@ void RotateWtmp (void)
     if (dst)
     {
       fclose (dst);
-      unlink (path2);				/* wtmp.gone */
-      if (rename (path, path2))			/* wtmp.tmp --> wtmp.gone */
-	ERROR ("wtmp: couldn't make %s!", path2);
+      if (unlink (path2) ||			/* wtmp.gone */
+	  rename (path, path2))			/* wtmp.tmp --> wtmp.gone */
+      {
+	strerror_r (errno, errb, sizeof(errb));
+	ERROR ("wtmp: couldn't rewrite %s: %s", path2, errb);
+      }
+      else
+	DBG ("wtmp: success on %s.", path2);
     }
-    else
-      ERROR ("wtmp: cannot rewrite %s!", path2);
     /* scan for deleted uids and mark these as non-addable */
     for (j = 0; j < LID_MAX ; j++)
       if (GoneBitmap[j] & 1<<W_DEL)
@@ -431,8 +466,14 @@ void RotateWtmp (void)
     /* create events in tmp file in reverse order */
     if (dst) for (i = WTMPS_MAX; i >= wfps; i--)
     {
-      snprintf (path, sizeof(path), "%s.%d", wfp, i);
-      if ((fp = fopen (path, "rb")))
+      if (i)
+      {
+	snprintf (path, sizeof(path), "%s.%d", wfp, i);
+	fp = fopen (path, "rb");
+      }
+      else
+        fp = fopen (wfp, "rb");
+      if (fp)
       {
 	fseek (fp, 0L, SEEK_END);
 	while((j = ftell (fp)))
@@ -467,7 +508,10 @@ void RotateWtmp (void)
       }
     }
     else
-      ERROR ("wtmp: cannot open %s!", path);
+    {
+      strerror_r (errno, errb, sizeof(errb));
+      ERROR ("wtmp: cannot open %s: %s", path, errb);
+    }
     /* add events to wtmp.gone in normal order */
     if (dst)
     {
@@ -497,25 +541,38 @@ void RotateWtmp (void)
       fclose (fp);
       fclose (dst);
       snprintf (path, sizeof(path), "%s.0", wfp);
-      unlink (path);
+      if (unlink (path) == 0)
+	DBG ("wtmp: removed %s.", path);
+      DBG ("wtmp: success on %s.", path2);
     }
   }
   /* delete superfluous wtmp's */
   for (i = WTMPS_MAX; i >= wfps; i--)
   {
     snprintf (path, sizeof(path), "%s.%d", wfp, i);
-    unlink (path);
+    if (unlink (path) == 0)
+      DBG ("wtmp: removed %s.", path);
   }
   /* rotate all other */
-  for (; i > 1; i--)
+  for (; i; i--)
   {
-    snprintf (path2, sizeof(path2), "%s.%d", wfp, i);
-    snprintf (path, sizeof(path), "%s.%d", wfp, i-1);
+    snprintf (path2, sizeof(path2), "%s.%d", wfp, i+1);
+    snprintf (path, sizeof(path), "%s.%d", wfp, i);
     if (rename (path, path2))
-      WARNING ("wtmp: couldn't rotate %s -> %s!", path, path2);
+    {
+      strerror_r (errno, errb, sizeof(errb));
+      WARNING ("wtmp: couldn't rotate %s -> %s: %s!", path, path2, errb);
+    }
+    else
+      DBG ("wtmp: rotated %s -> %s.", path, path2);
   }
   /* rotate $Wtmp -> $Wtmp.1 */
-  if (rename (wfp, path))
-    ERROR ("wtmp: couldn't rotate %s -> %s!", wfp, path);
+  if (wfps && rename (wfp, path))
+  {
+    strerror_r (errno, errb, sizeof(errb));
+    ERROR ("wtmp: couldn't rotate %s -> %s: %s!", wfp, path, errb);
+  }
+  else if (wfps)
+    DBG ("wtmp: rotated %s -> %s.", wfp, path);
   FREE (&GoneBitmap);
 }

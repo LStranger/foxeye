@@ -2,8 +2,8 @@
  Module "irc-ctcp":
  ------------------
 
--     "ccttccpp--ddcccc"       MATCCASE
-  int func(INTERFACE *_c_l_i_e_n_t, unsigned char *_w_h_o, char *_l_n_a_m_e, char* _m_s_g);
+-     "ccttccpp--ddcccc"       MATCHCASE
+  int func(INTERFACE *_c_l_i_e_n_t, unsigned char *_w_h_o, char *_l_n_a_m_e, char *_m_s_g);
     Used when we got a ctcp message which is subcommand of "DCC" that
     came on IRC network for me from someone _c_l_i_e_n_t with nick!user@host
     _w_h_o and who is identified as _l_n_a_m_e. _m_s_g is the full command line
@@ -15,4 +15,11 @@ RCVD  "ddcccc--ggoott"        MASK
     Used when someone with nick!user@host _w_h_o successfully uploaded the
     file _f_i_l_e_n_a_m_e to us.
       Matching: Lname. (any channel flags are ignored)
-      Script args: Lname nick path
+      Script args: Lname nick@net path
+
+SENT  "ddcccc--sseenntt"       MASK
+  (int) void func(unsigned char *_w_h_o, char *_f_i_l_e_n_a_m_e);
+    Used when someone with nick!user@host _w_h_o successfully downloaded the
+    file _f_i_l_e_n_a_m_e from us.
+      Matching: Lname. (any channel flags are ignored)
+      Script args: Lname nick@net filename

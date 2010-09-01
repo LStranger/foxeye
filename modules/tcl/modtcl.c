@@ -23,7 +23,7 @@
 
 #ifdef HAVE_TCL
 #define USE_NON_CONST 1 /* prevent CONST for newest versions of TCL */
-#include "tcl.h"
+#include <tcl.h>
 
 #include "init.h"
 #include "direct.h"
@@ -68,9 +68,9 @@ static tcl_bindtable tcl_bindtables[] = {
   { "nick",	"irc-nickchg", 0 },
   { "sign",	"irc-signoff", 0 },
   { "splt",	"irc-netsplit", 0 },
+  { "sent",	"dcc-sent", 0 },
   { NULL,	NULL, 0 },
   { "evnt",	NULL, 0 },
-  { "sent",	NULL, 0 },
   { "link",	NULL, 0 },
   { "disc",	NULL, 0 },
   { "wall",	NULL, 0 },
@@ -88,7 +88,7 @@ static tcl_bindtable tcl_bindtables[] = {
 
 static Tcl_Interp *Interp = NULL;
 
-static char tcl_default_network[IFNAMEMAX] = "irc";
+static char tcl_default_network[NAMEMAX+1] = "irc";
 static long int tcl_max_timer = 2 * 24 * 3600;
 
 static inline void ResultInteger (Tcl_Interp *tcl, int res)
@@ -151,7 +151,7 @@ static inline int ArgInteger (Tcl_Interp *tcl, Tcl_Obj *obj)
 # define ArgString(a,b) a, *(b) = safe_strlen (a)
 #endif
 
-static int _tcl_interface (char *, int, char **);
+static int _tcl_interface (char *, int, const char **);
 
 /* ---------------------------------------------------------------------------
  * Calls from TCL to anywhere.
@@ -164,9 +164,9 @@ static int _tcl_call_function (ClientData func, Tcl_Interp *tcl, int argc, TCLAR
   char *c, *cs = string;
   size_t s, ss = sizeof(string) - 1;
   int i = 0;
-  Function f = (Function)func;
+  int (*f)(const char *) = func;
 
-  while (argc && s)			/* make a string from argv[] */
+  while (argc && ss)			/* make a string from argv[] */
   {
     c = ArgString (argv[i++], &s);
     if (cs != string)
@@ -174,10 +174,22 @@ static int _tcl_call_function (ClientData func, Tcl_Interp *tcl, int argc, TCLAR
       *cs++ = ' ';
       ss--;
     }
-    if (s > ss)
-      s = ss;
-    // TODO: do quote if arg has spaces?
-    memcpy (cs, c, s);
+    if (strchr (c, ' ') && ss > 2)	/* do quote if arg has spaces */
+    {
+      *cs++ = '"';
+      ss -= 2;
+      if (s > ss)
+	s = ss;
+      memcpy (cs, c, s);
+      cs[s] = '"';
+      cs++;
+    }
+    else
+    {
+      if (s > ss)
+	s = ss;
+      memcpy (cs, c, s);
+    }
     cs += s;
     ss -= s;
   }
@@ -431,7 +443,7 @@ static int _tcl_utimer (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS argv[]
   tt->when = Time + n;
   tt->prev = Tcl_Last_Timer;
   Tcl_Last_Timer = tt;
-  dprint (3, "tcl:_tcl_utimer:added timer for %lu", (unsigned long)tt->when);
+  dprint (3, "tcl:_tcl_utimer:added timer for %lu", (unsigned long int)tt->when);
   ResultInteger (tcl, (int)tt->tid);
   return TCL_OK;
 }
@@ -456,7 +468,7 @@ static int _tcl_killutimer (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS ar
     Tcl_Last_Timer = tt->prev;
   else
     ptt->prev = tt->prev;
-  dprint (3, "tcl:_tcl_killutimer:removed timer for %lu", (unsigned long)tt->when);
+  dprint (3, "tcl:_tcl_killutimer:removed timer for %lu", (unsigned long int)tt->when);
   free_tcl_timer (tt);
   return TCL_OK;
 }
@@ -699,7 +711,7 @@ static int tcl_register_var (const char *name, void *ptr, size_t s)
   data->len = s;
   _tcl_dashtound (tn, name);
   /* unset previous value if it exists! */
-  Tcl_UnsetVar (Interp, (char *)tn, TCL_GLOBAL_ONLY);	/* ignore any error */
+  Tcl_UnsetVar (Interp, tn, TCL_GLOBAL_ONLY);	/* ignore any error */
 #ifdef HAVE_TCL8X
   data->name = Tcl_NewStringObj (tn, safe_strlen (tn));
   Tcl_IncrRefCount (data->name);
@@ -778,21 +790,23 @@ static int tcl_unregister_var (const char *name)
 }
 
 BINDING_TYPE_function(tcl_register_func);
-static int tcl_register_func (const char *name, int (*func) (char *))
+static int tcl_register_func (const char *name, int (*func) (const char *))
 {
 #ifdef HAVE_TCL8X
   if (Tcl_CreateObjCommand
 #else
   if (Tcl_CreateCommand
 #endif
+	/* casting (char *) below due to wrong prototypes in old tcl */
 	(Interp, (char *)name, &_tcl_call_function, (ClientData)func, NULL) == TCL_OK)
-   return 1;
+    return 1;
   return 0;		/* error */
 }
 
 BINDING_TYPE_unfunction(tcl_unregister_func);
 static int tcl_unregister_func (const char *name)
 {
+  /* casting (char *) below due to wrong prototypes in old tcl */
   if (Tcl_DeleteCommand (Interp, (char *)name) == TCL_OK)
     return 1;
   ERROR ("tcl:unregister function %s failed: %s", name,
@@ -863,7 +877,7 @@ static int dc_tcl (peer_t *from, char *args)
 }
 
 /* interpreter interface for everyone */
-static int _tcl_interface (char *fname, int argc, char *argv[])
+static int _tcl_interface (char *fname, int argc, const char *argv[])
 {
   int i;
 #ifdef HAVE_TCLEVALOBJV
@@ -898,7 +912,8 @@ static int _tcl_interface (char *fname, int argc, char *argv[])
   for (i = 0; i < argc; i++)
   {
     snprintf (vn, sizeof(vn), " $_a%d", i);
-    Tcl_SetVar (Interp, &vn[2], argv[i], TCL_GLOBAL_ONLY);	/* _aX */
+    /* casting (char *) below due to wrong prototypes in old tcl */
+    Tcl_SetVar (Interp, &vn[2], (char *)argv[i], TCL_GLOBAL_ONLY); /* _aX */
     strfcat (cmd, vn, sizeof(cmd));				/* " $_aX" */
   }
   i = Tcl_VarEval (Interp, fname, cmd, NULL);
@@ -906,7 +921,7 @@ static int _tcl_interface (char *fname, int argc, char *argv[])
   if (i == TCL_OK)			/* setting BindResult if all went OK */
   {
 #ifdef HAVE_TCL8X
-    BindResult = (char *)Tcl_GetStringResult (Interp);
+    BindResult = Tcl_GetStringResult (Interp);
 #else
     BindResult = Interp->result;
 #endif
@@ -933,6 +948,8 @@ static int module_signal (INTERFACE *iface, ifsig_t sig)
 {
   tcl_bindtable *tbt;
   tcl_timer *tt, *ptt;
+  int i;
+  INTERFACE *tmp;
 
   switch (sig)
   {
@@ -958,6 +975,7 @@ static int module_signal (INTERFACE *iface, ifsig_t sig)
       UnregisterVariable ("tcl-default-network");
       UnregisterVariable ("tcl-max-timer");
       Delete_Help ("tcl");
+      _forget_(tcl_timer);
       iface->ift |= I_DIED;		/* done */
       break;
     case S_REG:
@@ -971,14 +989,14 @@ static int module_signal (INTERFACE *iface, ifsig_t sig)
 	if (tt->when <= Time)		/* finds first matched */
 	  break;
 	else
-	  DBG ("tcl:timer:skipping timer %lu.", (unsigned long)tt->when);
+	  DBG ("tcl:timer:skipping timer %lu.", (unsigned long int)tt->when);
       if (!tt)
       {
-	ERROR ("tcl:timer:not found timer for %lu.", (unsigned long)Time);
+	ERROR ("tcl:timer:not found timer for %lu.", (unsigned long int)Time);
 	break;
       }
-      dprint (4, "tcl:timer:found sheduled (%u->%u) cmd: %s",
-	      (unsigned int)tt->when, (unsigned int)Time, tt->cmd);
+      dprint (4, "tcl:timer:found sheduled (%lu->%lu) cmd: %s",
+	      (unsigned long int)tt->when, (unsigned long int)Time, tt->cmd);
       if (Tcl_Eval (Interp, tt->cmd) != TCL_OK)
       {
 #ifdef HAVE_TCL8X
@@ -995,7 +1013,13 @@ static int module_signal (INTERFACE *iface, ifsig_t sig)
       free_tcl_timer (tt);
       break;
     case S_REPORT:
-      // TODO!
+      for (i = 0, tbt = &tcl_bindtables[0]; tbt->intcl; tbt++)
+	if (tbt->used)
+	  i++;
+      tmp = Set_Iface (iface);
+      New_Request (tmp, F_REPORT, "Module tcl: %d bindtables in use, %u/%u timers active.",
+		   i, TT_num, TT_alloc);
+      Unset_Iface();
       break;
     default: ;
   }
@@ -1009,8 +1033,6 @@ static int module_signal (INTERFACE *iface, ifsig_t sig)
  */
 Function ModuleInit (char *args)
 {
-  char t[sizeof(ifsig_t)] = {S_REG};
-
   /* kill old interpreter */
   if (Interp)
     Tcl_DeleteInterp (Interp);
@@ -1031,7 +1053,7 @@ Function ModuleInit (char *args)
   Add_Binding ("unfunction", NULL, 0, 0, &tcl_unregister_func, NULL);
   Add_Binding ("dcc", "tcl", U_OWNER, U_NONE, &dc_tcl, NULL);
   /* register core and modules data into TCL */
-  Add_Request (I_MODULE | I_INIT, "*", F_SIGNAL, t);
+  Send_Signal (I_MODULE | I_INIT, "*", S_REG);
   RegisterString ("tcl-default-network", tcl_default_network,
 		  sizeof(tcl_default_network), 0);
   RegisterInteger ("tcl-max-timer", &tcl_max_timer);

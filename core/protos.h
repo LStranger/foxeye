@@ -24,45 +24,52 @@
  * Common functions used by modules and submodules
  */
  
-INTERFACE *Add_Iface (iftype_t, const char *, iftype_t (*) (INTERFACE *, ifsig_t), \
-		int (*) (INTERFACE *, REQUEST *), void *);
-INTERFACE *Find_Iface (iftype_t, const char *);
+INTERFACE *Add_Iface (iftype_t, const char *, iftype_t (*) (INTERFACE *, ifsig_t),
+		      int (*) (INTERFACE *, REQUEST *), void *);
+INTERFACE *Find_Iface (iftype_t, const char *) __attribute__((warn_unused_result));
 INTERFACE *Set_Iface (INTERFACE *);
 int Unset_Iface (void);
 int Rename_Iface (INTERFACE *, const char *);
-    __attribute__ ((format(printf, 4, 5)))
-void Add_Request (iftype_t, const char *, flag_t, const char *, ...);
-    __attribute__ ((format(printf, 3, 4)))
-void New_Request (INTERFACE *, flag_t, const char *, ...);
+void Add_Request (iftype_t, const char *, flag_t, const char *, ...)
+	__attribute__((format(printf, 4, 5)));
+void New_Request (INTERFACE *, flag_t, const char *, ...)
+	__attribute__((format(printf, 3, 4)));
 int Relay_Request (iftype_t, char *, REQUEST *);
 int Get_Request (void);
-bindtable_t *Add_Bindtable (const char *, bttype_t); /* init.c */
-const char *Bindtable_Name (bindtable_t *);
-binding_t *Check_Bindtable (bindtable_t *, const char *, userflag, userflag, \
-		binding_t *);
-binding_t *Add_Binding (const char *, const char *, userflag, userflag, \
-			Function, const char *);
+bindtable_t *Add_Bindtable (const char *, bttype_t) /* init.c */
+	__attribute__((warn_unused_result,nonnull(1)));
+const char *Bindtable_Name (bindtable_t *)
+	__attribute__((warn_unused_result,nonnull(1)));
+binding_t *Check_Bindtable (bindtable_t *, const char *, userflag, userflag,
+			    binding_t *) __attribute__((warn_unused_result));
+binding_t *Add_Binding (const char *, const char *, userflag, userflag,
+			Function, const char *) __attribute__((nonnull(1)));
 void Delete_Binding (const char *, Function, const char *);
-int RunBinding (binding_t *, const uchar *, char *, char *, char *, int, char *);
-int Lname_IsOn (const char *, const char *, const char **);
-modeflag Inspect_Client (const char *, const char *, const char **, \
-			 const char **, time_t *, short *);
-int Add_Help (const char *);			/* help.c */
+int RunBinding (binding_t *, const uchar *, const char *, const char *, char *,
+		int, const char *);
+int Lname_IsOn (const char *, const char *, const char **)
+	__attribute__((warn_unused_result));
+modeflag Inspect_Client (const char *, const char *, const char **,
+			 const char **, time_t *, short *)
+	__attribute__((warn_unused_result));
+int Add_Help (const char *) __attribute__((nonnull(1))); /* help.c */
 void Delete_Help (const char *);
-int Get_Help (const char *, const char *, INTERFACE *, userflag, userflag, \
+int Get_Help (const char *, const char *, INTERFACE *, userflag, userflag,
 		bindtable_t *, char *, int);
-int Add_Clientrecord (const char *, const uchar *, userflag); /* users.c */
-int Add_Alias (const char *, const char *);
+int Add_Clientrecord (const char *, const uchar *, userflag) /* users.c */
+	__attribute__((warn_unused_result));
+int Add_Alias (const char *, const char *)
+	__attribute__((warn_unused_result,nonnull(1)));
 void Delete_Clientrecord (const char *);
-int Change_Lname (char *, char *);
+int Change_Lname (const char *, const char *);
 
 /* ----------------------------------------------------------------------------
  * Internal functions
  */
 
-    __attribute__ ((format(printf, 2, 3)))	/* dispatch.c */
-void dprint (int, const char *, ...);
-void bot_shutdown (char *, int);
+void dprint (int, const char *, ...)		/* dispatch.c */
+	__attribute__ ((format(printf, 2, 3)));
+void bot_shutdown (char *, int) __attribute__ ((noreturn));
 int dispatcher (INTERFACE *);
 
 #define ERROR(a...) dprint (0, ##a)
@@ -74,40 +81,60 @@ int dispatcher (INTERFACE *);
  * Common library functions and definitions
  */
 
-int match (const char *, const char *);		/* lib.c */
-int simple_match (const char *, const char *);
-userflag strtouserflag (const char *, char **);
-int Have_Wildcard (const char *);
-void printl (char *, size_t, char *, size_t, char *, const char *, \
-	     const char *, char *, uint32_t, unsigned short, int, const char *);
+int match (const char *, const char *)		/* lib.c */
+	__attribute__((warn_unused_result));
+int simple_match (const char *, const char *)
+	__attribute__((warn_unused_result));
+userflag strtouserflag (const char *, char **)
+	__attribute__((warn_unused_result));
+int Have_Wildcard (const char *) __attribute__((warn_unused_result,nonnull(1)));
+size_t printl (char *, size_t, char *, size_t, char *, const char *, \
+	       const char *, char *, uint32_t, unsigned short, int, const char *);
 /* buf, size, fmt, linelen, nick, uhost, lname, chann, ip, port, idle, params */
-unsigned short make_hash (const char *);
+unsigned short make_hash (const char *) __attribute__((warn_unused_result));
 
 void foxeye_setlocale (void);
-size_t unistrcut (char *, size_t, int);
+size_t unistrcut (const char *, size_t, int) __attribute__((nonnull(1)));
 size_t unistrlower (char *, const char *, size_t);
-char *strfcpy (char *, const char *, size_t);
+size_t strfcpy (char *, const char *, size_t) __attribute__((nonnull(1, 2)));
 
-void *safe_calloc (size_t, size_t);
-void *safe_malloc (size_t);
+void *safe_calloc (size_t, size_t) __attribute__((warn_unused_result));
+void *safe_malloc (size_t) __attribute__((warn_unused_result));
 void safe_realloc (void **, size_t);
 void safe_free (void **);
-#ifndef HAVE_INLINE
-char *safe_strdup (const char *);
+#ifdef HAVE_INLINE
+#if __GNUC__ >= 4
+#pragma GCC diagnostic ignored "-Wformat-security" /* for F_SIGNAL "string" */
+#endif
+	__attribute__((nonnull(2)))
+static inline void Send_Signal (iftype_t i, const char *m, ifsig_t s)
+{
+  Add_Request (i, m, F_SIGNAL, (char *)s);
+}
+#if __GNUC__ >= 4
+#pragma GCC diagnostic error "-Wformat-nonliteral"
+#endif
+#else
+char *safe_strdup (const char *) __attribute__((warn_unused_result));
 
-int safe_strcmp (const char *, const char *);
-int safe_strcasecmp (const char *, const char *);
-int safe_strncmp (const char *, const char *, size_t);
-int safe_strncasecmp (const char *, const char *, size_t);
-char *safe_strchr (const char *, int);
-size_t safe_strlen (const char *);
+int safe_strcmp (const char *, const char *) __attribute__((warn_unused_result));
+int safe_strcasecmp (const char *, const char *) __attribute__((warn_unused_result));
+int safe_strncmp (const char *, const char *, size_t) __attribute__((warn_unused_result));
+int safe_strncasecmp (const char *, const char *, size_t) __attribute__((warn_unused_result));
+char *safe_strchr (char *, int) __attribute__((warn_unused_result));
+size_t safe_strlen (const char *) __attribute__((warn_unused_result));
 
-const char *expand_path (char *, const char *, size_t);
+const char *expand_path (char *, const char *, size_t)
+	__attribute__((warn_unused_result));
 char *strfcat (char *, const char *, size_t);
-char *NextWord (const char *);
-char *NextWord_Unquoted (char *, const char *, size_t);	/* dst, src, size */
-char *gettoken (char *, char **); /* ptr, nptr */
+char *NextWord (char *) __attribute__((warn_unused_result));
+char *NextWord_Unquoted (char *, char *, size_t)	/* dst, src, size */
+	__attribute__((warn_unused_result));
+char *gettoken (char *, char **)			/* ptr, nptr */
+	__attribute__((warn_unused_result,nonnull(1)));
 void StrTrim (char *);
+
+#define Send_Signal(i,m,s) Add_Request (i, m, F_SIGNAL, (char *)s)
 #endif /* not HAVE_INLINE */
 
 #define FOREVER while (1)
@@ -125,24 +152,38 @@ void StrTrim (char *);
    - second is template XXX for integers XXXalloc, XXXnum, and XXXmax that
      will contain number of allocated, used and max used respectively
    - third is member of structure that may be used as link in chain
-   macro creates integers mentioned above and two functions (NNN here is first
-	argument of macro):
+   macro creates integers mentioned above and three functions (NNN here is first
+   argument of macro):
      NNN *alloc_NNN(void);
    and
-     void free_NNN(NNN *); */
+     void free_NNN(NNN *);
+   and
+     void forget_NNN(void);
+   to prevent memory leak always use the call shown below on module termination
+   for each defined ALLOCATABLE_TYPE(NNN,...):
+     _forget_(NNN); */
 
 #define ALLOCSIZE 32
 
 #define ALLOCATABLE_TYPE(type,tvar,next) \
 static int tvar##alloc = 0, tvar##num = 0, tvar##max = 0; \
+typedef struct ____##type { \
+  struct ____##type *prv; \
+  type a[ALLOCSIZE]; \
+} ____##type; \
+static ____##type *____L##type = NULL; \
 static type *Free##tvar = NULL; \
+	__attribute__((warn_unused_result)) \
 static type *alloc_##type (void) \
 { \
   type *cur; \
   if (!Free##tvar) \
   { \
     register int i = ALLOCSIZE; \
-    Free##tvar = cur = malloc (ALLOCSIZE * sizeof(type)); \
+    ____##type *_L = malloc (sizeof(____##type)); \
+    _L->prv = ____L##type; \
+    ____L##type = _L; \
+    Free##tvar = cur = _L->a; \
     tvar##alloc += i; \
     while ((--i)) \
     { \
@@ -163,7 +204,22 @@ static inline void free_##type (type *cur) \
   cur->next = (void *)Free##tvar; \
   Free##tvar = cur; \
   tvar##num--; \
+} \
+static inline void forget_##type (void) \
+{ \
+  ____##type *_L; \
+  while ((_L = ____L##type)) \
+  { \
+    ____L##type = _L->prv; \
+    FREE (&_L); \
+  } \
 }
+
+#ifdef STATIC
+# define _forget_(a)
+#else
+# define _forget_(a) forget_##a()
+#endif
 
 /* simple functions have to be either in lib.c
    or here if compiler supports inline directive */

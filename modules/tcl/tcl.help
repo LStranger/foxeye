@@ -19,12 +19,12 @@ tcl
 
 set tcl-default-network
 :%* <lname>
-:
+:Default network name for using in Tcl.
 :Defines network name which eggdrop procedures will use for every command.
  Default: "irc".
 
 set tcl-max-timer
 :%* <seconds>
-:
+:Maximum value for Tcl procedure 'utimer'.
 :Defines maximum time for sheduled execution by Tcl command %Rutimer%n.
  Default: 172800.

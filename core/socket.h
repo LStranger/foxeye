@@ -22,6 +22,7 @@
 #define M_POLL		2
 #define M_LIST		3
 #define M_LINP		4
+#define M_UNIX		5
 
 #define E_AGAIN		-1	/* socket is waiting for connection */
 #define E_NOSOCKET	-2	/* no such socket */
@@ -36,8 +37,8 @@
 
 #define POLL_TIMEOUT	200	/* in milliseconds - M_POLL from threads */
 
-idx_t GetSocket (void);				/* allocate one socket */
-int SetupSocket (idx_t, int, char *, unsigned short); /* mode, domain, port */
+idx_t GetSocket (unsigned short);		/* allocate one socket */
+int SetupSocket (idx_t, char *, unsigned short); /* socket, domain, port */
 int KillSocket (idx_t *);			/* forget the socket */
 void CloseSocket (idx_t);			/* just close it */
 ssize_t ReadSocket (char *, idx_t, size_t, int); /* read full line, strip \r\n */
