@@ -24,8 +24,6 @@
 #include "init.h"
 
 #include <ctype.h>
-//#include <fcntl.h>
-//#include <errno.h>
 #include <sys/utsname.h>
 #include <wchar.h>
 #include <locale.h>
@@ -139,7 +137,7 @@ size_t unistrlower (char *dst, const char *src, size_t ds)
 	}
 	ss -= len; /* advance pointer in sourse string */
 	ch += len;
-	wc = tolower(wc);
+	wc = towlower(wc);
 	len = wcrtomb(c, wc, &ms); /* first get the size of lowercase mbchar */
 	if (len < 1)
 	  continue; /* tolower() returned unknown char? ignore it */
@@ -238,8 +236,6 @@ size_t unistrcut (const char *line, size_t len, int maxchars)
   else				/* 8bit encoding - just let's cut it */
     if ((int)len > maxchars)		/* may be it's already ok */
       len = maxchars;
-//  if (line && line[len])
-//    line[len] = '\0';
   return len;
 }
 

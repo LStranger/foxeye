@@ -420,7 +420,6 @@ int Get_Help (const char *fst, const char *sec, INTERFACE *iface, userflag gf,
       return _no_such_help (iface, mode);	/* BAD/smth */
     /* find common help */
     h = Help;					/* if smth/NULL */
-//    topic = fst;			/* then topic={smth} */
   }
   if (table && !strcmp (topic, "*"))		/* if topic is ...{*} */
     return _help_all_topics (h, iface, gf, cf, table, mode);

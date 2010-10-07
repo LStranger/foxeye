@@ -46,6 +46,27 @@ Lname here is registration name (login name).
     - checks if nick is currently online on service and returns his/her
       last activity time, host string and lname; if nick omitted (or nil)
       then returns when, string and who set the topic on channel.
+ timerid = foxeye.SetTimer(time,func)
+    - remembers a job to be executed after some delay; job is some named
+      function and delay is defined in soconds; returns timer identifier.
+ foxeye.ResetTimer(timerid)
+    - cancels a sheduled job by its timer identifier.
+ list = foxeye.client.find(mask[,flags[,field]])
+    - returns list of listfile records that matching mask; if parameter
+      flags is provided then returns only records that have all those
+      flags; if parameter field is provided then checks field to match to
+      mask (and if field is service name then checks flags for that name
+      to match to parameter flags); otherwise checks names and hostmasks
+      to match; if there is no matched records found then returns nil.
+ list = foxeye.client.hosts(lname)
+    - returns list of hosts in listfile record for given lname; if there
+      is no record of that name in listfile or record has no hosts then
+      returns nil.
+ list = foxeye.client.infos(lname)
+    - returns list of fields in listfile record for given lname; if there
+      is no record of that name in listfile or record has no fields then
+      returns nil; network names in returned list are prefixed with '@'
+      to make difference with custom field names.
 
     Also any function that is registered by any module (and also 'port'
 and 'module' from the core) is presented in interpreter as

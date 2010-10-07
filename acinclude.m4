@@ -131,6 +131,8 @@ else
 	AC_MSG_WARN(Your iconv doesn't support Cyrillic translit!)
     else
 	AC_MSG_RESULT(yes)
+	AC_DEFINE([HAVE_CYRILLIC_TRASNLIT], 1,
+		    [Define to 1 if your iconv can do cyrillic transliteration])
     fi
     AC_MSG_CHECKING(for order of //ignore and //translit)
     if test x`echo proba|iconv -t ascii//translit//ignore 2>/dev/null` != xproba; then

@@ -32,7 +32,7 @@ typedef short lid_t;
 
 typedef struct USERRECORD clrec_t;
 
-int Get_Clientlist (INTERFACE *, userflag, const char *, char *);
+int Get_Clientlist (INTERFACE *, userflag, const char *, const char *);
 int Get_Hostlist (INTERFACE *, lid_t);
 int Get_Fieldlist (INTERFACE *, lid_t);
 unsigned short Get_Hosthash (const char *, const char *)

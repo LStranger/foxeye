@@ -1031,8 +1031,7 @@ char *irc_mynick (char *servname)
 BINDING_TYPE_irc_raw (irc_ping);
 static int irc_ping (INTERFACE *net, char *sv, char *me, unsigned char *src,
 		int parc, char **parv, size_t (*lc)(char *, const char *, size_t))
-{
-// Parameters: server [server-to]
+{ /* Parameters: server [server-to] */
   if (parc > 1 && src)
     New_Request (net, F_QUICK, "PONG %s :%s", sv, src);
   else
@@ -1059,8 +1058,7 @@ static int irc_ping (INTERFACE *net, char *sv, char *me, unsigned char *src,
 BINDING_TYPE_irc_raw (irc__nextnick);
 static int irc__nextnick (INTERFACE *net, char *sv, char *me, unsigned char *src,
 		int parc, char **parv, size_t (*lc)(char *, const char *, size_t))
-{
-// Parameters: current new text
+{ /* Parameters: current new text */
   irc_server *serv = net->data;
   clrec_t *clr;
 
@@ -1078,8 +1076,7 @@ static int irc__nextnick (INTERFACE *net, char *sv, char *me, unsigned char *src
 BINDING_TYPE_irc_raw (irc_rpl_bounce);
 static int irc_rpl_bounce (INTERFACE *net, char *sv, char *me, unsigned char *src,
 		int parc, char **parv, size_t (*lc)(char *, const char *, size_t))
-{
-// Parameters: me host port text
+{ /* Parameters: me host port text */
   char newhost[HOSTLEN+7];
 
   if (parc != 4 || atoi(parv[2]) == 0)	/* some other format? */
@@ -1096,8 +1093,7 @@ static int irc_rpl_bounce (INTERFACE *net, char *sv, char *me, unsigned char *sr
 BINDING_TYPE_irc_raw (irc__fatal);
 static int irc__fatal (INTERFACE *net, char *sv, char *me, unsigned char *src,
 		int parc, char **parv, size_t (*lc)(char *, const char *, size_t))
-{
-// Parameters: me text
+{ /* Parameters: me text */
   _irc_try_server ((irc_server *)net->data, NULL, 1, NULL);
   return 1;
 }
@@ -1108,8 +1104,7 @@ static int irc__fatal (INTERFACE *net, char *sv, char *me, unsigned char *src,
 BINDING_TYPE_irc_raw (irc_rpl_welcome);
 static int irc_rpl_welcome (INTERFACE *net, char *sv, char *me, unsigned char *src,
 		int parc, char **parv, size_t (*lc)(char *, const char *, size_t))
-{
-// Parameters: me text
+{ /* Parameters: me text */
   irc_server *serv = net->data;
 
   /* do all bindings */
@@ -1128,8 +1123,7 @@ static void _irc_update_isupport (INTERFACE *, int, char **);
 BINDING_TYPE_irc_raw (irc_rpl_myinfo);
 static int irc_rpl_myinfo (INTERFACE *net, char *sv, char *me, unsigned char *src,
 		int parc, char **parv, size_t (*lc)(char *, const char *, size_t))
-{
-// Parameters: me srvname version umodes chanmodes
+{ /* Parameters: me srvname version umodes chanmodes */
   char umodes[SHORT_STRING];
 
   if (parc != 5)
@@ -1185,8 +1179,7 @@ static int _irc_check_domain (char *domain)
 BINDING_TYPE_irc_raw (irc_quit);
 static int irc_quit (INTERFACE *net, char *sv, char *me, unsigned char *src,
 		int parc, char **parv, size_t (*lc)(char *, const char *, size_t))
-{
-// Parameters: text
+{ /* Parameters: text */
   char *cc;
 
   if (parc != 1 || !src)
@@ -1195,7 +1188,7 @@ static int irc_quit (INTERFACE *net, char *sv, char *me, unsigned char *src,
     *cc = 0;
   if (strcasecmp (src, me)) /* it's not me */
   {
-// Quit reason in netsplit: leftserver goneserver
+    /* Quit reason in netsplit: leftserver goneserver */
     char *gone;
     char *lname;
 #if IFNAMEMAX > HOSMASKLEN
@@ -1207,8 +1200,6 @@ static int irc_quit (INTERFACE *net, char *sv, char *me, unsigned char *src,
     int s;
     binding_t *bind;
 
-//    if ((gone = safe_strchr (src, '!'))) /* using *gone as temp char* var */
-//      *gone = 0;
     strfcpy (target, src, NAMEMAX+1); /* use old nick for interfaces */
     irc_privmsgout_cancel (((irc_server *)net->data)->pmsgout, src);
     strfcat (target, ((irc_server *)net->data)->pmsgout->name, sizeof(target));
@@ -1252,8 +1243,7 @@ static int irc_quit (INTERFACE *net, char *sv, char *me, unsigned char *src,
 BINDING_TYPE_irc_raw (irc_error);
 static int irc_error (INTERFACE *net, char *sv, char *me, unsigned char *src,
 		int parc, char **parv, size_t (*lc)(char *, const char *, size_t))
-{
-// Parameters: text
+{ /* Parameters: text */
   _irc_try_server ((irc_server *)net->data, NULL, 0, parv[0]);
   return 0;
 }
@@ -1261,8 +1251,7 @@ static int irc_error (INTERFACE *net, char *sv, char *me, unsigned char *src,
 BINDING_TYPE_irc_raw (irc_kill);
 static int irc_kill (INTERFACE *net, char *sv, char *me, unsigned char *src,
 		int parc, char **parv, size_t (*lc)(char *, const char *, size_t))
-{
-// Parameters: nick text
+{ /* Parameters: nick text */
   if (parc != 2)
     return 0;
   if (!strcasecmp (parv[0], me))
@@ -1278,8 +1267,7 @@ static int irc_kill (INTERFACE *net, char *sv, char *me, unsigned char *src,
 BINDING_TYPE_irc_raw (irc_privmsg);
 static int irc_privmsg (INTERFACE *net, char *sv, char *me, unsigned char *src,
 		int parc, char **parv, size_t (*lc)(char *, const char *, size_t))
-{
-// Parameters: nick text
+{ /* Parameters: nick text */
   char f[NAMEMAX+1], m[NAMEMAX+1];
   char *cc;
 
@@ -1300,8 +1288,7 @@ static int irc_privmsg (INTERFACE *net, char *sv, char *me, unsigned char *src,
 BINDING_TYPE_irc_raw (irc_err_nosuchnick);
 static int irc_err_nosuchnick (INTERFACE *net, char *sv, char *me, unsigned char *src,
 		int parc, char **parv, size_t (*lc)(char *, const char *, size_t))
-{
-// Parameters: me nick text
+{ /* Parameters: me nick text */
   char f[IFNAMEMAX+1];
 
   if (parc != 3)
@@ -1320,8 +1307,7 @@ static int irc_err_nosuchnick (INTERFACE *net, char *sv, char *me, unsigned char
 BINDING_TYPE_irc_raw (irc_notice);
 static int irc_notice (INTERFACE *net, char *sv, char *me, unsigned char *src,
 		int parc, char **parv, size_t (*lc)(char *, const char *, size_t))
-{
-// Parameters: nick text
+{ /* Parameters: nick text */
   char f[NAMEMAX+1], m[NAMEMAX+1];
   char *cc;
 
@@ -1345,8 +1331,7 @@ static int irc_notice (INTERFACE *net, char *sv, char *me, unsigned char *src,
 BINDING_TYPE_irc_raw (irc_nick);
 static int irc_nick (INTERFACE *net, char *sv, char *me, unsigned char *src,
 		int parc, char **parv, size_t (*lc)(char *, const char *, size_t))
-{
-// Parameters: newnick
+{ /* Parameters: newnick */
   irc_server *serv;
   char oldnick[IFNAMEMAX+1];
   char newnick[HOSTMASKLEN+1];
@@ -1582,8 +1567,7 @@ static void _irc_update_isupport (INTERFACE *net, int parc, char **parv)
 BINDING_TYPE_irc_raw (irc_rpl_isupport);
 static int irc_rpl_isupport (INTERFACE *net, char *sv, char *me, unsigned char *src,
 		int parc, char **parv, size_t (*ilc)(char *, const char *, size_t))
-{
-// Parameters: me param=value ... "are supported by this server"
+{ /* Parameters: me param=value ... "are supported by this server" */
   char *c;
 
   dprint (4, "irc_rpl_isupport: %d params, first one is %s.", parc-2, parv[1]);

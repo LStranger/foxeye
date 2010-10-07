@@ -205,15 +205,19 @@ UNLD  "uunnllooaadd"         MASK
 	   connchain_buffer **_b_u_f);
     Used when Connchain_Grow() function is called. It tries to setup a
     connection chain link for some _p_e_e_r. Value of _p_e_e_r can be used for
-    identification on the setup or for notification in case when module
-    which handles this filter is terminated, any other usage of this
-    value is prohibited. _r_e_c_v and _s_e_n_d are pointers to handlers for
-    receiving and sending data through the link respectively and _b_u_f is
-    pointer where this binding have to store link instance's own buffer
-    structure, this pointer will be passed to _r_e_c_v() and _s_e_n_d() handlers
-    later. If there were no errors then all three those pointers must be
-    set by the binding. Returns 1 in case of success or 0 otherwise.
-    Note: both handlers should be thread-safe, be careful!
+    identification on the setup or for notification to its interface (by
+    sending signal to it) in case when module which handles this filter
+    is terminated, any other usage of this value is prohibited. _r_e_c_v and
+    _s_e_n_d are pointers to handlers for receiving and sending data through
+    the link respectively and _b_u_f is pointer where this binding have to
+    store link instance's own buffer structure, this pointer will be
+    passed to _r_e_c_v() and _s_e_n_d() handlers later. If there were no errors
+    then all three those pointers must be set by the binding. There is a
+    special case when _b_u_f is NULL, in that case binding should do checks
+    needed to setup a connection chain link but do not setup it in real.
+    Returns 1 in case of success or 0 otherwise. Note: handler _r_e_c_v()
+    should be thread-safe and handler _s_e_n_d() should be async-safe, be
+    careful!
     Arguments for _r_e_c_v() are: pointer for passing to Connchain_Get();
     socket identifier; pointer to receiving buffer; size of that buffer;
     pointer to this instance's own buffer. If _r_e_c_v() got NULL pointer to

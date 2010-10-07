@@ -22,6 +22,7 @@
 
 #include <netinet/in.h>
 #include <sys/un.h>
+#include <arpa/inet.h>
 #include <netdb.h>
 #include <sys/socket.h>
 #include <sys/poll.h>
@@ -188,8 +189,6 @@ ssize_t WriteSocket (idx_t idx, const char *buf, size_t *ptr, size_t *sw, int mo
     if (!(rev & POLLOUT))
       return 0;
     sg = write (Pollfd[idx].fd, &buf[*ptr], *sw);
-//    if (sg > 0 && mode != M_RAW)
-//      DBG ("put to socket %d:[%-*.*s]", idx, sg, sg, &buf[*ptr]);
     Pollfd[idx].revents = 0;		/* we wrote socket, reset state */
     if (sg <= 0)			/* EAGAIN */
       return 0;
@@ -208,7 +207,7 @@ int KillSocket (idx_t *idx)
   if (i < 0)
     return -1;
   *idx = -1;			/* no more access to that socket */
-  if (i >= _Snum)// || Socket[i].domain == NULL)
+  if (i >= _Snum)
     return -1;			/* no such socket */
   dprint (4, "socket:KillSocket: fd=%d", Pollfd[i].fd);
   CloseSocket (i);		/* must be first for reentrance */
@@ -389,11 +388,10 @@ idx_t AnswerSocket (idx_t listen)
     Socket[idx].domain = safe_strdup (hptr->h_name); /* subst canonical name */
   else
   {
-    char nd[16];
-    uchar *p = (uchar *)&cliaddr.sin_addr;
+    char nd[16];			/* XXX.XXX.XXX.XXX */
+    uint32_t ad = htonl (cliaddr.sin_addr.s_addr);
 
-    snprintf (nd, sizeof(nd), "%u.%u.%u.%u", p[0], p[1], p[2], p[3]);
-    Socket[idx].domain = safe_strdup (nd);	/* unresolved domain name */
+    Socket[idx].domain = safe_strdup (inet_ntop (AF_INET, &ad, nd, sizeof(nd)));
   }
   return (idx);
 }
@@ -428,9 +426,9 @@ char *SocketError (int er, char *buf, size_t s)
     case E_NOSOCKET:
       strfcpy (buf, "no such socket", s);
       break;
-//    case E_NOLISTEN:
-//      strfcpy (buf, "cannot listen the socket", s);
-//      break;
+    case E_NOTHREAD:
+      strfcpy (buf, "cannot create listening thread", s);
+      break;
     case E_UNDEFDOMAIN:
       strfcpy (buf, "domain not defined", s);
       break;

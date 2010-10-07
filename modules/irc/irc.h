@@ -21,11 +21,9 @@
 
 /* msgs.c -> irc.c */
 char *irc_mynick (char *);
-//void irc_lcs (char *, INTERFACE *, const char *, size_t); /* buf,pmsgout,nick */
 
 /* irc.c -> msgs.c */
 int irc_privmsgin (INTERFACE *, char *, char*, char *, int, int, int,
-//int irc_privmsgin (INTERFACE *, char *, char*, char *, int, int, int);
 			size_t (*) (char *, const char *, size_t));
 void irc_privmsgout (INTERFACE *, int); /* just run stack */
 int irc_privmsgout_default (INTERFACE *, REQUEST *);

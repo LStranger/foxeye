@@ -762,10 +762,12 @@ static void Get_ConfigFromConsole (const char *name, void *ptr, size_t s)
   INTERFACE *cons = Find_Iface (I_CONSOLE, NULL);
   int prompt = 1;
 
-  Unset_Iface();
+  if (!cons)
+    return;
+  Unset_Iface();	/* unlock after Find_Iface() */
   if (!Init)
     return;
-  if (cons && !(cons->ift & I_DIED)) do
+  if (!(cons->ift & I_DIED)) do
     {
       if (prompt)
       {
@@ -829,8 +831,10 @@ static int Start_FunctionFromConsole
 {
   INTERFACE *cons = Find_Iface (I_CONSOLE, NULL);
 
+  if (!cons)
+    return 0;
   Unset_Iface();
-  if (!Init || !cons || (cons->ift & I_DIED))
+  if (!Init || (cons->ift & I_DIED))
     return 0;
   /* get function parameters */
   Set_Iface (Init);
@@ -1089,12 +1093,13 @@ static void _set_floods (void)
   char *name, *c;
   INTERFACE *cons = Find_Iface (I_CONSOLE, NULL);
 
+  if (!cons)
+    return;
   Unset_Iface();
-  while ((leaf = Next_Leaf (TTree, leaf, &name)))
-  {
-    data = leaf->s.data;
-    if (cons && !(cons->ift & I_DIED))
+  if (Init && !(cons->ift & I_DIED))
+    while ((leaf = Next_Leaf (TTree, leaf, &name)))
     {
+      data = leaf->s.data;
       Set_Iface (Init);
       New_Request (cons, 0, "set flood-type %s [%hd:%hd]: ", name,
 		   data->f.ld[0], data->f.ld[1]);
@@ -1123,7 +1128,6 @@ static void _set_floods (void)
 	}
       } while (!(cons->ift & I_DIED));
     }
-  }
 }
 
 static void _report_floods (void)

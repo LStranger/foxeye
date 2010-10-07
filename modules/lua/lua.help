@@ -15,3 +15,9 @@ lua
  shows interpreter message about error. If %_text%_ was executed without\
  errors and evaluated chunk has returned any result then shows number of\
  results returned, type of first returned result, and string value of it.
+
+set lua-max-timer
+:%* <seconds>
+:Maximum value for Lua function 'SetTimer'.
+:Defines maximum time for sheduled execution by Lua command %RSetTimer%n.
+ Default: 172800.

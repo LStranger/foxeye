@@ -346,9 +346,6 @@ static CHANNEL *_ircch_get_channel0 (IRC *net, const char *ch, const char *real)
   _ircch_recheck_features (net);	/* we might get params from server */
   chan = safe_calloc (1, sizeof(CHANNEL));
   chan->chi = Add_Iface (I_SERVICE, ch, &_ircch_sig, &_ircch_req, chan);
-//  chan->real = safe_malloc (strlen(real) + strlen(net->name) + 1);
-//  memcpy (chan->real, real, strlen(real));	/* make real@net string */
-//  strcpy (&chan->real[strlen(real)], net->name);
   chan->real = safe_strdup (real);
   if ((u = Lock_Clientrecord (ch)))
   {
@@ -404,7 +401,6 @@ static void _ircch_destroy_channel (void *cht)
   dprint (4, "ircch: destroying channel %s", ((CHANNEL *)cht)->chi->name);
   while (((CHANNEL *)cht)->nicks)
     if ((nt = _ircch_destroy_link (((CHANNEL *)cht)->nicks)))
-//      nt->umode &= ~A_ISON;	/* wan't remove it, inspect-client may need it */
     {
       dprint (4, "ircch: deleting %s%s", nt->name, nt->net->name);
       if (Delete_Key (nt->net->nicks, nt->name, nt))
@@ -1259,7 +1255,6 @@ static void _ircch_its_rejoin (IRC *net, netsplit *split)
 	    size_t sb;
 
 	    /* we might skip some modes on JOIN's so let's show the change */
-//	    sa = strrchr (link->chan->real, '@') - link->chan->real;
 	    if ((c = safe_strchr (nick->host, '!'))) sb = c - nick->host;
 	    else sb = safe_strlen (nick->host);
 	    if (link->mode & A_ADMIN) modechar = 'a';
@@ -1303,7 +1298,7 @@ static int _ircch_netjoin_AI (netsplit *split)
 }
 
 static void _ircch_netsplit_timeout (IRC *net)
-{ // check for timeouts
+{ /* check for timeouts */
   netsplit *split;
   netsplit **tmp = &net->splits;
 
@@ -1789,10 +1784,8 @@ static int irc_join (INTERFACE *iface, char *svname, char *me, unsigned char *pr
   {
     if (!(chan = _ircch_get_channel (net, parv[0], 0)))
       return -1;			/* got JOIN for channel where I'm not! */
-//    unistrlower (&lcn[s], ch, sizeof(lcn) - s);
     lname = _ircch_get_lname (prefix, &uf, &cf, &id, iface->name,
 			      chan->chi->name, &r, NULL);
-//    lcn[s] = 0;				/* prepare it for _ircch_get_link() */
   }
   /* create link, update wtmp */
   link = _ircch_get_link (net, lcn, chan);
@@ -1829,7 +1822,6 @@ static int irc_kick (INTERFACE *iface, char *svname, char *me, unsigned char *pr
   CHANNEL *ch;
   NICK *nt;
   char *lname, *c, *r;
-//  size_t s;
   binding_t *bind;
   userflag uf, cf;
   netsplit *split;
@@ -1868,10 +1860,7 @@ static int irc_kick (INTERFACE *iface, char *svname, char *me, unsigned char *pr
   if (link)
     CHECKHOSTSET (link->nick, prefix);	/* we might got KICK from alien? */
   if (c)
-  {
     *c = '!';
-//    unistrlower (&str[s], c, sizeof(str) - s);
-  }
   if (!link || link->nick == net->me)
     lname = r = NULL;
   else
@@ -1929,7 +1918,6 @@ static int irc_kick (INTERFACE *iface, char *svname, char *me, unsigned char *pr
     if (lme && lme->mode & (A_ADMIN | A_OP | A_HALFOP))
     {
       /* deop or kick link */
-//      s = (strrchr (ch->real, '@') - ch->real);
       if (c)
 	*c = 0;
       if (ircch_kick_on_revenge == TRUE)
@@ -1978,7 +1966,6 @@ static int irc_kick (INTERFACE *iface, char *svname, char *me, unsigned char *pr
   }
   /* destroy nick if no channels left */
   if (nt)
-//    nt->umode &= ~A_ISON;	/* keep the nick, inspect-client may need it */
   {
     dprint (4, "irc_kick: deleting %s%s", nt->name, net->name);
     if (Delete_Key (net->nicks, nt->name, nt))
@@ -2055,7 +2042,6 @@ static int irc_mode (INTERFACE *iface, char *svname, char *me, unsigned char *pr
   else
   {
     char *lname, *r;
-//    size_t s;
     char lcn[HOSTMASKLEN+1];
 
     if ((c = safe_strchr (prefix, '!')))
@@ -2071,10 +2057,7 @@ static int irc_mode (INTERFACE *iface, char *svname, char *me, unsigned char *pr
     }
     origin = ircch_find_link (net, lcn, ch); /* no origin if it's servermode */
     if (c)
-    {
       *c = '!';
-//	unistrlower (&lcn[s], c, sizeof(lcn) - s);
-    }
     if (origin)
     {
       if (origin->nick == net->me)
@@ -2128,7 +2111,6 @@ static int irc_part (INTERFACE *iface, char *svname, char *me, unsigned char *pr
   CHANNEL *ch;
   NICK *nt;
   char *lname, *c, *r;
-//  size_t s;
   userflag uf, cf;
   binding_t *bind;
   netsplit *split;
@@ -2158,10 +2140,7 @@ static int irc_part (INTERFACE *iface, char *svname, char *me, unsigned char *pr
   }
   CHECKHOSTSET (link->nick, prefix);
   if (c)
-  {
     *c = '!';
-//    unistrlower (&str[s], c, sizeof(str) - s);
-  }
   if (link->nick == net->me)
     lname = r = NULL;
   else
@@ -2215,7 +2194,6 @@ static int irc_part (INTERFACE *iface, char *svname, char *me, unsigned char *pr
   }
   /* destroy nick if no channels left */
   if (nt)
-//    nt->umode &= ~A_ISON;	/* keep the nick, inspect-client may need it */
   {
     dprint (4, "irc_part: deleting %s%s", nt->name, net->name);
     if (Delete_Key (net->nicks, nt->name, nt))
@@ -2259,10 +2237,7 @@ static int irc_topic (INTERFACE *iface, char *svname, char *me, unsigned char *p
   link = _ircch_get_link (net, str, ch);
   CHECKHOSTSET (link->nick, prefix);	/* we might got TOPIC from alien? */
   if (c)
-  {
     *c = '!';
-//    unistrlower (&str[s], c, sizeof(str) - s);
-  }
   if (link->nick == net->me)
     lname = r = NULL;
   else
@@ -2344,13 +2319,11 @@ static int irc_rpl_userhost (INTERFACE *iface, char *svname, char *me,
       nick = _ircch_get_nick (net, userhost, 0);
     }
     else
-    {
       nick = _ircch_get_nick (net, name, 0);
-//      s = strlen (name);		/* remember nick length */
-    }
     if (ch)				/* and restore the input */
       *host = ch;
-    c = NextWord (host);		/* set it at next nick */
+    s = strlen (name);
+    c = gettoken (host, &cc);		/* set it at next nick */
     if (!nick)
     {
       WARNING ("ircch: unrequested RPL_USERHOST from %s for nick %s",
@@ -2369,20 +2342,16 @@ static int irc_rpl_userhost (INTERFACE *iface, char *svname, char *me,
       nick->umode |= A_AWAY;
     else
       nick->umode &= ~A_AWAY;
-    cc = strchr (host, ' ');		/* find delimiter for host */
-    if (cc) *cc = 0;
     FREE (&nick->host);
-    s = strlen (name);
     nick->host = safe_malloc (strlen (host) + s + 2);
     memmove (nick->host, name, s);	/* composite %s!%s there */
     name = &nick->host[s];		/* we dont need it anymore */
     *name = '!';
     strcpy (&name[1], host);
     DBG ("irc_rpl_userhost: set host %s", nick->host);
-    if (cc) *cc = ' ';
+    if (*c) *cc = ' ';			/* see gettoken above */
     if (!nick->lname && ch && nick != net->me)	/* update lname now! */
     {
-//      unistrlower (&userhost[s], name, sizeof(userhost) - s);
       name = _ircch_get_lname (nick->host, NULL, NULL, &id, NULL, NULL, NULL, nick);
       if (name)
 	_ircch_update_link (nick, NULL, name, id);
@@ -2596,30 +2565,17 @@ static int irc_rpl_whoreply (INTERFACE *iface, char *svname, char *me,
   NICK *nick;
   char *c;
   lid_t id;
-//  size_t s;
   char userhost[HOSTMASKLEN+1];
 
   if (parc < 7 || !(net = _ircch_get_network (iface->name, 0, lc)))
     return -1;		/* it's impossible, I think */
   if (lc)
-  {
     lc (userhost, parv[5], sizeof(userhost)-1);
-//    nick = _ircch_get_nick (net, userhost, 0);
-  }
   else
     strfcpy (userhost, parv[5], sizeof(userhost)-1);
   nick = _ircch_get_nick (net, userhost, 0);
   if (nick && nick != net->me)
   {
-//    /* do with lname */
-//    userhost[s++] = '!';
-//    s += unistrlower (&userhost[s], parv[2], (sizeof(userhost) - s - 1));
-//    userhost[s++] = '@';
-//    unistrlower (&userhost[s], parv[3], (sizeof(userhost) - s));
-//    DBG ("irc_rpl_whoreply: checking lname for %s", userhost);
-//    c = _ircch_get_lname (userhost, NULL, NULL, &id, NULL, NULL, NULL, nick);
-//    _ircch_update_link (nick, NULL, c, id);
-//    FREE (&c);
     /* do with host */
     snprintf (userhost, sizeof(userhost), "%s!%s@%s", parv[5], parv[2], parv[3]);
     if (nick->host)
@@ -2735,7 +2691,7 @@ static int irc_rpl_endofnames (INTERFACE *iface, char *svname, char *me,
   CHANNEL *ch;
   LINK *link;
 
-  // show nick stats
+  /* show nick stats */
   if (!(net = _ircch_get_network (iface->name, 0, lc)) ||
       !(ch = _ircch_get_channel (net, parv[1], 0)))
     return -1;
@@ -3092,11 +3048,7 @@ static void icam_ircch (INTERFACE *client, unsigned char *from, char *lname,
   nick = _ircch_get_nick (net, unick, 1);
   if (!(nick->umode & A_ISON))
     WARNING ("irc-channel:icam_ircch: hidden nick %s on %s!", unick, chan);
-//  if (!nick->host && !(net->features & L_NOUSERHOST))	/* to check umode */
-//    New_Request (net->neti, 0, "USERHOST %s", unick);
   CHECKHOSTSET (nick, from);
-//  if (*chan == '!')	/* it already has no XXXXX part */
-//    chan++;
   if (!(ch = _ircch_get_channel0 (net, chan, NULL)))
     return;				/* hmm, it's impossible!? */
   for (link = nick->channels; link && link->chan != ch; )

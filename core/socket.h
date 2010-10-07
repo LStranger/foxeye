@@ -28,7 +28,7 @@
 #define E_NOSOCKET	-2	/* no such socket */
 //#define E_RESOLVTIMEOUT	-3	/* DNS search error */
 //#define E_UNREACHABLE	-4	/* host unreachable */
-//#define E_NOLISTEN	-5	/* cannot listen the socket */
+#define E_NOTHREAD	-5	/* cannot create listening thread */
 //#define E_EOF		-6
 #define E_UNDEFDOMAIN	-7
 #define E_NOSUCHDOMAIN	-8

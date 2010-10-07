@@ -91,7 +91,7 @@ static void _connchain_create (peer_t *peer)
 
 int Connchain_Grow (peer_t *peer, char c)
 {
-  connchain_i *chain;
+  connchain_i *chain, *chk;
   char tc[2];
   binding_t *b;
 
@@ -115,9 +115,46 @@ int Connchain_Grow (peer_t *peer, char c)
     free_connchain_i (chain);		/* unalloc struct then */
     return 0;
   }
+  for (chk = peer->connchain; chk; chk = chk->next)
+  {
+    if (chk->recv == chain->recv && chk->send == chain->send)
+    {
+      chain->recv (NULL, -1, NULL, 0, &chain->buf); /* kill it */
+      dprint (3, "connchain.c: link %c seems duped.", c);
+      free_connchain_i (chain);		/* unalloc struct */
+      return -1;			/* ignore duplicate */
+    }
+  }
   chain->next = peer->connchain;	/* it's done OK, insert into chain */
   peer->connchain = chain;
   dprint (2, "connchain.c: created link %c: %p", c, chain);
+  return 1;
+}
+
+int Connchain_Check (peer_t *peer, char c)
+{
+  connchain_i *chk;
+  char tc[2];
+  binding_t *b;
+  ssize_t (*recv) (connchain_i **, idx_t, char *, size_t, connchain_buffer **);
+  ssize_t (*send) (connchain_i **, idx_t, const char *, size_t *, connchain_buffer **);
+
+  if (c == 0)
+    return 1;				/* idle call */
+  tc[0] = c;
+  tc[1] = 0;
+  b = NULL;				/* start from scratch */
+  while ((b = Check_Bindtable (BT_CChain, tc, U_ALL, U_ANYCH, b)))
+    if (!b->name &&			/* internal only? trying to init */
+	b->func (peer, &recv, &send, NULL))
+      break;				/* found a working binding! */
+  if (b == NULL)			/* no handler found there! */
+    return 0;
+  for (chk = peer->connchain; chk; chk = chk->next)
+  {
+    if (chk->recv == recv && chk->send == send)
+      return -1;			/* ignore duplicate */
+  }
   return 1;
 }
 
@@ -295,12 +332,12 @@ static ssize_t _ccfilter_x_recv (connchain_i **ch, idx_t id, char *str,
   connchain_b *bb = &(*b)->in;
   ssize_t i;
 
-  if (str == NULL)
+  if (str == NULL)			/* termination requested */
   {
     FREE (b);				/* free the buffer struct */
     return E_NOSOCKET;
   }
-  if ((i = _ccfx_find_line (bb)) >= 0)
+  if (bb->inbuf && (i = _ccfx_find_line (bb)) >= 0)
     return _ccfx_get_line (bb, i, str, sz); /* pull all lines from buffer */
   if (bb->inbuf == 0)
     bb->bufpos = 0;			/* restart the pointer */
@@ -309,6 +346,16 @@ static ssize_t _ccfilter_x_recv (connchain_i **ch, idx_t id, char *str,
     i = Connchain_Get (ch, id, &bb->buf[i], sizeof(bb->buf) - i);
     if (i < 0)				/* got error */
     {
+      if (bb->inbuf)			/* there is something left in buffer */
+      {
+	if (bb->inbuf >= (ssize_t)sz)
+	  i = strfcpy (str, &bb->buf[bb->bufpos], sz);
+	else
+	  i = strfcpy (str, &bb->buf[bb->bufpos], bb->inbuf + 1);
+	bb->inbuf -= i;
+	bb->bufpos += i;
+	return i + 1;
+      }
       FREE (b);				/* terminating */
       return i;
     }
@@ -322,6 +369,29 @@ static ssize_t _ccfilter_x_recv (connchain_i **ch, idx_t id, char *str,
   i = Connchain_Get (ch, id, &bb->buf[i], bb->bufpos - i);
   if (i < 0)				/* got error */
   {
+    if (bb->inbuf)			/* there is something left in buffer */
+    {
+      if ((sizeof(bb->buf) - bb->bufpos) >= sz)
+	i = strfcpy (str, &bb->buf[bb->bufpos], sz);
+      else
+	i = strfcpy (str, &bb->buf[bb->bufpos],
+		     sizeof(bb->buf) + 1 - bb->bufpos);
+      bb->inbuf -= i;			/* copied from end of buffer */
+      if (bb->inbuf)
+      {
+	register ssize_t sg;
+
+	sz -= i;
+	if (bb->inbuf >= (ssize_t)sz)
+	  sg = strfcpy (str, bb->buf, sz);
+	else
+	  sg = strfcpy (str, bb->buf, bb->inbuf + 1);
+	bb->inbuf -= sg;
+	i += sg;
+	bb->bufpos = sg;		/* copied from start of buffer */
+      }
+      return i + 1;
+    }
     FREE (b);				/* terminating */
     return i;
   }
@@ -337,19 +407,21 @@ static int _ccfilter_x_init (peer_t *peer,
 	ssize_t (**send) (connchain_i **, idx_t, const char *, size_t *, connchain_buffer **),
 	connchain_buffer **b)
 {
+  *recv = &_ccfilter_x_recv;
+  *send = &_ccfilter_x_send;
+  if (b == NULL)
+    return 1;
   *b = safe_malloc (sizeof(connchain_buffer));
   (*b)->in.inbuf = (*b)->in.bufpos = (*b)->out.inbuf = (*b)->out.bufpos = 0;
   (*b)->peer = peer;
-  *recv = &_ccfilter_x_recv;
-  *send = &_ccfilter_x_send;
   return 1;
 }
 
 /* simple report */
 void Status_Connchains (INTERFACE *iface)
 {
-  New_Request (iface, F_REPORT, "Connchains: %d/%d in use (max was %d).",
-	       _CC_num, _CC_alloc, _CC_max);
+  New_Request (iface, F_REPORT, "Connchains: %d in use (max was %d), %u bytes.",
+	       _CC_num, _CC_max, _CC_asize);
 }
 
 /* init all this stuff */

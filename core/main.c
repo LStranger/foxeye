@@ -175,7 +175,7 @@ static int _request (INTERFACE *iface, REQUEST *req)
     if (req && !dcc->buf[0])
     {
       /* for logs - if not from me */
-      if (req->mask_if & I_LOG)
+      if (req->mask_if == I_LOG)
       {
 	if (req->flag & CONSOLE_LOGLEV)
 	  sw = printl (dcc->buf, sizeof(dcc->buf) - 1, "[%t] %*", 0,

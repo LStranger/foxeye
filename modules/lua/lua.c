@@ -36,8 +36,11 @@
 #include "tree.h"
 #include "direct.h"
 #include "wtmp.h"
+#include "sheduler.h"
 
 static lua_State *Lua = NULL;
+
+static long int _lua_max_timer = 172800;
 
 #define _lua_getfoxeye(l) lua_getglobal(l, "foxeye"); /* T */ \
 			  if (!lua_istable(l, -1)) return 0
@@ -242,10 +245,18 @@ static int _lua_bind (lua_State *L) /* foxeye.bind(table,mask,uflags,func) */
     _lua_try_binds (L, 4, dbg.name); /* t m u B f n */
   else			/* it's unnamed function, let's name it as binding#x */
     _lua_try_binds (L, 4, "binding"); /* t m u B f n */
-  lua_remove (L, 4); /* t m u f n */
+//  lua_remove (L, 4); /* t m u f n */
   table = strdup (table);
-  DBG ("lua:lua_bind: table %s mask %s func %s", table, mask, lua_tostring (L, 5));
-  Add_Binding (table, mask, guf, cuf, &binding_lua, lua_tostring (L, 5));
+  DBG ("lua:lua_bind: table %s mask %s func %s", table, mask, lua_tostring (L, 6));
+  if (!Add_Binding (table, mask, guf, cuf, &binding_lua, lua_tostring (L, 6)))
+  {
+    // TODO: is there a way to know if it's unused so we can drop it?
+//    lua_pushvalue (L, -1); /* t m u B f n n */
+//    lua_pushnil (L); /* t m u B f n n nil */
+//    lua_rawset (L, 4); /* t m u B f n */
+    Add_Request (I_LOG, "*", F_WARN, "Lua: duplicate binding attempt to %s.",
+		 lua_tostring (L, 6));
+  }
   if (Insert_Key (&lua_bindtables, table, (void *)table, 1))
     free ((void *)table); /* it's not added (already in list) so free memory */
   return 0;
@@ -270,6 +281,10 @@ static int _lua_unbind (lua_State *L) /* foxeye.unbind(table[,func]) */
     lua_insert (L, 2); /* t B f */
     if (_lua_find_binding (L, 2, dbg.name)) /* t B f n f */
       Delete_Binding (table, &binding_lua, lua_tostring (L, 4));
+    // TODO: split foxeye.__binds into subtables so we can drop names as below
+//    lua_pushvalue (L, -2); /* t B f n f n */
+//    lua_pushnil (L); /* t B f n f n nil */
+//    lua_rawset (L, 2); /* t B f n f */
   }
   else					/* remove all functions */
     /* unfortunately, there is no way to gather unused names here :( */
@@ -450,6 +465,182 @@ static int _lua_check (lua_State *L) /* time,host,lname = net.check(serv[,nick])
   return 3;
 }
 
+typedef struct lua_timer
+{
+  tid_t tid;
+  time_t when;
+  char *cmd;
+  struct lua_timer *prev;
+} lua_timer;
+
+ALLOCATABLE_TYPE (lua_timer, LT_, prev);
+
+static lua_timer *Lua_Last_Timer = NULL;
+
+static int _lua_timer (lua_State *L) /* tid = SetTimer(time,func) */
+{
+  int n;
+  lua_Debug dbg;
+  lua_timer *tt;
+
+  if (lua_gettop (L) != 2)
+    return luaL_error (L, "bad number of parameters");
+  luaL_argcheck (L, lua_isnumber (L, 1), 1, NULL);
+  luaL_argcheck (L, lua_isfunction (L, 2), 2, NULL);
+  n = lua_tonumber (L, 1);
+  lua_getinfo (L, ">n", &dbg); /* t */
+  if (!dbg.name)
+    return luaL_error (L, "cannot get function name for SetTimer");
+  if (n < 0 || n > _lua_max_timer)
+    return luaL_error (L, "invalid parameters for SetTimer");
+  tt = alloc_lua_timer();
+  tt->tid = NewTimer (I_MODULE, "lua", S_LOCAL, (unsigned int)n, 0, 0, 0);
+  tt->cmd = safe_strdup (dbg.name);
+  tt->when = Time + n;
+  tt->prev = Lua_Last_Timer;
+  Lua_Last_Timer = tt;
+  dprint (3, "tcl:_lua_timer:added timer for %lu", (unsigned long int)tt->when);
+  lua_pushnumber (L, tt->tid);
+  return 1;
+}
+
+static int _lua_untimer (lua_State *L) /* ResetTimer(tid) */
+{
+  int n;
+  lua_timer *tt, **ptt;
+
+  if (lua_gettop (L) != 1)
+    return luaL_error (L, "bad number of parameters");
+  luaL_argcheck (L, lua_isnumber (L, 1), 1, NULL);
+  n = lua_tonumber (L, 1);
+  for (ptt = &Lua_Last_Timer; (tt = *ptt); ptt = &tt->prev)
+    if ((int)tt->tid == n)
+      break;
+  if (!tt)
+    return luaL_error (L, "this timer-id is not active");
+  *ptt = tt->prev;
+  KillTimer (tt->tid);
+  FREE (&tt->cmd);
+  /* do we need some garbage gathering for lua here? */
+  dprint (3, "lua:_lua_untimer:removed timer for %lu", (unsigned long int)tt->when);
+  free_lua_timer (tt);
+  return 0;
+}
+
+typedef struct
+{
+  lua_State *L;
+  int n;
+} lua_r_data;
+
+static int _lua_receiver (INTERFACE *iface, REQUEST *req)
+{
+  if (req)
+  {
+    lua_r_data *d = iface->data;
+    char *c, *cc;
+
+    c = req->string;
+    if (*c) do {
+      cc = gettoken (c, NULL);
+      lua_pushinteger (d->L, d->n++); /* ... t n */
+      lua_pushstring (d->L, c); /* ... t n v */
+      lua_rawset (d->L, -3); /* ... t */
+      c = cc;
+    } while (*c);
+  }
+  return REQ_OK;
+}
+
+static int _lua_cfind (lua_State *L) /* list = find(mask[,flag[,field]]) */
+{
+  int n = lua_gettop (L);
+  const char *mask, *field;
+  userflag f;
+  INTERFACE *tmp;
+
+  if (n < 1 || n > 3)
+    return luaL_error (L, "bad number of parameters");
+  luaL_argcheck (L, lua_isstring (L, 1), 1, NULL);
+  if (n > 1)
+    luaL_argcheck (L, lua_isstring (L, 2), 2, NULL);
+  if (n > 2)
+    luaL_argcheck (L, lua_isstring (L, 3), 3, NULL);
+  mask = lua_tostring (L, 1);
+  if (n > 1)
+    f = strtouserflag (lua_tostring (L, 2), NULL);
+  else
+    f = 0;
+  if (n > 2)
+    field = lua_tostring (L, 3);
+  else
+    field = NULL;
+  tmp = Add_Iface (I_TEMP, NULL, NULL, &_lua_receiver, NULL);
+  n = Get_Clientlist (tmp, f, field, mask);
+  if (n)
+  {
+    tmp->data = safe_malloc (sizeof(lua_r_data));
+    lua_newtable (L); /* ... t */
+    ((lua_r_data *)tmp->data)->n = 1;
+    ((lua_r_data *)tmp->data)->L = L;
+    Set_Iface (tmp);
+    while (Get_Request()); /* push everything there */
+    Unset_Iface();
+  }
+  else
+    lua_pushnil (L);
+  tmp->ift = I_DIED;
+  return 1;
+}
+
+static int _lua_chosts (lua_State *L) /* list = hosts(lname) */
+{
+  INTERFACE *tmp;
+
+  if (lua_gettop (L) != 1)
+    return luaL_error (L, "bad number of parameters");
+  luaL_argcheck (L, lua_isstring (L, 1), 1, NULL);
+  tmp = Add_Iface (I_TEMP, NULL, NULL, &_lua_receiver, NULL);
+  if (Get_Hostlist (tmp, FindLID (lua_tostring (L, 1))))
+  {
+    tmp->data = safe_malloc (sizeof(lua_r_data));
+    lua_newtable (L); /* ... t */
+    ((lua_r_data *)tmp->data)->n = 1;
+    ((lua_r_data *)tmp->data)->L = L;
+    Set_Iface (tmp);
+    while (Get_Request()); /* push everything there */
+    Unset_Iface();
+  }
+  else
+    lua_pushnil (L);
+  tmp->ift = I_DIED;
+  return 1;
+}
+
+static int _lua_cinfos (lua_State *L) /* list = infos(lname) */
+{
+  INTERFACE *tmp;
+
+  if (lua_gettop (L) != 1)
+    return luaL_error (L, "bad number of parameters");
+  luaL_argcheck (L, lua_isstring (L, 1), 1, NULL);
+  tmp = Add_Iface (I_TEMP, NULL, NULL, &_lua_receiver, NULL);
+  if (Get_Fieldlist (tmp, FindLID (lua_tostring (L, 1))))
+  {
+    tmp->data = safe_malloc (sizeof(lua_r_data));
+    lua_newtable (L); /* ... t */
+    ((lua_r_data *)tmp->data)->n = 1;
+    ((lua_r_data *)tmp->data)->L = L;
+    Set_Iface (tmp);
+    while (Get_Request()); /* push everything there */
+    Unset_Iface();
+  }
+  else
+    lua_pushnil (L);
+  tmp->ift = I_DIED;
+  return 1;
+}
+
 static const luaL_Reg luatable_foxeye[] = {
   { "bind", &_lua_bind },
   { "unbind", &_lua_unbind },
@@ -458,8 +649,8 @@ static const luaL_Reg luatable_foxeye[] = {
   { "debug", &_lua_debug },
   { "event", &_lua_event },
   { "EFind", &_lua_efind },
-//  { "SetTimer", &_lua_timer }, // NewTimer : tid = SetTimer(time,func[,data])
-//  { "ResetTimer", &_lua_untimer }, // KillTimer : ResetTimer(tid)
+  { "SetTimer", &_lua_timer },
+  { "ResetTimer", &_lua_untimer },
 //  { "GetFormat", &_lua_fget }, // GetFormat : fmt = GetFormat(name)
 //  { "SetFormat", &_lua_fset }, // SetFormat : SetFormat(name,fmt)
   { "version", &_lua_version },
@@ -468,14 +659,14 @@ static const luaL_Reg luatable_foxeye[] = {
 
 static const luaL_Reg luatable_foxeye_client[] = {
   { "nick", &_lua_nick },
-//  { "find", &_lua_cfind }, // Get_Clientlist : list = find(mask[,flag[,field]])
+  { "find", &_lua_cfind },
 //  { "have", &_lua_chave }, // (G|S)et_Flags : x = have(lname[,serv[,flag]])
 //  { "add", &_lua_cadd }, // Add_Clientrecord : add(lname,mask,flag)
 //  { "delete", &_lua_cdelete }, // Delete_Clientrecord : delete(lname)
 //  { "set", &_lua_cset }, // *Set_Field : set(lname,field[,value])
 //  { "get", &_lua_cget }, // *Get_Field : val,flag,time = get(lname,field)
-//  { "hosts", &_lua_chosts }, // Get_Hostlist : list = hosts(lname)
-//  { "infos", &_lua_cinfos }, // Get_Fieldlist : list = infos(lname)
+  { "hosts", &_lua_chosts },
+  { "infos", &_lua_cinfos },
   { NULL, NULL }
 };
 
@@ -713,6 +904,7 @@ static iftype_t lua_module_signal (INTERFACE *iface, ifsig_t sig)
   LEAF *l;
   char *c;
   INTERFACE *tmp;
+  lua_timer *tt, **ptt;
 
   switch (sig)
   {
@@ -723,6 +915,7 @@ static iftype_t lua_module_signal (INTERFACE *iface, ifsig_t sig)
       Delete_Binding ("unregister", &lua_unregister_variable, NULL);
       Delete_Binding ("unfunction", &lua_unregister_function, NULL);
       Delete_Binding ("dcc", &dc_lua, NULL);
+      UnregisterVariable ("lua-max-timer");
       l = NULL;
       while ((l = Next_Leaf (lua_bindtables, l, &c)))
 	Delete_Binding (c, &binding_lua, NULL);	/* delete all bindings there */
@@ -733,11 +926,50 @@ static iftype_t lua_module_signal (INTERFACE *iface, ifsig_t sig)
       break;
     case S_REG:
       Add_Request (I_INIT, "*", F_REPORT, "module lua");
+      RegisterInteger ("lua-max-timer", &_lua_max_timer);
       break;
     case S_REPORT:
       tmp = Set_Iface (iface);
-      New_Request (tmp, F_REPORT, "Module lua: running.");
+      New_Request (tmp, F_REPORT, "Module lua: %u/%u timers active.", LT_num,
+		   LT_max);
       Unset_Iface();
+      break;
+    case S_LOCAL:
+      for (ptt = &Lua_Last_Timer; (tt = *ptt); )
+      {
+	if (tt->when <= Time)
+	{
+	  lua_pushstring (Lua, tt->cmd); /* n */
+	  lua_gettable (Lua, -1); /* f */
+	  if (!lua_isfunction (Lua, -1))
+	    ERROR ("Lua: timer: %s isn't function name.", tt->cmd);
+	  else
+	  {
+	    register int i = lua_pcall (Lua, 0, 0, 0); /* run Lua binding */
+	    if (i != 0)				/* no errors */
+	    {
+	      if (i == LUA_ERRRUN)
+		ERROR ("Lua: timer: runtime error on call \"%s\": %s.", tt->cmd,
+		       lua_tostring (Lua, 1));
+	      else if (i == LUA_ERRMEM)
+		ERROR ("Lua: timer: memory error on call \"%s\": %s.", tt->cmd,
+		       lua_tostring (Lua, 1));
+	      else
+		ERROR ("Lua: timer: unknown error %d on call \"%s\": %s.", i,
+		       tt->cmd, lua_tostring (Lua, 1));
+	      lua_pop (Lua, 1);
+	    }
+	  }
+	  *ptt = tt->prev;
+	  KillTimer (tt->tid);
+	  FREE (&tt->cmd);
+	  /* do we need some garbage gathering for lua here? */
+	  dprint (3, "lua: timer:removed timer for %lu", (unsigned long int)tt->when);
+	  free_lua_timer (tt);
+	}
+	else
+	  ptt = &tt->prev;
+      }
       break;
     default: ;
   }
@@ -776,6 +1008,7 @@ Function ModuleInit (char *args)
   Add_Binding ("unregister", NULL, 0, 0, &lua_unregister_variable, NULL);
   Add_Binding ("unfunction", NULL, 0, 0, &lua_unregister_function, NULL);
   Add_Binding ("dcc", "lua", U_OWNER, U_NONE, &dc_lua, NULL);
+  RegisterInteger ("lua-max-timer", &_lua_max_timer);
   Send_Signal (I_MODULE | I_INIT, "*", S_REG);
   Add_Help ("lua");
   return ((Function)&lua_module_signal);

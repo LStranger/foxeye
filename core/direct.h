@@ -56,9 +56,9 @@ int Check_Passwd (const char *, char *);		/* plain, encrypted */
 void Dcc_Parse (struct peer_t *, char *, char *, userflag, userflag, int, int,
 		bindtable_t *, char *);			/* default parser */
 
-idx_t Listen_Port (char *, char *, unsigned short *, char *,
-		   void (*) (pthread_t, idx_t, idx_t),
-		   void (*) (char *, char *, char *, idx_t))
+idx_t Listen_Port (char *, char *, unsigned short *, char *, void *,
+		   void (*) (pthread_t, void **, idx_t),
+		   void (*) (char *, char *, char *, void *))
 			__attribute__((warn_unused_result));
 int Connect_Host (char *, unsigned short, pthread_t *, idx_t *,
 		  void (*) (int, void *), void *)
@@ -67,6 +67,7 @@ int Connect_Host (char *, unsigned short, pthread_t *, idx_t *,
 #define CONNCHAIN_READY	1	/* may be return from Connchain_Put(c,i,"",0) */
 
 int Connchain_Grow (peer_t *, char);
+int Connchain_Check (peer_t *, char);
 ssize_t Connchain_Put (connchain_i **, idx_t, const char *, size_t *)
 			__attribute__((warn_unused_result));
 ssize_t Connchain_Get (connchain_i **, idx_t, char *, size_t)

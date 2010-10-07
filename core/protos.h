@@ -166,7 +166,8 @@ void StrTrim (char *);
 #define ALLOCSIZE 32
 
 #define ALLOCATABLE_TYPE(type,tvar,next) \
-static int tvar##alloc = 0, tvar##num = 0, tvar##max = 0; \
+static size_t tvar##asize = 0; \
+static unsigned int tvar##num = 0, tvar##max = 0; \
 typedef struct ____##type { \
   struct ____##type *prv; \
   type a[ALLOCSIZE]; \
@@ -184,7 +185,7 @@ static type *alloc_##type (void) \
     _L->prv = ____L##type; \
     ____L##type = _L; \
     Free##tvar = cur = _L->a; \
-    tvar##alloc += i; \
+    tvar##asize += sizeof(____##type); \
     while ((--i)) \
     { \
       cur->next = (void *)&cur[1]; \
@@ -243,6 +244,10 @@ static inline void forget_##type (void) \
 
 #ifndef HAVE_RENAME
 # define rename movefile
+#endif
+
+#ifndef HAVE_TOWLOWER
+# define towlower tolower
 #endif
 
 /* HP-UX, ConvexOS and UNIXware don't have this macro */

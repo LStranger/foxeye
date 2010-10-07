@@ -502,7 +502,7 @@ static iftype_t _autolog_net_signal (INTERFACE *iface, ifsig_t sig)
 }
 
 static int _autolog_net_request (INTERFACE *iface, REQUEST *req)
-{ // reacts only to I_LOG : F_PUBLIC F_PRIV F_JOIN F_MODES
+{ /* reacts only to I_LOG : F_PUBLIC F_PRIV F_JOIN F_MODES */
   if (req) DBG ("_autolog_net_request: message for %s", req->to);
   if (req && (req->flag & AUTOLOG_LEVELS) && Have_Wildcard (req->to) < 0)
   {
@@ -643,7 +643,7 @@ static iftype_t _autolog_mass_signal (INTERFACE *iface, ifsig_t sig)
 }
 
 static int _autolog_mass_request (INTERFACE *iface, REQUEST *req)
-{ // reacts only to I_LOG : F_PUBLIC F_PRIV F_JOIN F_MODES
+{ /* reacts only to I_LOG : F_PUBLIC F_PRIV F_JOIN F_MODES */
   char *c;
   autolognet_t *net;
 
@@ -715,7 +715,7 @@ static int module_autolog_signal (INTERFACE *iface, ifsig_t sig)
       UnregisterVariable ("autolog-autoclose");
       return I_DIED;
     case S_REG:
-      // reregister all
+      /* reregister all */
       autolog_register();
       break;
     case S_REPORT:

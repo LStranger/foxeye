@@ -8,6 +8,42 @@ TODO:
 	* debian: to debianize it when comes to beta release.
 
 --- [0.9a] * to test all *
+Thu Oct  7 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/irc-channel/irc-channel.c: fixed bug with host parsing on
+	  RPL_USERHOST.
+	* core/main.c: fixed lost console output.
+	* core/init.c, core/modules.c: fixed incorrect unlocking after
+	  Find_Iface().
+
+Wed Sep 15 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/irc-ctcp/dcc.c: fixed wrong killing on module termination.
+	* modules/tcl/modtcl.c: fixed timer freeing.
+	* modules/lua/lua.c, modules/lua/lua.ref: implemented few functions.
+
+Tue Sep 14 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/irc/msgs.c, modules/irc-ctcp/dcc.c: fixed invocations for
+	  MATCHCASE bindtables.
+
+Fri Sep 10 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/socket.c, modules/irc-ctcp/dcc.c: simplified using inet_ntop().
+	* configure, core/protos.h, core/lib.c: implemented towlower() usage.
+
+Thu Sep  9 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/connchain.c: fixed connchain filter 'x' to return data if
+	  it's still left in buffer (it can be required by some filters such
+	  as 'Z').
+	* core/connchain.c: added checking for duplicated filters.
+	* core/connchain.c, core/direct.c, doc/modules.api: implemeneted
+	  function Connchain_Check().
+
+Fri Sep  3 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/dispatcher.c: fixed a hole in iface_run().
+
+Thu Sep  2 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/direct.c, doc/modules.api, modules/irc-ctcp/dcc.c: changed
+	  arguments for function Listen_Port() a lot due to problems with
+	  emergency shutdown.
+
 Wed Sep  1 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/lib.c: fixed parsing end of conditional substring in printl().
 	* core/wtmp.c: fixed wrong diagnostics on Wtmp rotation.

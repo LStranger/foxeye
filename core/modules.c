@@ -90,10 +90,9 @@ ScriptFunction (FE_module)
   args = NextWord ((char *)args);	/* it's still const */
   for (c = name; *c && *c != ' '; c++);
   *c = 0;
-  tmp = Find_Iface (I_MODULE, name);
   if (cmd == 'c')			/* check if module loaded */
   {
-    if (tmp)
+    if (Find_Iface (I_MODULE, name))
     {
       Unset_Iface();
       return -1;
@@ -101,6 +100,7 @@ ScriptFunction (FE_module)
   }
   else if (cmd == 'd')			/* unload the module */
   {
+    tmp = Find_Iface (I_MODULE, name);
     if (!tmp)					/* check if don't loaded */
       return 0;
     snprintf (path, sizeof(path), "Module %s unloaded.", name);
@@ -131,7 +131,7 @@ ScriptFunction (FE_module)
   else if (cmd == 'l')			/* load the module */
   {
     /* check if already loaded */
-    if (tmp)
+    if (Find_Iface (I_MODULE, name))
     {
       Unset_Iface();
       return 0;

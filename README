@@ -49,7 +49,7 @@ Undocumented options.
   require '-d' option. Meaningful only for developers. There also is some
   undocumended macro DBG(fmt,...) that writes debug only into this file (in
   difference with dprint() this one is async-safe, i.e. can be called any
-  time but be pretty sure you have correct arguments to it!).
+  time and anywhere).
 
 Version control.
     Any version A.BCxxx must be compatible. It means if something was changed
@@ -81,6 +81,7 @@ What is in the core?
     - listfile manager (list.c)
     - eventsfile manager (wtmp.c)
     - base character transcoding API (conversion.c)
+    - connection chains API (connchain.c)
 
 What modules have to care about in interaction with "ui" module?
     As soon as module "ui" is loaded it have to get not only text that
@@ -113,7 +114,7 @@ What modules are available?
    getops	- automatic getting privileges from other bots
    icq		- client for ICQ network
    irc-protection - antiflood, antispam and other
-   ircd-rfc1459	- standard (RFC1459) IRC server
+   ircd		- standard (RFC1459) IRC server
    ircd-rusnet	- RusNet ircd IRC server extensions
    jabber	- base support for Jabber network
    login	- "login", "logoff", and "cron" scripts for each chat user

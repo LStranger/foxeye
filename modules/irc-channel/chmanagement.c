@@ -648,37 +648,30 @@ void ircch_recheck_modes (IRC *net, LINK *target, userflag sf, userflag cf,
 
 static void _ircch_expire_exempts (IRC *net, CHANNEL *ch, modebuf *mbuf)
 {
-//  time_t t;
   LIST *list, *list2;
   clrec_t *cl;
   userflag uf, cf;
 
   /* check exceptions and remove all expired if no matched bans left */
-//  if (ircch_exempt_keep > 0)
-//  {
-//    t = Time - ircch_exempt_keep * 60;
-    for (list = ch->exempts; list; list = list->next)
+  for (list = ch->exempts; list; list = list->next)
+  {
+    for (list2 = ch->bans; list2; list2 = list2->next)
+      if (match (list2->what, list->what) > 0)	/* there is a ban... */
+	break;
+    if (list2)
+      continue;					/* ...so keep it */
+    if ((cl = Find_Clientrecord (list->what, NULL, &uf, &net->name[1])))
     {
-//      if (list->since > t)
-//	continue;
-      for (list2 = ch->bans; list2; list2 = list2->next)
-	if (match (list2->what, list->what) > 0)	/* there is a ban... */
-	  break;
-      if (list2)
-	continue;					/* ...so keep it */
-      if ((cl = Find_Clientrecord (list->what, NULL, &uf, &net->name[1])))
-      {
-	cf = Get_Flags (cl, ch->chi->name);
-	Unlock_Clientrecord (cl);
-	if ((uf & (U_ACCESS | U_NOAUTH)) == (U_ACCESS | U_NOAUTH) ||
-	    (cf & (U_ACCESS | U_NOAUTH)) == (U_ACCESS | U_NOAUTH))
-	  continue;					/* it's sticky */
-      }
-      Add_Request (I_LOG, ch->chi->name, F_MODES, "Exception %s on %s expired.",
-		   list->what, ch->chi->name);
-      _push_mode (net, ch->nicks, mbuf, A_EXEMPT, 0, list->what);
+      cf = Get_Flags (cl, ch->chi->name);
+      Unlock_Clientrecord (cl);
+      if ((uf & (U_ACCESS | U_NOAUTH)) == (U_ACCESS | U_NOAUTH) ||
+	  (cf & (U_ACCESS | U_NOAUTH)) == (U_ACCESS | U_NOAUTH))
+	continue;					/* it's sticky */
     }
-//  }
+    Add_Request (I_LOG, ch->chi->name, F_MODES, "Exception %s on %s expired.",
+		 list->what, ch->chi->name);
+    _push_mode (net, ch->nicks, mbuf, A_EXEMPT, 0, list->what);
+  }
 }
 
 static void _ircch_expire_invites (IRC *net, CHANNEL *ch, modebuf *mbuf)

@@ -21,10 +21,6 @@
  */
 
 #include "foxeye.h"
-//#include <fcntl.h>
-//#include <errno.h>
-//#include <netinet/in.h>
-//#include <netdb.h>
 
 #ifdef HAVE_CRYPT_H
 # include <crypt.h>
@@ -697,17 +693,14 @@ struct connchain_buffer
 static ssize_t _ccfilter_y_send (connchain_i **ch, idx_t id, const char *str,
 				 size_t *sz, connchain_buffer **b)
 {
-  ssize_t i = 0, ii, left;
+  ssize_t i = E_NOSOCKET, ii, left;
   char *c;
 
   if (*b == NULL)			/* already terminated */
-    return E_NOSOCKET;
+    return i;
   if (str == NULL ||			/* got termination */
       (i = Connchain_Put (ch, id, "", &i)) < 0)	/* check next link */
-  {
-    FREE (b);
     return i;
-  }
   if (i != CONNCHAIN_READY)		/* next link in chain isn't ready */
     return 0;				/* we don't ready too, of course */
   if ((left = *sz) == 0)		/* it's a test! */
@@ -853,6 +846,8 @@ static int _ccfilter_y_init (peer_t *peer,
 {
   *recv = &_ccfilter_y_recv;
   *send = &_ccfilter_y_send;
+  if (b == NULL)
+    return 1;
   /* we will use buffer as marker, yes */
   *b = safe_malloc (sizeof(connchain_buffer));
   (*b)->tosend = 0;
@@ -862,6 +857,7 @@ static int _ccfilter_y_init (peer_t *peer,
 
 /*
  * Filter 'b' - eggdrop style filter bindtables handler. Local only.
+ *   Note: it's not async-safe on send!
  */
 static ssize_t _ccfilter_b_send (connchain_i **ch, idx_t id, const char *str,
 				 size_t *sz, connchain_buffer **b)
@@ -954,7 +950,8 @@ static int _ccfilter_b_init (peer_t *peer,
   *recv = &_ccfilter_b_recv;
   *send = &_ccfilter_b_send;
   /* we do using *b as peer pointer, make sure connchain is used non-thread */
-  *b = (void *)peer;
+  if (b)
+    *b = (void *)peer;
   return 1;
 }
 
@@ -1157,7 +1154,7 @@ static char *session_handler_main (char *ident, char *host, peer_t *dcc,
   return msg;
 }
 
-static void session_handler (char *ident, char *host, idx_t socket, int flag)
+static void session_handler (char *ident, char *host, void *data, int flag)
 {
   char buf[SHORT_STRING];
   char client[LNAMELEN+1];
@@ -1166,7 +1163,7 @@ static void session_handler (char *ident, char *host, idx_t socket, int flag)
   register char *msg;
 
   dcc = safe_malloc (sizeof(peer_t));
-  dcc->socket = socket;
+  dcc->socket = *(idx_t *)data;
   dcc->state = P_LOGIN;
   dcc->dname = NULL;
   dcc->parse = &Dcc_Parse;
@@ -1195,7 +1192,7 @@ static void session_handler (char *ident, char *host, idx_t socket, int flag)
     sz = strlen (buf);
     if (Peer_Put (dcc, buf, &sz) > 0)	/* it should be OK */
       while (!(Peer_Put (dcc, NULL, &sz))); /* wait it to die */
-    SocketDomain (socket, &p);
+    SocketDomain (dcc->socket, &p);
     /* %L - Lname, %P - port, %@ - hostname, %* - reason */
     Set_Iface (NULL);
     printl (buf, sizeof(buf), format_dcc_closed, 0,
@@ -1212,12 +1209,13 @@ typedef struct
 {
   char *client;			/* it must be allocated by caller */
   char *confline;		/* the same */
+  void *data;			/* from caller */
   unsigned short lport;		/* listener port */
-  idx_t socket;
-  idx_t id;
+  idx_t socket, id;
+  int tst:1;
   pthread_t th;
-  void (*prehandler) (pthread_t, idx_t, idx_t);
-  void (*handler) (char *, char *, char *, idx_t);
+  void (*prehandler) (pthread_t, void **, idx_t);
+  void (*handler) (char *, char *, char *, void *);
 } accept_t;
 
 static iftype_t port_signal (INTERFACE *iface, ifsig_t signal)
@@ -1250,6 +1248,10 @@ static iftype_t port_signal (INTERFACE *iface, ifsig_t signal)
       CloseSocket (acptr->socket);	/* just kill it... */
       pthread_join (acptr->th, NULL);	/* ...and wait until it die */
       Set_Iface (NULL);			/* restore status quo */
+      KillSocket (&acptr->socket);	/* free everything now */
+      FREE (&acptr->client);
+      FREE (&acptr->confline);
+      /* we don't need to free acptr since dispatcher will do it for us */
       iface->ift |= I_DIED;
       break;
     case S_SHUTDOWN:
@@ -1270,6 +1272,7 @@ static void _accept_port_cleanup (void *input_data)
   safe_free (&input_data); /* FREE (&acptr) */
 }
 
+/* fields but client, lport, socket, prehadler, handler, data are undefined */
 static void *_accept_port (void *input_data)
 {
   char *domain;
@@ -1279,10 +1282,15 @@ static void *_accept_port (void *input_data)
   size_t sp;
   unsigned short p;
   time_t t;
+  struct timespec ts1, ts2;
 
   /* set cleanup for the thread before any cancellation point */
   acptr->id = -1;
   pthread_cleanup_push (&_accept_port_cleanup, input_data);
+  ts1.tv_sec = 0;
+  ts1.tv_nsec = 4000000; /* sleep 4 ms */
+  while (acptr->tst == 0)
+    nanosleep (&ts1, &ts2);		/* wait for prehandler */
   domain = SocketDomain (acptr->socket, &p);
   /* SocketDomain() does not return NULL, let's don't wait! */
   if (!*domain)
@@ -1341,7 +1349,9 @@ static void *_accept_port (void *input_data)
   Unset_Iface();
   LOG_CONN ("%s", buf);
   /* we have ident now so call handler and exit */
-  acptr->handler (acptr->client, ident, domain, acptr->socket);
+  if (acptr->data == NULL)
+    acptr->data = &acptr->socket;
+  acptr->handler (acptr->client, ident, domain, acptr->data);
   pthread_cleanup_pop (1);
   return NULL;
 }
@@ -1352,7 +1362,6 @@ static void *_listen_port (void *input_data)
   accept_t *child;
   char buf[8];
   INTERFACE *iface;
-  pthread_t th;
 
   if (!acptr->confline)
     snprintf (buf, sizeof(buf), "%hu", acptr->lport);
@@ -1360,26 +1369,30 @@ static void *_listen_port (void *input_data)
   pthread_setcancelstate (PTHREAD_CANCEL_DISABLE, NULL);
   iface = Add_Iface (I_LISTEN | I_CONNECT, acptr->confline ? acptr->confline : buf,
 		     &port_signal, NULL, acptr);
+  /* now it should be async-safe as it may be killed by shutdown */
   while (acptr->socket >= 0)			/* ends by KillSocket() */
   {
     if ((new_idx = AnswerSocket (acptr->socket)) == E_AGAIN)
       continue;
     else if (new_idx < 0)
     {
-      LOG_CONN (_("Listening socket died."));	/* print error message */
+//      LOG_CONN (_("Listening socket died."));	/* print error message */
       if (acptr->prehandler)			/* notify caller */
-	acptr->prehandler ((pthread_t)0, acptr->socket, -1);
-      KillSocket (&acptr->socket);		/* die now */
+	acptr->prehandler ((pthread_t)0, &acptr->data, -1);
+//      KillSocket (&acptr->socket);		/* die now */
       break;
     }
     child = safe_malloc (sizeof(accept_t));
     child->client = acptr->client;
     child->lport = acptr->lport;
     child->socket = new_idx;
+    child->prehandler = acptr->prehandler;
     child->handler = acptr->handler;
+    child->data = acptr->data;
+    child->tst = 0;			/* use it to wait for prehandler */
     dprint (4, "direct:_listen_port: socket %d answered, %s: new socket %d",
 	    acptr->socket, acptr->client ? "terminated" : "continue", new_idx);
-    if (pthread_create (&th, NULL, &_accept_port, child))
+    if (pthread_create (&child->th, NULL, &_accept_port, child))
     {
       KillSocket (&child->socket);
       FREE (&child);
@@ -1387,19 +1400,23 @@ static void *_listen_port (void *input_data)
     else
     {
       if (acptr->prehandler)
-	acptr->prehandler (th, acptr->socket, child->socket);
+	acptr->prehandler (child->th, &child->data, child->socket);
       else
-	pthread_detach (th);		/* since it's not joinable */
+	pthread_detach (child->th);	/* since it's not joinable */
+      child->tst = 1;			/* let new thread continue */
       if (acptr->client)		/* it's client connection so die now */
-	KillSocket (&acptr->socket);
+      {
+	acptr->client = NULL;		/* it's inherited by child */
+	break;
+      }
     }
   }
-  /* terminated - destroy all */
-  FREE (&acptr->confline);
-  Set_Iface (iface);
-  iface->ift |= I_FINWAIT; /* let know dispatcher that we must be finished */
-  Unset_Iface();
-  /* we don't need to free acptr since dispatcher will do it for us */
+  /* job's ended so let dispatcher know that we must be finished
+     don't do locking and I hope it's still atomic so should be OK */
+//  FREE (&acptr->confline);
+//  Set_Iface (iface);
+  iface->ift = I_LISTEN | I_FINWAIT;
+//  Unset_Iface();
   return NULL;
 }
 #undef acptr
@@ -1410,18 +1427,19 @@ static void *_listen_port (void *input_data)
  */
 static idx_t
 Listen_Port_main (char *client, char *host, unsigned short port, char *confline,
-		  void (*prehandler) (pthread_t, idx_t, idx_t),
-		  void (*handler) (char *, char *, char *, idx_t))
+		  void *data, void (*prehandler) (pthread_t, void **, idx_t),
+		  void (*handler) (char *, char *, char *, void *))
 {
   accept_t *acptr;
   idx_t p;
-  int n = -1;
+  int n = E_NOSOCKET;
   
   if (!handler ||			/* stupidity check ;) */
       (port && port < 1024))		/* don't try system ports! */
     return -1;
   p = GetSocket (M_LIST);
   /* check for two more sockets - accepted and ident check */
+  /* we can have delay here only on host (which is local) resolving */
   if (p < 0 || p >= SOCKETMAX - 2 ||
       (n = SetupSocket (p, (host && *host) ? host : NULL, port)) < 0)
   {
@@ -1431,6 +1449,7 @@ Listen_Port_main (char *client, char *host, unsigned short port, char *confline,
   acptr = safe_malloc (sizeof(accept_t));
   acptr->client = safe_strdup (client);
   acptr->confline = safe_strdup (confline);
+  acptr->data = data;
   acptr->prehandler = prehandler;
   acptr->handler = handler;
   acptr->socket = p;
@@ -1442,7 +1461,7 @@ Listen_Port_main (char *client, char *host, unsigned short port, char *confline,
     FREE (&acptr->client);
     FREE (&acptr->confline);
     FREE (&acptr);
-    return -1;
+    return E_NOTHREAD;
   }
   return p;
 }
@@ -1458,8 +1477,8 @@ static void _assign_port_range (unsigned short *ps, unsigned short *pe)
 }
 
 idx_t Listen_Port (char *client, char *host, unsigned short *sport, char *confline,
-		   void (*prehandler) (pthread_t, idx_t, idx_t),
-		   void (*handler) (char *, char *, char *, idx_t))
+		   void *data, void (*prehandler) (pthread_t, void **, idx_t),
+		   void (*handler) (char *, char *, char *, void *))
 {
   unsigned short port, pe;
   idx_t idx;
@@ -1470,7 +1489,7 @@ idx_t Listen_Port (char *client, char *host, unsigned short *sport, char *confli
     _assign_port_range (&port, &pe);
   while (port <= pe)
   {
-    idx = Listen_Port_main (client, host, port, confline, prehandler, handler);
+    idx = Listen_Port_main (client, host, port, confline, data, prehandler, handler);
     dprint (4, "Listen_Port: %s:%hu: returned %d", host, port, (int)idx);
     if (idx >= 0)
     {
@@ -2550,26 +2569,26 @@ static int _dellistenport (char *pn)
 
 static int _s_h_value[8] = {0,0,0,0,0,0,0,0};
 
-static void session_handler_0 (char *client, char *ident, char *host, idx_t socket) {
-  session_handler (ident, host, socket, 0); }
-static void session_handler_1 (char *client, char *ident, char *host, idx_t socket) {
-  session_handler (ident, host, socket, _s_h_value[0]); }
-static void session_handler_2 (char *client, char *ident, char *host, idx_t socket) {
-  session_handler (ident, host, socket, _s_h_value[1]); }
-static void session_handler_3 (char *client, char *ident, char *host, idx_t socket) {
-  session_handler (ident, host, socket, _s_h_value[2]); }
-static void session_handler_4 (char *client, char *ident, char *host, idx_t socket) {
-  session_handler (ident, host, socket, _s_h_value[3]); }
-static void session_handler_5 (char *client, char *ident, char *host, idx_t socket) {
-  session_handler (ident, host, socket, _s_h_value[4]); }
-static void session_handler_6 (char *client, char *ident, char *host, idx_t socket) {
-  session_handler (ident, host, socket, _s_h_value[5]); }
-static void session_handler_7 (char *client, char *ident, char *host, idx_t socket) {
-  session_handler (ident, host, socket, _s_h_value[6]); }
-static void session_handler_8 (char *client, char *ident, char *host, idx_t socket) {
-  session_handler (ident, host, socket, _s_h_value[7]); }
+static void session_handler_0 (char *client, char *ident, char *host, void *d) {
+  session_handler (ident, host, d, 0); }
+static void session_handler_1 (char *client, char *ident, char *host, void *d) {
+  session_handler (ident, host, d, _s_h_value[0]); }
+static void session_handler_2 (char *client, char *ident, char *host, void *d) {
+  session_handler (ident, host, d, _s_h_value[1]); }
+static void session_handler_3 (char *client, char *ident, char *host, void *d) {
+  session_handler (ident, host, d, _s_h_value[2]); }
+static void session_handler_4 (char *client, char *ident, char *host, void *d) {
+  session_handler (ident, host, d, _s_h_value[3]); }
+static void session_handler_5 (char *client, char *ident, char *host, void *d) {
+  session_handler (ident, host, d, _s_h_value[4]); }
+static void session_handler_6 (char *client, char *ident, char *host, void *d) {
+  session_handler (ident, host, d, _s_h_value[5]); }
+static void session_handler_7 (char *client, char *ident, char *host, void *d) {
+  session_handler (ident, host, d, _s_h_value[6]); }
+static void session_handler_8 (char *client, char *ident, char *host, void *d) {
+  session_handler (ident, host, d, _s_h_value[7]); }
 
-typedef void (*_s_h_proc_type)(char *,char *,char *,idx_t);
+typedef void (*_s_h_proc_type)(char *,char *,char *,void *);
 
 static _s_h_proc_type _s_h_proc[8] = {
   &session_handler_1,
@@ -2604,9 +2623,9 @@ static iftype_t _port_retrier_s (INTERFACE *iface, ifsig_t signal)
     case S_TIMEOUT:
       r = (_port_retrier *)iface->data;
       if (r->u == -1)
-	socket = Listen_Port (NULL, hostname, &r->port, iface->name, NULL, &session_handler_0);
+	socket = Listen_Port (NULL, hostname, &r->port, iface->name, NULL, NULL, &session_handler_0);
       else
-	socket = Listen_Port (NULL, hostname, &r->port, iface->name, NULL, _s_h_proc[r->u]);
+	socket = Listen_Port (NULL, hostname, &r->port, iface->name, NULL, NULL, _s_h_proc[r->u]);
       if (socket >= 0)
       {
 	LOG_CONN (_("Listening on port %hu%s."), r->port,
@@ -2662,7 +2681,6 @@ ScriptFunction (FE_port)	/* to config - see thrdcc_signal() */
 	      (char)ch, port);
   else
     snprintf (msg, sizeof(msg), "port %s%hu", (u & U_ANY) ? "" : "-b ", port);
-//  args = NextWord ((char *)args);	/* it's still const */
   if (u == 0)
     return _dellistenport (msg);
   /* check if already exist */
@@ -2678,7 +2696,7 @@ ScriptFunction (FE_port)	/* to config - see thrdcc_signal() */
   if (ch == 0)
   {
     ii = -1;
-    socket = Listen_Port (NULL, hostname, &port, msg, NULL, &session_handler_0);
+    socket = Listen_Port (NULL, hostname, &port, msg, NULL, NULL, &session_handler_0);
   }
   else
   {
@@ -2689,7 +2707,7 @@ ScriptFunction (FE_port)	/* to config - see thrdcc_signal() */
 	_s_h_value[ii] = ch;
       if (_s_h_value[ii] == ch)
       {
-	socket = Listen_Port (NULL, hostname, &port, msg, NULL, _s_h_proc[ii]);
+	socket = Listen_Port (NULL, hostname, &port, msg, NULL, NULL, _s_h_proc[ii]);
 	break;
       }
     }

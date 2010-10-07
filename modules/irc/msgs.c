@@ -524,10 +524,11 @@ int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
       if (msg_type >= 2)
 	msg[msglen] = 0;
       /* check for command */
-      bind = Check_Bindtable (to ? *PmsginTable[msg_type].pub_bt :
-			      *PmsginTable[msg_type].priv_bt,
-			      &msg[PmsginTable[msg_type].shift], uf, cf, NULL);
-      if (bind)
+      bind = NULL;
+      while ((bind = Check_Bindtable (to ? *PmsginTable[msg_type].pub_bt :
+					*PmsginTable[msg_type].priv_bt,
+				      &msg[PmsginTable[msg_type].shift],
+				      uf, cf, bind)))
       {
 	if (bind->name && (msg_type & 2)) /* another args for ctcp/ctcr */
 	{
@@ -545,6 +546,8 @@ int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
 	else
 	  i = bind->func (client, from, lname, lcnick,
 			  NextWord(&msg[PmsginTable[msg_type].shift]));
+	if (i)
+	  break;
       }
       if (msg_type >= 2)
 	msg[msglen] = '\001';

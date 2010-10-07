@@ -20,7 +20,6 @@
 
 #include "foxeye.h"
 
-//#include <time.h>
 #include <errno.h>
 
 #include "init.h"
@@ -374,7 +373,6 @@ void RotateWtmp (void)
   }
   if (i == 0)
     return;				/* nothing to do yet */
-//  snprintf (path, sizeof(path), "%s.1", wfp);
   snprintf (path2, sizeof(path2), "%s." WTMP_GONE_EXT, wfp);
   /* mark deletable events for wtmp.gone (from $Wtmp.max...$Wtmp.$wtmps) */
   for (i = WTMPS_MAX; i >= wfps; i--)

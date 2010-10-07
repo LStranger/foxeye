@@ -189,15 +189,20 @@ Common API:
   Note for reenterability of all APIs:
     none means that function is non-reenterable and cannot be called
 		from threads without locking of dispatcher, in some
-		cases it may cause even deadlock
-    thread-safe means that funsction may be called from threads
-    reenterable means that function may be called recursively
-    async-safe means that function may be called even on shutdown
-  Threads may call any functions but non-reenterable.
+		cases it may cause even deadlock;
+    thread-safe means that function can be called from threads;
+    reenterable means that function can be called recursively;
+    async-safe means that function can be called even on shutdown.
+  Threads can call any functions but non-reenterable.
 
   Note: main thread has dispatcher state locked on execution of any of
   interface functions so if you want call pthread_join() from there you
   must call Unset_Iface() before that and Set_Iface(NULL) after that.
+
+  Also remember about deadlock possibility - if you have some mutex in
+  your code and locked it while in thread then never ever try to call any
+  function that signed thread-safe or reenterable until you unlock your
+  mutex.
 
   INTERFACE *AAdddd__IIffaaccee (iftype_t _t_y_p_e, const char *_n_a_m_e,
                         iftype_t (*_s_i_g___f_u_n_c) (INTERFACE *, ifsig_t),
@@ -727,7 +732,7 @@ Listfile API:
 	Reenterability: thread-safe
 
   int GGeett__CClliieennttlliisstt (INTERFACE *_i_f_a_c_e, userflag _u_f, const char *_f_n,
-		      char *_m_a_s_k);
+		      const char *_m_a_s_k);
     Sends list (space separated) of known Lnames which have global
     userflags any of _u_f and Listfile field _f_n matched _m_a_s_k, to interface
     _i_f_a_c_e via New_Request(). If checked for bans (_u_f contains appropriate
@@ -1049,32 +1054,38 @@ Direct client's connections API:
 	Reenterability: none
 
   idx_t LLiisstteenn__PPoorrtt (char *_c_l_n, char *_h_o_s_t, unsigned short *_p,
-		  char *_c_o_n_f_l_i_n_e,
-		  void (*_p_r_e_h_a_n_d_l_e_r) (pthread_t _t_h, idx_t _l_s, idx_t _a_s),
+		  char *_c_o_n_f_l_i_n_e, void *_i_d,
+		  void (*_p_r_e_h_a_n_d_l_e_r) (pthread_t _t_h, void **_i_d, idx_t _a_s),
 		  void (*_h_a_n_d_l_e_r) (char *_c_l_n, char *_i_d_e_n_t, char *_h_o_s_t,
-				   idx_t _a_s));
+				   void *_i_d));
     Opens listener for client name _c_l_n on port _p. If _p contains 0 then
     tries ports accordingly to variable "dcc-port-range". It opens a
     socket and when connection is accepted then creates new thread where
     gets ident (see RFC1413) for incoming connection and then passes
-    data of new connection (input client name _c_l_n, got _i_d_e_n_t, _h_o_s_t, and
-    socket _a_s) to function _h_a_n_d_l_e_r (in that accepting thread). If _c_l_n is
-    not NULL then closes listening socket after connection was accepted,
-    else continue to listen the port. If _c_o_n_f_l_i_n_e is not NULL then this
-    port will be reported to config as _c_o_n_f_l_i_n_e. Opened listening socket
-    is presented in dispatcher with name _c_o_n_f_l_i_n_e (or with text line of
-    opened port number if _c_o_n_f_l_i_n_e is NULL) and with type I_LISTEN. If
-    _p_r_e_h_a_n_d_l_e_r is not NULL then it will be called from listening thread
-    each time when connection is accepted (with new thread identifier _t_h,
-    listening socket ID _l_s, and accepting socket ID _a_s) so caller may
-    cancel that thread on emergency. Socket of accepted connection is
-    owned by listening thread and inherited by accepting thread (so by
-    function _h_a_n_d_l_e_r at the end). _h_o_s_t is host name on which listener
-    will be opened (if it is NULL then listener will be opened on all
-    local IPs). Returns listening socket ID and sets _p if port is opened
-    succesfully or returns -1 otherwise. Note: if some error happened in
-    the listening thread then prehandler is called with _a_s equal to -1
-    and undefined _t_h to notify caller about that.
+    data of new connection (client name _c_l_n and value _i_d from caller, and
+    _i_d_e_n_t and _h_o_s_t from input connection) to function _h_a_n_d_l_e_r (in that
+    accepting thread). If _c_l_n is not NULL then closes listening socket
+    after connection was accepted, else continue to listen the port. If
+    _c_o_n_f_l_i_n_e is not NULL then this port will be reported to config as
+    _c_o_n_f_l_i_n_e. Opened listening socket is presented in dispatcher with
+    name _c_o_n_f_l_i_n_e (or with text line of opened port number if _c_o_n_f_l_i_n_e is
+    NULL) and with type I_LISTEN. If _p_r_e_h_a_n_d_l_e_r is not NULL then it will
+    be called from listening thread each time when connection is accepted
+    with new thread identifier _t_h, pointer to _i_d, and accepting socket ID
+    _a_s so caller may cancel that thread on emergency. Accepting thread
+    will wait for _p_r_e_h_a_n_d_l_e_r before calling _h_a_n_d_l_e_r. Socket of accepted
+    connection is owned by listening thread and inherited by accepting
+    thread (so by function _h_a_n_d_l_e_r at the end). _h_o_s_t is host name on
+    which listener will be opened (if it is NULL then listener will be
+    opened on all local IPs). Function _p_r_e_h_a_n_d_l_e_r should remember _a_s in
+    optional data _i_d and if pointer in _i_d is still NULL after call to
+    _p_r_e_h_a_n_d_l_e_r then _h_a_n_d_l_e_r will be called with _i_d that points to _a_s
+    instead so _h_a_n_d_l_e_r can know it in any case. Returns listening socket
+    ID and sets _p if port is opened succesfully or returns -1 otherwise.
+    Note: if some error happened in the listening thread then _p_r_e_h_a_n_d_l_e_r
+    is called with _a_s equal to -1 and undefined _t_h to notify caller about
+    that. Since that might be also as result of emergency shutdown,
+    _p_r_e_h_a_n_d_l_e_r should not call any but async-safe functions in that case.
 	Reenterability: none
 
   int CCoonnnneecctt__HHoosstt (char *_h_o_s_t, unsigned short _p_o_r_t, pthread_t *_t_h,
@@ -1101,13 +1112,17 @@ Connection chain API:
 
   int CCoonnnncchhaaiinn__GGrrooww (peer_t *_p_e_e_r, char _f);
     Adds filter of type _f at top of connection chain of _p_e_e_r. Returns 1
-    if filter was added, 0 if filter not found, and -1 in case of error.
-    You should always call this at least once before you can use any of
-    Connchain_Put(), Connchain_Get(), Connchain_Kill(), Peer_Put(), or
-    Peer_Get() functions. You must always call Connchain_Kill() for any
-    peer where you created connection chain with Connchain_Grow(). Note:
-    adding filters 'x' or 'y' that are implemented in core will always be
-    successful.
+    if filter was added, 0 if filter not found, and -1 in case of error
+    (which may be in case of dead connection or in case when there is
+    some filter with the same handlers in the chain already so that may
+    be considered as duplicate filter try). You should always call this
+    at least once before you can use any of functions Connchain_Put(),
+    Connchain_Get(), Connchain_Kill(), Peer_Put(), or Peer_Get(). You
+    must always call Connchain_Kill() for any peer where you created
+    connection chain with Connchain_Grow(). Note: adding filters 'x' or
+    'y' that are implemented in core will never return 0. Note2: there is
+    a completely legal way to reset all connection chain by binding which
+    setups that new filter so be careful.
     * Filter 'x' : on send adds CR+LF to end of line, accepts line with
       at most MB_LEN_MAX*MESSAGEMAX-1 chars including terminating null
       byte; on receive accepts raw stream, selects lines that are ended
@@ -1117,6 +1132,11 @@ Connection chain API:
       stated in RFC854; on receive does backward conversion into 0xFF,
       ignores any ECHO commands, answers "Y" on AYT, DON'T on WILL, WON'T
       on DO, and skips other RFC854 codes.
+	Reenterability: none
+
+  int CCoonnnncchhaaiinn__CChheecckk (peer_t *_p_e_e_r, char _f);
+    Performs any checks that Connchain_Grow() does but does not actually
+    add a filter into connection chain.
 	Reenterability: none
 
   ssize_t CCoonnnncchhaaiinn__PPuutt (connchain_i **_c_c, idx_t _i_d_x, const char *_l_i_n_e,
@@ -1131,15 +1151,17 @@ Connection chain API:
     If there are data to send and there were no errors encountered then
     appropriately updates counter at _s and returns number of bytes that
     were sent.
-	Reenterability: thread-safe
+	Reenterability: async-safe
 
   ssize_t CCoonnnncchhaaiinn__GGeett (connchain_i **_c_c, idx_t _i_d_x, char *_b_u_f,
 			 size_t _s);
     Tries to receive and filter data from socket _i_d_x through connection
     chain _c_c and put them into buffer _b_u_f of maximum size _s. If _l_i_n_e is
-    NULL or if there was and error on receiving data then chain will be
-    destroyed immediately and socket closed. Returns either error or size
-    of data that was recieved into buf.
+    NULL then chain will be destroyed immediately and socket closed. If
+    there was and error on receiving data then chain will return data
+    that still left in buffers and if no data left then chain will be
+    destroyed and socket closed. Returns either error or size of data
+    that was received into _b_u_f.
 	Reenterability: thread-safe
 
   CCoonnnncchhaaiinn__KKiillll (peer_t *_p_e_e_r);

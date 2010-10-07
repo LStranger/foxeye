@@ -452,22 +452,19 @@ static int _tcl_utimer (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS argv[]
 static int _tcl_killutimer (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS argv[])
 {
   int n;
-  tcl_timer *tt, *ptt;
+  tcl_timer *tt, **ptt;
 
   if (argc != 2)			/* check for number of params */
     return _tcl_errret (tcl, "bad number of parameters.");
   n = ArgInteger (tcl, argv[1]);		/* tid */
-  for (tt = Tcl_Last_Timer, ptt = NULL; tt; tt = (ptt = tt)->prev)
+  for (ptt = &Tcl_Last_Timer; (tt = *ptt); ptt = &tt->prev)
     if ((int)tt->tid == n)
       break;
   if (!tt)
     return _tcl_errret (tcl, "this timer-id is not active.");
+  *ptt = tt->prev;
   KillTimer (tt->tid);
   FREE (&tt->cmd);
-  if (tt == Tcl_Last_Timer)
-    Tcl_Last_Timer = tt->prev;
-  else
-    ptt->prev = tt->prev;
   dprint (3, "tcl:_tcl_killutimer:removed timer for %lu", (unsigned long int)tt->when);
   free_tcl_timer (tt);
   return TCL_OK;
@@ -947,7 +944,7 @@ static int _tcl_interface (char *fname, int argc, const char *argv[])
 static int module_signal (INTERFACE *iface, ifsig_t sig)
 {
   tcl_bindtable *tbt;
-  tcl_timer *tt, *ptt;
+  tcl_timer *tt, **ptt;
   int i;
   INTERFACE *tmp;
 
@@ -985,7 +982,7 @@ static int module_signal (INTERFACE *iface, ifsig_t sig)
       RegisterInteger ("tcl-max-timer", &tcl_max_timer);
       break;
     case S_LOCAL:
-      for (tt = Tcl_Last_Timer, ptt = NULL; tt; tt = (ptt = tt)->prev)
+      for (ptt = &Tcl_Last_Timer; (tt = *ptt); ptt = &tt->prev)
 	if (tt->when <= Time)		/* finds first matched */
 	  break;
 	else
@@ -1006,10 +1003,7 @@ static int module_signal (INTERFACE *iface, ifsig_t sig)
 #endif
       }
       FREE (&tt->cmd);
-      if (tt == Tcl_Last_Timer)
-	Tcl_Last_Timer = tt->prev;
-      else
-	ptt->prev = tt->prev;
+      *ptt = tt->prev;
       free_tcl_timer (tt);
       break;
     case S_REPORT:
@@ -1018,7 +1012,7 @@ static int module_signal (INTERFACE *iface, ifsig_t sig)
 	  i++;
       tmp = Set_Iface (iface);
       New_Request (tmp, F_REPORT, "Module tcl: %d bindtables in use, %u/%u timers active.",
-		   i, TT_num, TT_alloc);
+		   i, TT_num, TT_max);
       Unset_Iface();
       break;
     default: ;

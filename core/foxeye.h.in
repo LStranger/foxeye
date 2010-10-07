@@ -108,6 +108,10 @@ void free ();
 # include <sys/param.h>
 #endif
 
+#ifdef HAVE_WCTYPE_H
+# include <wctype.h>
+#endif
+
 #if !defined PATH_MAX && defined MAXPATHLEN
 # define PATH_MAX MAXPATHLEN
 #endif

@@ -81,10 +81,12 @@ extern char *ShutdownR;
 
 static request_t *FreeReq = NULL;	/* request_t[] array */
 static unsigned int _Ralloc = 0;
+static unsigned int _Rmax = 0;
 static unsigned int _Rnum = 0;
 
 static ifi_t **Interface = NULL;	/* *ifi_t[] array */
 static unsigned int _Ialloc = 0;
+static unsigned int _Imax = 0;
 static unsigned int _Inum = 0;
 static size_t _Inamessize = 0;
 
@@ -104,6 +106,8 @@ pthread_mutex_t LockInum = PTHREAD_MUTEX_INITIALIZER;
 
 static char PID_path[LONG_STRING];
 
+static int is_in_shutdown = 0;
+
 /* locks on input: (LockIface) */
 /* e: -1 if SIGTERM, 0 on normal termination, >0 if error condition */
 void bot_shutdown (char *message, int e)
@@ -115,6 +119,7 @@ void bot_shutdown (char *message, int e)
 
   if (message && *message)
     ShutdownR = message;
+  is_in_shutdown = e;	/* other threads should be frozen if SIGSEGV */
   if (e > 0)
     sig = S_SHUTDOWN;
   else
@@ -312,6 +317,8 @@ static request_t *alloc_request_t (void)
   FreeReq = req->x.next;
   req->x.used = 0;
   _Rnum++;
+  if (_Rnum > _Rmax)
+    _Rmax = _Rnum;
   if (lastdebuglog)
   {
     fprintf (lastdebuglog, "::dispatcher:alloc_request_t: %p free=%p\n",
@@ -698,6 +705,8 @@ Add_Iface (iftype_t ift, const char *name, iftype_t (*sigproc) (INTERFACE*, ifsi
   pthread_mutex_lock (&LockInum);
   if (i == _Inum)
     _Inum++;
+  if (i > _Imax)
+    _Imax = i;
   pthread_mutex_unlock (&LockInum);
   if (Interface[i]->a.name)
     if (Insert_Key (&ITree, Interface[i]->a.name, Interface[i], 0))
@@ -830,20 +839,20 @@ static void iface_run (unsigned int i)
 {
   pthread_mutex_lock (&LockIface);
   /* we are died? OOPS... */
-  while (i < _Inum && (Interface[i]->a.ift & I_DIED))
-    if (_delete_iface (i))		/* if it sent something then skip it */
+  while ((Interface[i]->a.ift & I_DIED))
+    if (_delete_iface (i) ||		/* if it sent something then skip it */
+	i >= _Inum)			/* all rest are died? return now! */
     {
       pthread_mutex_unlock (&LockIface);
       return;
     }
-  /* all rest are died? return now! */
   if (Interface[i]->pq)
   {
     ERROR ("dispatcher error: found unhandled PQ %p on interface %u[%p]!",
 	   Interface[i]->pq, i, Interface[i]);
     Interface[i]->pq = NULL;		/* reset it until we crash! */
   }
-  if (i < _Inum && (Interface[i]->a.ift & I_FINWAIT))
+  if (Interface[i]->a.ift & I_FINWAIT)
   {
     if (Interface[i]->a.IFSignal)
     {
@@ -856,7 +865,7 @@ static void iface_run (unsigned int i)
     else
       Interface[i]->a.ift |= I_DIED;
   }
-  else if (i < _Inum && !(Interface[i]->a.ift & I_LOCKED))
+  else if (!(Interface[i]->a.ift & I_LOCKED))
   {
     stack_iface (&Interface[i]->a, 1);
     _get_current();			/* run with LockIface only */
@@ -968,7 +977,9 @@ void dprint (int level, const char *text, ...)
     fprintf (lastdebuglog, "\n");
     fflush (lastdebuglog);
   }
-  if (level <= O_DLEVEL && level < 9 && Interface) /* level > 8 is printed only to lastdebuglog */
+  /* level > 8 is printed only to lastdebuglog */
+  /* make pseudo "async-safe" connchain's debug when writing to socket */
+  if (level <= O_DLEVEL && level < 9 && Interface && is_in_shutdown <= 0)
   {
     pthread_mutex_lock (&LockIface);
     vsadd_request (NULL, I_LOG, "*",
@@ -1088,14 +1099,15 @@ void Status_Interfaces (INTERFACE *iface)
 		   Interface[i]->a.IFRequest ? "R":"",
 		   NONULL((char *)Interface[i]->a.name), Interface[i]->a.qsize);
   }
+  if (_Inum != _IFInum)
+    ERROR ("dispatcher: _Inum vs. _IFInum: %u != %u", _Inum, _IFInum);
   New_Request (iface, 0,
-	       "Total: %u/%u interfaces (%u bytes), %u/%u requests (%u bytes)",
-	       _Inum, _Ialloc, _Ialloc * sizeof(ifi_t *) +
-			       _IFIalloc * sizeof(ifi_t) +
-			       StNum * sizeof(ifst_t) + _Inamessize,
-	       _Rnum, _Ralloc * REQBLSIZE, _Ralloc * sizeof(reqbl_t));
-  New_Request (iface, 0, "       %u/%u queue slots (%u bytes)", _Qnum, _Qalloc,
-	       _Qalloc * sizeof(queue_t));
+	       "Total (current/max): %u/%u interfaces (%u bytes), %u/%u requests (%u bytes)",
+	       _Inum, _Imax, _Ialloc * sizeof(ifi_t *) + _IFIasize +
+			     StNum * sizeof(ifst_t) + _Inamessize,
+	       _Rnum, _Rmax, _Ralloc * sizeof(reqbl_t));
+  New_Request (iface, 0, "                     %u/%u queue slots (%u bytes)",
+	       _Qnum, _Qmax, _Qasize);
   pthread_mutex_unlock (&LockIface);
 }
 
@@ -1290,9 +1302,6 @@ int dispatcher (INTERFACE *start_if)
   if (freopen ("/dev/null", "r", stdin)) i=i;	/* IFs for compiler happiness */
   if (freopen ("/dev/null", "w", stdout)) i=i;
   setsid();
-//  while (getppid() != (pid_t) 1);
-//  fprintf (stderr, "setsid()\n");
-//  sleep (3);
   /* catch the signals */
   act.sa_handler = &normal_handler;
   sigemptyset (&act.sa_mask);

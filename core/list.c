@@ -451,9 +451,6 @@ static clrec_t *_add_userrecord (const char *name, userflag uf, lid_t id)
   {
     user = safe_calloc (1, sizeof(clrec_t));
     /* set fields */
-//    if (i && name[0] == '@' &&		/* it's special, see load_userfile() */
-//	strrchr (name, '@') == name)
-//      name++;
     user->lname = safe_strdup (name);
     i = safe_strlen (name);
     user->lclname = safe_malloc (i+1);	/* never NULL */
@@ -825,7 +822,8 @@ static int _add_to_list2 (INTERFACE *iface, char *buf, size_t *len, char *msg)
 }
 
 /*--- W --- no locks ---*/
-int Get_Clientlist (INTERFACE *iface, userflag uf, const char *fn, char *mask)
+int Get_Clientlist (INTERFACE *iface, userflag uf, const char *fn,
+		    const char *mask)
 {
   char buf[MESSAGEMAX];
   size_t len;
@@ -2731,8 +2729,6 @@ static int dc__puser (peer_t *dcc, char *args)
   if (*net == '-' && net[1] != ' ')
   {
     lname = NextWord (args);
-//    if (lname[0] != '@')	/* only networks may be added with this! */
-//      return 0;
     for (attr = lname; *attr && *attr != ' ' && *attr != '@'; attr++);
     if (*attr == '@')		/* networks should not have '@' in name */
       return 0;
