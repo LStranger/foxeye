@@ -434,7 +434,10 @@ static int _lua_ison (lua_State *L) /* nick = net.ison(serv[,lname]) */
     lname = NULL;
   if (!Lname_IsOn (lua_tostring (L, 1), lname, &lname))
     lname = NULL;
-  lua_pushstring (L, NONULL(lname));
+  if (lname)
+    lua_pushstring (L, lname);
+  else
+    lua_pushnil (L);
   return 1;
 }
 
@@ -461,7 +464,10 @@ static int _lua_check (lua_State *L) /* time,host,lname = net.check(serv[,nick])
   }
   lua_pushnumber (L, t);
   lua_pushstring (L, NONULL(host));
-  lua_pushstring (L, NONULL(lname));
+  if (lname)
+    lua_pushstring (L, lname);
+  else
+    lua_pushnil (L);
   return 3;
 }
 
@@ -641,6 +647,115 @@ static int _lua_cinfos (lua_State *L) /* list = infos(lname) */
   return 1;
 }
 
+static int _lua_chave (lua_State *L) /* x = have(lname[,serv[,flag]]) */
+{
+  clrec_t *client;
+  const char *srv = NULL, *flstr = NULL;
+  userflag uf;
+  char buff[64];
+
+  uf = (userflag)lua_gettop (L);	/* use it temporary */
+  if (uf < 1 || uf > 3)
+    return luaL_error (L, "bad number of parameters");
+  luaL_argcheck (L, lua_isstring (L, 1), 1, NULL);
+  /* save values and never call Lua when record is locked */
+  if (uf > 1 && !lua_isnil (L, 2))
+  {
+    luaL_argcheck (L, lua_isstring (L, 2), 2, NULL);
+    srv = lua_tostring (L, 2);
+  }
+  if (uf > 2)
+  {
+    luaL_argcheck (L, lua_isstring (L, 3), 3, NULL);
+    flstr = lua_tostring (L, 3);
+  }
+  if (!(client = Lock_Clientrecord (lua_tostring (L, 1))))
+    return luaL_error (L, "no such client name known");
+  uf = Get_Flags (client, srv);
+  if (flstr)				/* 'set' form of function */
+  {
+    if (*flstr == '-')
+      uf &= ~(strtouserflag (&flstr[1], NULL));
+    else if (*flstr == '+')
+      uf |= strtouserflag (&flstr[1], NULL);
+    else
+      uf = strtouserflag (flstr, NULL);
+    uf = Set_Flags (client, srv, uf);
+  }
+  Unlock_Clientrecord (client);
+  lua_pushstring (L, userflagtostr (uf, buff));
+  return 1;
+}
+
+static int _lua_cset (lua_State *L) /* set(lname,field[,value]) */
+{
+  clrec_t *client;
+  const char *field, *val;
+  int n;
+
+  n = lua_gettop (L);
+  if (n < 2 || n > 3)
+    return luaL_error (L, "bad number of parameters");
+  luaL_argcheck (L, lua_isstring (L, 1), 1, NULL);
+  luaL_argcheck (L, lua_isstring (L, 2), 2, NULL);
+  /* save values and never call Lua when record is locked */
+  if (n > 2 && !lua_isnil (L, 3))
+  {
+    luaL_argcheck (L, lua_isstring (L, 3), 3, NULL);
+    val = lua_tostring (L, 3);
+  }
+  else
+    val = NULL;
+  field = lua_tostring (L, 2);
+  if (!(client = Lock_Clientrecord (lua_tostring (L, 1))))
+    return luaL_error (L, "no such client name known");
+  /* TODO: can we set expiration time on field? */
+  if (!Set_Field (client, field, val, 0))
+  {
+    Unlock_Clientrecord (client);
+    return luaL_error (L, "could not set field for client");
+  }
+  Unlock_Clientrecord (client);
+  return 0; /* success */
+}
+
+static int _lua_cget (lua_State *L) /* val,flag,time = get(lname,field) */
+{
+  clrec_t *client;
+  const char *field, *val;
+  time_t exp = 0;
+  userflag uf;
+  char buff[64];
+
+  if (lua_gettop (L) != 2)  
+    return luaL_error (L, "bad number of parameters");
+  luaL_argcheck (L, lua_isstring (L, 1), 1, NULL);
+  if (lua_isnil (L, 2))
+    field = NULL;
+  else
+  {
+    luaL_argcheck (L, lua_isstring (L, 2), 2, NULL);
+    field = lua_tostring (L, 2);
+  }
+  if (!(client = Lock_Clientrecord (lua_tostring (L, 1))))
+    return luaL_error (L, "no such client name known");
+  val = strrchr (field, '@');
+  if (val)
+    uf = Get_Flags (client, (val == field) ? &field[1] : field);
+  else
+    uf = 0;
+  val = safe_strdup (Get_Field (client, field, &exp));
+  Unlock_Clientrecord (client);
+  if (!val)
+    lua_pushnil (L);
+  else
+    lua_pushstring (L, val);
+  lua_pushstring (L, userflagtostr (uf, buff));
+  lua_pushinteger (L, exp);
+  FREE (&val);
+  return 3;
+}
+
 static const luaL_Reg luatable_foxeye[] = {
   { "bind", &_lua_bind },
   { "unbind", &_lua_unbind },
@@ -660,11 +775,11 @@ static const luaL_Reg luatable_foxeye[] = {
 static const luaL_Reg luatable_foxeye_client[] = {
   { "nick", &_lua_nick },
   { "find", &_lua_cfind },
-//  { "have", &_lua_chave }, // (G|S)et_Flags : x = have(lname[,serv[,flag]])
+  { "have", &_lua_chave },
 //  { "add", &_lua_cadd }, // Add_Clientrecord : add(lname,mask,flag)
 //  { "delete", &_lua_cdelete }, // Delete_Clientrecord : delete(lname)
-//  { "set", &_lua_cset }, // *Set_Field : set(lname,field[,value])
-//  { "get", &_lua_cget }, // *Get_Field : val,flag,time = get(lname,field)
+  { "set", &_lua_cset },
+  { "get", &_lua_cget },
   { "hosts", &_lua_chosts },
   { "infos", &_lua_cinfos },
   { NULL, NULL }

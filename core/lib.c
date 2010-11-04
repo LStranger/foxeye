@@ -782,6 +782,9 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
 	case '*':
 	  n = _try_subst (c, nmax, p->message, nn);
 	  break;
+	case 'V':
+	  n = _try_subst (c, nmax, PACKAGE "-" VERSION, nn);
+	  break;
 	case '%':			/* just a percent */
 	  if (nn) *c++ = '%';
 	default:

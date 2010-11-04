@@ -67,6 +67,27 @@ Lname here is registration name (login name).
       is no record of that name in listfile or record has no fields then
       returns nil; network names in returned list are prefixed with '@'
       to make difference with custom field names.
+ flags = foxeye.client.have(lname[,service[,flagschange]])
+    - returns flags that are set on listfile record for given lname; if
+      service is "" then returns flags for direct service and if service
+      is nil then returns only global flags; if flagschange is given
+      then function attempts to made a change for flags (flagschange may
+      start from '-' to remove flags or from '+' to add flags) and then
+      returns new flags.
+ foxeye.client.set(lname,field[,value])
+    - attempts to set value for field on listfile record for given lname;
+      if field is "" then sets direct service console settings in some
+      form; if field is a network name then that name should be prefixed
+      with '@' to make difference with custom field names and custom
+      field name should not have '@' nor ':' within it.
+ value,flag,time = foxeye.client.get(lname,field)
+    - returns data of field on listfile record for given lname: value of
+      field, its associated flags (only if it's a network or service
+      name), and field expiration time; if field is "" then returns data
+      of direct service console settings; if field is nil then returns
+      lname (so does "unaliasing") and record creation time; if field is
+      a network name then that name should be prefixed with '@' to make
+      difference with custom field names.
 
     Also any function that is registered by any module (and also 'port'
 and 'module' from the core) is presented in interpreter as

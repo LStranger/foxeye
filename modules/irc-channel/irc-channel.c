@@ -2320,24 +2320,24 @@ static int irc_rpl_userhost (INTERFACE *iface, char *svname, char *me,
     }
     else
       nick = _ircch_get_nick (net, name, 0);
-    if (ch)				/* and restore the input */
-      *host = ch;
-    s = strlen (name);
-    c = gettoken (host, &cc);		/* set it at next nick */
+    s = host - name;
     if (!nick)
     {
       WARNING ("ircch: unrequested RPL_USERHOST from %s for nick %s",
 	       net->name, userhost);
       continue;				/* alien request? */
     }
-    if (*host == '*')
+    if (ch)				/* and restore the input */
+      *host = ch;
+    if (ch == '*')
     {
       nick->umode |= A_OP;		/* IRCOp */
       host++;
     }
     else
       nick->umode &= ~A_OP;
-    host++;
+    host++;				/* skip '=' */
+    c = gettoken (host, &cc);		/* set it at next nick */
     if (*host++ == '-')
       nick->umode |= A_AWAY;
     else

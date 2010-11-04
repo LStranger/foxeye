@@ -41,8 +41,9 @@ Helps can contain the macros prepends with % (percent):
 "f"	start/stop flashing (blinking)
 "t"	current time in format HH:MM
 "-"	idle time in form "%ed:%Hh" or "%kh:%Mm" or "%Mm:%Ss" (see strftime())
-"="	own nickname on the botnet
+"="	own name in the network
 "s"	operating system name
+"V"	version string alike "foxeye-X.Y.Z"
 "%"	percent sign
 "N"	the user nickname (but motd)
 "L"	the user login name (but help)

@@ -394,13 +394,18 @@ binding_t *Check_Bindtable (bindtable_t *bt, const char *str, userflag gf,
   {
     if (i)
       *ch = *s;
-    else	/* todo: make it to be utf-capable */
+    else	/* TODO: make it to be utf-capable */
       *ch = tolower (*s);
   }
   *ch = 0;
 //  DBG ("init.c:Check_Bindtable:checking for \"%s\":0x%08x/0x%08x", buff, (int)gf, (int)cf);
   if (bt->type == B_UNIQ)
   {
+    if (bind)		/* check for invalid call */
+    {
+      dprint (3, "binds: bindtable \"%s\" duplicate call", bt->name);
+      return NULL;
+    }
     b = Find_Key (bt->list.tree, buff);
     if (scf & U_EQUAL)
     {

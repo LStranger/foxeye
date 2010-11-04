@@ -8,6 +8,20 @@ TODO:
 	* debian: to debianize it when comes to beta release.
 
 --- [0.9a] * to test all *
+Thu Nov  4 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/rwlock_init.c: rewritten bad locking algorhytm (writers would
+	  get starved before so got favored over readers).
+
+Wed Oct 27 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/dispatcher.c: added SIGABRT handling.
+
+Tue Oct 26 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/lib.c, doc/help.format: added %V macro to printl().
+	* core/init.c: fixed return on duplicate UNIQ bindtable check.
+
+Fri Oct 22 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/lua/lua.c, modules/lua/lua.ref: implemented few functions.
+
 Thu Oct  7 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc-channel/irc-channel.c: fixed bug with host parsing on
 	  RPL_USERHOST.

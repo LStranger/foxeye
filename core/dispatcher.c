@@ -1223,6 +1223,9 @@ static void errors_handler (int signo)
     case SIGQUIT:
       signame = "QUIT";
       break;
+    case SIGABRT:
+      signame = "ABRT";
+      break;
     case SIGILL:
       signame = "ILL";
       break;
@@ -1311,6 +1314,7 @@ int dispatcher (INTERFACE *start_if)
   sigaction (SIGHUP, &act, NULL);
   act.sa_handler = &errors_handler;
   sigaction (SIGQUIT, &act, NULL);	/* catch these signals as errors */
+  sigaction (SIGABRT, &act, NULL);
   sigaction (SIGILL, &act, NULL);
   sigaction (SIGFPE, &act, NULL);
   sigaction (SIGSEGV, &act, NULL);

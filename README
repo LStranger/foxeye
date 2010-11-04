@@ -10,19 +10,20 @@ Note for SOCKS support:
   to ask your system adminstrator for some NAT firewall setup. :)
 
 Catched signals and actions:
-SIGFPE	shutdown the bot
-SIGHUP	flush files/connections
-SIGILL	shutdown the bot
-SIGINT	restart the bot
+SIGABRT	shutdowns the bot
+SIGBUS	shutdowns the bot
+SIGFPE	shutdowns the bot
+SIGHUP	flushes files/connections
+SIGILL	shutdowns the bot
+SIGINT	restarts the bot
+SIGIO	used by sockets API
 SIGPIPE	ignored
-SIGQUIT	shutdown the bot
-SIGSEGV	shutdown the bot
-SIGTERM	shutdown the bot
+SIGQUIT	shutdowns the bot
+SIGSEGV	shutdowns the bot
+SIGSYS	shutdowns the bot
+SIGTERM	shutdowns the bot
 SIGUSR1	ignored
 SIGUSR2	ignored
-SIGBUS	shutdown the bot
-SIGSYS	shutdown the bot
-SIGIO	used by sockets API
 
 Return codes:
 0	all went OK

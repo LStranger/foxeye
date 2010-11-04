@@ -374,11 +374,11 @@ Common API:
 	Reenterability: async-safe
 
   char *ggeettttookkeenn (char *_p_t_r, char **_e_o_w);
-    Parses null-terminated string _p_t_r, puts terminated null char after
-    first word of it and if _e_o_w is not NULL then puts pointer to this
-    termination char into _e_o_w. Returns pointer to next token in parsed
-    string. If there is no words left in the string then returns pointer
-    to null char. Delimiter of words on parsing is space char.
+    Parses null-terminated string _p_t_r, puts a null char at the first word
+    delimiter in it and if _e_o_w is not NULL then puts pointer to delimiter
+    into _e_o_w. Returns pointer to next word in the parsed string. If there
+    are no words left in the string then returns pointer to null char.
+    Delimiter of words on parsing is space char.
 	Reenterability: async-safe
 
   char *NNeexxttWWoorrdd (char *_m_s_g);
