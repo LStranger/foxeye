@@ -7,12 +7,17 @@ TODO:
 	* core/wtmp.c: to replace all fopen() with open().
 
 --- [0.9b] * to test all *
+Fri Dec 10 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/irc-channel/irc-channel.c: fixed a warning formatting.
+
 Wed Dec  8 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc-channel/irc-channel.c: fixed unending cycle on
 	  RPL_USERHOST.
 	* modules/irc-ctcp/dcc.c, core/direct.c: added missing KillSocket().
 	* core/direct.c: fixed error in 'y' connchain filter.
 	* core/modules.c: removed usage of poll() on sending data.
+	* core/lib.c, core/protos.h, doc/modules.api: changed template on
+	  printl() to be const char * instead of char *.
 
 Sat Dec  4 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.c: changed key for DES encryption indicator.

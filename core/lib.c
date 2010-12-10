@@ -557,7 +557,7 @@ static size_t _try_subst (char *buf, size_t bs, const char *text, size_t s)
 }
 
 typedef struct {
-  char *t;		/* pointer to template */
+  const char *t;	/* pointer to template */
   size_t i;		/* real chars in line */
   char *nick;
   const char *host;
@@ -600,8 +600,8 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
   char tbuf[SHORT_STRING];
   struct utsname unbuf;
   register char *c;
-  char *t = p->t;
-  char *cc, *end;
+  const char *t = p->t;
+  const char *cc, *end;
 
   unbuf.sysname[0] = 0;
   c = buf;				/* set to end of buffer */
@@ -627,7 +627,7 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
     {
       ssize_t n;			/* n is number of real chars to add */
       size_t nmax;
-      char *fix;
+      const char *fix;
       ssize_t nn;
       static char mircsubst[] = "WkbgRrmyYGcCBMKw";
 
@@ -645,10 +645,11 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
       cc = memchr (t, '%', n);
       if (!cc)				/* next subst is over */
       {					/* try by words */
-	char *cs;
+	const char *cs;
 
 	if (end > &t[n])		/* if template doesn't fit */
-	  for (cc = cs = t; *cs && cc <= &t[n]; cc = NextWord (cs)) cs = cc;
+	  for (cc = cs = t; *cs && cc <= &t[n]; cc = NextWord ((char *)cs))
+	    cs = cc;
 	else
 	  cs = end;
 /*	if (q && *end == '?' && cs > end)
@@ -681,7 +682,7 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
       fix = &t[1];
       if (*fix >= '0' && *fix <= '9')	/* we have fixed field width here */
       {
-	n = (int)strtol (fix, &fix, 10);
+	n = (int)strtol (fix, (char **)&fix, 10);
 	if (n < nn)
 	{
 	  nmax = nn;		/* disable wrapping: assume field has width n */
@@ -874,7 +875,7 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
   return c;
 }
 
-size_t printl (char *buf, size_t s, char *templ, size_t strlen,
+size_t printl (char *buf, size_t s, const char *templ, size_t strlen,
 		char *nick, const char *uhost, const char *lname, char *chan,
 		uint32_t ip, unsigned short port, int idle, const char *message)
 {

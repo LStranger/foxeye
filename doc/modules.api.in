@@ -399,7 +399,7 @@ Common API:
     for details). Returns value 0 or more if there is one, -1 otherwise.
 	Reenterability: async-safe
 
-  size_t pprriinnttll (char *_b_u_f, size_t _s, char *_t_e_m_p_l, size_t _s_t_r_l_e_n,
+  size_t pprriinnttll (char *_b_u_f, size_t _s, const char *_t_e_m_p_l, size_t _s_t_r_l_e_n,
 		 char *_n_i_c_k, const char *_u_h_o_s_t, const char *_l_n_a_m_e,
 		 char *_c_h_a_n, uint32_t _i_p, unsigned short _p_o_r_t, int _i_d_l_e,
 		 const char *_m_e_s_s_a_g_e);

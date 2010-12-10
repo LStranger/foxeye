@@ -88,7 +88,7 @@ int simple_match (const char *, const char *)
 userflag strtouserflag (const char *, char **)
 	__attribute__((warn_unused_result));
 int Have_Wildcard (const char *) __attribute__((warn_unused_result,nonnull(1)));
-size_t printl (char *, size_t, char *, size_t, char *, const char *, \
+size_t printl (char *, size_t, const char *, size_t, char *, const char *, \
 	       const char *, char *, uint32_t, unsigned short, int, const char *);
 /* buf, size, fmt, linelen, nick, uhost, lname, chann, ip, port, idle, params */
 unsigned short make_hash (const char *) __attribute__((warn_unused_result));

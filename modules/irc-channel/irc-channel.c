@@ -2322,7 +2322,7 @@ static int irc_rpl_userhost (INTERFACE *iface, char *svname, char *me,
       *host = ch;
     if (!nick)
     {
-      WARNING ("ircch: unrequested RPL_USERHOST from %s for nick %*s",
+      WARNING ("ircch: unrequested RPL_USERHOST from %s for nick %.*s",
 	       net->name, s, name);
       continue;				/* alien request? */
     }

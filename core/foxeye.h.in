@@ -367,7 +367,7 @@ typedef enum
   A_OFFLINE	= 0,
   /* user specific modes */
   A_MASKED	= (1<<4),	/* host masking is on */
-  A_INVISIBLE	= (1<<5),	/* invisible */
+  A_INVISIBLE	= (1<<5),	/* invisible or local */
   A_REGISTERED	= (1<<6),	/* identified */
   A_ME		= (1<<7),	/* it's me */
   /* "user-in-public" modes */
