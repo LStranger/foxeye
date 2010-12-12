@@ -2,7 +2,7 @@ dnl Process this file with autoconf to produce a configure script.
 AC_PREREQ(2.50)
 AC_INIT(core/foxeye.h)
 AM_CONFIG_HEADER(config.h)
-AM_INIT_AUTOMAKE(foxeye, 0.9a3)
+AM_INIT_AUTOMAKE(foxeye, 0.9b1)
 
 AC_CANONICAL_HOST
 
@@ -27,7 +27,10 @@ dnl Checks for C compiler features
 AC_C_CONST
 AC_C_VOLATILE
 AC_C_INLINE
+
+dnl Checks for system features to implement optimizations
 dnl AC_C_BIGENDIAN
+dnl AC_CHECK_SIZEOF(int)
 
 ac_default_prefix="${HOME}/${PACKAGE}"
 m4_pattern_allow(LIBOBJ)
@@ -161,6 +164,9 @@ dnl Checks for multithreaded heap managers
 AC_SEARCH_LIBS(mallocctl, mtmalloc) dnl Sun's MTmalloc
 AC_HAVE_LIBRARY(hoard) dnl Not sure if it works that way
 
+dnl Check for libthr presence (it has thread-safe libc functions on FreeBSD)
+AC_HAVE_LIBRARY(thr)
+
 dnl Checks for libraries and extensions
 AC_SEARCH_LIBS(socket, socket)
 AC_SEARCH_LIBS(connect, nsl)
@@ -259,6 +265,7 @@ fi
 
 GENDATE="`LC_TIME=C date +'%B %Y'`"
 AC_SUBST(GENDATE)
+AC_DEFINE_UNQUOTED(COMPILETIME, "`LC_TIME=C date`", [The compilation time string.])
 
 AC_SUBST(LD)
 AC_SUBST(LD_MODS)

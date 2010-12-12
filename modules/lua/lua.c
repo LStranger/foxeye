@@ -45,19 +45,79 @@ static long int _lua_max_timer = 172800;
 #define _lua_getfoxeye(l) lua_getglobal(l, "foxeye"); /* T */ \
 			  if (!lua_istable(l, -1)) return 0
 
-static inline int _lua_getbindlist (lua_State *L) /* -> B */
+static inline int _lua_getbindtableslist (lua_State *L) /* -> BB */
 {
   _lua_getfoxeye (L); /* T */
   lua_pushstring (L, "__binds"); /* T b */
-  lua_rawget (L, -2); /* T B */
-  lua_remove (L, -2); /* B */
+  lua_rawget (L, -2); /* T BB */
+  lua_remove (L, -2); /* BB */
   if (!lua_istable (L, -1))
     return 0;
   return 1;
 }
 
-static int _lua_getbinding (lua_State *L, int n, const char *name) /* -> n f */
+static inline int _lua_getbindlist (lua_State *L, const char *bt) /* -> B */
 {
+  dprint (4, "lua:_lua_getbindlist on %s.", bt);
+  if (!_lua_getbindtableslist (L))
+    return 0;
+  lua_pushstring (L, bt); /* BB n */
+  lua_rawget (L, -2); /* BB B */
+  if (!lua_istable (L, -1))
+  {
+    lua_pop (L, 1); /* BB */
+    lua_newtable (L); /* BB B */
+    lua_pushstring (L, bt); /* BB B n */
+    lua_pushvalue (L, -2); /* BB B n B */
+    lua_settable (L, -4); /* BB B */
+  }
+  lua_remove (L, -2); /* B */
+  return 1;
+}
+
+static inline void _lua_clearbindlist (lua_State *L, int t) /* -> */
+{
+  if (_lua_getbindtableslist (L)) /* BB */
+  {
+    lua_pushvalue (L, t); /* BB t */
+    lua_pushnil (L); /* BB t nil */
+    lua_settable (L, -3); /* BB */
+  }
+  lua_pop (L, 1); /* */
+}
+
+static int _lua_scanbindlists (lua_State *L, int t) /* -> */
+{
+  int n;
+
+  if (!_lua_getbindtableslist (L)) /* BB */
+  {
+    lua_pop (L, 1);
+    return -1;
+  }
+  n = 0;
+  lua_pushstring (L, "*"); /* BB a */
+  lua_rawget (L, -2); /* BB A */
+  lua_pushnil (L); /* BB A nil */
+  while (lua_next (L, -3)) /* BB A k B */
+  {
+    if (lua_istable (L, -1) && !lua_equal (L, -1, -3))
+    {
+      lua_pushvalue (L, t); /* BB A k B n */
+      lua_rawget (L, -2); /* BB A k B f */
+      if (!lua_isnil (L, -1))
+	n++;
+      lua_pop (L, 1); /* BB A k B */
+    }
+    lua_pop (L, 1); /* BB A k */
+  } /* BB A */
+  lua_pop (L, 2); /* */
+  return n;
+}
+
+static inline int _lua_getbinding (lua_State *L, int n, const char *name) /* -> n f */
+{
+  dprint (4, "lua:_lua_getbinding on %s.", name);
   lua_pushstring (L, name); /* n */
   lua_pushvalue (L, -1); /* n n */
   lua_gettable (L, n); /* n f */
@@ -73,6 +133,7 @@ static int binding_lua (char *name, int argc, const char *argv[])
 {
   int i = 0;
 
+  dprint (4, "lua:binding_lua call for %s.", name);
   if (!safe_strcmp (name, "-"))
   {
     BindResult = "Lua";
@@ -84,15 +145,15 @@ static int binding_lua (char *name, int argc, const char *argv[])
     ERROR ("Lua:binding_lua: stack isn't empty, %d elements in it.", i);
     lua_settop (Lua, 0);			/* reset stack */
   }
-  if (!_lua_getbindlist (Lua) ||
+  if (!_lua_getbindlist (Lua, "*") || /* B */
       !_lua_getbinding (Lua, 1, name))		/* push function onto stack */
   {
     ERROR ("Lua:binding_lua: binding %s not found.", name);
     lua_settop (Lua, 0);
     return 0;
   }
-  lua_remove (Lua, 1);
-  lua_remove (Lua, 1);
+  lua_remove (Lua, 1); /* n f */
+  lua_remove (Lua, 1); /* f */
   while (i < argc)
     lua_pushstring (Lua, argv[i++]);		/* push parameters onto stack */
   i = lua_pcall (Lua, argc, 1, 0);		/* run Lua binding */
@@ -229,36 +290,38 @@ static int _lua_bind (lua_State *L) /* foxeye.bind(table,mask,uflags,func) */
   luaL_argcheck (L, lua_isstring (L, 2), 2, NULL);
   luaL_argcheck (L, lua_isstring (L, 3), 3, NULL);
   luaL_argcheck (L, lua_isfunction (L, 4), 4, NULL);
-  if (!_lua_getbindlist (L)) /* t m u f B */
+  if (!_lua_getbindlist (L, "*")) /* t m u f A */
     return luaL_error (L, "incorrectable binding error");
-  lua_insert (L, 4); /* t m u B f */
+  lua_insert (L, 4); /* t m u A f */
   table = lua_tostring (L, 1);
   mask = lua_tostring (L, 2);
   _lua_getflags (L, 3, &guf, &cuf);
-  lua_pushvalue (L, -1); /* t m u B f f */
-  lua_getinfo (L, ">n", &dbg); /* t m u B f */
+  lua_pushvalue (L, -1); /* t m u A f f */
+  lua_getinfo (L, ">n", &dbg); /* t m u A f */
   DBG ("lua:lua_bind: stack check: %d: %s(%s) %s %s", lua_gettop (L),
        lua_typename (Lua, lua_type (Lua, -3)), lua_tostring (L, -3),
        lua_typename (Lua, lua_type (Lua, -2)),
        lua_typename (Lua, lua_type (Lua, -1)));
   if (dbg.name)		/* bingo! it have a name! */
-    _lua_try_binds (L, 4, dbg.name); /* t m u B f n */
+    _lua_try_binds (L, 4, dbg.name); /* t m u A f n */
   else			/* it's unnamed function, let's name it as binding#x */
-    _lua_try_binds (L, 4, "binding"); /* t m u B f n */
-//  lua_remove (L, 4); /* t m u f n */
+    _lua_try_binds (L, 4, "binding"); /* t m u A f n */
+  /* it's inserted into common list not individual one */
+  _lua_getbindlist (L, table); /* t m u A f n B */
+  lua_replace (L, 4); /* t m u B f n */
   table = strdup (table);
-  DBG ("lua:lua_bind: table %s mask %s func %s", table, mask, lua_tostring (L, 6));
+  dprint (3, "lua:lua_bind: table %s mask %s func %s", table, mask,
+	  lua_tostring (L, 6));
   if (!Add_Binding (table, mask, guf, cuf, &binding_lua, lua_tostring (L, 6)))
   {
-    // TODO: is there a way to know if it's unused so we can drop it?
-//    lua_pushvalue (L, -1); /* t m u B f n n */
-//    lua_pushnil (L); /* t m u B f n n nil */
-//    lua_rawset (L, 4); /* t m u B f n */
     Add_Request (I_LOG, "*", F_WARN, "Lua: duplicate binding attempt to %s.",
 		 lua_tostring (L, 6));
   }
   if (Insert_Key (&lua_bindtables, table, (void *)table, 1))
     free ((void *)table); /* it's not added (already in list) so free memory */
+  lua_insert (L, 5); /* t m u B n f */
+  lua_settable (L, 4); /* t m u B */
+  /* and now it's added into individual list too */
   return 0;
 }
 
@@ -276,19 +339,53 @@ static int _lua_unbind (lua_State *L) /* foxeye.unbind(table[,func]) */
     luaL_argcheck (L, lua_isfunction (L, 2), 2, NULL);
     lua_pushvalue (L, 2); /* t f f */
     lua_getinfo (L, ">n", &dbg); /* t f */
-    if (!dbg.name || !_lua_getbindlist (L)) /* t f B */
+    if (!dbg.name || !_lua_getbindlist (L, table)) /* t f B */
       return luaL_error (L, "incorrectable binding error");
     lua_insert (L, 2); /* t B f */
+    dprint (4, "lua:_lua_unbind: deleting binding %s.", dbg.name);
     if (_lua_find_binding (L, 2, dbg.name)) /* t B f n f */
       Delete_Binding (table, &binding_lua, lua_tostring (L, 4));
-    // TODO: split foxeye.__binds into subtables so we can drop names as below
-//    lua_pushvalue (L, -2); /* t B f n f n */
-//    lua_pushnil (L); /* t B f n f n nil */
-//    lua_rawset (L, 2); /* t B f n f */
+    lua_pop (L, 1); /* t B f n */
+    lua_pushvalue (L, -1); /* t B f n n */
+    lua_pushnil (L); /* t B f n n nil */
+    lua_rawset (L, 2); /* t B f n */
+    /* cleared from individual table... scanning others! */
+    if (_lua_scanbindlists (L, 4) == 0)
+    {
+      _lua_getbindlist (L, "*"); /* t B f n A */
+      lua_replace (L, 2); /* t A f n */
+      lua_pushnil (L); /* t A f n nil */
+      lua_rawset (L, 2); /* t A f */
+      /* and now cleared from common table too */
+      dprint (3, "lua:_lua_unbind: deleted from common list.");
+    }
   }
   else					/* remove all functions */
-    /* unfortunately, there is no way to gather unused names here :( */
-    Delete_Binding (table, &binding_lua, NULL);
+  {
+    Delete_Binding (table, &binding_lua, NULL); /* clear bindtable */
+    /* remove all from Lua */
+    if (!_lua_getbindlist (L, table)) /* t B */
+      return luaL_error (L, "incorrectable binding error");
+    _lua_getbindlist (L, "*"); /* t B A */
+    lua_pushnil (L); /* t B A nil */
+    while (lua_next (L, 2)) /* t B A k f */
+    {
+      lua_getinfo (L, ">n", &dbg); /* t B A k */
+      DBG ("lua:_lua_unbind: checking name %s.", dbg.name);
+      if (!dbg.name)
+	continue;			/* OUCH! we lost it! */
+      lua_pushstring (L, dbg.name); /* t B A k n */
+      if (_lua_scanbindlists (L, 5) == 1) /* clear it from common list */
+      {
+	lua_pushnil (L); /* t B A k n nil */
+	lua_settable (L, 3); /* t B A k */
+	dprint (3, "lua:_lua_unbind: deleted from common list.");
+      }
+      else
+	lua_pop (L, 1); /* t B A k */
+    } /* t B A */
+    _lua_clearbindlist (L, 1);
+  }
   return 0;
 }
 
@@ -305,6 +402,7 @@ static int _lua_nick (lua_State *L) /* nick = foxeye.client.nick(client) */
     lua_pushlstring (L, c, e - c);
   else
     lua_pushstring (L, c);
+  dprint (4, "lua:_lua_nick(%s)", c);
   return 1;
 }
 
@@ -376,6 +474,7 @@ static int _lua_event (lua_State *L) /* foxeye.event(type,lname[,value]) */
 
   if (lua_gettop (L) < 2 || lua_gettop (L) > 3)
     return luaL_error (L, "bad number of parameters");
+  dprint (4, "lua:_lua_event.");
   luaL_argcheck (L, lua_isstring (L, 1), 1, NULL);
   luaL_argcheck (L, lua_isstring (L, 2), 2, NULL);
   id = FindLID (lua_tostring (L, 2));
@@ -654,6 +753,7 @@ static int _lua_chave (lua_State *L) /* x = have(lname[,serv[,flag]]) */
   userflag uf;
   char buff[64];
 
+  dprint (4, "lua:_lua_chave()");
   uf = (userflag)lua_gettop (L);	/* use it temporary */
   if (uf < 1 || uf > 3)
     return luaL_error (L, "bad number of parameters");
@@ -693,6 +793,7 @@ static int _lua_cset (lua_State *L) /* set(lname,field[,value]) */
   const char *field, *val;
   int n;
 
+  dprint (4, "lua:_lua_cset()");
   n = lua_gettop (L);
   if (n < 2 || n > 3)
     return luaL_error (L, "bad number of parameters");
@@ -727,6 +828,7 @@ static int _lua_cget (lua_State *L) /* val,flag,time = get(lname,field) */
   userflag uf;
   char buff[64];
 
+  dprint (4, "lua:_lua_cget()");
   if (lua_gettop (L) != 2)  
     return luaL_error (L, "bad number of parameters");
   luaL_argcheck (L, lua_isstring (L, 1), 1, NULL);
@@ -843,7 +945,8 @@ static int lua_register_function (const char *name, int (*fn) (const char *))
   _lua_fe_name (name); /* T k */		/* convert name /-/_/ */
   lua_pushlightuserdata (Lua, (void *)fn); /* T k f */
   lua_pushcclosure (Lua, &lua_call_function, 1); /* T k d */
-  DBG ("lua_register_function: registering \"%s\"", lua_tostring (Lua, 2));
+  dprint (4, "lua:lua_register_function: registering \"%s\"",
+	  lua_tostring (Lua, 2));
   lua_rawset (Lua, 1); /* T */
   lua_pop (Lua, 1);
   return 1;
@@ -863,7 +966,8 @@ static int lua_unregister_function (const char *name)
   }
   lua_pop (Lua, 1); /* T k */
   lua_pushnil (Lua); /* T k nil */
-  DBG ("lua_unregister_function: unregistering \"%s\"", lua_tostring (Lua, 2));
+  dprint (4, "lua:lua_unregister_function: unregistering \"%s\"",
+	  lua_tostring (Lua, 2));
   lua_rawset (Lua, 1); /* T */
   lua_pop (Lua, 1);
   return 1;
@@ -951,7 +1055,8 @@ static int lua_register_variable (const char *name, void *var, size_t size)
   data = lua_newuserdata (Lua, sizeof(lua_fedata_t)); /* T D k v */
   data->ptr = var;
   data->s = size;
-  DBG ("lua_register_variable: registering \"%s\"", lua_tostring (Lua, 3));
+  dprint (4, "lua:lua_register_variable: registering \"%s\"",
+	  lua_tostring (Lua, 3));
   lua_rawset (Lua, 2); /* T D */
   lua_pop (Lua, 2); /* */
   return 1;
@@ -975,7 +1080,8 @@ static int lua_unregister_variable (const char *name)
   data = lua_touserdata (Lua, -1);
   lua_pop (Lua, 1); /* T D k */
   lua_pushnil (Lua); /* T D k nil */
-  DBG ("lua_unregister_variable: unregistering \"%s\"", lua_tostring (Lua, 3));
+  dprint (4, "lua:lua_unregister_variable: unregistering \"%s\"",
+	  lua_tostring (Lua, 3));
   lua_rawset (Lua, 2); /* T D */
   lua_pop (Lua, 2);
   return 1;
@@ -1045,8 +1151,10 @@ static iftype_t lua_module_signal (INTERFACE *iface, ifsig_t sig)
       break;
     case S_REPORT:
       tmp = Set_Iface (iface);
-      New_Request (tmp, F_REPORT, "Module lua: %u/%u timers active.", LT_num,
+      New_Request (tmp, F_REPORT, "Module lua: %u/%u timers active,", LT_num,
 		   LT_max);
+      New_Request (tmp, F_REPORT, "            interpreter using %d kB memory.",
+		   lua_gc (Lua, LUA_GCCOUNT, 0));
       Unset_Iface();
       break;
     case S_LOCAL:

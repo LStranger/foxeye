@@ -202,8 +202,8 @@ typedef enum
   I_PENDING	= (1<<16),	/* tmp, unset after request */	/* 0x010000 */
   I_FINWAIT	= (1<<17),	/* from thread for dispatcher: terminate me */
   I_LOCKED	= (1<<18),	/* this interface temporary unavailable */
-  I_AUTHPASS	= (1<<19),	/* client is authenticated */	/* 0x100000 */
-  I_DIED	= (1<<20)	/* this interface now died */
+  I_AUTHPASS	= (1<<19),	/* client is authenticated */
+  I_DIED	= (1<<20)	/* this interface now died */	/* 0x100000 */
 } iftype_t;
 
 /* logging/request flags */

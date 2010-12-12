@@ -4,10 +4,57 @@ TODO:
 	* core/lib.c: to implement %{subfmt} macro and SetSubformat().
 	* core/journal.c: to implement transactions journal (for botnet, etc.).
 	* modules/irc*: to do something with ident masks?
-	* *: to get rid of #if 0/1 ... #endif blocks, // comments, and TODO notes.
-	* debian: to debianize it when comes to beta release.
+	* core/wtmp.c: to replace all fopen() with open().
 
---- [0.9a] * to test all *
+--- [0.9b] * to test all *
+Wed Dec  8 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/irc-channel/irc-channel.c: fixed unending cycle on
+	  RPL_USERHOST.
+	* modules/irc-ctcp/dcc.c, core/direct.c: added missing KillSocket().
+	* core/direct.c: fixed error in 'y' connchain filter.
+	* core/modules.c: removed usage of poll() on sending data.
+
+Sat Dec  4 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/direct.c: changed key for DES encryption indicator.
+	* configure: added constant macro COMPILETIME for config.h.
+
+Wed Dec  1 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/protos.h: fixed usage of malloc() instead of safe_malloc() in
+	  macro ALLOCATABLE_TYPE.
+
+Sat Nov 27 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/Makefile: modified including libtree to more right one.
+	* configure: fixed testing for Tcl in case of --without-tcl.
+	* modules/irc-ctcp/dcc.c, modules/lua/lua.c: added debug diagnostics.
+
+Fri Nov 19 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/lib.c: fixed wrong printing on %I macro.
+
+Sun Nov 14 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/init.c: made Check_Bindtable() to work with UTF-8 too.
+	* core/lib.c: fixed handling of bad characters in unistrlower().
+	* core/lib/c: added resetting of charset if trying of locale failed.
+	* debian/*: debianized.
+	* config.guess: updated.
+
+--- [0.9a] ok
+Sat Nov 13 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/socket.c: replaced gethostbyname() and gethostbyaddr() with
+	  getaddrinfo() and getnameinfo() as first are not reentrant so we
+	  were just lucky enough to not see problems yet.
+	* modules/lua/lua.c: implemented names cleanup on unbinding.
+	* core/lib.c: fixed utf-8 breaking in unistrcut();
+	* core/direct.c, modules/irc/irc.c, modules/irc-channel/chmanagement.c:
+	  removed obsolete commented out lines.
+	* modules/irc-ctcp/dcc.c: improved diagnostic messages.
+
+Fri Nov 12 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/irc-channel/irc-channel.c: added few bindings for report on
+	  errors.
+
+Sun Nov  7 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/socket.c: fixed error with listening UNIX socket.
+
 Thu Nov  4 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/rwlock_init.c: rewritten bad locking algorhytm (writers would
 	  get starved before so got favored over readers).

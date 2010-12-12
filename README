@@ -4,11 +4,6 @@ What is FoxEye?
   isn't all about FoxEye because it has possibilities above and beyond ones
   of Eggdrop...
 
-Note for SOCKS support:
-    Full functionality of bot cannot be established until SOCKS do have any
-  listen port support. If you want use the bot behind the firewall you have
-  to ask your system adminstrator for some NAT firewall setup. :)
-
 Catched signals and actions:
 SIGABRT	shutdowns the bot
 SIGBUS	shutdowns the bot

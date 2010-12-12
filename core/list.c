@@ -2182,6 +2182,7 @@ static int _save_listfile (const char *filename, int quiet)
     snprintf (buff, sizeof(buff), "%s~", filename);
     unlink (buff);
     rename (filename, buff);			/* creating backup */
+    //TODO: check for errors here
   }
   fp = fopen (filename, "w");
   _r = _s = _d = _i = 0;
@@ -2275,6 +2276,7 @@ static int _save_listfile (const char *filename, int quiet)
     unlink (filename);				/* error - file corrupted */
     snprintf (buff, sizeof(buff), "%s~", filename);
     rename (buff, filename);			/* restoring from backup */
+    //TODO: check for errors here
     ERROR ("Error on saving listfile, keeping old one.");
     return (-1);
   }

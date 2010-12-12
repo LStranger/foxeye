@@ -172,11 +172,7 @@ Connection chains.
   socket thru chain to top of it. There is no way to remove a filter
   from the chain because it may destroy all the connection flow so you
   have to build your chain carefully (inserting SSL handler as exactly
-  first link for example). There are few ways to terminate a chain:
-   - call Connchain_Put() on top of chain with zero sized data; in that
-     case you still have to call Connchain_Put() to send already queued
-     data and call Connchain_Get() to get data that may be still left in
-     buffers until both of those functions return error;
+  first link for example). There are two ways to terminate a chain:
    - call KillSocket() on the socket; in that case Connchain_Put() will
      always return error but you have to call Connchain_Get() to get the
      data that may be still left in buffers until it returns error;
@@ -1145,12 +1141,12 @@ Connection chain API:
     link of connection chain _c_c for socket identifier _i_d_x. If _l_i_n_e is
     NULL then it tries to send what is still left in chain's own buffers
     and in that case either returns error (if nothing left to send into
-    socket _i_d_x) or number of bytes send (i.e. 0). If _l_i_n_e isn't NULL but
+    socket _i_d_x) or number of bytes sent (i.e. 0). If _l_i_n_e isn't NULL but
     _s contains 0 then it returns value CONNCHAIN_READY in case when chain
     can take data for sending on next call or some other value otherwise.
     If there are data to send and there were no errors encountered then
     appropriately updates counter at _s and returns number of bytes that
-    were sent.
+    were sent. This function should never close or destroy the socket.
 	Reenterability: async-safe
 
   ssize_t CCoonnnncchhaaiinn__GGeett (connchain_i **_c_c, idx_t _i_d_x, char *_b_u_f,

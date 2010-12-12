@@ -2,7 +2,8 @@
  Module "irc-channel":
  ---------------------
 
-join=>part|kick|quit join=>netsplit=>netjoin join=>netsplit=>quit
+  Interfaces: accepts messages for I_SERVICE and name <channel>@<network>
+  to send them to channel (_c_h_a_n below).
 
 JOIN  "iirrcc--jjooiinn"       MASK
   int func(unsigned char *_w_h_o, const char *_l_n_a_m_e, INTERFACE *_c_h_a_n);

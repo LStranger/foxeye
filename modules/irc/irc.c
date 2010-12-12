@@ -360,9 +360,6 @@ static int _irc_try_server (irc_server *serv, const char *tohost, int banned,
   irc_await *await;
 
   /* if already connected then break connection first */
-//  dprint (4, "_irc_try_server: was socket %d, server %s, state %u",
-//	  serv->p.socket, serv->p.dname ? serv->p.dname : "[undef]",
-//	  serv->p.state);
   if(Connchain_Kill ((&serv->p)))uf=uf;		/* condition to avoid warn */
   if (serv->p.socket >= 0)
     KillSocket(&serv->p.socket);
@@ -1823,28 +1820,18 @@ static void _irc_init_bindings (void)
   NB ("NOTICE", irc_notice);
   NB ("NICK", irc_nick);
   NB ("001", irc_rpl_welcome);
-//  NB ("002", irc__2log);
-//  NB ("003", irc__2log);
   NB ("004", irc_rpl_myinfo);
   NB ("005", irc_rpl_isupport);
   NB ("010", irc_rpl_bounce);
-//  NB ("221", irc__2log);
-//  NB ("263", irc__2log);
-//  NB ("301", irc__2log);
   NB ("401", irc_err_nosuchnick);
-//  NB ("411", irc__2log);
-//  NB ("421", irc__2log);
   NB ("432", irc__nextnick);
   NB ("433", irc__nextnick);
   NB ("436", irc__nextnick);
   NB ("437", irc__nextnick);
   NB ("451", irc__nextnick);
-//  NB ("461", irc__2log);
-//  NB ("462", irc__2log);
   NB ("463", irc__fatal);
   NB ("464", irc__fatal);
   NB ("465", irc__fatal);
-//  NB ("501", irc__2log);
 #undef NB
 }
 

@@ -181,7 +181,7 @@ static type *alloc_##type (void) \
   if (!Free##tvar) \
   { \
     register int i = ALLOCSIZE; \
-    ____##type *_L = malloc (sizeof(____##type)); \
+    ____##type *_L = safe_malloc (sizeof(____##type)); \
     _L->prv = ____L##type; \
     ____L##type = _L; \
     Free##tvar = cur = _L->a; \

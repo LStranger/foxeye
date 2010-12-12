@@ -45,7 +45,6 @@ typedef struct dcc_priv_t
   uint32_t ptr, startptr;		/* size got, start pointers */
   uint32_t rate;			/* average (16s) filetransfer speed */
   long int ahead;			/* R/O local value of ahead parameter */
-  //long int token;			/* for 'passive' extension */
   idx_t socket;				/* owned by thread, inherited later */
   pthread_t th;				/* undefined in P_DISCONNECTED state */
   pthread_mutex_t mutex;		/* for ->ptr ... ->rate */
@@ -84,6 +83,8 @@ static char ircdcc_dnload_dir[LONG_STRING] = "~/.foxeye/files";
 
 static char *format_dcc_gotfile;
 static char *format_dcc_sentfile;
+static char *format_dcc_startget;
+static char *format_dcc_request;
 
 #undef ALLOCSIZE
 #define ALLOCSIZE 2
@@ -105,6 +106,7 @@ static dcc_priv_t *new_dcc (void)
   dcc->state = P_DISCONNECTED;
   dcc->socket = -1;
   dcc->tid = -1;
+  dprint (4, "dcc:new_dcc: %p", dcc);
   return dcc;
 }
 
@@ -113,6 +115,7 @@ static void free_dcc (dcc_priv_t *dcc)
   register dcc_priv_t *last;
   register dcc_priv_t **p = &ActDCC;
 
+  dprint (4, "dcc:free_dcc: %p", dcc);
   while ((last = *p) && last != dcc)
     p = &last->next;
   if (last)
@@ -258,11 +261,11 @@ static void chat_handler (char *lname, char *ident, char *host, void *data)
   userflag uf;
   binding_t *bind;
   size_t sz, sp;
-//  ssize_t get = 0;
   char *msg;
   dcc_priv_t *dcc = data;
   peer_t *peer;
 
+  dprint (4, "dcc:chat_handler for %s", lname);
   /* check for allowance */
   if (dcc == NULL)
   {
@@ -315,7 +318,8 @@ static void chat_handler (char *lname, char *ident, char *host, void *data)
 	    NULL, host, lname, NULL, 0, p, 0, msg);
     Unset_Iface();
     LOG_CONN ("%s", buf);
-    if(Connchain_Kill (peer))got=got;	/* it will kill the socket too */
+    if(Connchain_Kill (peer))got=got;
+    KillSocket (&peer->socket);	/* it's really dead now */
     FREE (&peer);
   }
   dcc->socket = -1;		/* socket might be inherited by login */
@@ -382,6 +386,7 @@ static void isend_handler (char *lname, char *ident, char *host, void *data)
   ssize_t sw;
   size_t statistics[16];		/* to calculate average speed */
 
+  dprint (4, "dcc:isend_handler for %s to \"%s\".", lname, dcc->lname);
   buff = safe_malloc (MAXBLOCKSIZE);
   Set_Iface (dcc->iface);
   if (!dcc->filename)			/* if it's from passive then it's set */
@@ -532,6 +537,7 @@ static void isend_handler (char *lname, char *ident, char *host, void *data)
     .mutex	initialized, unlocked */
 static void _isend_phandler (int res, void *input_data)
 {
+  dprint (4, "dcc:_isend_phandler: %d", res);
   if (res == 0)
     isend_handler (NULL, NULL, NULL, input_data);
   else
@@ -564,6 +570,7 @@ static void _dcc_chat_handler (int res, void *input_data)
   register char *host = safe_strchr (dcc->uh, '@');
   register char *ident = safe_strchr (dcc->uh, '!');
 
+  dprint (4, "dcc:_dcc_chat_handler: %d", res);
   if (host)
     *host++ = 0;
   if (ident)
@@ -619,8 +626,9 @@ static void _dcc_send_handler (int res, void *input_data)
   size_t statistics[16];	/* to calculate average speed */
   FILE *f, *rf;			/* opened file */
   void *buff;
-  char *c, *sfn;
+  char *uh, *sfn;
 
+  dprint (4, "dcc:_dcc_send_handler: %d", res);
   if (res != 0)					/* some error catched */
   {
     Set_Iface (NULL);
@@ -660,6 +668,20 @@ static void _dcc_send_handler (int res, void *input_data)
     return;
   }
   buff = safe_malloc (MAXBLOCKSIZE);
+  uh = safe_strchr (dcc->uh, '!');	/* split nick and user@host in buf */
+  if (uh)
+    uh++;
+  sfn = strrchr (dcc->filename, '/');		/* get short filename */
+  if (sfn)
+    sfn++;
+  else
+    sfn = dcc->filename;
+  Set_Iface (NULL);
+  /* %L - lname, %@ - uh, %N - nick@net, %I - IP, %* - filename(unquoted) */
+  printl (buff, MAXBLOCKSIZE, format_dcc_startget, 0, dcc->iface->name, uh,
+	  dcc->lname, NULL, ip, 0, 0, sfn);
+  Unset_Iface();
+  LOG_CONN ("%s", (char *)buff);		/* do logging */
   aptr = ptr;
   FOREVER					/* cycle to get file */
   {
@@ -748,19 +770,11 @@ static void _dcc_send_handler (int res, void *input_data)
     }
     pthread_mutex_lock (&dcc->mutex);
   }
-  c = safe_strchr (dcc->uh, '!');	/* split nick and user@host in buf */
-  if (c)
-    c++;
-  sfn = strrchr (dcc->filename, '/');		/* get short filename */
-  if (sfn)
-    sfn++;
-  else
-    sfn = dcc->filename;
   if (dcc->size == 0 || ptr == dcc->size)	/* getting is complete */
   {
     /* %L - lname, %@ - uh, %N - nick@net, %I - IP, %* - filename(unquoted) */
     Set_Iface (NULL);
-    printl (buff, MAXBLOCKSIZE, format_dcc_gotfile, 0, dcc->iface->name, c,
+    printl (buff, MAXBLOCKSIZE, format_dcc_gotfile, 0, dcc->iface->name, uh,
 	    dcc->lname, NULL, ip, 0, 0, sfn);
     Unset_Iface();
   }
@@ -823,6 +837,7 @@ static void _dcc_send_phandler (char *lname, char *ident, char *host, void *inpu
 {
   /* don't check ident and host - we can be wrong on that */
   /* unlocked now but dispatcher will wait this thread to join before freeing */
+  dprint (4, "dcc:_dcc_send_phandler: %s", lname);
   if (!input_data)
     /* error! is it possible? */
     return;
@@ -875,18 +890,8 @@ static int _dcc_connect (dcc_priv_t *dcc)
   unsigned short port;
   uint32_t ip;
 
-  /* %N - nick, %@ - ident@host,  */
-//  printl (dcc->buf, sizeof(dcc->buf), format_dcc_request, 0, nick, uh, dcc->lname,
-//	  strchr (dcc->iface->name, '@'), dcc->rate, dcc->transf, 0, dcc->filename);
-//LOG_CONN ("%s", dcc->buf);
-//  if (Sessions == max_dcc)
-//  {
-//    /* send notice to current server */
-//    Add_Request (I_CLIENT, dcc->iface->name, F_T_CTCR,
-//		 _("DCC ERROR Sorry, my limit of DCC is exhausted. Try later, please."));
-//    return 0;
-//  }
   port = dcc->ahead;
+  dprint (4, "dcc:_dcc_connect at port %hu.", port);
   if (dcc->filename)
     dcc->ptr = port;	/* little trick to know port number while .idx == -1 */
   dcc->socket = -1;
@@ -1132,6 +1137,14 @@ static int _dcc_start (dcc_priv_t *dcc, unsigned long ip, unsigned short port,
     .iface	thread interface (I_CONNECT nick@net)
     .th		thread ID
     .mutex	only if SEND */
+//  if (Sessions == max_dcc) /* Do we need limit on this? TODO */
+//  {
+//    /* send notice to current server */
+//    Add_Request (I_CLIENT, dcc->iface->name, F_T_CTCR,
+//		 _("DCC ERROR Sorry, my limit of DCC is exhausted. Try later, please."));
+//    free_dcc (dcc);
+//    return 0;
+//  }
   dcc->state = P_INITIAL;
   dcc->ahead = port;
   dcc->rate = ip;
@@ -1139,6 +1152,7 @@ static int _dcc_start (dcc_priv_t *dcc, unsigned long ip, unsigned short port,
   strfcpy (dcc->uh, who, sizeof(dcc->uh));
   strfcpy (dcc->lname, NONULL(lname), sizeof(dcc->lname));
   dcc->iface = Add_Iface (I_CONNECT, tgt, &_dcc_sig_1, NULL, dcc);
+  dprint (4, "dcc:_dcc_start at port %hu for %s.", port, tgt);
   if (dcc->filename)
     pthread_mutex_init (&dcc->mutex, NULL);
   if (pthread_create (&dcc->th, NULL, &_dcc_stage_1, dcc))
@@ -1165,6 +1179,7 @@ static int dcc_chat (INTERFACE *w, uchar *who, char *lname, char *cw)
   dcc_priv_t *dcc = new_dcc();
   unsigned long ip;
   unsigned short port = 0;
+  register char *c;
 
   sscanf (NextWord_Unquoted (dcc->uh, NextWord (cw), sizeof(dcc->uh)),
 	  "%lu %hu", &ip, &port);
@@ -1177,6 +1192,17 @@ static int dcc_chat (INTERFACE *w, uchar *who, char *lname, char *cw)
     return 0;
   }
   dcc->filename = NULL;
+  c = safe_strchr (who, '!');
+  if (c)
+    c++;
+  {
+    char buff[STRING];
+
+    /* %L - lname, %@ - uh, %N - nick@net, %I - IP, %P - port, %* - "chat" */
+    printl (buff, sizeof(buff), format_dcc_request, 0, w->name, c, lname, NULL,
+	    ip, port, 0, "chat");
+    LOG_CONN ("%s", buff);		/* do logging */
+  }
   return _dcc_start (dcc, ip, port, w->name, who, lname, 0);
 }
 
@@ -1196,6 +1222,7 @@ static int dcc_send (INTERFACE *w, uchar *who, char *lname, char *cw)
   char *c;
   struct stat st;
   char path[HUGE_STRING];
+  register char *cc;
 
   c = (char *)NextWord (cw);		/* skip "SEND" and it's const really */
   i = sscanf (NextWord_Unquoted (NULL, c, 0), "%lu %hu %llu %u", &ip, &port,
@@ -1328,6 +1355,18 @@ static int dcc_send (INTERFACE *w, uchar *who, char *lname, char *cw)
   else
     dcc->startptr = size;
   dcc->filename = safe_strdup (path);
+  c = safe_strchr (who, '!');
+  if (c)
+    c++;
+  cc = safe_strchr (dcc->filename, '/');
+  if (cc)
+    cc++;
+  else
+    cc = dcc->filename;
+  /* %L - lname, %@ - uh, %N - nick@net, %I - IP, %P - port, %* - filename */
+  printl (path, sizeof(path), format_dcc_request, 0, w->name, c, lname, NULL,
+	  ip, port, 0, cc);
+  LOG_CONN ("%s", path);		/* do logging */
   return _dcc_start (dcc, ip, port, w->name, who, lname, token);
 }
 
@@ -1356,9 +1395,10 @@ static int dcc_resume (INTERFACE *w, uchar *who, char *lname, char *cw)
   if (sscanf (NextWord_Unquoted (NULL, NextWord (cw), 0), "%hu %llu %u",
       &port, &ptr, &token) < 2)		/* skipping RESUME <file> */
     return 0;				/* bad parameters! */
-  if (port == 0)
+  if (port == 0) /* it's passive */
   {
-    // if <port>==0 then it's passive, just send S_LOCAL to irc-ctcp#<token>
+    snprintf (target, sizeof (target), "irc-ctcp#%u", token);
+    Send_Signal (I_TEMP, target, S_LOCAL); /* send S_LOCAL to irc-ctcp#<token> */
     return 0;
   }
   /* find dcc by <port> and who and check if <ptr> is valid and no dublicate */
@@ -1627,7 +1667,7 @@ static int ssirc_send (peer_t *peer, INTERFACE *w, char *args)
     dcc->filename = safe_strdup (c);
     dcc->iface = Add_Iface (I_TEMP, target, &_isend_sig_w, NULL, dcc);
     dcc->tid = NewTimer (I_TEMP, target, S_TIMEOUT, ircdcc_conn_timeout, 0, 0, 0);
-    // we should wait for responce now so we can connect there
+    /* done... we should wait for responce now so we can connect there */
   }
   else if ((dcc->socket = Listen_Port (c, hostname, &port, NULL, dcc,
 				  &_dcc_inc_pre, &isend_handler)) < 0)
@@ -1673,8 +1713,6 @@ static void _irc_ctcp_register (void)
  */
 static iftype_t irc_ctcp_mod_sig (INTERFACE *iface, ifsig_t sig)
 {
-//  dcc_priv_t *dcc, *next;
-
   switch (sig)
   {
     case S_REPORT:
@@ -1762,9 +1800,9 @@ Function ModuleInit (char *args)
 				  _("DCC GET of %* from %N completed."));
   format_dcc_sentfile = SetFormat ("dcc_sent_file",
 				   _("DCC SEND of %* to %N completed."));
-//  format_dcc_startget = SetFormat ("dcc_get_start",
-//				  _("DCC GET of %* from %N established."));
-//  format_dcc_request = SetFormat ("dcc_request",
-//				  _("DCC connection request for \"%*\" from %N(%@) to %I:%P"));
+  format_dcc_startget = SetFormat ("dcc_get_started",
+				  _("DCC GET of %* from %N established."));
+  format_dcc_request = SetFormat ("dcc_request",
+				  _("DCC connection request for \"%*\" from %N(%@) to %I:%P"));
   return ((Function)&irc_ctcp_mod_sig);
 }

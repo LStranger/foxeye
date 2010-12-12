@@ -390,12 +390,26 @@ binding_t *Check_Bindtable (bindtable_t *bt, const char *str, userflag gf,
     cc = 0;
   else if (bt->type == B_MATCHCASE)
     i++;
-  for (; *s && *s != cc && ch < &buff[sizeof(buff)-1]; ch++, s++)
+  for (; *s && *s != cc && ch < &buff[sizeof(buff)-MB_CUR_MAX]; ch++, s++)
   {
-    if (i)
+    if (i > 0) /* case insensitive */
       *ch = *s;
-    else	/* TODO: make it to be utf-capable */
+    else if (*s < 0x80 || MB_CUR_MAX == 1) /* ascii char */
       *ch = tolower (*s);
+    else	/* multibyte encoding */
+    {
+      wchar_t wc;
+      register int sz = mbtowc (&wc, s, MB_LEN_MAX);
+      if (sz < 1) /* invalid char */
+        *ch = *s;
+      else
+      {
+	s += (sz - 1);
+	wc = towlower (wc);
+	sz = wctomb (ch, wc);
+	ch += (sz - 1);
+      }
+    }
   }
   *ch = 0;
 //  DBG ("init.c:Check_Bindtable:checking for \"%s\":0x%08x/0x%08x", buff, (int)gf, (int)cf);

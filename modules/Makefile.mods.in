@@ -6,12 +6,6 @@
 
 SHELL = /bin/sh
 
-srcdir = @srcdir@
-top_srcdir = ../..
-top_builddir = ../..
-subdir := modules/$(FILENAME)
-mdistdir := ${top_builddir}/@PACKAGE@-@VERSION@/$(subdir)
-
 prefix = @prefix@
 exec_prefix = @exec_prefix@
 pkglibdir = @libdir@/@PACKAGE@
@@ -49,6 +43,12 @@ FILENAMESUB = ${FILENAME:S/-/_/g}
 EXTRAMODLIBS != $(MODLIBS); echo $$MODLIBS_$(FILENAMESUB)
 ^ := $>
 @MAKEENDIF@
+
+srcdir = @srcdir@
+top_srcdir = ../..
+top_builddir = ../..
+subdir := modules/$(FILENAME)
+mdistdir := ${top_builddir}/@PACKAGE@-@VERSION@/$(subdir)
 
 DISTFILES = $(CFILES) $(HFILES) $(HELPFILES) $(DOCFILES)
 

@@ -64,8 +64,6 @@ static bool ircch_kick_on_revenge = FALSE;
 
 long int ircch_enforcer_time = 4;		/* bans enforcer timeout */
 long int ircch_ban_keep = 120;			/* keep dynamic bans for 2h */
-//long int ircch_exempt_keep = 60;
-//long int ircch_invite_keep = 60;
 long int ircch_greet_time = 120;		/* greet if absent for 2min */
 long int ircch_mode_timeout = 4;		/* push modes to the same nick */
 bool ircch_ignore_ident_prefix = TRUE;
@@ -648,7 +646,6 @@ static void _ircch_update_link (NICK *nick, LINK *link, char *lname, lid_t lid)
     for (nl = nick->channels; nl; nl = nl->prevchan)
     {
       nl->count = 0;
-      //ircch_recheck_modes (net, link, uf, cf, info, 0);
     }
   }
   dprint (4, "_ircch_update_link: success on nick %s", nick->name);
@@ -2071,7 +2068,6 @@ static int irc_mode (INTERFACE *iface, char *svname, char *me, unsigned char *pr
     }
   }
   /* parse parameters, run bindings */
-  // TODO: don't show modechange nor show early netjoin report if it's NJOIN
   if (origin)			/* if server mode - it may be part of NJOIN */
     _ircch_net_got_activity (net, origin);
   if (ircch_parse_modeline (net, ch, origin, prefix, uf, BT_IrcMChg,
@@ -2309,26 +2305,27 @@ static int irc_rpl_userhost (INTERFACE *iface, char *svname, char *me,
   while (*c)
   {
     for (name = host = c; *host && *host != '*' && *host != '='; host++);
+    c = gettoken (host, &cc); /* set it at next nick before anything else */
     if ((ch = *host))			/* it's now next to nick */
       *host = 0;
     else
       ERROR ("irc_rpl_userhost: host part not found for %s!", c);
     if(lc)				/* get it lowcase */
     {
-      lc (userhost, c, NAMEMAX+1);
+      lc (userhost, name, NAMEMAX+1);
       nick = _ircch_get_nick (net, userhost, 0);
     }
     else
       nick = _ircch_get_nick (net, name, 0);
     s = host - name;
-    if (!nick)
-    {
-      WARNING ("ircch: unrequested RPL_USERHOST from %s for nick %s",
-	       net->name, userhost);
-      continue;				/* alien request? */
-    }
     if (ch)				/* and restore the input */
       *host = ch;
+    if (!nick)
+    {
+      WARNING ("ircch: unrequested RPL_USERHOST from %s for nick %*s",
+	       net->name, s, name);
+      continue;				/* alien request? */
+    }
     if (ch == '*')
     {
       nick->umode |= A_OP;		/* IRCOp */
@@ -2337,7 +2334,6 @@ static int irc_rpl_userhost (INTERFACE *iface, char *svname, char *me,
     else
       nick->umode &= ~A_OP;
     host++;				/* skip '=' */
-    c = gettoken (host, &cc);		/* set it at next nick */
     if (*host++ == '-')
       nick->umode |= A_AWAY;
     else
@@ -2846,6 +2842,129 @@ static int irc_join_errors (INTERFACE *iface, char *svname, char *me,
   strfcpy (&ch[s], net->name, sizeof(ch) - s);
   Add_Request (I_LOG, ch, F_WARN, _("cannot join to channel %s: %s"), parv[1],
 	       parv[2]);
+  return 0;
+}
+
+BINDING_TYPE_irc_raw (irc_unexpected_error);
+static int irc_unexpected_error (INTERFACE *iface, char *svname, char *me,
+				 unsigned char *prefix, int parc, char **parv,
+				 size_t (*lc) (char *, const char *, size_t))
+{/* Parameters: me [<target>] <error text> */
+  if (parc > 2)
+    ERROR ("irc-channel: unexpected error from network %s: %s :%s", iface->name,
+	   parv[1], parv[2]);
+  else
+    ERROR ("irc-channel: unexpected error from network %s: %s", iface->name,
+	   parc > 1 ? parv[1] : "");
+  return 0;
+}
+
+BINDING_TYPE_irc_raw (irc_err_chanoprivsneeded);
+static int irc_err_chanoprivsneeded (INTERFACE *iface, char *svname, char *me,
+				     unsigned char *prefix, int parc, char **parv,
+				     size_t (*lc) (char *, const char *, size_t))
+{/* Parameters: me <channel> :You're not channel operator */
+  IRC *net;
+  CHANNEL *ch;
+  register LINK *l;
+
+  if (parc < 2 || !(net = _ircch_get_network (iface->name, 0, lc)))
+    return -1;		/* impossible I think */
+  if ((ch = _ircch_get_channel (net, parv[1], 0)))
+  {
+    for (l = ch->nicks; l; l = l->prevnick)
+      if (l->nick == net->me)
+	break;
+  }
+  else
+    l = NULL;
+  if (l && (l->mode & (A_ADMIN | A_OP | A_HALFOP)))
+  {
+    l->mode &= ~(A_ADMIN | A_OP | A_HALFOP); /* reset my operator flags */
+    ERROR ("irc-channel: got ERR_CHANOPRIVSNEEDED for %s on %s", parv[1],
+	   iface->name);
+  }
+  else
+    WARNING ("irc-channel: got ERR_CHANOPRIVSNEEDED for %s on %s", parv[1],
+	     iface->name);
+  return 0;
+}
+
+BINDING_TYPE_irc_raw (irc_err_nosuchnick);
+static int irc_err_nosuchnick (INTERFACE *iface, char *svname, char *me,
+			       unsigned char *prefix, int parc, char **parv,
+			       size_t (*lc) (char *, const char *, size_t))
+{/* Parameters: me <nickname> :No such nick/channel */
+  IRC *net;
+  NICK *n;
+  char lcn[NAMEMAX+1];
+
+  if (parc < 2 || !(net = _ircch_get_network (iface->name, 0, lc)))
+    return -1;		/* impossible I think */
+  if (lc)
+    lc (lcn, parv[1], sizeof(lcn)-1);
+  n = _ircch_get_nick (net, lc ? lcn : parv[1], 0);
+  ERROR ("irc-channel: got ERR_NOSUCHNICK for %s (%p) on %s", parv[1], n,
+	 iface->name);
+  if (n) /* drop this nick */
+  {
+    if (Delete_Key (net->nicks, n->name, n))
+      ERROR ("irc_err_nosuchnick: tree error");
+    _ircch_destroy_nick (n);
+  }
+  return 0;
+}
+
+BINDING_TYPE_irc_raw (irc_err_usernotinchannel);
+static int irc_err_usernotinchannel (INTERFACE *iface, char *svname, char *me,
+				     unsigned char *prefix, int parc, char **parv,
+				     size_t (*lc) (char *, const char *, size_t))
+{/* Parameters: me <nick> <channel> :They aren't on that channel */
+  IRC *net;
+  CHANNEL *ch;
+  LINK *l;
+  char lcn[NAMEMAX+1];
+
+  if (parc < 3 || !(net = _ircch_get_network (iface->name, 0, lc)))
+    return -1;		/* impossible I think */
+  l = NULL;
+  if ((ch = _ircch_get_channel (net, parv[2], 0)))
+  {
+    if (lc)
+    {
+      lc (lcn, parv[1], sizeof(lcn)-1);
+      l = ircch_find_link (net, lcn, ch);
+    }
+    else
+      l = ircch_find_link (net, parv[1], ch);
+  }
+  ERROR ("irc-channel: got ERR_USERNOTINCHANNEL for %s (%p) on %s @%s", parv[1],
+	 l, parv[2], iface->name);
+  if (l) /* drop this link */
+  {
+    NICK *n = _ircch_destroy_link (l);
+    if (n) /* it was last one even */
+    {
+      if (Delete_Key (net->nicks, n->name, n))
+	ERROR ("irc_err_usernotinchannel: tree error");
+      _ircch_destroy_nick (n);
+    }
+  }
+  return 0;
+}
+
+BINDING_TYPE_irc_raw (irc_err_useronchannel);
+static int irc_err_useronchannel (INTERFACE *iface, char *svname, char *me,
+				  unsigned char *prefix, int parc, char **parv,
+				  size_t (*lc) (char *, const char *, size_t))
+{/* Parameters: me <user> <channel> :is already on channel */
+  IRC *net;
+
+  if (parc < 3 || !(net = _ircch_get_network (iface->name, 0, lc)))
+    return -1;		/* impossible I think */
+  Add_Request (I_LOG, net->neti->name, F_WARN, /* our invite wes unneeded */
+	       "irc: nick %s is already on channel %s in network %s!", parv[1],
+	       parv[2], iface->name);
   return 0;
 }
 
@@ -3399,8 +3518,6 @@ static void module_ircch_regall (void)
   RegisterInteger ("irc-netsplit-keep", &ircch_netsplit_keep);
   RegisterInteger ("irc-enforcer-time", &ircch_enforcer_time);
   RegisterInteger ("irc-ban-keep", &ircch_ban_keep);
-//  RegisterInteger ("irc-exempt-keep", &ircch_exempt_keep);
-//  RegisterInteger ("irc-invite-keep", &ircch_invite_keep);
   RegisterInteger ("irc-greet-time", &ircch_greet_time);
   RegisterInteger ("irc-mode-timeout", &ircch_mode_timeout);
   RegisterBoolean ("irc-join-on-invite", &ircch_join_on_invite);
@@ -3458,6 +3575,11 @@ static int module_ircch_signal (INTERFACE *iface, ifsig_t sig)
       Delete_Binding ("irc-raw", &irc_err_unknowncommand, NULL);
       Delete_Binding ("irc-raw", &irc_err_cannotsendtochan, NULL);
       Delete_Binding ("irc-raw", &irc_join_errors, NULL);
+      Delete_Binding ("irc-raw", &irc_unexpected_error, NULL);
+      Delete_Binding ("irc-raw", &irc_err_chanoprivsneeded, NULL);
+      Delete_Binding ("irc-raw", &irc_err_nosuchnick, NULL);
+      Delete_Binding ("irc-raw", &irc_err_usernotinchannel, NULL);
+      Delete_Binding ("irc-raw", &irc_err_useronchannel, NULL);
       Delete_Binding ("irc-nickchg", (Function)&ircch_nick, NULL);
       Delete_Binding ("irc-signoff", (Function)&ircch_quit, NULL);
       Delete_Binding ("irc-netsplit", (Function)&ircch_netsplit, NULL);
@@ -3479,8 +3601,6 @@ static int module_ircch_signal (INTERFACE *iface, ifsig_t sig)
       UnregisterVariable ("irc-join-on-invite");
       UnregisterVariable ("irc-enforcer-time");
       UnregisterVariable ("irc-ban-keep");
-//      UnregisterVariable ("irc-exempt-keep");
-//      UnregisterVariable ("irc-invite-keep");
       UnregisterVariable ("irc-greet-time");
       UnregisterVariable ("irc-mode-timeout");
       UnregisterVariable ("irc-ignore-ident-prefix");
@@ -3574,17 +3694,33 @@ Function ModuleInit (char *args)
   Add_Binding ("irc-raw", "365", 0, 0, &irc_rpl_endoflinks, NULL);
   Add_Binding ("irc-raw", "366", 0, 0, &irc_rpl_endofnames, NULL);
   Add_Binding ("irc-raw", "367", 0, 0, &irc_rpl_banlist, NULL);
+  Add_Binding ("irc-raw", "401", 0, 0, &irc_err_nosuchnick, NULL);
   Add_Binding ("irc-raw", "403", 0, 0, &irc_err_nosuchchannel, NULL);
   Add_Binding ("irc-raw", "404", 0, 0, &irc_err_cannotsendtochan, NULL);
-  Add_Binding ("irc-raw", "405", 0, 0, &irc_join_errors, NULL);
-  Add_Binding ("irc-raw", "407", 0, 0, &irc_join_errors, NULL);
+  Add_Binding ("irc-raw", "405", 0, 0, &irc_join_errors, NULL); /* TOOMANYCHANNELS */
+  Add_Binding ("irc-raw", "407", 0, 0, &irc_join_errors, NULL); /* TOOMANYTARGETS */
+  Add_Binding ("irc-raw", "411", 0, 0, &irc_unexpected_error, NULL); /* NORECIPIENT */
+  Add_Binding ("irc-raw", "413", 0, 0, &irc_unexpected_error, NULL); /* NOTOPLEVEL */
+  Add_Binding ("irc-raw", "414", 0, 0, &irc_unexpected_error, NULL); /* WILDTOPLEVEL */
   Add_Binding ("irc-raw", "421", 0, 0, &irc_err_unknowncommand, NULL);
-  Add_Binding ("irc-raw", "437", 0, 0, &irc_join_errors, NULL);
+  Add_Binding ("irc-raw", "437", 0, 0, &irc_join_errors, NULL); /* UNAVAILRESOURCE */
+  Add_Binding ("irc-raw", "441", 0, 0, &irc_err_usernotinchannel, NULL);
   Add_Binding ("irc-raw", "442", 0, 0, &irc_err_nosuchchannel, NULL); /* NOTONCHANNEL */
-  Add_Binding ("irc-raw", "471", 0, 0, &irc_join_errors, NULL);
-  Add_Binding ("irc-raw", "473", 0, 0, &irc_join_errors, NULL);
-  Add_Binding ("irc-raw", "474", 0, 0, &irc_join_errors, NULL);
-  Add_Binding ("irc-raw", "475", 0, 0, &irc_join_errors, NULL);
+  Add_Binding ("irc-raw", "443", 0, 0, &irc_err_useronchannel, NULL);
+  Add_Binding ("irc-raw", "461", 0, 0, &irc_unexpected_error, NULL); /* NEEDMOREPARAMS */
+  Add_Binding ("irc-raw", "462", 0, 0, &irc_unexpected_error, NULL); /* ALREADYREGISTRED */
+  Add_Binding ("irc-raw", "467", 0, 0, &irc_unexpected_error, NULL); /* KEYSET */
+  Add_Binding ("irc-raw", "471", 0, 0, &irc_join_errors, NULL); /* CHANNELISFULL */
+  Add_Binding ("irc-raw", "472", 0, 0, &irc_unexpected_error, NULL); /* UNKNOWNMODE */
+  Add_Binding ("irc-raw", "473", 0, 0, &irc_join_errors, NULL); /* INVITEONLYCHAN */
+  Add_Binding ("irc-raw", "474", 0, 0, &irc_join_errors, NULL); /* BANNEDFROMCHAN */
+  Add_Binding ("irc-raw", "475", 0, 0, &irc_join_errors, NULL); /* BADCHANNELKEY */
+  Add_Binding ("irc-raw", "476", 0, 0, &irc_unexpected_error, NULL); /* BADCHANMASK */
+  Add_Binding ("irc-raw", "477", 0, 0, &irc_unexpected_error, NULL); /* NOCHANMODES */
+  Add_Binding ("irc-raw", "482", 0, 0, &irc_err_chanoprivsneeded, NULL);
+  Add_Binding ("irc-raw", "484", 0, 0, &irc_unexpected_error, NULL); /* RESTRICTED */
+  Add_Binding ("irc-raw", "485", 0, 0, &irc_unexpected_error, NULL); /* UNIQOPPRIVSNEEDED */
+  Add_Binding ("irc-raw", "501", 0, 0, &irc_unexpected_error, NULL); /* UMODEUNKNOWNFLAG */
   Add_Binding ("irc-nickchg", "*", 0, 0, (Function)&ircch_nick, NULL);
   Add_Binding ("irc-signoff", "*", 0, 0, (Function)&ircch_quit, NULL);
   Add_Binding ("irc-netsplit", "*", 0, 0, (Function)&ircch_netsplit, NULL);
@@ -3632,28 +3768,3 @@ Function ModuleInit (char *args)
   NewTimer (I_MODULE, "irc", S_FLUSH, 1, 0, 0, 0);
   return ((Function)&module_ircch_signal);
 }
-
-#if 0
-           ERR_BADCHANMASK
-           ERR_CHANOPRIVSNEEDED
-	   ERR_KEYSET
-           ERR_NEEDMOREPARAMS              
-           ERR_NOCHANMODES                 
-           ERR_NORECIPIENT                 
-           ERR_NOSUCHNICK
-	   ERR_NOTOPLEVEL
-	   ERR_RESTRICTED
-           ERR_TOOMANYMATCHES              
-	   ERR_UNKNOWNMODE
-           ERR_USERNOTINCHANNEL            
-	   ERR_USERONCHANNEL
-           ERR_WILDTOPLEVEL                
-	   RPL_AWAY
-	   RPL_ENDOFBANLIST
-	   RPL_ENDOFEXCEPTLIST
-	   RPL_ENDOFINVITELIST
-           RPL_INVITING                    
-           RPL_LIST                        
-	   RPL_LISTEND
-           RPL_NOSUCHSERVER
-#endif

@@ -26,7 +26,7 @@
 
 #define E_AGAIN		-1	/* socket is waiting for connection */
 #define E_NOSOCKET	-2	/* no such socket */
-//#define E_RESOLVTIMEOUT	-3	/* DNS search error */
+#define E_RESOLVTIMEOUT	-3	/* DNS search error */
 //#define E_UNREACHABLE	-4	/* host unreachable */
 #define E_NOTHREAD	-5	/* cannot create listening thread */
 //#define E_EOF		-6

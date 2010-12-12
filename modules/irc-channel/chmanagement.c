@@ -34,8 +34,6 @@
 extern long int ircch_enforcer_time;		/* from irc-channel.c */
 extern bool ircch_ignore_ident_prefix;
 extern long int ircch_ban_keep;
-//extern long int ircch_exempt_keep;
-//extern long int ircch_invite_keep;
 extern long int ircch_mode_timeout;
 extern char ircch_default_kick_reason[];
 

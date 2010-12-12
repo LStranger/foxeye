@@ -71,6 +71,7 @@ void CloseSocket (idx_t idx)
 {
   if (Pollfd[idx].fd != -1)
   {
+    DBG ("socket:CloseSocket: %hd", idx);
     shutdown (Pollfd[idx].fd, SHUT_RDWR);
     close (Pollfd[idx].fd);
     Pollfd[idx].fd = -1;
@@ -159,44 +160,28 @@ ssize_t ReadSocket (char *buf, idx_t idx, size_t sr, int mode)
 }
 
 /*
- * returns: -1 if error or number of writed bytes from buf
+ * returns: < 0 if error or number of writed bytes from buf
  */
 ssize_t WriteSocket (idx_t idx, const char *buf, size_t *ptr, size_t *sw, int mode)
 {
-  socket_t *sock;
-  short rev;
+  ssize_t sg;
 
   pthread_testcancel();				/* for non-POSIX systems */
   if (idx < 0 || idx >= _Snum || Pollfd[idx].fd < 0)
-    return -1;
+    return E_NOSOCKET;
   if (!buf || !sw)
     return 0;
-  rev = Pollfd[idx].revents;
-  sock = &Socket[idx];
-  if (!rev)	/* we need to poll it since we never get SIGIO for that */
-  {
-    poll (&Pollfd[idx], 1, mode == M_POLL ? POLL_TIMEOUT : 0);
-    rev = Pollfd[idx].revents;
-  }
-  if (rev & POLLNVAL)			/* socket destroyed already */
-    CloseSocket (idx);
-  if (rev & (POLLNVAL | POLLERR))	/* any error */
-    return -1;
-  else
-  {
-    ssize_t sg;
-
-    if (!(rev & POLLOUT))
-      return 0;
-    sg = write (Pollfd[idx].fd, &buf[*ptr], *sw);
-    Pollfd[idx].revents = 0;		/* we wrote socket, reset state */
-    if (sg <= 0)			/* EAGAIN */
-      return 0;
-    *ptr += sg;
-    *sw -= sg;
-    sock->ready = TRUE;			/* connected as we sent something */
-    return (sg);
-  }
+  DBG ("trying write socket %hd: %p +%u", idx, &buf[*ptr], *sw);
+  sg = write (Pollfd[idx].fd, &buf[*ptr], *sw);
+  Pollfd[idx].revents = 0;		/* we wrote socket, reset state */
+  if (sg < 0 && errno != EAGAIN)
+    return (E_ERRNO - errno);
+  else if (sg <= 0)			/* EAGAIN */
+    return 0;
+  *ptr += sg;
+  *sw -= sg;
+  Socket[idx].ready = TRUE;		/* connected as we sent something */
+  return (sg);
 }
 
 int KillSocket (idx_t *idx)
@@ -235,6 +220,7 @@ idx_t GetSocket (unsigned short type)
   if (sockfd == -1)
     return (E_NOSOCKET);
   Socket[idx].port = type;
+  DBG ("socket:GetSocket: %d (fd=%d)", (int)idx, sockfd);
   return idx;
 }
 
@@ -245,9 +231,9 @@ int SetupSocket (idx_t idx, char *domain, unsigned short port)
   struct sockaddr_un sun;
   struct sockaddr *sa;
   socklen_t len;
-  struct hostent *hptr = NULL;
   struct linger ling;
-  int i = 1, sockfd = Pollfd[idx].fd, type = (int)Socket[idx].port;
+  int i, sockfd = Pollfd[idx].fd, type = (int)Socket[idx].port;
+  char hname[NI_MAXHOST+1];
 
   /* check for errors! */
   if (!domain && type != M_LIST && type != M_LINP)
@@ -273,12 +259,27 @@ int SetupSocket (idx_t idx, char *domain, unsigned short port)
       sin.sin_addr.s_addr = htonl (INADDR_ANY);
     else
     {
-      hptr = gethostbyname (domain);
-      if (!hptr || !hptr->h_addr_list[0])
-	return (E_NOSUCHDOMAIN);
-      memcpy (&sin.sin_addr, hptr->h_addr_list[0], hptr->h_length);
+      struct addrinfo *haddr;
+      static struct addrinfo hints = { .ai_family = AF_INET, .ai_socktype = 0,
+				       .ai_protocol = 0, .ai_flags = 0 };
+
+      i = getaddrinfo (domain, NULL, &hints, &haddr);
+      if (i == 0)
+      {
+	memcpy (&sin.sin_addr,
+		&((struct sockaddr_in *)haddr->ai_addr)->sin_addr,
+		sizeof(sin.sin_addr));
+	freeaddrinfo (haddr);
+      }
+      else if (i == EAI_AGAIN)
+	return E_RESOLVTIMEOUT;
+      else if (i == EAI_SYSTEM)
+	return (E_ERRNO - errno);
+      else
+	return E_NOSUCHDOMAIN;
     }
   }
+  i = 1;
   setsockopt (sockfd, SOL_SOCKET, SO_KEEPALIVE, (void *) &i, sizeof(i));
   setsockopt (sockfd, SOL_SOCKET, SO_REUSEADDR, (void *) &i, sizeof(i));
   ling.l_onoff = 1;
@@ -291,9 +292,8 @@ int SetupSocket (idx_t idx, char *domain, unsigned short port)
 
     if (type == M_LINP)
       backlog = 1;
-    if (bind (sockfd, (struct sockaddr *)&sin, sizeof(sin)) < 0 ||
-	listen (sockfd, backlog) < 0 ||
-	getsockname (sockfd, (struct sockaddr *)&sin, &len) < 0)
+    if (bind (sockfd, sa, len) < 0 || listen (sockfd, backlog) < 0 ||
+	getsockname (sockfd, sa, &len) < 0)
       return (E_ERRNO - errno);
     if (type != M_UNIX)
       Socket[idx].port = ntohs (sin.sin_port);
@@ -313,9 +313,10 @@ int SetupSocket (idx_t idx, char *domain, unsigned short port)
 #endif
   if (type != M_UNIX)
   {
-    hptr = gethostbyaddr ((char *)&sin.sin_addr, sizeof(sin.sin_addr), AF_INET);
-    if (hptr && hptr->h_name)
-      domain = hptr->h_name;	/* subst canonical name */
+    i = getnameinfo (sa, len, hname, sizeof(hname), NULL, 0, 0);
+    /* TODO: work on errors? */
+    if (i == 0)
+      domain = hname;
   }
   Socket[idx].domain = safe_strdup (domain);
   return 0;
@@ -326,10 +327,10 @@ idx_t AnswerSocket (idx_t listen)
   idx_t idx;
   struct sockaddr_in cliaddr;
   struct sockaddr_un cliua;
-  struct hostent *hptr = NULL;
-  int sockfd;
+  int sockfd, i;
   short rev;
   socklen_t len;
+  char hname[NI_MAXHOST+1];
 
   pthread_testcancel();				/* for non-POSIX systems */
   if (listen < 0 || listen >= _Snum || Pollfd[listen].fd < 0)
@@ -364,6 +365,7 @@ idx_t AnswerSocket (idx_t listen)
   {
     len = sizeof(cliaddr);
     Pollfd[idx].fd = sockfd = accept (Pollfd[listen].fd, (struct sockaddr *)&cliaddr, &len);
+    Socket[idx].port = ntohs (cliaddr.sin_port);
   }
   pthread_mutex_unlock (&LockPoll);
   Pollfd[listen].revents = 0;		/* we accepted socket, reset state */
@@ -372,21 +374,21 @@ idx_t AnswerSocket (idx_t listen)
   fcntl (sockfd, F_SETOWN, _mypid);
 #ifdef HAVE_SYS_FILIO_H		/* non-BSDish systems have not O_ASYNC flag */
   {
-    int i = 1;
+    i = 1;
     ioctl (sockfd, FIONBIO, &i);
     ioctl (sockfd, FIOASYNC, &i);
   }
 #else
   fcntl (sockfd, F_SETFL, O_NONBLOCK | O_ASYNC);
 #endif
+  DBG ("socket:AnswerSocket: %hd (fd=%d)", idx, sockfd);
   if (Socket[listen].port == 0)
     return (idx);		/* no domains for Unix sockets */
-  Socket[idx].port = ntohs (cliaddr.sin_port);
-  hptr = gethostbyaddr ((char *)&cliaddr.sin_addr, sizeof(cliaddr.sin_addr),
-			AF_INET);
-  if (hptr && hptr->h_name)
-    Socket[idx].domain = safe_strdup (hptr->h_name); /* subst canonical name */
-  else
+  i = getnameinfo ((struct sockaddr *)&cliaddr, len, hname, sizeof(hname),
+		   NULL, 0, 0);
+  if (i == 0)
+    Socket[idx].domain = safe_strdup (hname); /* subst canonical name */
+  else /* error of getnameinfo() */
   {
     char nd[16];			/* XXX.XXX.XXX.XXX */
     uint32_t ad = htonl (cliaddr.sin_addr.s_addr);
@@ -426,6 +428,9 @@ char *SocketError (int er, char *buf, size_t s)
     case E_NOSOCKET:
       strfcpy (buf, "no such socket", s);
       break;
+    case E_RESOLVTIMEOUT:
+      strfcpy (buf, "resolver temporary failure", s);
+      break;
     case E_NOTHREAD:
       strfcpy (buf, "cannot create listening thread", s);
       break;
@@ -435,9 +440,6 @@ char *SocketError (int er, char *buf, size_t s)
     case E_NOSUCHDOMAIN:
       strfcpy (buf, "no such domain", s);
       break;
-//    case E_NOCONNECT:
-//      strfcpy (buf, "cannot connect to host", s);
-//      break;
     default:
       strfcpy (buf, "unknown socket error", s);
   }

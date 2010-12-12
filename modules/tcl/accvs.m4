@@ -2,15 +2,23 @@ dnl Checks for Tcl.
 AC_ARG_WITH(tcl,
     [  --with-tcl=PATH         where the root of Tcl is installed],
     [  fe_tcl_with="$withval"
+    ], [fe_tcl_with=yes
     ])
 
 if test ! "x$fe_tcl_includes" = x; then
     unset fe_cv_have_tcl
 fi
 
-AC_MSG_CHECKING(for Tcl config)
 AC_CACHE_VAL(fe_cv_have_tcl,
 [# check for Tcl config script first
+ AC_MSG_CHECKING(for Tcl config)
+ if test "$fe_tcl_with" = no; then
+  AC_MSG_RESULT([not requested])
+  fe_cv_have_tcl="have_tcl=no"
+ else
+  if test "$fe_tcl_with" = yes; then
+    fe_tcl_with=
+  fi
   fe_tcl_libs=no TCL_LIB_SPEC=no TCL_INCLUDE_SPEC=no
   tcl_config_dirs="$fe_tcl_with $prefix/lib/tcl* /usr/lib/tcl* /usr/local/lib/tcl*"
   for dir in $tcl_config_dirs; do
@@ -20,6 +28,7 @@ AC_CACHE_VAL(fe_cv_have_tcl,
 	if test x"$TCL_LIB_SPEC" = xno || test x"$TCL_INCLUDE_SPEC" = xno; then
 	    dnl malformed config
 	    TCL_LIB_SPEC=no TCL_INCLUDE_SPEC=no
+	    AC_MSG_RESULT([invalid])
 	    continue
 	fi
 	AC_MSG_RESULT([fine])
@@ -121,6 +130,7 @@ Tcl_AppendElement(interp, NULL);
     ])
     LIBS="${fe_tcl_save_LIBS}"
   fi
+ fi
 ])
 eval "$fe_cv_have_tcl"
 

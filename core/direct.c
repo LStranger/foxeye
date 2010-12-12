@@ -693,13 +693,13 @@ struct connchain_buffer
 static ssize_t _ccfilter_y_send (connchain_i **ch, idx_t id, const char *str,
 				 size_t *sz, connchain_buffer **b)
 {
-  ssize_t i = E_NOSOCKET, ii, left;
+  ssize_t i = E_NOSOCKET, ii = 0, left;
   char *c;
 
   if (*b == NULL)			/* already terminated */
     return i;
   if (str == NULL ||			/* got termination */
-      (i = Connchain_Put (ch, id, "", &i)) < 0)	/* check next link */
+      (i = Connchain_Put (ch, id, "", &ii)) < 0) /* check next link */
     return i;
   if (i != CONNCHAIN_READY)		/* next link in chain isn't ready */
     return 0;				/* we don't ready too, of course */
@@ -1201,6 +1201,7 @@ static void session_handler (char *ident, char *host, void *data, int flag)
     /* cannot create connection */
     LOG_CONN ("%s", buf);
     if(Connchain_Kill (dcc))p=p;
+    KillSocket (&dcc->socket);
     FREE (&dcc);
   }
 }
@@ -1374,12 +1375,10 @@ static void *_listen_port (void *input_data)
   {
     if ((new_idx = AnswerSocket (acptr->socket)) == E_AGAIN)
       continue;
-    else if (new_idx < 0)
+    else if (new_idx < 0) /* listening socket died */
     {
-//      LOG_CONN (_("Listening socket died."));	/* print error message */
       if (acptr->prehandler)			/* notify caller */
 	acptr->prehandler ((pthread_t)0, &acptr->data, -1);
-//      KillSocket (&acptr->socket);		/* die now */
       break;
     }
     child = safe_malloc (sizeof(accept_t));
@@ -1413,10 +1412,7 @@ static void *_listen_port (void *input_data)
   }
   /* job's ended so let dispatcher know that we must be finished
      don't do locking and I hope it's still atomic so should be OK */
-//  FREE (&acptr->confline);
-//  Set_Iface (iface);
   iface->ift = I_LISTEN | I_FINWAIT;
-//  Unset_Iface();
   return NULL;
 }
 #undef acptr
@@ -2324,7 +2320,7 @@ static void IntCrypt (const char *pass, char **cr)
     salt[1] = __crlph[(i/64)%64];
     salt[2] = 0;
   }
-  snprintf (__spass, sizeof(__spass), "$1%s", crypt (pass, salt));
+  snprintf (__spass, sizeof(__spass), "$$%s", crypt (pass, salt));
   *cr = __spass;
 }
 
@@ -2498,13 +2494,6 @@ static void ConvertColors (peer_t *dcc, char *msg, size_t msglen)
 	  ADD_COLORSTRING ('0');
 	}
 	break;
-//      case '\005':		/* start/stop alternate chars */
-//      case '\022':		/* ROM char */
-//	break;
-//      case '\011':		/* HT */
-//      case '\007':		/* bell */
-//	*s++ = *c;
-//	break;
       case '\023':		/* just space */
 	*s++ = ' ';
 	break;
@@ -2748,7 +2737,7 @@ char *IFInit_DCC (void)
   BT_Dcc = Add_Bindtable ("dcc", B_UCOMPL);		/* these tables have bindings */
   _dc_init_bindings();
   BT_Crypt = Add_Bindtable ("passwd", B_UNIQMASK);
-  Add_Binding ("passwd", "$1*", 0, 0, (Function)&IntCrypt, NULL);
+  Add_Binding ("passwd", "$$*", 0, 0, (Function)&IntCrypt, NULL);
   BT_Login = Add_Bindtable ("login", B_MASK);
   Add_Binding ("login", "*", U_ACCESS, U_NONE, (Function)&get_chat, NULL);
   BT_Chaton = Add_Bindtable ("chat-on", B_MASK);	/* rest are empty */

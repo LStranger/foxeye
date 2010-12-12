@@ -2,6 +2,11 @@
  Module "irc":
  -------------
 
+  Interfaces: accepts messages for I_CLIENT with name <name>@<network> to
+  send them for any valid recipient in network (_c_l_i_e_n_t below);
+  accepts messages for I_SERVICE with name <network> to send them to the
+  server (_i_f_a_c_e or _n_e_t below).
+
 RAW   "iirrcc--rraaww"        MATCHCASE
   int func(INTERFACE *_i_f_a_c_e, char *_s_e_r_v_n_a_m_e, char *_m_e,
 	   unsigned char *_p_r_e_f_i_x, int _n, char **_p_a_r_a_m_s,

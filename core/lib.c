@@ -27,6 +27,9 @@
 #include <sys/utsname.h>
 #include <wchar.h>
 #include <locale.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 /* simple functions have to be either here or in protos.h
    if compiler supports inline directive */
@@ -115,24 +118,32 @@ size_t unistrlower (char *dst, const char *src, size_t ds)
   ds--; /* preserve 1 byte for terminating null char */
   if (src && *src)
   {
-    // TODO: make support for broken systems - recode in 8 bit locale
     if (MB_CUR_MAX > 1) /* if multibyte encoding */
     {
       wchar_t wc;
-      size_t len;
-      register const char *ch;
+      register ssize_t len;
+      const char *ch;
       mbstate_t ms;
+      char replace_char = *text_replace_char;
       char c[MB_LEN_MAX];
 
-      for (ch = src, ss = strlen(ch); *ch && ds; )
+      memset(&ms, 0, sizeof(ms)); /* reset the state */
+      for (ch = src, ss = strlen(ch); *ch && ds > 0; )
       {
 	len = mbrtowc(&wc, ch, ss, &ms);
-	if (len < 1) /* unrecognized char! TODO: debug warning on it? */
+	if (len < 1) /* unrecognized char! */
 	{
+	  if (replace_char)
+	  {
+	    *dst++ = replace_char; /* OK, we replace it then */
+	    sout++;
+	    ds--;
+	  }
+	  if (len == -2) /* premature end of string */
+	    break;
 	  ss--;
-	  *dst++ = *ch++; /* OK, we just copy it, is it the best way? */
-	  sout++;
-	  ds--;
+	  ch++; /* and skip bad char */
+	  memset(&ms, 0, sizeof(ms)); /* reset the state */
 	  continue;
 	}
 	ss -= len; /* advance pointer in sourse string */
@@ -141,7 +152,7 @@ size_t unistrlower (char *dst, const char *src, size_t ds)
 	len = wcrtomb(c, wc, &ms); /* first get the size of lowercase mbchar */
 	if (len < 1)
 	  continue; /* tolower() returned unknown char? ignore it */
-	if (len > ds)
+	if (len > (ssize_t)ds)
 	  break; /* oops, out of output size! */
 	memcpy(dst, c, len); /* really convert it */
 	ds -= len; /* advance pointers in destination string */
@@ -167,7 +178,6 @@ void foxeye_setlocale (void)
 {
   char new_locale[SHORT_STRING];
 
-  // TODO: make support for broken systems - set to 8 bit locales
   snprintf (new_locale, sizeof(new_locale), "%s.%s", locale, Charset);
   DBG ("trying set locale to %s", new_locale);
   if (setlocale (LC_ALL, new_locale) == NULL)
@@ -176,8 +186,20 @@ void foxeye_setlocale (void)
     snprintf (new_locale, sizeof(new_locale), "%s.%s", locale, CHARSET_8BIT);
     if (setlocale (LC_ALL, new_locale) == NULL)
     {
-      setlocale (LC_ALL, "");
-      ERROR ("init: failed to set locale to %s, reverted to default!", new_locale);
+      char *c, *deflocale;
+
+      deflocale = setlocale (LC_ALL, "");
+      ERROR ("init: failed to set locale to %s, reverted to default %s!",
+	     new_locale, deflocale);
+      c = safe_strchr (deflocale, '.');
+      if (c)
+	strfcpy (Charset, ++c, sizeof(Charset)); /* reset charset */
+    }
+    else
+    {
+      ERROR ("init: failed to set locale to %s.%s, reverted to %s!", locale,
+	     Charset, new_locale);
+      strfcpy (Charset, CHARSET_8BIT, sizeof(Charset)); /* reset charset */
     }
   }
   else if (!strncasecmp (Charset, "utf", 3))
@@ -201,34 +223,40 @@ size_t unistrcut (const char *line, size_t len, int maxchars)
   len--;			/* preserve 1 byte for '\0' */
   if (_charset_is_utf == TRUE)	/* let's count chars - works for utf* only */
   {
-    register int chsize = 0;
     register unsigned char *ch = (unsigned char *)line;
-    register unsigned char *chmax = (unsigned char *)&line[len];
+    unsigned char *chmax = (unsigned char *)&line[len];
+    register size_t cursize;
+    register int chsize = maxchars;
 
-    while (chsize < maxchars && ch < chmax && *ch) /* go for max chars */
+    while (chsize > 0 && ch < chmax && *ch) /* go for max chars */
     {
-      if ((*ch++ & 0xc0) == 0xc0)	/* first multibyte octet */
-	while ((*ch & 0xc0) == 0x80 && ch < chmax)
-	  ch++;				/* skip rest of octets */
-      chsize++;				/* char counted */
+      cursize = 1;
+      if ((*ch & 0xc0) == 0xc0)		/* first multibyte octet */
+	while ((ch[cursize] & 0xc0) == 0x80)
+	  cursize++;			/* skip rest of octets */
+      if (ch + cursize > chmax)
+	break;
+      chsize--;				/* char counted */
+      ch += cursize;
     }
     len = (char *)ch - line;
   }
-  // TODO: make support for broken systems - recode in 8 bit locale
   else if (MB_CUR_MAX > 1)	/* another multibyte charset is in use */
   {
     register size_t cursize;
-    register int chsize = 0;
+    register int chsize = maxchars;
     register const char *ch = line;
     const char *chmax = &line[len];
     mbstate_t ms;
 
-    while (chsize < maxchars && ch < chmax)
+    while (chsize > 0 && ch < chmax && *ch)
     {
       cursize = mbrlen(ch, chmax - ch, &ms);
       if (cursize <= 0)			/* break at invalid char */
 	break;
-      chsize++;
+      if (ch + cursize > chmax)
+	break;
+      chsize--;
       ch += cursize;
     }
     len = ch - line;
@@ -696,7 +724,7 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
 	  n = _try_subst (c, nmax, unbuf.sysname, nn);
 	  break;
 	case 'I':
-	  snprintf (tbuf, sizeof(tbuf), "%lu", (unsigned long)p->ip);
+	  inet_ntop (AF_INET, &p->ip, tbuf, sizeof(tbuf));
 	  break;
 	case 'P':
 	  snprintf (tbuf, sizeof(tbuf), "%hu", p->port);
@@ -864,7 +892,7 @@ size_t printl (char *buf, size_t s, char *templ, size_t strlen,
   p.host = uhost;
   p.lname = lname;
   p.chan = chan;
-  p.ip = ip;
+  p.ip = htonl (ip);
   p.port = port;
   p.idle = idle;
   p.message = message;

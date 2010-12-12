@@ -144,9 +144,23 @@ fset dcc_got_file
 fset dcc_sent_file
 :
 :
-:Used when someone successfully uploaded some file to you. Macros: %%L, %%@,\
- %%N, %%I, %%* (file name).
+:Used when someone successfully downloaded some file from you. Macros: %%L,\
+ %%@, %%N, %%I, %%* (file name).
  Default: "DCC SEND of %%* to %%N completed.".
+
+fset dcc_get_started
+:
+:
+:Used when connection with someone to get some file is established. Macros:\
+ %%L, %%@, %%N, %%I, %%* (file name).
+ Default: "DCC GET of %%* from %%N established."
+
+fset dcc_request
+:
+:
+:Used when we got DCC CHAT or DCC SEND request from someone in IRC network.\
+ Macros: %%L, %%@, %%N, %%I, %%P, %%* (file name or "chat").
+ Default: "DCC connection request for "%%*" from %%N(%%@) to %%I:%%P"
 
 CHAT
 :
