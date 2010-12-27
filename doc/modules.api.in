@@ -353,6 +353,7 @@ Common API:
     contain:
       *		matched to any number of any characters
       ?		matched to one any character
+      \		quote next *, ?, or \ char.
     Note: this function does not perform case-insensitive comparison!
 	Reenterability: async-safe
 
@@ -1152,7 +1153,7 @@ Connection chain API:
   ssize_t CCoonnnncchhaaiinn__GGeett (connchain_i **_c_c, idx_t _i_d_x, char *_b_u_f,
 			 size_t _s);
     Tries to receive and filter data from socket _i_d_x through connection
-    chain _c_c and put them into buffer _b_u_f of maximum size _s. If _l_i_n_e is
+    chain _c_c and put them into buffer _b_u_f of maximum size _s. If _b_u_f is
     NULL then chain will be destroyed immediately and socket closed. If
     there was and error on receiving data then chain will return data
     that still left in buffers and if no data left then chain will be
@@ -1226,9 +1227,9 @@ Flags:
   UCOMPL     the same with completion
   UNIQMASK   unique (replacing) binding for matching of string to mask
 
-All int func() returns 0 if binding did not executed. If binding
-arguments are correct but no logs needed, func() may return -1. All
-bindings may be non-reenterable if another wasn't declared.
+All int func() returns 0 if binding did not executed. If binding executed
+but result should be ignored (no logs for example) then func() may return
+value -1. All bindings may be non-reenterable if another wasn't declared.
 
 Interpreter entrance for bindings:
   int func(char *_f_n_a_m_e, int _a_r_g_c, const char *_a_r_g_v[]);

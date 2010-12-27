@@ -20,6 +20,7 @@
 
 #include "foxeye.h"
 
+#include <fcntl.h>
 #include <errno.h>
 
 #include "init.h"
@@ -134,37 +135,38 @@ short Event (const char *ev)
 static int _scan_wtmp (const char *path, wtmp_t *wtmp, int wn,
 		lid_t myid[], size_t *idn, short event, lid_t fid, time_t upto)
 {
-  FILE *fp;
+  int fd, x = 0;
   wtmp_t buff[64];
-  size_t i, k, n;
+  off_t i;
+  size_t k, n;
   struct stat st;
-  int x = 0;
 
   DBG ("_scan_wtmp:%s:%d:[%lu]=%hd:%hd:%hd", path, wn, (unsigned long)*idn, myid[0], event, fid);
   if (wn == 0)
     return 0;
   if (stat (path, &st) || st.st_mtime < upto)
     return -1;		/* it's too old to check */
-  fp = fopen (path, "rb");
-  if (!fp)
+  fd = open (path, O_RDONLY);
+  if (fd < 0)
     return -1;
-  fseek (fp, 0L, SEEK_END);
-  while((i = ftell (fp)))
+  i = lseek (fd, 0, SEEK_END);
+  while (i > 0)
   {
     if (i <= sizeof(buff))
     {
-      rewind (fp);
+      lseek (fd, 0, SEEK_SET);		/* rewind to SOF */
       k = i / sizeof(wtmp_t);
     }
     else
     {
-      fseek (fp, -sizeof(buff), SEEK_CUR);
+      lseek (fd, -sizeof(buff), SEEK_CUR);
       k = sizeof(buff) / sizeof(wtmp_t);
     }
-    i = fread (buff, sizeof(wtmp_t), k, fp);
-    DBG ("_scan_wtmp: %u by %u: read %u records", (unsigned int)k,
-	 (unsigned int)sizeof(wtmp_t), (unsigned int)i);
-    fseek (fp, -sizeof(wtmp_t) * i, SEEK_CUR);
+    i = read (fd, buff, k * sizeof(wtmp_t));
+    DBG ("_scan_wtmp: %u by %u: read %d bytes", (unsigned int)k,
+	 (unsigned int)sizeof(wtmp_t), (int)i);
+    lseek (fd, -i, SEEK_CUR);
+    i /= sizeof(wtmp_t);
     k = 0;
     for (; i > 0 && wn; )
     {
@@ -211,8 +213,9 @@ static int _scan_wtmp (const char *path, wtmp_t *wtmp, int wn,
     }
     if (wn == 0 || *idn == 0 || i > 0)
       break;
+    i = lseek (fd, 0, SEEK_CUR);
   }
-  fclose (fp);
+  close (fd);
   if (x == 0 && i != 0)
     return -1;
   return x;
@@ -280,22 +283,24 @@ void NewEvent (short event, lid_t from, lid_t lid, short count)
 {
   wtmp_t wtmp;
   char wp[LONG_STRING];
-  FILE *fp;
+  int fd;
 
   if (event != W_DOWN)			/* don't deadlock on shutdown */
     Set_Iface (NULL);			/* in order to access Wtpm variable */
-  fp = fopen (expand_path (wp, Wtmp, sizeof(wp)), "ab");
+  fd = open (expand_path (wp, Wtmp, sizeof(wp)), O_WRONLY | O_CREAT | O_APPEND,
+	     S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
   if (event != W_DOWN)			/* don't deadlock on shutdown */
     Unset_Iface();
-  if (fp)
+  if (fd >= 0)
   {
     wtmp.fuid = from;
     wtmp.event = event;
     wtmp.time = time (NULL);
     wtmp.uid = lid;
     wtmp.count = count;
-    fwrite (&wtmp, sizeof(wtmp), 1, fp);
-    fclose (fp);
+    if (write (fd, &wtmp, sizeof(wtmp)) < 0)
+      DBG ("wtmp:error on saving new event");
+    close (fd);
   }
 }
 
@@ -303,19 +308,20 @@ void NewEvents (short event, lid_t from, size_t n, lid_t ids[], short counts[])
 {
   wtmp_t wtmp;
   char wp[LONG_STRING];
-  FILE *fp;
+  int fd;
 
   if (n <= 0)				/* check for stupidity */
     return;
   if (event != W_DOWN)			/* don't deadlock on shutdown */
     Set_Iface (NULL);			/* in order to access Wtpm variable */
-  fp = fopen (expand_path (wp, Wtmp, sizeof(wp)), "ab");
+  fd = open (expand_path (wp, Wtmp, sizeof(wp)), O_WRONLY | O_CREAT | O_APPEND,
+	     S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
   if (event != W_DOWN)			/* don't deadlock on shutdown */
     Unset_Iface();
   wtmp.fuid = from;
   wtmp.event = event;
   wtmp.time = time (NULL);
-  if (fp)
+  if (fd >= 0)
   {
     register size_t i;
 
@@ -323,9 +329,10 @@ void NewEvents (short event, lid_t from, size_t n, lid_t ids[], short counts[])
     {
       wtmp.uid = ids[i];
       wtmp.count = counts[i];
-      fwrite (&wtmp, sizeof(wtmp), 1, fp);
+      if (write (fd, &wtmp, sizeof(wtmp)) < 0)
+	break;
     }
-    fclose (fp);
+    close (fd);
   }
 }
 
@@ -336,9 +343,9 @@ void RotateWtmp (void)
   char path[LONG_STRING];
   char path2[LONG_STRING];
   char errb[STRING];
-  FILE *fp, *dst = NULL;
-  register size_t j;
-  size_t k;
+  int fd, dst = -1;
+  register ssize_t j;
+  ssize_t k;
   wtmp_t buff[64];
   wtmp_t buff2[64];
   uint32_t bits;
@@ -358,18 +365,18 @@ void RotateWtmp (void)
   GoneBitmap = safe_calloc (1, sizeof(uint32_t) * LID_MAX);
   i = 0;
   /* check if we need to rotate - check the first event of $Wtmp */
-  if ((fp = fopen (wfp, "rb")))
+  if ((fd = open (wfp, O_RDONLY)) >= 0)
   {
     struct tm tm, tm0;
 
-    if (fread (buff, sizeof(wtmp_t), 1, fp) == 1) /* we have readable Wtmp */
+    if (read (fd, buff, sizeof(wtmp_t)) > 0) /* we have readable Wtmp */
     {
       localtime_r (&t, &tm0);
       localtime_r (&buff[0].time, &tm);
       if (tm.tm_year != tm0.tm_year || tm.tm_mon != tm0.tm_mon)
 	i = 1;					/* and it needs rotation */
     }
-    fclose (fp);
+    close (fd);
   }
   if (i == 0)
     return;				/* nothing to do yet */
@@ -380,16 +387,19 @@ void RotateWtmp (void)
     if (i)
     {
       snprintf (path, sizeof(path), "%s.%d", wfp, i);
-      fp = fopen (path, "rb");
+      fd = open (path, O_RDONLY);
     }
     else
-      fp = fopen (wfp, "rb");
-    if (fp)
+      fd = open (wfp, O_RDONLY);
+    if (fd >= 0)
     {
-      while ((k = fread (buff, sizeof(wtmp_t), 64, fp)))
+      while ((k = read (fd, buff, sizeof(buff))) > 0)
+      {
+	k /= sizeof(wtmp_t);
 	for (j = 0; j < k; j++)
 	  GoneBitmap[buff[j].uid] |= 1<<(buff[j].event);
-      fclose (fp);
+      }
+      close (fd);
       update = 1;
     }
   }
@@ -403,15 +413,17 @@ void RotateWtmp (void)
 	GoneBitmap[j] = 0xffffffff;		/* set all bits */
     /* delete expired events from wtmp.gone (rewrite) */
     snprintf (path, sizeof(path), "%s.0", wfp);
-    fp = fopen (path2, "rb");			/* wtmp.gone */
-    if (fp && !(dst = fopen (path, "wb")))	/* wtmp.tmp */
+    fd = open (path2, O_RDONLY);		/* wtmp.gone */
+    if (fd >= 0 && (dst = open (path, O_RDWR | O_CREAT,
+				S_IRUSR | S_IWUSR)) < 0) /* wtmp.tmp */
     {
       strerror_r (errno, errb, sizeof(errb));
       ERROR ("wtmp: couldn't create %s: %s", path, errb);
     }
-    if (dst)
-      while ((k = fread (buff, sizeof(wtmp_t), 64, fp)))
+    if (dst >= 0)
+      while ((k = read (fd, buff, sizeof(buff))) > 0)
       {
+	k /= sizeof(wtmp_t);
 	for (j = 0; j < k; )
 	{
 	  bits = 1<<(buff[j].event);
@@ -420,13 +432,13 @@ void RotateWtmp (void)
 	  else					/* still actual */
 	    j++;
 	}
-	if (k)
-	  fwrite (buff, sizeof(wtmp_t), k, dst);
+	if (k && write (dst, buff, k * sizeof(wtmp_t)) <= 0) /* error! */
+	  break;
       }
-    if (fp) fclose (fp);
-    if (dst)
+    if (fd >= 0) close (fd);
+    if (dst >= 0)
     {
-      fclose (dst);
+      close (dst);
       if (unlink (path2) ||			/* wtmp.gone */
 	  rename (path, path2))			/* wtmp.tmp --> wtmp.gone */
       {
@@ -444,50 +456,59 @@ void RotateWtmp (void)
     for (; i > 1; i--)
     {
       snprintf (path, sizeof(path), "%s.%d", wfp, i);
-      if ((fp = fopen (path, "rb")))
+      if ((fd = open (path, O_RDONLY)) >= 0)
       {
-	while ((k = fread (buff, sizeof(wtmp_t), 64, fp)))
+	while ((k = read (fd, buff, sizeof(buff))) > 0)
+	{
+	  k /= sizeof(wtmp_t);
 	  for (j = 0; j < k; j++)
 	    GoneBitmap[buff[j].uid] &= ~(1<<(buff[j].event));
-	fclose (fp);
+	}
+	close (fd);
       }
     }
-    if ((fp = fopen (wfp, "rb")))
+    if ((fd = open (wfp, O_RDONLY)) >= 0)
     {
-      while ((k = fread (buff, sizeof(wtmp_t), 64, fp)))
+      while ((k = read (fd, buff, sizeof(buff))) > 0)
+      {
+	k /= sizeof(wtmp_t);
 	for (j = 0; j < k; j++)
 	  GoneBitmap[buff[j].uid] &= ~(1<<(buff[j].event));
-      fclose (fp);
+      }
+      close (fd);
     }
     snprintf (path, sizeof(path), "%s.0", wfp);
-    dst = fopen (path, "wb+");			/* wtmp.tmp */
+    dst = open (path, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR); /* wtmp.tmp */
     /* create events in tmp file in reverse order */
-    if (dst) for (i = WTMPS_MAX; i >= wfps; i--)
+    if (dst >= 0) for (i = WTMPS_MAX; i >= wfps; i--)
     {
       if (i)
       {
 	snprintf (path, sizeof(path), "%s.%d", wfp, i);
-	fp = fopen (path, "rb");
+	fd = open (path, O_RDONLY);
       }
       else
-        fp = fopen (wfp, "rb");
-      if (fp)
+        fd = open (wfp, O_RDONLY);
+      if (fd)
       {
-	fseek (fp, 0L, SEEK_END);
-	while((j = ftell (fp)))
+	j = lseek (fd, 0, SEEK_END);
+	while(j >= 0)
 	{
-	  if (j <= sizeof(buff))
+	  if ((size_t)j <= sizeof(buff))
 	  {
-	    rewind (fp);
+	    lseek (fd, 0, SEEK_SET);
 	    k = j / sizeof(wtmp_t);
 	  }
 	  else
 	  {
-	    fseek (fp, -sizeof(buff), SEEK_CUR);
-	    k = 64;
+	    lseek (fd, -sizeof(buff), SEEK_CUR);
+	    k = sizeof(buff) / sizeof(wtmp_t);
 	  }
-	  j = fread (buff, sizeof(wtmp_t), k, fp);
-	  fseek (fp, -sizeof(wtmp_t) * k, SEEK_CUR);
+	  j = read (fd, buff, k * sizeof(wtmp_t));
+	  if (j <= 0)
+	    break;
+	  lseek (fd, -j, SEEK_CUR);
+	  j /= sizeof(wtmp_t);
 	  k = 0;
 	  for (; j > 0; )
 	  {
@@ -499,10 +520,11 @@ void RotateWtmp (void)
 	      GoneBitmap[buff[j].uid] &= ~bits;
 	    }
 	  }
-	  if (k)
-	    fwrite (buff2, sizeof(wtmp_t), k, dst);
+	  if (k && write (dst, buff2, k * sizeof(wtmp_t) <= 0)) /* error! */
+	    break;
+	  j = lseek (fd, 0, SEEK_CUR);
 	}
-	fclose (fp);
+	close (fd);
       }
     }
     else
@@ -511,33 +533,38 @@ void RotateWtmp (void)
       ERROR ("wtmp: cannot open %s: %s", path, errb);
     }
     /* add events to wtmp.gone in normal order */
-    if (dst)
+    if (dst >= 0)
     {
-      fp = fopen (path2, "ab");
-      while((j = ftell (dst)))
+      fd = open (path2, O_WRONLY | O_CREAT | O_APPEND,
+		 S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+      while ((j = lseek (dst, 0, SEEK_CUR)) > 0)
       {
-	if (j <= sizeof(buff))
+	if ((size_t)j <= sizeof(buff))
 	{
-	  rewind (dst);
+	  lseek (dst, 0, SEEK_SET);
 	  k = j / sizeof(wtmp_t);
 	}
 	else
 	{
-	  fseek (dst, -sizeof(buff), SEEK_CUR);
-	  k = 64;
+	  lseek (dst, -sizeof(buff), SEEK_CUR);
+	  k = sizeof(buff) / sizeof(wtmp_t);
 	}
-	j = fread (buff, sizeof(wtmp_t), k, dst);
-	fseek (dst, -sizeof(wtmp_t) * k, SEEK_CUR);
+	j = read (dst, buff, k * sizeof(wtmp_t));
+	if (j <= 0) /* error! */
+	  break;
+	lseek (dst, -j, SEEK_CUR);
+	j /= sizeof(wtmp_t);
 	k = 0;
 	for (; j > 0; )
 	{
 	  j--;
 	  memcpy (&buff2[k++], &buff[j], sizeof(wtmp_t));
 	}
-	fwrite (buff2, sizeof(wtmp_t), k, fp);
+	if (write (fd, buff2, k * sizeof(wtmp_t)) <= 0)
+	  break;
       }
-      fclose (fp);
-      fclose (dst);
+      close (fd);
+      close (dst);
       snprintf (path, sizeof(path), "%s.0", wfp);
       if (unlink (path) == 0)
 	DBG ("wtmp: removed %s.", path);

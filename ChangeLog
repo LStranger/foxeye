@@ -4,9 +4,46 @@ TODO:
 	* core/lib.c: to implement %{subfmt} macro and SetSubformat().
 	* core/journal.c: to implement transactions journal (for botnet, etc.).
 	* modules/irc*: to do something with ident masks?
-	* core/wtmp.c: to replace all fopen() with open().
+	* core/init.c: to change Inspect_Client() parameters [0.10].
+	* core/init.c: to take NULL as string in Check_Bindtable as iteration
+	  parameter and to implement 'hits' value in structure [0.10].
+	* core/direct.h +: to add 'const char *network_type' field into peer_t
+	  for connchain identification [0.10].
+	* core/wtmp.c: to handle errors somehow?
 
 --- [0.9b] * to test all *
+Mon Dec 27 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/main.c, core/dispatcher.c, core/init.*, doc/foxeye.1: added new
+	  run option '-q' to start just config executable from crontab.
+	* core/dispatcher.c: fixed bug when foxeye left running if there was
+	  no module/listener/console in config.
+	* core/dispatcher.c: fixed case when there were errors on writing PID
+	  file - foxeye should be terminated instead of running uncontrolled.
+
+Sat Dec 25 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/irc/irc.c: fixed parsing of field 'nick' in Listfile.
+	* core/wtmp.c, modules/logs/logs.c: replaced all fopen() with open()
+	  and so on.
+	* core/connchain.c: fixed testing for duplicate connchain filter.
+	* doc/modules.api: fixed description of connchain filter setup.
+
+Tue Dec 21 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* tree/tree.*, core/dispatcher.c, core/help.c, core/init.c: fixed
+	  third arg of Next_Leaf() to be const char **.
+
+Fri Dec 17 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/init.c: rewritten KEYWORD to be near stackable version of UNIQ.
+	* tree/tree.*, core/dispatcher.c, modules/irc-channel/irc-channel.c:
+	  added one more parameter to Find_Leaf() to allow not-exact seeking.
+	* tree/tree.*: implemented function Leaf_Key().
+
+Wed Dec 15 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/init.c: corrected calling of "inspect-client" bindings.
+
+Sun Dec 12 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/lib.c, doc/modules.api: added escaping character ('\') into
+	  list of patterns for simple_match().
+
 Fri Dec 10 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc-channel/irc-channel.c: fixed a warning formatting.
 

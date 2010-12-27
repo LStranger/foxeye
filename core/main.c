@@ -353,14 +353,14 @@ static int _get_RunPath (char *callpath)
     if (!path || !path[0])			/* no such file */
       return -1;
   }
-  if (O_DLEVEL > 2)
+  if (O_DLEVEL > 2 && O_QUIET == FALSE)
     fprintf (stderr, "[--:--] main: running %s\n", buff);
   RunPath = safe_strdup (buff);
   return 0;
 }
 
 static char Usage[] = N_("\
-Usage:\tfoxeye [-n nick] [-cdmt] <file>\t\t- normal run\n\
+Usage:\tfoxeye [-n nick] [-cqdmt] <file>\t\t- normal run\n\
 \tfoxeye -cr [-n nick] [-dm] [-g <file>]\t- run with defaults\n\
 \tfoxeye -[h|v]\t\t\t\t- print info and return\n\
 \n\
@@ -371,6 +371,7 @@ options:\n\
   -h\t\tthis help message\n\
   -m\t\tmake an empty user and channel files\n\
   -n <nick>\tset default nick\n\
+  -q\t\tprint only fatal errors (aborts -c, -h, and -v options)\n\
   -r\t\treset parameters (don't use the config file statements)\n\
   -t\t\ttest the configuration and exit\n\
   -v\t\tversion information\n\
@@ -408,7 +409,7 @@ int main (int argc, char *argv[])
   foxeye_setlocale();
   buff[0] = 0;
   /* parse command line parameters */
-  while ((ch = getopt (argc, argv, "cdDg:hmn:rtvw")) > 0)
+  while ((ch = getopt (argc, argv, "cdDg:hmn:qrtvw")) > 0)
   {
     switch (ch)
     {
@@ -422,7 +423,8 @@ int main (int argc, char *argv[])
 	O_TESTCONF = TRUE;
 	break;
       case 'h':		/* help */
-	printf ("%s", Usage);
+	if (O_QUIET == FALSE)
+	  printf ("%s", Usage);
 	return 0;
       case 'd':		/* increase debug level */
 	O_DLEVEL++;
@@ -442,18 +444,25 @@ int main (int argc, char *argv[])
 	strfcpy (Nick, optarg, NAMEMAX+1);
 	break;
       case 'v':		/* version information */
-	print_version();
+	if (O_QUIET == FALSE)
+	  print_version();
 	return 0;
       case 'w':		/* undocumented: for debug purpose. */
-	O_WAIT = 1;
+	O_WAIT = TRUE;
+	break;
+      case 'q':		/* be quiet on stderr */
+	O_QUIET = TRUE;
 	break;
       case '?':		/* unknown option */
       case ':':		/* parameter missing */
       default:
-	fprintf (stderr, "%s", Usage);
+	if (O_QUIET == FALSE)
+	  fprintf (stderr, "%s", Usage);
 	return 1;
     }
   }
+  if (O_QUIET == TRUE)
+    have_con = 0;
   if (optind < argc && buff[0] == 0)
     strfcpy (buff, argv[optind], sizeof(buff));
   StrTrim (buff);
@@ -487,7 +496,8 @@ int main (int argc, char *argv[])
   /* check the parameters */
   if (Config == NULL && O_DEFAULTCONF == FALSE)
   {
-    fprintf (stderr, _("Incorrect options. Type 'foxeye -h' for more help.\n"));
+    if (O_QUIET == FALSE)
+      fprintf (stderr, _("Incorrect options. Type 'foxeye -h' for more help.\n"));
     return 1;
   }
   /* try to get Nick */
@@ -560,7 +570,10 @@ int main (int argc, char *argv[])
   close (Fifo_Out[1]);
   /* cycle console */
   if (pthread_create (&sit, NULL, &_stdin2pipe, NULL))	/* create input */
-    perror ("console input create");
+  {
+    if (O_QUIET == FALSE)
+      perror ("console input create");
+  }
   else FOREVER					/* and here output part */
   {
     if (have_con && (ch = read (Fifo_Out[0], buff, sizeof(buff) - 1)) > 0)

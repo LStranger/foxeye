@@ -448,7 +448,8 @@ static char *_irc_try_nick (irc_server *serv, clrec_t *clr)
       serv->mynick = safe_strdup (irc_default_nick);
     else
     {
-      for (c = nn; *nlist && c < &nn[sizeof(nn)-1]; nlist++) *c++ = *nlist++;
+      for (c = nn; *nlist && *nlist != ' ' && c < &nn[sizeof(nn)-1]; nlist++)
+	*c++ = *nlist++;
       *c = 0;
       serv->mynick = safe_strdup (nn);
     }
@@ -471,7 +472,8 @@ static char *_irc_try_nick (irc_server *serv, clrec_t *clr)
     if (*c)
       nlist = NextWord (c);
     FREE (&serv->mynick);
-    for (c = nn; *nlist && c < &nn[sizeof(nn)-1]; nlist++) *c++ = *nlist++;
+    for (c = nn; *nlist && *nlist != ' ' && c < &nn[sizeof(nn)-1]; nlist++)
+      *c++ = *nlist++;
     *c = 0;
     serv->mynick = safe_strdup (nn);
   }

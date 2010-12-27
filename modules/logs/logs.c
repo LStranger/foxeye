@@ -667,7 +667,7 @@ static void do_rotate (logfile_t *log)
 {
   char path[PATH_MAX+1];
   char *c, *c2, *rpath;
-  size_t s = 0;
+  ssize_t s = 0;
   register int x;
   struct tm tm;
 
@@ -747,39 +747,37 @@ static void do_rotate (logfile_t *log)
   if (rename (log->path, path))		/* cannot rename! */
   {
     char buffer[1024];
-    FILE *f1, *f2;
-    int errsave;
+    int f1, f2, errsave;
 
     if (errno == EXDEV)			/* another file system */
     {
-      if ((f1 = fopen (log->path, "rb")))
-	f2 = fopen (path, "wb");
+      if ((f1 = open (log->path, O_RDONLY)) >= 0)
+	f2 = open (path, O_WRONLY | O_CREAT | O_APPEND,
+		   S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
       else
-	f2 = NULL;
-      if (f2)
+	f2 = -1;
+      if (f2 >= 0)
       {
-	clearerr (f2);
-	while ((s = fread (buffer, 1, sizeof(buffer), f1)) > 0)
-	  if ((s < sizeof(buffer) && !feof (f2)) ||
-	      fwrite (buffer, 1, s, f2) < s)
+	while ((s = read (f1, buffer, sizeof(buffer))) != 0)
+	  if (s < 0 || write (f2, buffer, s) < s) /* error caught */
 	  {
 	    errsave = errno;
-	    fclose (f2);
+	    close (f2);
 	    unlink (path);
-	    f2 = NULL;
+	    f2 = -1;
 	    errno = errsave;
 	    break;
 	  }
       }
-      if (f1)
+      if (f1 >= 0)
       {
 	errsave = errno;
-	fclose (f1);
+	close (f1);
 	errno = errsave;
       }
-      if (f2)				/* succesfully copied */
+      if (f2 >= 0)			/* succesfully copied */
       {
-	fclose (f2);
+	close (f2);
 	unlink (log->path);
 	errno = EXDEV;
       }

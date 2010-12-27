@@ -684,14 +684,14 @@ static char *_trace_stat (ClientData data, Tcl_Interp *tcl,
  * Calls from anywhere to TCL.
  */
 
-#define _tcl_dashtound(a,b) {\
+#define _tcl_dashtound(a,b) do {\
   register char *t=a;\
   while (*b && t < &a[sizeof(a)-1]) {\
     if (*b == '-') *t++ = '_';\
     else *t++ = *b;\
     b++; }\
   *t = '\0';\
-}
+} while(0)
 
 BINDING_TYPE_register(tcl_register_var);
 static int tcl_register_var (const char *name, void *ptr, size_t s)

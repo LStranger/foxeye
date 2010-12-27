@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2000-2003  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2000-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -395,7 +395,7 @@ void Destroy_Tree (NODE **node, void (*destroy) (void *))
 }
 
 // Находит первый подходящий ключ и возвращает соответствующий элемент
-LEAF *Find_Leaf (NODE *node, const char *key)
+LEAF *Find_Leaf (NODE *node, const char *key, int exact)
 {
   register int i = 0;
   int n;
@@ -416,7 +416,11 @@ LEAF *Find_Leaf (NODE *node, const char *key)
 	if (n == 0)
 	  return &node->l[i];
 	else if (n > 0)
+	{
+	  if (!exact)
+	    return &node->l[i];
 	  break;
+	}
       }
     }
     else /* TREE_NODE */
@@ -432,7 +436,7 @@ LEAF *Find_Leaf (NODE *node, const char *key)
 	  break;
       }
       if (i)
-	return Find_Leaf (node->l[i-1].s.n, key);
+	return Find_Leaf (node->l[i-1].s.n, key, exact);
     }
   }
   return NULL;
@@ -441,13 +445,33 @@ LEAF *Find_Leaf (NODE *node, const char *key)
 // Находит первый подходящий ключ и возвращает ассоциированные данные
 void *Find_Key (NODE *node, const char *key)
 {
-  register LEAF *l = Find_Leaf (node, key);
+  register LEAF *l = Find_Leaf (node, key, 1);
   return (l == NULL ? NULL : l->s.data);
+}
+
+static inline const char *_leaf_key (LEAF *l)
+{
+  register size_t i = 0;
+  register NODE *n = l->node;
+
+  for ( ; n; n = n->parent->node)
+  {
+    if (n->mode & TREE_PREF)
+      i += 2;
+    if (n->parent == NULL)
+      break;				/* it's root node */
+  }
+  return (l->key - i);
+}
+
+const char *Leaf_Key (LEAF *l)
+{
+  return _leaf_key (l);
 }
 
 // Возвращает следующий элемент, или первый, если leaf равен NULL
 // Если key не NULL, то помещает туда полное значение ключа
-LEAF *Next_Leaf (NODE *node, LEAF *leaf, char **key)
+LEAF *Next_Leaf (NODE *node, LEAF *leaf, const char **key)
 {
   register NODE *cur = node;
   ssize_t i;
@@ -475,15 +499,6 @@ LEAF *Next_Leaf (NODE *node, LEAF *leaf, char **key)
   if (cur->num == 0)			/* fallback if empty node */
     return (cur->parent ? Next_Leaf (node, cur->parent, key) : NULL);
   if (key != NULL)
-  {
-    for (i = 0; cur; cur = cur->parent->node)
-    {
-      if (cur->mode & TREE_PREF)
-	i += 2;
-      if (cur->parent == NULL)
-	break;				/* it's root node */
-    }
-    *key = (char *)leaf->key - i;
-  }
+    *key = (char *) _leaf_key (leaf);
   return leaf;
 }

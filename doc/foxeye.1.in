@@ -25,13 +25,28 @@ FoxEye - the universal network client.
 .SH SYNOPSIS
 .PP
 .B foxeye
-[-n \fInick\fP] [-cdmt] \fIfile\fP
+[
+.BI \-n " nick"
+] [
+.B \-cdmt
+]
+.I file
 .PP
 .B foxeye
--cr [-n \fInick\fP] [-dm] [-g \fIfile\fP]
+.B \-cr
+[
+.BI \-n " nick
+] [
+.B \-dm
+] [
+.BI \-g " file"
+]
 .PP
 .B foxeye
--[h|v]
+.BI \-q " file"
+.PP
+.B foxeye
+\fB-\fP[\fBh\fP|\fBv\fP]
 .SH DESCRIPTION
 .PP
 FoxEye was created first as a IRC (Internet Relay Chat) network bot - the
@@ -41,30 +56,46 @@ it until crash or terminate.  But now it is multipurpose modularised client
 or service for networks: IRC, ICQ, etc.
 .SH OPTIONS
 .TP 10
-.IP "\fIfile\fP"
-config file to use (no defaults).
-.IP "\fB-c\fP"
+.B \-c
 Don't detach console (chat simulation mode).
-.IP "\fB-d[d]\fP"
+.TP
+.B \-d[d]
 Increase a debug log level by one (maximum debug level is 5).
-.IP "\fB-g\fP \fIfile\fP"
+.TP
+.BI \-g " file"
 Generate new config file \fIfile\fP
-.IP "\fB-h\fP"
+.TP
+.B \-h
 Display help message and exit.
-.IP "\fB-m\fP"
+.TP
+.B \-m
 Make an empty listfile.
-.IP "\fB-n\fP \fInick\fP"
+.TP
+.BI \-n " nick"
 Set default nick to \fInick\fP
-.IP "\fB-r\fP"
-Reset parameters (don't use the config file statements).
-.IP "\fB-t\fP"
+.TP
+.B \-q
+Print only fatal errors to stderr. Aborts \fB-c\fP, \fB-h\fP, and \fB-v\fP options.
+.TP
+.B \-r
+Reset parameters (don't use the config file statements). Implies \fB-c\fP option.
+.TP
+.B \-t
 Test the configuration and exit.
-.IP "\fB-v\fP"
+.TP
+.B \-v
 Display version information and exit.
+.TP
+.I file
+config file to use (no defaults).
 .SH ENVIRONMENT
 .PP
 .IP "HOME"
 Full path of the user's home directory.
+.IP PATH
+Shell path to find binaries without path given.
+.IP LANG
+Language default settings.
 .\".SH FILES
 .\".SH DIAGNOSTICS
 .SH NO WARRANTIES
@@ -80,8 +111,9 @@ GNU General Public License for more details.
 .BR RFC2811 ,
 .BR RFC2812 ,
 .BR RFC2813 .
+.PP
 The GNU General Public License.
 .SH AUTHOR
 .PP
-Andriy Gritsenko. (1999-2008)
+Andriy Grytsenko. (1999-2011)
 .\".SH BUGS

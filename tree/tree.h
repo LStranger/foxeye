@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2000-2003  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2000-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -52,6 +52,7 @@ typedef struct NODE
 int Insert_Key (NODE **, const char *, void *, int);
 void *Find_Key (NODE *, const char *);
 int Delete_Key (NODE *, const char *, void *);
-LEAF *Find_Leaf (NODE *, const char *);
-LEAF *Next_Leaf (NODE *, LEAF *, char **);
+LEAF *Find_Leaf (NODE *, const char *, int);
+LEAF *Next_Leaf (NODE *, LEAF *, const char **);
+const char *Leaf_Key (LEAF *);
 void Destroy_Tree (NODE **, void (*) (void *));

@@ -1123,7 +1123,7 @@ static int dc_lua (peer_t *from, char *args)
 static iftype_t lua_module_signal (INTERFACE *iface, ifsig_t sig)
 {
   LEAF *l;
-  char *c;
+  const char *c;
   INTERFACE *tmp;
   lua_timer *tt, **ptt;
 

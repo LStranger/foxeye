@@ -21,6 +21,7 @@
 #include "foxeye.h"
 
 #include <signal.h>
+#include <errno.h>
 
 #define DISPATCHER_C 1
 
@@ -264,10 +265,10 @@ static int add2queue (ifi_t *to, request_t *req)
 static LEAF *_find_itree (iftype_t ift, const char *name, LEAF *prev)
 {
   register LEAF *l;
-  char *c = (char *)name;
+  const char *c = name;
 
   if (prev == NULL)
-    l = Find_Leaf (ITree, name);
+    l = Find_Leaf (ITree, name, 1);
   else
     l = Next_Leaf (ITree, prev, &c);
   while (l)
@@ -1118,8 +1119,8 @@ static int _b_stub (INTERFACE *iface, REQUEST *req) { return 0; }
 /* start the empty interface that will collect all boot messages */
 static void start_boot (void)
 {
-  _Boot = (ifi_t *)Add_Iface (~I_CONSOLE & ~I_INIT & ~I_DIED & ~I_LOCKED,
-			      "*", NULL, &_b_stub, NULL);
+  _Boot = (ifi_t *)Add_Iface (~(I_CONSOLE | I_LISTEN | I_MODULE | I_INIT |
+				I_DIED | I_LOCKED), "*", NULL, &_b_stub, NULL);
   stack_iface ((INTERFACE *)_Boot, 1);
   if_or = I_LOCKED;
 }
@@ -1185,15 +1186,20 @@ static int write_pid (pid_t pid)
 {
   FILE *fp;
   char buff[SHORT_STRING];
-  int i = 0;
 
   snprintf (buff, sizeof(buff), "%d", pid);
   if (!(fp = fopen (PID_path, "w")))
     return -1;
   if (!fwrite (buff, strlen (buff), 1, fp))
-    i = -1;
+  {
+    int i = errno;
+
+    fclose (fp);
+    errno = i;
+    return -1;
+  }
   fclose (fp);
-  return i;
+  return 0;
 }
 
 static pthread_mutex_t SigLock = PTHREAD_MUTEX_INITIALIZER;
@@ -1276,14 +1282,18 @@ int dispatcher (INTERFACE *start_if)
   pid = try_get_pid();
   if (pid)
   {
-    if (kill (pid, SIGPIPE))
+    if (kill (pid, 0))
     {
-      perror _("kill PID file");
+      if (O_QUIET == FALSE || errno != ESRCH)
+	perror _("kill PID file");
+      if (errno != ESRCH)
+	return 6;
       unlink (PID_path);
     }
     else
     {
-      printf _("The bot already running!\n");
+      if (O_QUIET == FALSE)
+	fprintf (stderr, _("The bot already running!\n"));
       return 6;
     }
   }
@@ -1291,15 +1301,18 @@ int dispatcher (INTERFACE *start_if)
   pid = fork();
   if (pid)
   {
-    /* error */
+    /* fork error */
     if (pid == -1)
     {
-      perror _("init dispatcher");
+      perror _("fork dispatcher");
       return 5;
     }
     /* OK, this is parent */
-    write_pid (pid);
-    return 0;
+    if (write_pid (pid) == 0) /* no errors */
+      return 0;
+    perror _("write PID file");
+    kill (pid, SIGTERM);
+    return 5;
   }
   /* this is the child... */
   if (freopen ("/dev/null", "r", stdin)) i=i;	/* IFs for compiler happiness */
@@ -1329,7 +1342,7 @@ int dispatcher (INTERFACE *start_if)
   sigaction (SIGUSR1, &act, NULL);
   sigaction (SIGUSR2, &act, NULL);
   /* wait a debugger :) */
-  if (O_WAIT)
+  if (O_WAIT != FALSE)
     while (!limit);
   /* init recursive LockIface - Unix98 only */
   pthread_mutexattr_init (&attr);

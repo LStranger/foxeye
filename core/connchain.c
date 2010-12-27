@@ -34,6 +34,7 @@ struct connchain_i			/* internal use only */
   ssize_t (*send) (connchain_i **, idx_t, const char *, size_t *, connchain_buffer **);
   connchain_buffer *buf;		/* instance specific buffer */
   connchain_i *next;			/* for collector and chain */
+  char tc;
 };
 
 bindtable_t *BT_CChain;
@@ -88,6 +89,7 @@ static void _connchain_create (peer_t *peer)
   peer->connchain->send = &_connchain_send;
   /* ignoring ->buf since we don't need it for _this_ link */
   peer->connchain->next = NULL;
+  peer->connchain->tc = 0;
   dprint (2, "connchain.c: created initial link %p", peer->connchain);
 }
 
@@ -107,6 +109,14 @@ int Connchain_Grow (peer_t *peer, char c)
     _connchain_create (peer);		/* it's first call */
   if (c == 0)
     return 1;				/* idle call */
+  for (chk = peer->connchain; chk; chk = chk->next)
+  {
+    if (chk->tc == c)
+    {
+      dprint (3, "connchain.c: link %c seems duped.", c);
+      return -1;			/* ignore duplicate */
+    }
+  }
   tc[0] = c;
   tc[1] = 0;
   b = NULL;				/* start from scratch */
@@ -121,17 +131,8 @@ int Connchain_Grow (peer_t *peer, char c)
     free_connchain_i (chain);		/* unalloc struct then */
     return 0;
   }
-  for (chk = peer->connchain; chk; chk = chk->next)
-  {
-    if (chk->recv == chain->recv && chk->send == chain->send)
-    {
-      chain->recv (NULL, -1, NULL, 0, &chain->buf); /* kill it */
-      dprint (3, "connchain.c: link %c seems duped.", c);
-      free_connchain_i (chain);		/* unalloc struct */
-      return -1;			/* ignore duplicate */
-    }
-  }
   chain->next = peer->connchain;	/* it's done OK, insert into chain */
+  chain->tc = c;
   peer->connchain = chain;
   dprint (2, "connchain.c: created link %c: %p", c, chain);
   return 1;
@@ -147,6 +148,9 @@ int Connchain_Check (peer_t *peer, char c)
 
   if (c == 0)
     return 1;				/* idle call */
+  for (chk = peer->connchain; chk; chk = chk->next)
+    if (chk->tc == c)
+      return -1;			/* ignore duplicate */
   tc[0] = c;
   tc[1] = 0;
   b = NULL;				/* start from scratch */
@@ -156,11 +160,6 @@ int Connchain_Check (peer_t *peer, char c)
       break;				/* found a working binding! */
   if (b == NULL)			/* no handler found there! */
     return 0;
-  for (chk = peer->connchain; chk; chk = chk->next)
-  {
-    if (chk->recv == recv && chk->send == send)
-      return -1;			/* ignore duplicate */
-  }
   return 1;
 }
 

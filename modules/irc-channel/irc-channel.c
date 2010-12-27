@@ -139,7 +139,7 @@ void ircch_remove_mask (LIST **list, LIST *mask)
 
 static void _ircch_add_lname (NICK *nick, char *lname)
 {
-  LEAF *leaf = Find_Leaf (nick->net->lnames, lname);
+  LEAF *leaf = Find_Leaf (nick->net->lnames, lname, 1);
 
   if (leaf && nick == leaf->s.data)
   {
@@ -166,7 +166,7 @@ static void _ircch_add_lname (NICK *nick, char *lname)
 
 static void _ircch_del_lname (NICK *nick)
 {
-  LEAF *leaf = Find_Leaf (nick->net->lnames, nick->lname);
+  LEAF *leaf = Find_Leaf (nick->net->lnames, nick->lname, 1);
 
   DBG ("_ircch_del_lname: free %p (prev=%p)", nick->lname,
        nick->prev_TSL);

@@ -334,7 +334,7 @@ static int _help_one_topic (char *text, INTERFACE *iface, char *prefix,
 static int _help_all_topics (HELPGR *what, INTERFACE *iface, userflag gf,
 			     userflag cf, bindtable_t *table, int mode)
 {
-  char *key;
+  const char *key;
   LEAF *leaf = NULL;
   char buf[HELP_LINE_SIZE+2];
   size_t s = 0, ns;

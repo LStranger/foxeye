@@ -446,7 +446,7 @@ int match (const char *mask, const char *text)
 }
 
 
-#define swildcard(c) (c == '*' || c == '?')
+#define swildcard(c) (c == '*' || c == '?' || c == '\\')
 
 static int smatch_it (const char *mask, const char **text, const char *pe)
 {
@@ -487,6 +487,15 @@ static int smatch_it (const char *mask, const char **text, const char *pe)
 	if (*t)					/* check rest of text */
 	  tc = t + 1, cur = smatch_it (se, &tc, pe);
 	else					/* must be at least one char */
+	  cur = (-1);
+	sc = se;
+	break;
+      case '\\':
+	if (swildcard (mask[1]))		/* it's escape */
+	  sc = se++;				/* skip escape char */
+	if (*t == *sc)				/* it should be equal */
+	  tc = t + 1, cur = smatch_it (se, &tc, pe);
+	else
 	  cur = (-1);
 	sc = se;
 	break;
