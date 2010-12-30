@@ -96,13 +96,13 @@ static int flush_autolog (autologdata_t *log)
 
   if (log->inbuf == 0)
     return 0;
-  if (log->fd == -1)
+  if (log->fd < 0)
     return EBADF;
   dprint (5, "autolog: trying logfile %s: %d bytes", log->path, log->inbuf);
   memset (&lck, 0, sizeof (struct flock));
   lck.l_type = F_WRLCK;
   lck.l_whence = SEEK_END;
-  if (fcntl (log->fd, F_SETLK, &lck) == -1)
+  if (fcntl (log->fd, F_SETLK, &lck) < 0)
     return errno;		/* cannot lock the file */
   lseek (log->fd, 0, SEEK_END);
   x = write (log->fd, log->buf, log->inbuf);
@@ -316,7 +316,7 @@ static iftype_t _autolog_name_signal (INTERFACE *iface, ifsig_t sig)
 	    ERROR ("autolog: time out on closing %s.", log->d->path);
 	    break;
 	  }
-      if (log->d->fd != -1)
+      if (log->d->fd >= 0)
 	close (log->d->fd);
       FREE (&log->d->path);
       FREE (&log->d->lname);
@@ -327,7 +327,7 @@ static iftype_t _autolog_name_signal (INTERFACE *iface, ifsig_t sig)
     case S_SHUTDOWN:
       localtime_r (&log->d->timestamp, &tm);
       autolog_add (log, autolog_close, NULL, 0, &tm, 1); /* ignore result */
-      if (log->d->fd != -1)
+      if (log->d->fd >= 0)
 	close (log->d->fd);
       log->iface = NULL;
       iface->data = NULL;
@@ -382,7 +382,7 @@ static int _autolog_name_request (INTERFACE *iface, REQUEST *req)
 	      ERROR ("autolog: time out on closing %s.", log->d->path);
 	      break;
 	    }
-	if (log->d->fd != -1)
+	if (log->d->fd >= 0)
 	  close (log->d->fd);
 	FREE (&log->d->path);
 	FREE (&log->d->lname);
@@ -393,7 +393,7 @@ static int _autolog_name_request (INTERFACE *iface, REQUEST *req)
 	  ERROR ("autolog: could not make path for %s.", req->to);
 	  log->d->fd = -1;
 	}
-	else if ((log->d->fd = open_log_file (path)) == -1)
+	else if ((log->d->fd = open_log_file (path)) < 0)
 	  ERROR ("autolog: could not open log file %s: %s", path, strerror (errno));
 	if (log->d->fd < 0)
 	{
@@ -559,7 +559,7 @@ static int _autolog_net_request (INTERFACE *iface, REQUEST *req)
       ERROR ("autolog: could not make path for %s", tpath);
       fd = -1;
     }
-    else if ((fd = open_log_file (path)) == -1)
+    else if ((fd = open_log_file (path)) < 0)
       ERROR ("autolog: could not open log file %s: %s", path, strerror (errno));
     if (fd < 0)
     {
@@ -728,7 +728,7 @@ static int module_autolog_signal (INTERFACE *iface, ifsig_t sig)
 
 	for (net = (autolognet_t *)_autolog_mass->data; net; net = net->prev)
 	  for (log = net->log; log; log = log->prev)
-	    if (log->iface && log->d && log->d->fd != -1)
+	    if (log->iface && log->d && log->d->fd >= 0)
 	      New_Request (tmp, F_REPORT,
 			   _("Auto log #%d: file \"%s\" for client %s."),
 			   ++i, log->d->path, log->iface->name);

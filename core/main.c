@@ -562,7 +562,7 @@ int main (int argc, char *argv[])
   if_console.data = dcc;
   dcc->state = P_TALK;
   dcc->socket = -1;
-  dcc->uf = -1;
+  dcc->uf = (userflag)-1;
   /* run the dispatcher and fork there */
   if ((ch = dispatcher (&if_console)))
     return (ch);

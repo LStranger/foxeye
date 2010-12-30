@@ -98,9 +98,9 @@ static void _get_mask (char *mask, uint32_t *bitmap)
     while (first >= 0 && first < 64)
     {
       if (first < 32)
-	bitmap[0] |= 1<<first;
+	bitmap[0] |= (uint32_t)1 << first;
       else
-	bitmap[1] |= 1<<(first-32);
+	bitmap[1] |= (uint32_t)1 << (first-32);
       first += per;
       if (first > last)
 	break;
@@ -365,13 +365,13 @@ static int Sheduler (INTERFACE *ifc, REQUEST *req)
       /* run Crontable; will not check for missed minutes due to BT_TimeShift */
       memset (&sh, 0, sizeof(sh));
       if (tm.tm_min > 31)
-	sh.min[1] = 1<<(tm.tm_min-32);
+	sh.min[1] = (uint32_t)1 << (tm.tm_min-32);
       else
-	sh.min[0] = 1<<tm.tm_min;
-      sh.hour = 1<<tm.tm_hour;
-      sh.day = 1<<tm.tm_mday;
-      sh.month = 1<<(tm.tm_mon+1);
-      sh.weekday = 1<<tm.tm_wday;
+	sh.min[0] = (uint32_t)1 << tm.tm_min;
+      sh.hour = (uint32_t)1 << tm.tm_hour;
+      sh.day = (uint32_t)1 << tm.tm_mday;
+      sh.month = (uint16_t)1 << (tm.tm_mon+1);
+      sh.weekday = (uint16_t)1 << tm.tm_wday;
       for (i = 0; i < _SCnum; i++)
       {
 	register shedentry_t *ct = &Crontable[i];

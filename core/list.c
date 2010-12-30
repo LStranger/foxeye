@@ -131,7 +131,7 @@ userflag strtouserflag (register const char *ptr, char **endptr)
     uf = 0;
   for (; *ptr; ptr++)
     if ((ch = strchr (_Userflags, *ptr)))
-      uf |= 1<<(ch-_Userflags);
+      uf |= (userflag)1 << (ch-_Userflags);
     else
       break;
   if (endptr)
@@ -345,7 +345,7 @@ static lid_t __addlid (lid_t id, lid_t start, lid_t end)
   if (id != ID_ANY);			/* fixed id */
   else if (start > end)			/* bans grows down */
   {
-    while (j >= 0 && (LidsBitmap[i] & (1<<j))) j--;
+    while (j >= 0 && (LidsBitmap[i] & ((uint32_t)1<<j))) j--;
     im = (end-LID_MIN)/32;
     jm = (end-LID_MIN)%32;
     if (j < 0)
@@ -354,7 +354,7 @@ static lid_t __addlid (lid_t id, lid_t start, lid_t end)
       if (i >= im)
       {
 	j = 31;
-	while (j >= 0 && (LidsBitmap[i] & (1<<j))) j--;
+	while (j >= 0 && (LidsBitmap[i] & ((uint32_t)1<<j))) j--;
       }
     }
     if (j < 0 || i < im || (i == im && j < jm))
@@ -362,7 +362,7 @@ static lid_t __addlid (lid_t id, lid_t start, lid_t end)
   }
   else					/* all other grows up */
   {
-    while (j < 32 && (LidsBitmap[i] & (1<<j))) j++;
+    while (j < 32 && (LidsBitmap[i] & ((uint32_t)1<<j))) j++;
     im = (end-LID_MIN)/32;
     jm = (end-LID_MIN)%32;
     if (j == 32)
@@ -371,13 +371,13 @@ static lid_t __addlid (lid_t id, lid_t start, lid_t end)
       if (i <= im)
       {
 	j = 0;
-	while (j < 32 && (LidsBitmap[i] & (1<<j))) j++;
+	while (j < 32 && (LidsBitmap[i] & ((uint32_t)1<<j))) j++;
       }
     }
     if (j == 32 || i > im || (i == im && j > jm))
       return ID_ME;
   }
-  LidsBitmap[i] |= (1<<j);
+  LidsBitmap[i] |= ((uint32_t)1<<j);
   dprint (4, "users:__addlid: %d %d %d --> %d:%d",
 	  (int)id, (int)start, (int)end, i, j);
   return (i*32 + j + LID_MIN);
@@ -388,7 +388,7 @@ static lid_t __addlid (lid_t id, lid_t start, lid_t end)
 /*--- W --- UFLock write ---*/
 static void __dellid (lid_t id)
 {
-  LidsBitmap[(id-LID_MIN)/32] &= ~(1<<((id-LID_MIN)%32));
+  LidsBitmap[(id-LID_MIN)/32] &= ~((uint32_t)1<<((id-LID_MIN)%32));
   dprint (4, "users:__dellid: %d", (int)id);
 }
 
@@ -1555,7 +1555,7 @@ static unsigned int _scan_lids (lid_t start, lid_t end)
   for (; i < k; i++)
   {
     for (j = 0; j < 32; j++)
-      if (LidsBitmap[i] & (1<<j))
+      if (LidsBitmap[i] & ((uint32_t)1<<j))
 	n++;
   }
   return n;

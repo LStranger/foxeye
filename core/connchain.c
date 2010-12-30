@@ -103,7 +103,7 @@ int Connchain_Grow (peer_t *peer, char c)
   char tc[2];
   binding_t *b;
 
-  if (peer->socket == -1)
+  if (peer->socket < 0)
     return -1;				/* nothing to do */
   if (!peer->connchain)
     _connchain_create (peer);		/* it's first call */
@@ -237,7 +237,7 @@ static ssize_t _ccfilter_x_send (connchain_i **ch, idx_t id, const char *str,
     i = Connchain_Put (ch, id, &bb->buf[bb->bufpos], &bb->inbuf);
     if (i < 0)				/* some error, end us */
     {
-      bb->inbuf = -1;			/* forget the buffer */
+      bb->inbuf = (ssize_t)-1;		/* forget the buffer */
       return i;				/* return error */
     }
     if (bb->inbuf != 0)			/* trying to send line by line */
@@ -248,7 +248,7 @@ static ssize_t _ccfilter_x_send (connchain_i **ch, idx_t id, const char *str,
   }
   if (str == NULL)			/* got termination */
   {
-    bb->inbuf = -1;			/* forget buffer */
+    bb->inbuf = (ssize_t)-1;		/* forget buffer */
     return E_NOSOCKET;			/* return error */
   }
   i = *sz;

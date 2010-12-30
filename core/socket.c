@@ -110,7 +110,7 @@ static idx_t allocate_socket ()
 ssize_t ReadSocket (char *buf, idx_t idx, size_t sr, int mode)
 {
   socket_t *sock;
-  ssize_t sg = -1;
+  ssize_t sg = (ssize_t)-1;
   short rev;
 
   pthread_testcancel();				/* for non-POSIX systems */
@@ -217,7 +217,7 @@ idx_t GetSocket (unsigned short type)
   /* note: there is a small chance we get it closed right away if there was
      two of CloseSocket() in the same time and we managed to get it between
      close() and resetting Pollfd[idx].fd */
-  if (sockfd == -1)
+  if (sockfd < 0)
     return (E_NOSOCKET);
   Socket[idx].port = type;
   DBG ("socket:GetSocket: %d (fd=%d)", (int)idx, sockfd);
@@ -369,7 +369,7 @@ idx_t AnswerSocket (idx_t listen)
   }
   pthread_mutex_unlock (&LockPoll);
   Pollfd[listen].revents = 0;		/* we accepted socket, reset state */
-  if (sockfd == -1)
+  if (sockfd < 0)
     return (E_AGAIN);
   fcntl (sockfd, F_SETOWN, _mypid);
 #ifdef HAVE_SYS_FILIO_H		/* non-BSDish systems have not O_ASYNC flag */

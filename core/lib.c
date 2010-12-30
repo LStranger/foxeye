@@ -139,7 +139,7 @@ size_t unistrlower (char *dst, const char *src, size_t ds)
 	    sout++;
 	    ds--;
 	  }
-	  if (len == -2) /* premature end of string */
+	  if (len == (ssize_t)-2) /* premature end of string */
 	    break;
 	  ss--;
 	  ch++; /* and skip bad char */

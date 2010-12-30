@@ -205,7 +205,7 @@ static void setconsole (peer_t *dcc)
 	  break;
 	default:
 	  if ((fl = strchr (_Flags, *line)))
-	    logl |= F_MIN<<(fl-_Flags);
+	    logl |= (flag_t)F_MIN<<(fl-_Flags);
       }
       line++;
     }
@@ -306,7 +306,7 @@ static void _died_iface (INTERFACE *iface, char *buf, size_t s)
   peer_t *dcc = iface->data;
   userflag cf = 0;
 
-  if (!dcc || dcc->socket == -1)		/* is it already killed? */
+  if (!dcc || dcc->socket < 0)			/* is it already killed? */
     return;
   iface = dcc->iface;				/* to the right one! */
   iface->ift |= I_DIED;
@@ -584,7 +584,7 @@ static iftype_t dcc_signal (INTERFACE *iface, ifsig_t signal)
   unsigned short p;
   char *dom, *desc;
 
-  if (!dcc || dcc->socket == -1)	/* already killed? */
+  if (!dcc || dcc->socket < 0)		/* already killed? */
     return I_DIED;
   if (dcc) switch (signal)
   {
@@ -2163,7 +2163,7 @@ static int dc_who (peer_t *dcc, char *args)
     ReportFormat = format_who;
   }
   New_Request (dcc->iface, 0, "%s", b);
-  ReportMask = -1;
+  ReportMask = (modeflag)-1;
   if (args)
     _report_req (I_SERVICE, args);
   else
@@ -2611,7 +2611,7 @@ static iftype_t _port_retrier_s (INTERFACE *iface, ifsig_t signal)
       return I_DIED;
     case S_TIMEOUT:
       r = (_port_retrier *)iface->data;
-      if (r->u == -1)
+      if (r->u < 0)
 	socket = Listen_Port (NULL, hostname, &r->port, iface->name, NULL, NULL, &session_handler_0);
       else
 	socket = Listen_Port (NULL, hostname, &r->port, iface->name, NULL, NULL, _s_h_proc[r->u]);

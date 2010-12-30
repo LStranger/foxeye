@@ -105,7 +105,7 @@ static dcc_priv_t *new_dcc (void)
   }
   dcc->state = P_DISCONNECTED;
   dcc->socket = -1;
-  dcc->tid = -1;
+  dcc->tid = (tid_t)-1;
   dprint (4, "dcc:new_dcc: %p", dcc);
   return dcc;
 }

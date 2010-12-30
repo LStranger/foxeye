@@ -12,6 +12,15 @@ TODO:
 	* core/wtmp.c: to handle errors somehow?
 
 --- [0.9b] * to test all *
+Thu Dec 30 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/wtmp.c: fixed incorrect translation of sizeof(x) into off_t.
+	* core/direct.c, core/list.c, core/sheduler.c, core/wtmp.c, modules/logs/logs.c, modules/irc-channel/chmanagement.c:
+	  added explicit definition of size of constants in shift operations.
+	* core/direct.c, core/dispatcher.c, core/lib.c, core/main.c, core/socket.c, core/connchain.c, modules/irc-ctcp/dcc.c, modules/logs/logs.c, modules/irc/irc.c, /modules/irc-channel/chmanagement.c, /modules/irc-channel/irc-channel.c, modules/autolog/autolog.c:
+	  fixed assigments from constants which might be different in size.
+	* core/wtmp.*: changed time field to be 'uint32_t' for compatibility
+	  between 32bit and 64bit systems.
+
 Mon Dec 27 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/main.c, core/dispatcher.c, core/init.*, doc/foxeye.1: added new
 	  run option '-q' to start just config executable from crontab.

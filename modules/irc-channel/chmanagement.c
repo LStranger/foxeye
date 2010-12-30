@@ -296,7 +296,7 @@ static void _push_mode (IRC *net, LINK *target, modebuf *mbuf,
 
   if (!_find_me_op (net, target->chan))
     return; /* I'm not op there */
-  for (m = 0; m < MODECHARSMAX && !(mch & (1<<m)); m++);
+  for (m = 0; m < MODECHARSMAX && !(mch & ((modeflag)1<<m)); m++);
   if (m == MODECHARSMAX || mbuf->modechars[m] == 0)
     return; /* oops, illegal mode! */
   if (mbuf->cmd != CMD_MODE || mbuf->changes == net->maxmodes)
@@ -763,7 +763,7 @@ int ircch_parse_modeline (IRC *net, CHANNEL *chan, LINK *origin, char *prefix,
 	default:
 	  schr = memchr (mbuf.modechars, mc, sizeof(mbuf.modechars));
 	  if (schr)
-	    mch = 1 << (schr - mbuf.modechars);
+	    mch = (modeflag)1 << (schr - mbuf.modechars);
 	  else
 	    mch = 0;
 	  if (mch & (A_ADMIN | A_OP | A_HALFOP | A_VOICE))
@@ -829,7 +829,7 @@ int ircch_parse_modeline (IRC *net, CHANNEL *chan, LINK *origin, char *prefix,
 	else
 	  ircch_add_mask (list, "", 0, schr);
 	/* start enforcer if enforcing is on and ban is raised */
-	if ((gcf & U_AUTO) && chan->tid == -1 && mc == 'b' && mf == '+')
+	if ((gcf & U_AUTO) && chan->tid == (tid_t)-1 && mc == 'b' && mf == '+')
 	  chan->tid = NewTimer (chan->chi->ift, chan->chi->name, S_LOCAL,
 				ircch_enforcer_time, 0, 0, 0);
 	/* set matched exceptions while ban is set */
@@ -975,7 +975,7 @@ void ircch_parse_configmodeline (IRC *net, CHANNEL *chan, char *mode)
       default:
 	c = memchr (mbuf.modechars, mc, sizeof(mbuf.modechars));
 	if (c)
-	  mch = 1 << (c - mbuf.modechars);
+	  mch = (modeflag)1 << (c - mbuf.modechars);
 	else
 	  mch = 0;
     }

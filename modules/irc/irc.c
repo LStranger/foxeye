@@ -1391,7 +1391,7 @@ static int irc_nick (INTERFACE *net, char *sv, char *me, unsigned char *src,
     if (lname)
       *lname = '!';
     lname = NULL;
-    uf = -1;
+    uf = (userflag)-1;
   }
   /* call all internal bindings */
   bind = NULL;

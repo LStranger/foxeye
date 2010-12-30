@@ -74,7 +74,7 @@ static int flush_log (logfile_t *log, int force, int needsync)
 
   if (log->inbuf == 0)
     return 0;
-  if (log->fd == -1)
+  if (log->fd < 0)
     return EBADF;
   if (!force && Time - log->timestamp < cache_time)
     return 0;
@@ -83,7 +83,7 @@ static int flush_log (logfile_t *log, int force, int needsync)
   memset (&lck, 0, sizeof (struct flock));
   lck.l_type = F_WRLCK;
   lck.l_whence = SEEK_END;
-  if (fcntl (log->fd, F_SETLK, &lck) == -1)
+  if (fcntl (log->fd, F_SETLK, &lck) < 0)
     return errno;		/* cannot lock the file */
   x = 0;
   if (log->colormode > 0 && lseek (log->fd, 0, SEEK_END) == 0)
@@ -623,7 +623,7 @@ static time_t get_rotatetime (int fd, int mode)
   struct tm tm;
   long int tmp;
 
-  if (fd == -1)
+  if (fd < 0)
     st.st_mtime = Time;
   else if (fstat (fd, &st))
     return 0;
@@ -807,7 +807,7 @@ static flag_t logfile_level (const char *a)
     c = strchr (Flags, *a);
     a++;
     if (c)
-      level |= F_MIN << (c - Flags);
+      level |= (flag_t)F_MIN << (c - Flags);
   }
   return level;
 }
@@ -820,7 +820,7 @@ static char *logfile_printlevel (flag_t level)
 
   while (Flags[i++])
   {
-    if (level & (F_MIN << i))
+    if (level & ((flag_t)F_MIN << i))
       *c++ = Flags[i];
   }
   *c = 0;

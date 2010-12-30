@@ -38,7 +38,7 @@ typedef struct
   lid_t fuid;		/* from (where) uid */
   short count;		/* event specific data */
   short event;
-  time_t time;
+  uint32_t time;	/* to have struct of fixed size */
 } wtmp_t;
 
 short Event (const char *)

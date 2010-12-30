@@ -1302,7 +1302,7 @@ int dispatcher (INTERFACE *start_if)
   if (pid)
   {
     /* fork error */
-    if (pid == -1)
+    if (pid == (pid_t)-1)
     {
       perror _("fork dispatcher");
       return 5;
