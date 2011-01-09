@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -174,7 +174,8 @@ ScriptFunction (FE_module)
       return 0;
     }
     /* start the module */
-    if ((mods = (iftype_t(*)(INTERFACE *,ifsig_t))func (args)) == NULL)
+    strfcpy (path, args, sizeof(path)); /* make a copy before call */
+    if ((mods = (iftype_t(*)(INTERFACE *,ifsig_t))func (path)) == NULL)
     {
       ERROR ("module %s: ModuleInit() error.", name);
 #ifndef STATIC
@@ -200,9 +201,9 @@ ScriptFunction (FE_module)
 	  bind->func (name, args);
       }
     } while (bind);
-    if (*args)
+    if (*path)
       Add_Request (I_LOG, "*", F_BOOT, "Loaded module %s (with args \"%s\")",
-		   name, args);
+		   name, path);
     else
       Add_Request (I_LOG, "*", F_BOOT, "Loaded module %s", name);
     return -1;

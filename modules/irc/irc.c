@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2004-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -449,7 +449,7 @@ static char *_irc_try_nick (irc_server *serv, clrec_t *clr)
     else
     {
       for (c = nn; *nlist && *nlist != ' ' && c < &nn[sizeof(nn)-1]; nlist++)
-	*c++ = *nlist++;
+	*c++ = *nlist;
       *c = 0;
       serv->mynick = safe_strdup (nn);
     }
@@ -473,7 +473,7 @@ static char *_irc_try_nick (irc_server *serv, clrec_t *clr)
       nlist = NextWord (c);
     FREE (&serv->mynick);
     for (c = nn; *nlist && *nlist != ' ' && c < &nn[sizeof(nn)-1]; nlist++)
-      *c++ = *nlist++;
+      *c++ = *nlist;
     *c = 0;
     serv->mynick = safe_strdup (nn);
   }

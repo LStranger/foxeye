@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2003-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -216,7 +216,7 @@ static ssize_t textlog_add_buf (logfile_t *log, char *text, size_t sz,
     }
     if (ts && tsw < tsz)
     {
-      memcpy (log->buf, &tss[tsw], 8 - tsw);
+      memcpy (log->buf, &tss[tsw], tsz - tsw);
       tsw = tsz - tsw;
     }
     else
@@ -814,14 +814,15 @@ static flag_t logfile_level (const char *a)
 
 static char *logfile_printlevel (flag_t level)
 {
-  static char aa[33];	/* capable for long int */
+  static char aa[65];	/* capable for long int */
   char *c = aa;
   int i = 0;
 
-  while (Flags[i++])
+  while (Flags[i] && c < &aa[sizeof(aa)-1])
   {
     if (level & ((flag_t)F_MIN << i))
       *c++ = Flags[i];
+    i++;
   }
   *c = 0;
   return aa;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -237,7 +237,7 @@ static int _request (INTERFACE *iface, REQUEST *req)
     return REQ_OK;
   /* run command or send to 0 channel of botnet */
   else
-    Dcc_Parse (&dcc->s, "", buff, -1, -1, -2, 0, NULL, NULL);
+    Dcc_Parse (&dcc->s, "", buff, U_ALL, U_ANYCH, -2, 0, NULL, NULL);
   return REQ_OK;
 }
 

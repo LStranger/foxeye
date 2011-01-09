@@ -14,6 +14,9 @@ module irc
  where flags are connection-specific mandatory flags for creating connection\
  chain (see technical documentation for details).
  
+ Standard fields "%^passwd%^" and "%^info%^" contain user name and user info\
+ for connection respectively.
+ 
  Special field "%^nick%^" in network record may contain space separated list\
  of nicks which can be used for registering on servers in this network.
 

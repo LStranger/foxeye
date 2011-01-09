@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -906,6 +906,7 @@ static int Start_FunctionFromConsole
   } while (!(cons->ift & I_DIED));
   if (!_usage[0] || _usage[0] == '\n' )	/* just "Enter" was pressed */
     return 0;
+  DBG ("Start_FunctionFromConsole:function %s:got %s", name, _usage);
   if (_usage[0] == '?')
     Get_Help ("function", name, cons, -1, -1, NULL, NULL, 2);
   /* start - check if valid */

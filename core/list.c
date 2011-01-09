@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -1376,16 +1376,18 @@ userflag Match_Client (char *domain, char *ident, const char *lname)
   user_hr *hr;
   char uhost[STRING];
   char c = '@';
+  register size_t ptr = 0;
 
   if (!domain || !*domain)		/* empty domain is nonsence! :) */
     return uf;
   if (ident && *ident)			/* prepare the hostmask */
   {
-    snprintf (uhost, sizeof(uhost), "!%s@%s", ident, domain);
     c = '!';
+    uhost[0] = c;
+    ptr = strfcpy (&uhost[1], ident, IDENTLEN + 1) + 1;
   }
-  else
-    snprintf (uhost, sizeof(uhost), "@%s", domain);
+  uhost[ptr++] = '@';
+  unistrlower (&uhost[ptr], domain, sizeof(uhost) - ptr);
   rw_rdlock (&UFLock);
   rw_rdlock (&HLock);
   if (lname)				/* check only this user */

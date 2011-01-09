@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2010  Andriy N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2006-2011  Andriy N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -1441,7 +1441,8 @@ static int ctcp_dcc (INTERFACE *client, unsigned char *who, char *lname,
   userflag uf;
   binding_t *bind = NULL;
 
-  uf = Get_Clientflags (lname, NULL);
+  dprint (4, "irc-ctcp:ctcp_dcc:got request from \"%s\"", NONULL(lname));
+  uf = Get_Clientflags (lname, "");
   while ((bind = Check_Bindtable (BT_IDcc, msg, uf, 0, bind))) /* run bindtable */
   {
     register int i;
@@ -1777,7 +1778,7 @@ Function ModuleInit (char *args)
   CheckVersion;
   /* add own bindtables */
   BT_IDcc = Add_Bindtable ("ctcp-dcc", B_MATCHCASE);
-  Add_Binding ("ctcp-dcc", "CHAT", 0, 0, &dcc_chat, NULL);
+  Add_Binding ("ctcp-dcc", "CHAT", U_ACCESS, 0, &dcc_chat, NULL);
   Add_Binding ("ctcp-dcc", "SEND", 0, 0, &dcc_send, NULL);
   Add_Binding ("ctcp-dcc", "ACCEPT", 0, 0, &dcc_accept, NULL);
   Add_Binding ("ctcp-dcc", "RESUME", 0, 0, &dcc_resume, NULL);

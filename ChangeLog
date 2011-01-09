@@ -10,8 +10,27 @@ TODO:
 	* core/direct.h +: to add 'const char *network_type' field into peer_t
 	  for connchain identification [0.10].
 	* core/wtmp.c: to handle errors somehow?
+	* *: to fix any wrong %[-0-9.l]*[du] in prinf-like sequences.
+	* *: to rearrange structures for alignment sake [0.10].
 
 --- [0.9b] * to test all *
+Sun Jan  9 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/logs/logs.c: fixed flag 'p' which was not saved to config
+	  (bug#52).
+	* config.sub: updated to one from automake 1.11.
+
+Tue Jan  4 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/modules.c: fixed module init arguments which might be rewritten.
+	* core/main.c: fixed wrong arguments in call of Dcc_Parse().
+	* modules/irc/irc.c: fixed wrong parsing of field 'nick'.
+	* modules/irc-channel/irc-channel.c: fixed wrong rejoining to channels
+	  with mode +k.
+	* modules/irc-ctcp/dcc.d: fixed permissions checking.
+	* core/list.c: fixed case insensitivity for Match_Client().
+
+Sat Jan  1 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/logs/logs.c: fixed SIGBUS on miscalculated string length.
+
 Thu Dec 30 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/wtmp.c: fixed incorrect translation of sizeof(x) into off_t.
 	* core/direct.c, core/list.c, core/sheduler.c, core/wtmp.c, modules/logs/logs.c, modules/irc-channel/chmanagement.c:

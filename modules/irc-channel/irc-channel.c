@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2005-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -1948,9 +1948,12 @@ static int irc_kick (INTERFACE *iface, char *svname, char *me, unsigned char *pr
     Send_Signal (I_MODULE, "ui", S_FLUSH); /* inform UI about this part */
     Unset_Iface();
     for (split = net->splits; split; split = split->prev)
-      _ircch_netsplit_purge_channel (split, ch);	/* ignore errors */
+      _ircch_netsplit_purge_channel (split, ch); /* ignore errors */
     if (Get_Clientflags (ch->chi->name, NULL) & U_HALFOP)
-      _ircch_join_channel (net, ch->real);		/* do 'cycle' feature */
+    {
+      snprintf (str, sizeof(str), "%s%s", ch->real, net->name);
+      _ircch_join_channel (net, str);	/* do 'cycle' feature */
+    }
     _ircch_destroy_channel (ch);
     nt = NULL;
   }
@@ -2175,9 +2178,12 @@ static int irc_part (INTERFACE *iface, char *svname, char *me, unsigned char *pr
     Send_Signal (I_MODULE, "ui", S_FLUSH); /* inform UI about this part */
     Unset_Iface();
     for (split = net->splits; split; split = split->prev)
-      _ircch_netsplit_purge_channel (split, ch);	/* ignore errors */
+      _ircch_netsplit_purge_channel (split, ch); /* ignore errors */
     if (Get_Clientflags (ch->chi->name, NULL) & U_HALFOP)
-      _ircch_join_channel (net, ch->real);		/* do 'cycle' feature */
+    {
+      snprintf (str, sizeof(str), "%s%s", ch->real, net->name);
+      _ircch_join_channel (net, str);		/* do 'cycle' feature */
+    }
     _ircch_destroy_channel (ch);
     nt = NULL;
   }

@@ -371,12 +371,14 @@ void RotateWtmp (void)
   /* check if we need to rotate - check the first event of $Wtmp */
   if ((fd = open (wfp, O_RDONLY)) >= 0)
   {
-    struct tm tm, tm0;
-
     if (read (fd, buff, sizeof(wtmp_t)) > 0) /* we have readable Wtmp */
     {
+      struct tm tm, tm0;
+      time_t t2;
+
       localtime_r (&t, &tm0);
-      localtime_r (&buff[0].time, &tm);
+      t2 = buff[0].time;
+      localtime_r (&t2, &tm);
       if (tm.tm_year != tm0.tm_year || tm.tm_mon != tm0.tm_mon)
 	i = 1;					/* and it needs rotation */
     }
