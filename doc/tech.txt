@@ -21,7 +21,7 @@ debug levels (direct sessions may has debug log only if level<3):
 5	any transfers but debug itself
 
 listfile (<name> means it can be get via GetField(x,"name")):
-record	lname:<passwd>:uid:flags:<charset>:<info>:<.login>:<.logout>:createtime
+record	lname:<passwd>:uid:flags:<info>:<charset>:<.login>:<.logout>:createtime
 host	+[[nick[!ident]][:passwd]@]host[/port][%connflags]
 special	 @servicename:flags:expiretime text
 other	 name value

@@ -695,7 +695,7 @@ static void autolog_register (void)
  *  S_REG - (re)register variables,
  *  S_REPORT - out state info to log.
  */
-static int module_autolog_signal (INTERFACE *iface, ifsig_t sig)
+static iftype_t module_autolog_signal (INTERFACE *iface, ifsig_t sig)
 {
   switch (sig)
   {
@@ -747,7 +747,7 @@ static int module_autolog_signal (INTERFACE *iface, ifsig_t sig)
  * Input: parameters string args.
  * Returns: address of signals receiver function, NULL if not loaded.
  */
-Function ModuleInit (char *args)
+SigFunction ModuleInit (char *args)
 {
   CheckVersion;
   strfcpy (autolog_open, _("IRC log started %c"), sizeof(autolog_open));
@@ -757,5 +757,5 @@ Function ModuleInit (char *args)
   autolog_register();
   _autolog_mass = Add_Iface (I_LOG, "*", &_autolog_mass_signal,
 			     &_autolog_mass_request, NULL);
-  return (Function)&module_autolog_signal;
+  return &module_autolog_signal;
 }

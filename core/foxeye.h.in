@@ -1,22 +1,22 @@
 /*
- * Copyright (C) 1999-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
- * 
+ * Copyright (C) 1999-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
  *     the Free Software Foundation; either version 2 of the License, or
  *     (at your option) any later version.
- * 
+ *
  *     This program is distributed in the hope that it will be useful,
  *     but WITHOUT ANY WARRANTY; without even the implied warranty of
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
- * 
+ *
  *     You should have received a copy of the GNU General Public License
  *     along with this program; if not, write to the Free Software
  *     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * This file is part of FoxEye's source: common includes and definitions.
- */ 
+ */
 
 /* strict POSIX.2 */
 #define _POSIX2_SOURCE 1
@@ -177,7 +177,7 @@ void free ();
 #define MESSAGEMAX	1024	/* including '\0' at end */
 #define FORMATMAX	120	/* max lenght of format string */
 
-/* common Tcl/internal function prototype */
+/* common Tcl/internal function prototypes */
 typedef int (*Function)();
 
 /* interface flags */
@@ -291,21 +291,24 @@ typedef enum
 #define REQ_RELAYED	1
 #define REQ_REJECTED	-1
 
-typedef struct _if_t
+typedef struct _if_t INTERFACE;
+typedef iftype_t (*SigFunction)(INTERFACE *,ifsig_t);
+
+struct _if_t
 {
 	/* these can be safe readed when IFSignal or IFRequest started */
 	/* members ift, prev, data are writable that time, rest are read only */
   iftype_t ift;			/* flagged type of interface */
   unsigned char *name;		/* registered name of that type interface */
-  iftype_t (*IFSignal) (struct _if_t *, ifsig_t); /* entry for signals */
-  int (*IFRequest) (struct _if_t *, REQUEST *); /* entry for requests */
-  struct _if_t *prev;		/* for nested interface - pointer to upper */
+  SigFunction IFSignal;		/* entry for signals */
+  int (*IFRequest) (INTERFACE *, REQUEST *); /* entry for requests */
+  INTERFACE *prev;		/* for nested interface - pointer to upper */
   void *data;			/* extra data - free by Delete_Iface() */
 #ifdef HAVE_ICONV
   conversion_t *conv;		/* charset conversions descriptor */
 #endif
   int qsize;			/* queue FIFO size */
-} INTERFACE;
+};
 
 typedef enum
 {

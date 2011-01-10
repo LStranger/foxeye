@@ -361,10 +361,14 @@ static void vsadd_request (ifi_t *to, iftype_t ift, const char *mask,
     return;
   if (lastdebuglog && (ift & I_LOG) && !(flag & F_DEBUG))
   {
+    va_list cp;
+
+    va_copy (cp, ap);
     fprintf (lastdebuglog, ":%08lx:", (long)flag);
-    vfprintf (lastdebuglog, fmt, ap);
+    vfprintf (lastdebuglog, fmt, cp);
     fprintf (lastdebuglog, "\n");
     fflush (lastdebuglog);
+    va_end (cp);
   }
   if (!Current)			/* special case */
     return;
@@ -682,7 +686,7 @@ ALLOCATABLE_TYPE (ifi_t, _IFI, a.prev) /* alloc_ifi_t(), free_ifi_t() */
 
 /* locks on input: (LockIface) */
 INTERFACE *
-Add_Iface (iftype_t ift, const char *name, iftype_t (*sigproc) (INTERFACE*, ifsig_t),
+Add_Iface (iftype_t ift, const char *name, SigFunction sigproc,
 	   int (*reqproc) (INTERFACE *, REQUEST *), void *data)
 {
   register unsigned int i;
@@ -968,15 +972,17 @@ void New_Request (INTERFACE *cur, flag_t fl, const char *text, ...)
 /* locks on input: (LockIface) */
 void dprint (int level, const char *text, ...)
 {
-  va_list ap;
+  va_list ap, cp;
 
   va_start (ap, text);
   if (lastdebuglog)
   {
+    va_copy (cp, ap);
     fprintf (lastdebuglog, "::");
-    vfprintf (lastdebuglog, text, ap);
+    vfprintf (lastdebuglog, text, cp);
     fprintf (lastdebuglog, "\n");
     fflush (lastdebuglog);
+    va_end (cp);
   }
   /* level > 8 is printed only to lastdebuglog */
   /* make pseudo "async-safe" connchain's debug when writing to socket */
@@ -1082,7 +1088,7 @@ int Rename_Iface (INTERFACE *iface, const char *newname)
 
 void Status_Interfaces (INTERFACE *iface)
 {
-  register size_t i;
+  register unsigned int i;
 
   pthread_mutex_lock (&LockIface);
   for (i = 0; i < _Inum; i++)

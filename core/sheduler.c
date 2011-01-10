@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -286,7 +286,7 @@ static time_t lasttime = 0;
 
 static int Sheduler (INTERFACE *ifc, REQUEST *req)
 {
-  register int drift;
+  int drift;
   struct tm tm;
   struct tm tm0;
   register unsigned int i, j = 0;
@@ -326,28 +326,6 @@ static int Sheduler (INTERFACE *ifc, REQUEST *req)
       dprint (4, "Sheduler: removed %u flood timer(s), remained %u/%u",
 	      j, _SFnum, MAXTABLESIZE);
     pthread_mutex_lock (&LockShed);
-    /* decrement timers */
-    for (i = 0, j = 0; i < _STnum; i++)
-    {
-      register shedtimerentry_t *ct = &Timerstable[i-j];
-
-      if (ct->timer > (unsigned int)drift)
-	ct->timer -= drift;
-      else
-      {
-	iftype_t ift = ct->ift;
-	char to[IFNAMEMAX+1];
-
-	strfcpy (to, ct->to, sizeof(to));
-	_STnum--;
-	if (i != _STnum)			/* move last entry here */
-	  memcpy (ct, &Timerstable[_STnum], sizeof(shedtimerentry_t));
-	pthread_mutex_unlock (&LockShed);
-	Send_Signal (ift, to, ct->signal);
-	pthread_mutex_lock (&LockShed);
-	j++;
-      }
-    }
     /* update time variables */
     localtime_r (&lasttime, &tm0);
     lasttime = Time;
@@ -389,7 +367,29 @@ static int Sheduler (INTERFACE *ifc, REQUEST *req)
 	}
       }
     }
-    i = _STnum;
+    /* decrement timers */
+    for (i = 0, j = 0; i < _STnum; i++)
+    {
+      register shedtimerentry_t *ct = &Timerstable[i-j];
+
+      if (ct->timer > (unsigned int)drift)
+	ct->timer -= drift;
+      else
+      {
+	iftype_t ift = ct->ift;
+	char to[IFNAMEMAX+1];
+
+	strfcpy (to, ct->to, sizeof(to));
+	_STnum--;
+	if (i != _STnum)			/* move last entry here */
+	  memcpy (ct, &Timerstable[_STnum], sizeof(shedtimerentry_t));
+	pthread_mutex_unlock (&LockShed);
+	Send_Signal (ift, to, ct->signal);
+	pthread_mutex_lock (&LockShed);
+	j++;
+      }
+    }
+    //i = _STnum;
     pthread_mutex_unlock (&LockShed);
     if (j)
       dprint (4, "Sheduler: sent %u timer signal(s), remained %u/%u",

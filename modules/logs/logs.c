@@ -1079,7 +1079,7 @@ static iftype_t module_log_signal (INTERFACE *iface, ifsig_t sig)
  * Input: parameters string args - nothing.
  * Returns: address of signals receiver function.
  */
-Function ModuleInit (char *args)
+SigFunction ModuleInit (char *args)
 {
   struct tm tm;
 
@@ -1090,5 +1090,5 @@ Function ModuleInit (char *args)
   lastrotated = Time - 3600 * atoi (logrotate_hr) + 60 * atoi (logrotate_min);
   localtime_r (&lastrotated, &tm);
   lastrotated = Time - tm.tm_sec - 60 * tm.tm_min - 3600 * tm.tm_hour;
-  return ((Function)&module_log_signal);
+  return (&module_log_signal);
 }

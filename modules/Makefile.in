@@ -71,13 +71,13 @@ ${top_srcdir}/core/static.h:
 	@(echo "/* Generated file. Do not edit! */"; \
 	    echo ""; \
 	    echo "#ifndef _MODULES_C"; \
-	    echo "#define ModuleInitFunc(a) Function modinit_ ## a (char *);"; \
+	    echo "#define ModuleInitFunc(a) SigFunction modinit_ ## a (char *);"; \
 	    echo "#else"; \
 	    echo "#undef ModuleInitFunc"; \
 	    echo "#define ModuleInitFunc(a) { #a, modinit_ ## a },"; \
 	    echo "struct modtable {"; \
 	    echo " char *name;"; \
-	    echo " Function (*func) (char *);"; \
+	    echo " SigFunction (*func) (char *);"; \
 	    echo "};"; \
 	    echo "struct modtable ModulesTable[] = {"; \
 	    echo "#endif") >$@
@@ -86,7 +86,7 @@ ${top_srcdir}/core/static.h:
 	    || echo "ModuleInitFunc (`echo $$subdir | sed 's/\///' | sed 's/-/_/'`)" >>$@; \
 	done
 	@(echo "#ifdef _MODULES_C"; \
-	    echo "{ NULL }"; \
+	    echo "{ NULL, NULL }"; \
 	    echo "};"; \
 	    echo "#endif") >>$@
 

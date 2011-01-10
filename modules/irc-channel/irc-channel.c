@@ -2301,7 +2301,7 @@ static int irc_rpl_userhost (INTERFACE *iface, char *svname, char *me,
   NICK *nick;
   char *c, *cc, *host, *name;
   char ch;
-  size_t s;
+  unsigned int s;
   lid_t id;
   char userhost[HOSTMASKLEN+1];
 
@@ -3546,7 +3546,7 @@ static void _ircch_leave_allchannels (void *net)
  *  S_REPORT - out state info to log,
  *  S_REG - [re]register all.
  */
-static int module_ircch_signal (INTERFACE *iface, ifsig_t sig)
+static iftype_t module_ircch_signal (INTERFACE *iface, ifsig_t sig)
 {
   register LEAF *l1, *l2;
   INTERFACE *tmp;
@@ -3664,7 +3664,7 @@ static int module_ircch_signal (INTERFACE *iface, ifsig_t sig)
  * Input: parameters string args - nothing.
  * Returns: address of signals receiver function, NULL if not loaded.
  */
-Function ModuleInit (char *args)
+SigFunction ModuleInit (char *args)
 {
   CheckVersion;
   /* init all stuff */
@@ -3772,5 +3772,5 @@ Function ModuleInit (char *args)
 				   _("Topic for %# is set %@ by %N"));
   /* request for all already connected networks to get our autojoins */
   NewTimer (I_MODULE, "irc", S_FLUSH, 1, 0, 0, 0);
-  return ((Function)&module_ircch_signal);
+  return (&module_ircch_signal);
 }

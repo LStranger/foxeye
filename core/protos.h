@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -23,8 +23,8 @@
 /* ----------------------------------------------------------------------------
  * Common functions used by modules and submodules
  */
- 
-INTERFACE *Add_Iface (iftype_t, const char *, iftype_t (*) (INTERFACE *, ifsig_t),
+
+INTERFACE *Add_Iface (iftype_t, const char *, SigFunction,
 		      int (*) (INTERFACE *, REQUEST *), void *);
 INTERFACE *Find_Iface (iftype_t, const char *) __attribute__((warn_unused_result));
 INTERFACE *Set_Iface (INTERFACE *);

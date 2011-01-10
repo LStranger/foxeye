@@ -179,6 +179,7 @@ void foxeye_setlocale (void)
   char new_locale[SHORT_STRING];
 
   snprintf (new_locale, sizeof(new_locale), "%s.%s", locale, Charset);
+  DBG ("current locale is %s", setlocale (LC_ALL, NULL));
   DBG ("trying set locale to %s", new_locale);
   if (setlocale (LC_ALL, new_locale) == NULL)
   {

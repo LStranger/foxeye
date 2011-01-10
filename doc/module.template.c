@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2000-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2000-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -38,8 +38,8 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
  * Input: parameters string args.
  * Returns: address of signals receiver function, NULL if not loaded.
  */
-Function ModuleInit (char *args)
+SigFunction ModuleInit (char *args)
 {
   CheckVersion;
-  return ((Function)&module_signal);
+  return (&module_signal);
 }

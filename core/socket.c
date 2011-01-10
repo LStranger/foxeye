@@ -171,7 +171,7 @@ ssize_t WriteSocket (idx_t idx, const char *buf, size_t *ptr, size_t *sw, int mo
     return E_NOSOCKET;
   if (!buf || !sw)
     return 0;
-  DBG ("trying write socket %hd: %p +%u", idx, &buf[*ptr], *sw);
+  DBG ("trying write socket %hd: %p +%zu", idx, &buf[*ptr], *sw);
   sg = write (Pollfd[idx].fd, &buf[*ptr], *sw);
   Pollfd[idx].revents = 0;		/* we wrote socket, reset state */
   if (sg < 0 && errno != EAGAIN)

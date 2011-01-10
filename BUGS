@@ -49,4 +49,5 @@
 #00050	29.07.2010  30.07.2010	nonamed bans don't work
 #00051	30.08.2010  31.08.2010	does not reconnect to IRC after DNS error
 #00052	04.01.2011  09.01.2011	command 'logfile' doesn't save flag 'p' to config
-#00053	09.01.2011		Key for channel XXXXX was changed! (the same!)
+#00053	09.01.2011  10.01.2011	Key for channel XXXXX was changed! (the same!)
+#00054	09.01.2011  10.01.2011	own join date is in wrong locale

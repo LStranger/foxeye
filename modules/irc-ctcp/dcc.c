@@ -733,7 +733,7 @@ static void _dcc_send_handler (int res, void *input_data)
     ptr += bs;
     statistics[t%16] += bs;
     sw2 = sw;					/* keep it for next cycle */
-    DBG ("DCC GET %s:got %u bytes.", dcc->filename, sw);
+    DBG ("DCC GET %s:got %zd bytes.", dcc->filename, sw);
     if (ahead && bs == sbs)			/* we got full next block */
       ahead--;
     if (ptr < aptr)				/* we sent ptr ahead */
@@ -1626,7 +1626,7 @@ static int ssirc_send (peer_t *peer, INTERFACE *w, char *args)
     *cc = ' ';
     return 1;
   }
-  else if (sb.st_size > ULONG_MAX)
+  else if (sb.st_size > (off_t)ULONG_MAX)
   {
     New_Request (peer->iface, 0, _("File %s is too big."), c);
     *cc = ' ';
@@ -1773,7 +1773,7 @@ static iftype_t irc_ctcp_mod_sig (INTERFACE *iface, ifsig_t sig)
  * Input: parameters string args.
  * Returns: address of signals receiver function, NULL if not loaded.
  */
-Function ModuleInit (char *args)
+SigFunction ModuleInit (char *args)
 {
   CheckVersion;
   /* add own bindtables */
@@ -1805,5 +1805,5 @@ Function ModuleInit (char *args)
 				  _("DCC GET of %* from %N established."));
   format_dcc_request = SetFormat ("dcc_request",
 				  _("DCC connection request for \"%*\" from %N(%@) to %I:%P"));
-  return ((Function)&irc_ctcp_mod_sig);
+  return (&irc_ctcp_mod_sig);
 }

@@ -55,7 +55,7 @@ ScriptFunction (FE_module)
   char name[SHORT_STRING];
   INTERFACE *tmp;
   binding_t *bind = NULL;
-  Function func;
+  SigFunction (*func) (char *);
   iftype_t (*mods) (INTERFACE *, ifsig_t);
   char path[STRING];
 #ifndef STATIC
@@ -143,7 +143,7 @@ ScriptFunction (FE_module)
     if (modh == NULL)
       func = NULL;
     else
-      func = (Function)dlsym (modh, "ModuleInit");
+      func = dlsym (modh, "ModuleInit");
     if (!func)
     {
       c = (char *)dlerror();
@@ -156,7 +156,7 @@ ScriptFunction (FE_module)
     for (i = 0; ModulesTable[i].name; i++)
       if (!safe_strcasecmp (ModulesTable[i].name, name))
 	break;
-    if ((func = (Function)ModulesTable[i].func) == NULL)
+    if ((func = ModulesTable[i].func) == NULL)
     {
       ERROR ("cannot start module %s: not found", name);
       return 0;
@@ -175,7 +175,8 @@ ScriptFunction (FE_module)
     }
     /* start the module */
     strfcpy (path, args, sizeof(path)); /* make a copy before call */
-    if ((mods = (iftype_t(*)(INTERFACE *,ifsig_t))func (path)) == NULL)
+    mods = func (path);
+    if (mods == NULL)
     {
       ERROR ("module %s: ModuleInit() error.", name);
 #ifndef STATIC

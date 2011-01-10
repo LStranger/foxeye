@@ -360,8 +360,8 @@ static int _irc_try_server (irc_server *serv, const char *tohost, int banned,
   irc_await *await;
 
   /* if already connected then break connection first */
-  if(Connchain_Kill ((&serv->p)))uf=uf;		/* condition to avoid warn */
-  if (serv->p.socket >= 0)
+  if (Connchain_Kill ((&serv->p)) &&	/* condition to avoid warn */
+      serv->p.socket >= 0)
     KillSocket(&serv->p.socket);
   FREE (&serv->p.dname);
   serv->p.socket = -1;		/* it may still contain an error code */
@@ -1403,7 +1403,7 @@ static int irc_nick (INTERFACE *net, char *sv, char *me, unsigned char *src,
   return 1;
 }
 
-static void _set_isupport_num (char *value, size_t s, size_t *i,
+static void _set_isupport_num (char *value, size_t s, unsigned int *i,
 			       char *name, size_t nl, int x)
 {
   if (*i)
@@ -1416,7 +1416,7 @@ static void _set_isupport_num (char *value, size_t s, size_t *i,
   *i += strlen (value);
 }
 
-static void _set_isupport_string (char *value, size_t s, size_t *i,
+static void _set_isupport_string (char *value, size_t s, unsigned int *i,
 				  char *name, size_t nl, char *x)
 {
   register size_t l = strlen (x);
@@ -1693,7 +1693,7 @@ static void module_irc_regall (void)
  *  S_REPORT - out state info to log,
  *  S_REG - [re]register all.
  */
-static int module_irc_signal (INTERFACE *iface, ifsig_t sig)
+static iftype_t module_irc_signal (INTERFACE *iface, ifsig_t sig)
 {
   irc_server *serv;
   INTERFACE *tmp;
@@ -1843,7 +1843,7 @@ static void _irc_init_bindings (void)
  * Input: parameters string args - nothing.
  * Returns: address of signals receiver function, NULL if not loaded.
  */
-Function ModuleInit (char *args)
+SigFunction ModuleInit (char *args)
 {
   struct passwd *pwd;
   register char *c;
@@ -1885,5 +1885,5 @@ Function ModuleInit (char *args)
   module_irc_regall();
   /* shedule check for autoconnects since listfile may be not loaded yet */
   NewTimer (I_MODULE, "irc", S_FLUSH, 1, 0, 0, 0);
-  return ((Function)&module_irc_signal);
+  return (&module_irc_signal);
 }

@@ -250,7 +250,7 @@ static iftype_t _signal (INTERFACE *iface, ifsig_t signal)
   {
     case S_TERMINATE:
       _kill_pipe (iface);
-      FREE (&((peer_t *)iface->data)->dname);
+      FREE (&((console_peer *)iface->data)->s.dname);
       iface->ift = I_CONSOLE | I_DIED;
       return I_DIED;
     case S_REPORT:
@@ -395,7 +395,7 @@ int main (int argc, char *argv[])
   FILE *fp;
   int ch;
   char *c;
-  peer_t *dcc = safe_calloc (1, sizeof(peer_t));
+  console_peer *dcc = safe_calloc (1, sizeof(console_peer));
   char buff[STRING];
   pthread_t sit;
 
@@ -560,9 +560,9 @@ int main (int argc, char *argv[])
   if_console.IFRequest = &_request;
   if_console.prev = NULL;
   if_console.data = dcc;
-  dcc->state = P_TALK;
-  dcc->socket = -1;
-  dcc->uf = (userflag)-1;
+  dcc->s.state = P_TALK;
+  dcc->s.socket = -1;
+  dcc->s.uf = (userflag)-1;
   /* run the dispatcher and fork there */
   if ((ch = dispatcher (&if_console)))
     return (ch);

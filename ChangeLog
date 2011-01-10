@@ -13,12 +13,19 @@ TODO:
 	* *: to rearrange structures for alignment sake [0.10].
 
 --- [0.9b] * to test all *
+Tue Jan 11 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/foxeye.h, core/protos.h, core/dispatcher.c, core/modules.c, core/socket.c, core/wtmp.c, doc/module.template.c, modules/Makefile, modules/autolog/autolog.c, modules/irc/irc.c, modules/irc-channel/irc-channel.c, modules/irc-ctcp/dcc.c, modules/logs/logs.c, modules/lua/lua.c, modules/modes/modes.c, modules/tcl/modtcl.c:
+	  fixed few more incompatibilities with 64bit arch.
+	* core/dispatcher.c: fixed wrong usage of va_list.
+	* core/main.c: fixed heap overwrite by bad allocation by console.
+
 Mon Jan 10 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* tree/tree.c: added optimized strcmp.
 	* core/init.c: fixed wrong place for setting locale.
 	* core/init.c: fixed dc_fset() which was unable to change format.
 	* modules/irc-channel/chmanagement.c: removed unneeded updating key
-	  in Listfile if new key is the same.
+	  in Listfile if new key is the same (bug#53).
+	* core/init.c: corrected locale for LC_TIME until is set from 'charset'.
 
 Sun Jan  9 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/logs/logs.c: fixed flag 'p' which was not saved to config

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2010-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -680,7 +680,7 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
  * Input: parameters string args, no parameters currently.
  * Returns: address of signals receiver function, NULL if not loaded.
  */
-Function ModuleInit (char *args)
+SigFunction ModuleInit (char *args)
 {
   CheckVersion;
   Add_Help ("modes");
@@ -690,5 +690,5 @@ Function ModuleInit (char *args)
   Add_Binding ("dcc", "chban", U_OP, U_OP, &dc_chban, NULL);
   Add_Binding ("dcc", "comment", U_OP, U_OP, &dc_comment, NULL);
   RegisterInteger ("default-ban-time", &modes_default_ban_time);
-  return ((Function)&module_signal);
+  return (&module_signal);
 }

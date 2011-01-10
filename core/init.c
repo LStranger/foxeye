@@ -24,6 +24,7 @@
 
 #include <signal.h>
 #include <ctype.h>
+#include <locale.h>
 
 #include "direct.h"
 #include "tree.h"
@@ -1998,7 +1999,8 @@ void init (void)
       _bind_destroy (b);
     }
   }
-  /* init sheduler to have current time */
+  /* init sheduler to have current time, C format now */
+  setlocale (LC_TIME, "C");
   IFInit_Sheduler();
   /* add own bindtables and bindings */
   BT_Reg = Add_Bindtable ("register", B_MASK);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2006-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -1204,7 +1204,7 @@ static iftype_t lua_module_signal (INTERFACE *iface, ifsig_t sig)
  * Input: parameters string args.
  * Returns: address of signals receiver function, NULL if not loaded.
  */
-Function ModuleInit (char *args)
+SigFunction ModuleInit (char *args)
 {
   CheckVersion;
   Lua = lua_open();
@@ -1234,10 +1234,10 @@ Function ModuleInit (char *args)
   RegisterInteger ("lua-max-timer", &_lua_max_timer);
   Send_Signal (I_MODULE | I_INIT, "*", S_REG);
   Add_Help ("lua");
-  return ((Function)&lua_module_signal);
+  return (&lua_module_signal);
 }
 #else	/* not HAVE_LIBLUA */
-Function ModuleInit (char *args)
+SigFunction ModuleInit (char *args)
 {
   ERROR ("Cannot run LUA, lualib not found, sorry.");
   return NULL;

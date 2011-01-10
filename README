@@ -89,13 +89,13 @@ What modules have to care about in interaction with "ui" module?
   message with name of client and appropriate flag (if that status change
   was for client on some service not for service itself) to module "ui".
 
-What modules are available?
+Which modules are available?
     Currently available modules are:
    logs		- customisable saving and rotating of log files.
    autolog	- automatic saving of private and public conversations.
    lua		- support for scripts in Lua language.
    irc		- common support of connection to IRC network.
-   irc-channel	- base support for channels of IRC network.
+   irc-channel	- basic support for channels of IRC network.
    irc-ctcp	- implementation of some IRC commands including few DCC.
    modes	- implementation of commands +ban, -ban, and others
    tcl		- support for scripts in Tcl language
@@ -112,7 +112,7 @@ What modules are available?
    irc-protection - antiflood, antispam and other
    ircd		- standard (RFC1459) IRC server
    ircd-rusnet	- RusNet ircd IRC server extensions
-   jabber	- base support for Jabber network
+   jabber	- client for Jabber network
    login	- "login", "logoff", and "cron" scripts for each chat user
    md5		- support for md5 encryption
    news		- service for storing news and notifying people about them

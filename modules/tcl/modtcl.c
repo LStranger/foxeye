@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2000-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2000-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -1025,7 +1025,7 @@ static int module_signal (INTERFACE *iface, ifsig_t sig)
  * Input: parameters string args.
  * Returns: address of signals receiver function, NULL if not loaded.
  */
-Function ModuleInit (char *args)
+SigFunction ModuleInit (char *args)
 {
   /* kill old interpreter */
   if (Interp)
@@ -1052,10 +1052,10 @@ Function ModuleInit (char *args)
 		  sizeof(tcl_default_network), 0);
   RegisterInteger ("tcl-max-timer", &tcl_max_timer);
   Add_Help ("tcl");
-  return ((Function)&module_signal);
+  return (&module_signal);
 }
 #else /* not HAVE_TCL */
-Function ModuleInit (char *args)
+SigFunction ModuleInit (char *args)
 {
   ERROR ("Cannot run TCL, there is not any, sorry.");
   return NULL;

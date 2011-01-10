@@ -1,16 +1,16 @@
 /*
- * Copyright (C) 2001-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
- * 
+ * Copyright (C) 2001-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
  *     the Free Software Foundation; either version 2 of the License, or
  *     (at your option) any later version.
- * 
+ *
  *     This program is distributed in the hope that it will be useful,
  *     but WITHOUT ANY WARRANTY; without even the implied warranty of
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
- * 
+ *
  *     You should have received a copy of the GNU General Public License
  *     along with this program; if not, write to the Free Software
  *     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -150,7 +150,7 @@ static int _scan_wtmp (const char *path, wtmp_t *wtmp, int wn,
   if (fd < 0)
     return -1;
   i = lseek (fd, 0, SEEK_END);
-  DBG ("_scan_wtmp: fd=%d size=%d (errno=%d)", fd, i, errno);
+  DBG ("_scan_wtmp: fd=%d size=%zd (errno=%d)", fd, i, errno);
   errno = 0;		/* FreeBSD bug with read */
   while (i > 0)
   {
@@ -165,8 +165,8 @@ static int _scan_wtmp (const char *path, wtmp_t *wtmp, int wn,
       k = sizeof(buff);
     }
     i = read (fd, buff, k);
-    DBG ("_scan_wtmp: trying %u bytes (%u wtmp_t): read %d bytes from %d at %u",
-	 (unsigned int)k, k / sizeof(wtmp_t), (int)i, fd, (unsigned int)n);
+    DBG ("_scan_wtmp: trying %zu bytes (%zu wtmp_t): read %d bytes from %d at %u",
+	 k, k / sizeof(wtmp_t), (int)i, fd, (unsigned int)n);
     if (i <= 0)			/* premature stopped, read error? */
       break;
     lseek (fd, -i, SEEK_CUR);	/* back to start of the block */
