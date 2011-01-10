@@ -1128,7 +1128,7 @@ char *Get_Field (clrec_t *user, const char *field, time_t *ctime)
       {
 	if (ctime)
 	  *ctime = c->expire;
-	DBG ("Get_Field:%s:%s[%d]=%s", user->lname, field, i, c->greeting);
+	DBG ("Get_Field:%s:%s[%d]=%s", user->lname, field, (int)i, c->greeting);
 	return (c->greeting);
       }
     return NULL;
@@ -2238,7 +2238,7 @@ static int _save_listfile (const char *filename, int quiet)
 	  register user_chr *c = chr;
 
 	  DBG ("dropped unknown service %d(%s) subrecord from \"%s\": %s",
-	       chr->cid, sur ? sur->lname : "",
+	       (int)chr->cid, sur ? sur->lname : "",
 	       NONULL(ur->lname), NONULL(chr->greeting));
 	  chr = chr->next;
 	  _del_channel (&ur->channels, c);	/* remove invalid subrecord */
@@ -2249,7 +2249,7 @@ static int _save_listfile (const char *filename, int quiet)
 	  register user_chr *c = chr;
 
 	  DBG ("dropped expired service %d(%s) subrecord from \"%s\"",
-	       chr->cid, sur ? sur->lname : "", NONULL(ur->lname));
+	       (int)chr->cid, sur ? sur->lname : "", NONULL(ur->lname));
 	  chr = chr->next;
 	  _del_channel (&ur->channels, c);	/* remove expired subrecord */
 	  continue;
@@ -2497,7 +2497,8 @@ static int dc_chattr (peer_t *dcc, char *args)
   }
   else
     cf = (uf & U_GLOBALS);				/* globals */
-  DBG ("list.c:dc_chattr:caller perm=0x%08x/0x%08x, id=%hd", uf, cf, id);
+  DBG ("list.c:dc_chattr:caller perm=0x%08lx/0x%08lx, id=%hd", (long)uf,
+       (long)cf, id);
   if (user->flag & U_SPECIAL)
   {
     if (!((uf | cf) & U_OWNER))		/* only owners may change that */
@@ -2520,10 +2521,11 @@ static int dc_chattr (peer_t *dcc, char *args)
   if (sv != args || !*args)		/* global attributes */
   {
     parse_chattr (gl, &ufp, &ufm);
-    DBG ("list.c:dc_chattr:arg2:%s:0x%08x/0x%08x", gl, ufp, ufm);
+    DBG ("list.c:dc_chattr:arg2:%s:0x%08lx/0x%08lx", gl, (long)ufp, (long)ufm);
     /* check permissions - any flag may be global/direct */
     check_perm (user->flag, uf, 0, &ufp, &ufm);
-    DBG ("list.c:dc_chattr:0x%08x/0x%08x->0x%08x/0x%08x", user->flag, uf, ufp, ufm);
+    DBG ("list.c:dc_chattr:0x%08lx/0x%08lx->0x%08lx/0x%08lx", (long)user->flag,
+	 (long)uf, (long)ufp, (long)ufm);
     if (ufp || ufm)
     {
       /* set userflags */
@@ -2584,11 +2586,12 @@ static int dc_chattr (peer_t *dcc, char *args)
   if (cf)			/* don't do checks if not permitted anyway */
   {
     parse_chattr (sv, &ufp, &ufm);
-    DBG ("list.c:dc_chattr:arg3:%s:0x%08x/0x%08x", sv, ufp, ufm);
+    DBG ("list.c:dc_chattr:arg3:%s:0x%08lx/0x%08lx", sv, (long)ufp, (long)ufm);
     for (chr = user->channels; chr && chr->cid != id; chr = chr->next);
     /* check permissions - U_SPECIAL is global only attribute */
     check_perm (chr ? chr->flag : 0, cf, U_SPECIAL, &ufp, &ufm);
-    DBG ("list.c:dc_chattr:0x%08x/0x%08x->0x%08x/0x%08x", chr ? chr->flag : 0, cf, ufp, ufm);
+    DBG ("list.c:dc_chattr:0x%08lx/0x%08lx->0x%08lx/0x%08lx",
+	 chr ? (long)chr->flag : 0L, (long)cf, (long)ufp, (long)ufm);
   }
   else
     chr = NULL;			/* even don't show it! */
@@ -2986,7 +2989,7 @@ char *IFInit_Users (void)
       _f -= strlena (Field[i]);
     /* check if our statistics went to 0 */
     if (_R_r || _R_s || _R_d || _R_i || _R_h || _R_n || _f)
-      WARNING ("list.c: bad cleanup: %d/%d/%d/%d/%d/%d/%d", _R_r, _R_s, _R_d,
+      WARNING ("list.c: bad cleanup: %zd/%zd/%zd/%zd/%zd/%zd/%d", _R_r, _R_s, _R_d,
 	       _R_i, _R_h, _R_n, _f);
   }
   rwlock_init (&UFLock, USYNC_THREAD, NULL);

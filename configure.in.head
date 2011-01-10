@@ -106,6 +106,7 @@ if test "$fe_cv_static" = no; then
     case "$host_os" in
 	linux*)
 	    LD="${LD} -shared -nostartfiles"
+	    AC_CHECK_LDFLAG(fe_cv_fpic, [-fpic], CPPFLAGS)
 	    ;;
 	freebsd*)
 	    LD="${LD} -shared"

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2005-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -173,7 +173,8 @@ static userflag _make_rf (IRC *net, const userflag sf, const userflag cf)
     rf |= cf & (tf | U_AUTO);
   else
     rf |= sf & (tf | U_AUTO);
-  DBG ("irc-channel:chmanagement.c:_make_rf: 0x%08x:0x%08x=>0x%08x", sf, cf, rf);
+  DBG ("irc-channel:chmanagement.c:_make_rf: 0x%08lx:0x%08lx=>0x%08lx",
+       (long)sf, (long)cf, (long)rf);
   return rf;
 }
 
@@ -272,12 +273,12 @@ static char *_make_literal_mask (char *mask, char *uh, size_t s)
 static void _flush_mode (IRC *net, CHANNEL *chan, modebuf *mbuf)
 {
   char *c;
-  size_t s;
+  int s;
 
   if (mbuf->cmd == NULL || mbuf->changes == 0)
     return;
   c = strrchr (chan->chi->name, '@');
-  if (c) s = c - (char *)chan->chi->name;
+  if (c) s = c - (char *)chan->chi->name; /* int should be enough for it */
   else s = strlen (chan->chi->name);
   mbuf->mchg[mbuf->pos] = 0;
   mbuf->args[mbuf->apos] = 0;
@@ -874,11 +875,14 @@ int ircch_parse_modeline (IRC *net, CHANNEL *chan, LINK *origin, char *prefix,
 	  cr = Lock_Clientrecord (chan->chi->name);
 	  if (cr)			/* oops, key changed! memorize it! */
 	  {
-	    Add_Request (I_LOG, "*", F_WARN, "Key for channel %s was changed!",
-			 chan->chi->name);
-	    if (!Set_Field (cr, "passwd", chan->key, 0))
-	      Add_Request (I_LOG, "*", F_WARN, "Could not save key for %s!",
+	    if (safe_strcmp (Get_Field (cr, "passwd", NULL), chan->key))
+	    {
+	      Add_Request (I_LOG, "*", F_WARN, "Key for channel %s was changed!",
 			   chan->chi->name);
+	      if (!Set_Field (cr, "passwd", chan->key, 0))
+		Add_Request (I_LOG, "*", F_WARN, "Could not save key for %s!",
+			     chan->chi->name);
+	    }
 	    Unlock_Clientrecord (cr);
 	  }
 	}

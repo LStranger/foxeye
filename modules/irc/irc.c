@@ -412,7 +412,7 @@ static int _irc_try_server (irc_server *serv, const char *tohost, int banned,
       if (Connect_Host (name, c ? atoi (&c[1]) : defaultport, &await->th,
 			&serv->p.socket, &_irc_connection_ready, await))
 	LOG_CONN (_("Connecting to %s, port %ld..."), name,
-		  c ? atoi (&c[1]) : defaultport);
+		  c ? atol (&c[1]) : defaultport);
       else
 	await->th = 0;
       if (c) *c = '/';
@@ -527,7 +527,7 @@ static int _irc_send (irc_server *serv, char *line)
   sw = cc - buf;
   if (sw == 0)
     return 1;				/* nothing to do */
-  dprint (4, "_irc_send: buffer filled for %s: %d bytes",
+  dprint (4, "_irc_send: buffer filled for %s: %zd bytes",
 	  serv->p.iface->name, sw);
   /* try to send buffer */
   sd = Peer_Put ((&serv->p), buf, &sw);
@@ -685,7 +685,7 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
   register char *c;
   char thebuf[STRING];
   int i, isregistered = 0, reject = 1;
-  ssize_t sw = 0;	/* we don't need that but to exclude warning... */
+  int sw = 0;		/* we don't need that 0 but to exclude warning... */
 
   /* there may be still an await structure, we cannot touch socket then! */
   if (serv->await)
@@ -1146,12 +1146,13 @@ static size_t _irc_check_domain_part (char *domain)
     if ((*c >= 'a' && *c <= 'z') || (*c >= 'A' && *c <= 'Z') ||
 	(*l && (*c == '-' || (*c >= '0' && *c <= '9'))))
       continue;
-    DBG ("_irc_check_domain_part: invalid %-*.*s", (c - domain + 1),
-	 (c - domain + 1), domain);
+    DBG ("_irc_check_domain_part: invalid %-*.*s", (int)(c - domain + 1),
+	 (int)(c - domain + 1), domain);
     return 0;
   }
   if (*c) c++;
-  DBG ("_irc_check_domain_part: %-*.*s", (c - domain), (c - domain + 1), domain);
+  DBG ("_irc_check_domain_part: %-*.*s", (int)(c - domain),
+       (int)(c - domain + 1), domain);
   return (c - domain);
 }
 
@@ -1433,7 +1434,7 @@ static void _set_isupport_string (char *value, size_t s, size_t *i,
 static void _irc_update_isupport (INTERFACE *net, int parc, char **parv)
 {
   char *c, *cs, *cf, *cv;
-  size_t i;
+  unsigned int i;
   int nicklen, topiclen, maxbans, maxchannels, modes, maxtargets;
   size_t (*lc) (char *, const char *, size_t);
   clrec_t *clr;
@@ -1459,7 +1460,7 @@ static void _irc_update_isupport (INTERFACE *net, int parc, char **parv)
       i = strlen (cv);
     if (cv)
     {
-      register size_t xx = (cv++ - cf);
+      register unsigned int xx = (cv++ - cf);
       DBG ("irc_update_isupport: found saved %.*s=\"%.*s\"", xx, cf, i-1, cv);
       strfcpy (value, cf, xx >= sizeof(value) ? sizeof(value) : xx + 1);
       if (!strcmp (value, IRCPAR_NICKLEN))

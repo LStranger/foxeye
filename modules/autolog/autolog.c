@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2010  Andrej N. Gritsenko <andrej@@rep.kiev.ua>
+ * Copyright (C) 2006-2011  Andrej N. Gritsenko <andrej@@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -98,7 +98,7 @@ static int flush_autolog (autologdata_t *log)
     return 0;
   if (log->fd < 0)
     return EBADF;
-  dprint (5, "autolog: trying logfile %s: %d bytes", log->path, log->inbuf);
+  dprint (5, "autolog: trying logfile %s: %zu bytes", log->path, log->inbuf);
   memset (&lck, 0, sizeof (struct flock));
   lck.l_type = F_WRLCK;
   lck.l_whence = SEEK_END;

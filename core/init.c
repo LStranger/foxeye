@@ -1552,46 +1552,55 @@ static int dc_fset (peer_t *dcc, char *args)
 {
   char var[STRING];
   VarData2 *data = NULL;
+  const char *p;
+  register int s;
 
-  if (args && Have_Wildcard (args) < 0)	/* any format */
+
+  if (args)
   {
-    register char *c;
-
-    for (c = var; *args && *args != ' ' && c < &var[sizeof(var)-1]; )
-      *c++ = *args++;
-    *c = 0;
-    data = Find_Key (FTree, var);
-    if (!data)
-      return 0;
-    c = NextWord (args);
-    if (*c)
-      NextWord_Unquoted (data->f.mt, c, FORMATMAX);
-    New_Request (dcc->iface, 0, _("Current format %s: %s"), var, data->f.mt);
+    p = strchr (args, ' ');
+    s = Have_Wildcard (args);
+    if (s < 0 || (p && &args[s] > p))	/* any format */
+    {
+      if (p)
+	s = p - args;
+      else
+	s = strlen (args);
+      if (s >= (int)sizeof(var))
+	s = sizeof(var) - 1;
+      strfcpy (var, args, s+1);
+      data = Find_Key (FTree, var);
+      if (!data)
+	return 0;
+      p = NextWord (args);
+      if (*p)
+	NextWord_Unquoted (data->f.mt, (char *)p, FORMATMAX);
+      New_Request (dcc->iface, 0, _("Current format %s: %s"), var, data->f.mt);
+      return 1;
+    }
   }
-  else					/* list of formats */
-  {
-    const char *name;
+  {					/* else list of formats */
     LEAF *leaf = NULL;
-    register size_t s, t = 0;
+    register size_t t = 0;
 
     New_Request (dcc->iface, 0, _("List of formats%s%s:"),
 		 args ? _(" by mask ") : "", NONULL(args));
-    while ((leaf = Next_Leaf (FTree, leaf, &name)))
+    while ((leaf = Next_Leaf (FTree, leaf, &p)))
     {
-      if (args && match (args, name) <= 0)
+      if (args && match (args, p) <= 0)
 	continue;
-      s = safe_strlen (name) + 16 - t%16;
+      s = safe_strlen (p) + 16 - t%16;
       if (s + t > 72 && t)
       {
 	New_Request (dcc->iface, 0, "%s", var);
-	t = strfcpy (var, name, sizeof(var));
+	t = strfcpy (var, p, sizeof(var));
       }
       else
       {
 	if (t) do {
 	  var[t++] = ' ';
 	} while (t % 16);
-	t += strfcpy (&var[t], name, sizeof(var) - t);
+	t += strfcpy (&var[t], p, sizeof(var) - t);
       }
     }
     if (t)
@@ -2092,6 +2101,7 @@ void init (void)
     ConfigFileIface = NULL;
   }
   _lock_var ("charset");		/* not changeable anymore */
+  foxeye_setlocale();			/* do it BEFORE any case conversions */
   if ((msg = IFInit_Users()))		/* try to load listfile */
     bot_shutdown (msg, 3);
   if (!_load_formats())			/* try to load formats */
@@ -2112,7 +2122,6 @@ void init (void)
     dc_die (NULL, "terminated: no interfaces to work");
   if (O_TESTCONF != FALSE)
     dc_die (NULL, NULL);
-  foxeye_setlocale();
   Add_Binding ("dcc", "binds", U_MASTER, U_MASTER, (Function)&dc_binds, NULL);
   Add_Binding ("dcc", "module", U_OWNER, U_NONE, (Function)&dc_module, NULL);
   Add_Binding ("dcc", "status", U_MASTER, U_NONE, (Function)&dc_status, NULL);

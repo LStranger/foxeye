@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -58,7 +58,7 @@ static bindtable_t *BT_Chatjoin;
 static bindtable_t *BT_Chatpart;
 static bindtable_t *BT_Connect;
 
-#define DccIdx(a) ((a)->socket + 1)
+#define DccIdx(a) ((int)(a)->socket + 1)
 
 /*
  * Direct session management.
@@ -1390,7 +1390,8 @@ static void *_listen_port (void *input_data)
     child->data = acptr->data;
     child->tst = 0;			/* use it to wait for prehandler */
     dprint (4, "direct:_listen_port: socket %d answered, %s: new socket %d",
-	    acptr->socket, acptr->client ? "terminated" : "continue", new_idx);
+	    (int)acptr->socket, acptr->client ? "terminated" : "continue",
+	    (int)new_idx);
     if (pthread_create (&child->th, NULL, &_accept_port, child))
     {
       KillSocket (&child->socket);

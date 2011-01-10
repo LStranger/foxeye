@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2003-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -217,7 +217,7 @@ static size_t _do_conversion (iconv_t cd, char **buf, size_t sz,
     sl--;
   }					/* do ignore unknown */
   else if (iconv (cd, (ICONV_CONST char **)&line, &sl, &sbuf, &sz) == (size_t)(-1))
-    WARNING ("conversion error: %u chars left unconverted", sz); /* error */
+    WARNING ("conversion error: %zu chars left unconverted", sz); /* error */
   return (sbuf - *buf);
 }
 

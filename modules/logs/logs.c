@@ -78,7 +78,7 @@ static int flush_log (logfile_t *log, int force, int needsync)
     return EBADF;
   if (!force && Time - log->timestamp < cache_time)
     return 0;
-  dprint (4, "logs/logs:flush_log: logfile %s: %d bytes after %d seconds",
+  dprint (4, "logs/logs:flush_log: logfile %s: %zd bytes after %d seconds",
 	  log->path, log->inbuf, (int)(Time - log->timestamp));
   memset (&lck, 0, sizeof (struct flock));
   lck.l_type = F_WRLCK;

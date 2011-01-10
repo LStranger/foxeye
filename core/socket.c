@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -144,9 +144,9 @@ ssize_t ReadSocket (char *buf, idx_t idx, size_t sr, int mode)
     return (E_NOSOCKET);
   else if (rev & (POLLIN | POLLPRI))
   {
-    DBG ("trying read socket %d", idx);
+    DBG ("trying read socket %hd", idx);
     if ((sg = read (Pollfd[idx].fd, buf, sr)) > 0 && mode != M_RAW)
-      DBG ("got from socket %d:[%-*.*s]", idx, sg, sg, buf);
+      DBG ("got from socket %hd:[%-*.*s]", idx, (int)sg, (int)sg, buf);
     if (sg < 0)
     {
       CloseSocket (idx);		/* if socket died then close it */

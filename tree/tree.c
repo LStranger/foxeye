@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2000-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2000-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -235,6 +235,26 @@ static int tree_split_node (NODE *node, int ln, unsigned char *next)
   return r;
 }
 
+/* attempt to do it faster */
+static inline int local_strcmp (const unsigned char *s1, const unsigned char *s2)
+{
+  register const unsigned char *p1 = s1, *p2 = s2;
+
+  while (*p1 == *p2)
+  {
+    if (*p1 == 0)
+      break;
+    p1++;
+    if (*++p2 == 0)
+      break;
+    if (*p1 != *p2)
+      break;
+    p1++;
+    p2++;
+  }
+  return (*p1 - *p2);
+}
+
 // Возвращает -1 при повторе ключа при uniq!=0, или число записей в узле.
 // innext - два символа начала интервала следующего узла
 static int tree_insert_leaf (NODE *node, const unsigned char *key,
@@ -261,7 +281,7 @@ static int tree_insert_leaf (NODE *node, const unsigned char *key,
       i = TREE_HALFNODE;
     for (; i < node->num; i++)			/* find the key next to it */
     {
-      test = strcmp ((char *)node->l[i].key, (char *)key);
+      test = local_strcmp (node->l[i].key, key);
       if (test > 0)
 	break;
       else if (uniq && test == 0)
@@ -314,7 +334,7 @@ int Insert_Key (NODE **node, const char *key, void *data, int uniq)
     for (n = 0; n < TREE_FULLNODE; n++)
       cur->l[n].node = cur;
   }
-  n = tree_insert_leaf (*node, (unsigned char *)key, data, uniq, next00);
+  n = tree_insert_leaf (*node, (const unsigned char *)key, data, uniq, next00);
   if (n < TREE_FULLNODE-2)			/* inserted ok? */
     return n > 0 ? 0 : n;
   cur = tree_depth_node (*node);
@@ -327,20 +347,22 @@ int Delete_Key (NODE *node, const char *key, void *data)
 {
   register int i = 0;
   int n, r = -1;
+  const unsigned char *k;
   register unsigned char *ch;
 
   if (node != NULL && key != NULL)
   {
     if (node->mode & TREE_PREF)			/* prefix - skip it */
       key += 2;
+    k = key;
     if (node->mode & TREE_LEAF)
     {
       if (node->num > TREE_HALFNODE &&
-	  (unsigned char)key[0] > node->l[TREE_HALFNODE].key[0])
+	  k[0] > node->l[TREE_HALFNODE].key[0])
 	i = TREE_HALFNODE;
       for (; i < node->num; i++)
       {
-	n = strcmp ((char *)node->l[i].key, key);
+	n = local_strcmp (node->l[i].key, k);
 	if (n == 0 && node->l[i].s.data == data)
 	{
 	  node->num--;
@@ -357,13 +379,12 @@ int Delete_Key (NODE *node, const char *key, void *data)
     else /* TREE_NODE */
     {
       if (node->num > TREE_HALFNODE &&
-	  (unsigned char)key[0] > node->l[TREE_HALFNODE].s.n->b[0])
+	  k[0] > node->l[TREE_HALFNODE].s.n->b[0])
 	i = TREE_HALFNODE;
       for (; i < node->num; i++)
       {
 	ch = node->l[i].s.n->b;
-	if (ch[0] > (unsigned char)key[0] || (key[0] &&
-	    ch[0] == (unsigned char)key[0] && ch[1] > (unsigned char)key[1]))
+	if (ch[0] > k[0] || (k[0] && ch[0] == k[0] && ch[1] > k[1]))
 	  break;
       }
       if (i)
@@ -399,20 +420,21 @@ LEAF *Find_Leaf (NODE *node, const char *key, int exact)
 {
   register int i = 0;
   int n;
+  const unsigned char *k;
   register unsigned char *ch;
 
   if (node != NULL && key != NULL)
   {
     if (node->mode & TREE_PREF)			/* prefix - skip it */
       key += 2;
+    k = key;
     if (node->mode & TREE_LEAF)
     {
-      if (node->num > TREE_HALFNODE &&
-	  (unsigned char)key[0] > node->l[TREE_HALFNODE].key[0])
+      if (node->num > TREE_HALFNODE && k[0] > node->l[TREE_HALFNODE].key[0])
 	i = TREE_HALFNODE;
       for (; i < node->num; i++)
       {
-	n = strcmp ((char *)node->l[i].key, key);
+	n = local_strcmp (node->l[i].key, k);
 	if (n == 0)
 	  return &node->l[i];
 	else if (n > 0)
@@ -425,14 +447,12 @@ LEAF *Find_Leaf (NODE *node, const char *key, int exact)
     }
     else /* TREE_NODE */
     {
-      if (node->num > TREE_HALFNODE &&
-	  (unsigned char)key[0] > node->l[TREE_HALFNODE].s.n->b[0])
+      if (node->num > TREE_HALFNODE && k[0] > node->l[TREE_HALFNODE].s.n->b[0])
 	i = TREE_HALFNODE;
       for (; i < node->num; i++)
       {
 	ch = node->l[i].s.n->b;
-	if (ch[0] > (unsigned char)key[0] || (key[0] &&
-	    ch[0] == (unsigned char)key[0] && ch[1] > (unsigned char)key[1]))
+	if (ch[0] > k[0] || (k[0] && ch[0] == k[0] && ch[1] > k[1]))
 	  break;
       }
       if (i)
@@ -499,6 +519,6 @@ LEAF *Next_Leaf (NODE *node, LEAF *leaf, const char **key)
   if (cur->num == 0)			/* fallback if empty node */
     return (cur->parent ? Next_Leaf (node, cur->parent, key) : NULL);
   if (key != NULL)
-    *key = (char *) _leaf_key (leaf);
+    *key = _leaf_key (leaf);
   return leaf;
 }

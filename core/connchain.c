@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2008-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -59,7 +59,7 @@ static ssize_t _connchain_send (connchain_i **chain, idx_t idx,
     CloseSocket (idx);
   }
   else if (i)
-    dprint (5, "put to peer %d:[%-*.*s]", (int)idx, i, i, data);
+    dprint (5, "put to peer %d:[%-*.*s]", (int)idx, (int)i, (int)i, data);
   return i;
 }
 
@@ -77,7 +77,7 @@ static ssize_t _connchain_recv (connchain_i **chain, idx_t idx,
     CloseSocket (idx);
   }
   else if (i)
-    dprint (5, "got from peer %d:[%-*.*s]", (int)idx, i, i, data);
+    dprint (5, "got from peer %d:[%-*.*s]", (int)idx, (int)i, (int)i, data);
   return i;
 }
 
@@ -425,7 +425,7 @@ static int _ccfilter_x_init (peer_t *peer,
 /* simple report */
 void Status_Connchains (INTERFACE *iface)
 {
-  New_Request (iface, F_REPORT, "Connchains: %d in use (max was %d), %u bytes.",
+  New_Request (iface, F_REPORT, "Connchains: %u in use (max was %u), %zu bytes.",
 	       _CC_num, _CC_max, _CC_asize);
 }
 

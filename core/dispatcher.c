@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -361,7 +361,7 @@ static void vsadd_request (ifi_t *to, iftype_t ift, const char *mask,
     return;
   if (lastdebuglog && (ift & I_LOG) && !(flag & F_DEBUG))
   {
-    fprintf (lastdebuglog, ":%08x:", flag);
+    fprintf (lastdebuglog, ":%08lx:", (long)flag);
     vfprintf (lastdebuglog, fmt, ap);
     fprintf (lastdebuglog, "\n");
     fflush (lastdebuglog);
@@ -376,8 +376,8 @@ static void vsadd_request (ifi_t *to, iftype_t ift, const char *mask,
   vsnprintf (cur->a.string, sizeof(cur->a.string), fmt, ap);
   if (!(flag & F_DEBUG))
   {
-    dprint (5, "dispatcher:vsadd_request: to=\"%s\" (%#x) flags=%#x message=\"%s\"",
-	    cur->a.to, ift, flag, cur->a.string);
+    dprint (5, "dispatcher:vsadd_request: to=\"%s\" (%#lx) flags=%#lx message=\"%s\"",
+	    cur->a.to, (long)ift, (long)flag, cur->a.string);
   }
   /* check for flags and matching */
   n = 0;
@@ -712,8 +712,8 @@ Add_Iface (iftype_t ift, const char *name, iftype_t (*sigproc) (INTERFACE*, ifsi
   if (Interface[i]->a.name)
     if (Insert_Key (&ITree, Interface[i]->a.name, Interface[i], 0))
       ERROR ("interface add: dispatcher tree error");
-  dprint (2, "added iface %u(%p): %#x name \"%s\"", i, &Interface[i]->a,
-	  Interface[i]->a.ift, NONULL((char *)Interface[i]->a.name));
+  dprint (2, "added iface %u(%p): %#lx name \"%s\"", i, &Interface[i]->a,
+	  (long)Interface[i]->a.ift, NONULL((char *)Interface[i]->a.name));
   pthread_mutex_unlock (&LockIface);
   return (&Interface[i]->a);
 }
@@ -1089,25 +1089,26 @@ void Status_Interfaces (INTERFACE *iface)
   {
     if (!Interface[i]->a.IFRequest && Interface[i]->a.qsize == 0)
       New_Request (iface, 0,
-		   "interface %d: flags %#x (%s), name %s.",
-		   i, Interface[i]->a.ift, Interface[i]->a.IFSignal ? "S":
+		   "interface %d: flags %#lx (%s), name %s.",
+		   i, (long)Interface[i]->a.ift, Interface[i]->a.IFSignal ? "S":
 					(Interface[i]->a.prev ? "clone":""),
 		   NONULL((char *)Interface[i]->a.name));
     else
       New_Request (iface, 0,
-		   "interface %d: flags %#x (%s%s), name %s, queue size %d.",
-		   i, Interface[i]->a.ift, Interface[i]->a.IFSignal ? "S":"",
+		   "interface %d: flags %#lx (%s%s), name %s, queue size %d.",
+		   i, (long)Interface[i]->a.ift,
+		   Interface[i]->a.IFSignal ? "S":"",
 		   Interface[i]->a.IFRequest ? "R":"",
 		   NONULL((char *)Interface[i]->a.name), Interface[i]->a.qsize);
   }
   if (_Inum != _IFInum)
     ERROR ("dispatcher: _Inum vs. _IFInum: %u != %u", _Inum, _IFInum);
   New_Request (iface, 0,
-	       "Total (current/max): %u/%u interfaces (%u bytes), %u/%u requests (%u bytes)",
+	       "Total (current/max): %u/%u interfaces (%zu bytes), %u/%u requests (%zu bytes)",
 	       _Inum, _Imax, _Ialloc * sizeof(ifi_t *) + _IFIasize +
 			     StNum * sizeof(ifst_t) + _Inamessize,
 	       _Rnum, _Rmax, _Ralloc * sizeof(reqbl_t));
-  New_Request (iface, 0, "                     %u/%u queue slots (%u bytes)",
+  New_Request (iface, 0, "                     %u/%u queue slots (%zu bytes)",
 	       _Qnum, _Qmax, _Qasize);
   pthread_mutex_unlock (&LockIface);
 }
@@ -1187,7 +1188,7 @@ static int write_pid (pid_t pid)
   FILE *fp;
   char buff[SHORT_STRING];
 
-  snprintf (buff, sizeof(buff), "%d", pid);
+  snprintf (buff, sizeof(buff), "%ld", (long)pid);
   if (!(fp = fopen (PID_path, "w")))
     return -1;
   if (!fwrite (buff, strlen (buff), 1, fp))

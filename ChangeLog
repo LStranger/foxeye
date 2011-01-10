@@ -10,14 +10,23 @@ TODO:
 	* core/direct.h +: to add 'const char *network_type' field into peer_t
 	  for connchain identification [0.10].
 	* core/wtmp.c: to handle errors somehow?
-	* *: to fix any wrong %[-0-9.l]*[du] in prinf-like sequences.
 	* *: to rearrange structures for alignment sake [0.10].
 
 --- [0.9b] * to test all *
+Mon Jan 10 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* tree/tree.c: added optimized strcmp.
+	* core/init.c: fixed wrong place for setting locale.
+	* core/init.c: fixed dc_fset() which was unable to change format.
+	* modules/irc-channel/chmanagement.c: removed unneeded updating key
+	  in Listfile if new key is the same.
+
 Sun Jan  9 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/logs/logs.c: fixed flag 'p' which was not saved to config
 	  (bug#52).
 	* config.sub: updated to one from automake 1.11.
+	* core/connchain.c, core/conversion.c, core/direct.c, core/dispatcher.c, core/lib.c, core/list.c, core/socket.c, modules/autolog/autolog.c, modules/irc/irc.c, modules/irc-channel/chmanagement.c, modules/logs/logs.c:
+	  fixed arguments incompatible with 64bit arch in printf-like templates.
+	* configure: added try for -fpic into compilation flags.
 
 Tue Jan  4 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/modules.c: fixed module init arguments which might be rewritten.

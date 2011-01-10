@@ -1249,7 +1249,7 @@ static void _ircch_its_rejoin (IRC *net, netsplit *split)
 	  {
 	    register char modechar;
 	    register char *c;
-	    size_t sb;
+	    int sb;
 
 	    /* we might skip some modes on JOIN's so let's show the change */
 	    if ((c = safe_strchr (nick->host, '!'))) sb = c - nick->host;
