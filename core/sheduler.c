@@ -34,7 +34,7 @@ typedef struct
 static shedfloodentry_t *Floodtable = NULL;
 static unsigned int _SFalloc = 0;
 static unsigned int _SFnum = 0;
-static bindtable_t *BT_TimeShift;
+static struct bindtable_t *BT_TimeShift;
 
 /* create new cell in Floodtable */
 int CheckFlood (short *ptr, short floodtype[2])
@@ -290,7 +290,7 @@ static int Sheduler (INTERFACE *ifc, REQUEST *req)
   struct tm tm;
   struct tm tm0;
   register unsigned int i, j = 0;
-  binding_t *bind = NULL;
+  struct binding_t *bind = NULL;
 
   if (lasttime != Time)
   {

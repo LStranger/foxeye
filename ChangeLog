@@ -11,8 +11,60 @@ TODO:
 	  for connchain identification [0.10].
 	* core/wtmp.c: to handle errors somehow?
 	* *: to rearrange structures for alignment sake [0.10].
+	* core/help.c: to add support for '##$charset utf-8' at helpfile start.
+	* core/direct.c: to add support for charset and comments in motd file.
 
 --- [0.9b] * to test all *
+Tue Feb 22 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/irc-channel/chmanagement.c: added applying channel mode lock
+	  when we got opped, it was missed before (bug#63).
+
+Fri Jan 21 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/irc/irc.help: fixed invalid description 'module irc'.
+	* modules/irc-channel/irc-channel.c: fixed 'cycle' feature which did
+	  not work when everyone left channel (bug#62).
+	* modules/irc-channel/chmanagement.c: fixed case of name on .adduser.
+	* modules/irc-channel/chmanagement.c: removed wrong checking U_DEOP.
+
+Sat Jan 15 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/logs/logs.c: fixed URL handling in html logger (bug#60,61).
+	* help/main, modules/lua/lua.help, modules/tcl/tcl.help: updated help
+	  about script files loading.
+	* doc/modules.api, core/modules.c, modules/logs/logs.c: updated some
+	  script functions to allow duplicate calls with success result.
+	* core/direct.*, core/connchain.c, core/init.c, core/list.c, core/main.c, doc/modules.api, modules/irc/irc.c, modules/irc-channel/chmanagement.c, modules/irc-ctcp/dcc.c, modules/lua/lua.c, modules/modes/modes.c, modules/tcl/modtcl.c:
+	  abandoned typedef struct peer_t.
+	* core/protos.h: abandoned typedef struct in macro ALLOCATABLE_TYPE.
+	* core/direct.*: abandoned typedef struct peer_priv.
+	* core/direct.*, core/connchain.c, doc/modules.api: abandoned typedef
+	  struct connchain_i and typedef struct connchain_buffer.
+	* core/conversion.*, core/direct.c, core/dispatcher.c, core/foxeye.h, doc/modules.api:
+	  abandoned typedef struct conversion_t.
+	* core/foxeye.h, core/connchain.c, core/direct.c, core/init.c, core/list.c, core/modules.c, core/sheduler.c, doc/modules.api, modules/irc/irc.c, modules/irc/msgs.c, modules/irc-channel/chmanagement.c, modules/irc-channel/irc-channel.c, modules/irc-ctcp/dcc.c, modules/tcl/modtcl.c:
+	  abandoned typedef struct binding_t.
+	* core/foxeye.h, core/connchain.c, core/direct.*, core/help.c, core/init.c, core/list.c, core/modules.c, core/protos.h, core/sheduler.c, doc/modules.api, modules/irc/irc.c, modules/irc/msgs.c, modules/irc-channel/irc-channel.*, modules/irc-channel/chmanagement.c, modules/irc-ctcp/dcc.c, modules/tcl/modtcl.c:
+	  abandoned typedef struct bindtable_t.
+	* core/direct.c, core/init.c, core/list.*, core/wtmp.c, doc/modules.api, modules/irc/irc.c, modules/irc/msgs.c, modules/irc-channel/chmanagement.c, modules/irc-channel/irc-channel.c, modules/irc-ctcp/dcc.c, modules/lua/lua.c, modules/modes/modes.c:
+	  abandoned typedef struct clrec_t.
+	* core/wtmp.*, doc/modules.api, modules/irc-channel/irc-channel.c, modules/lua/lua.c:
+	  abandoned typedef struct wtmp_t.
+
+Thu Jan 13 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/lib.c: fixed wrong counting for multibyte chars in printl()
+	  macros with width (bug#55).
+	* modules/tcl/modtcl.c: fixed SIGSEGV in _tcl_call_function (bug#56).
+	* core/modules.c: fixed not working 'module -l' (bug#58).
+	* modules/irc-ctcp/dcc.c: added module report stub.
+	* modules/lua/lua.c: implemented examining BindResult on call from Lua.
+	* core/init.c, help/main: implemented '.chelp' command.
+
+Wed Jan 12 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/direct.c, core/lib.c, doc/modules.api, modules/irc/irc.c, modules/irc-ctcp/dcc.c:
+	  changed parameter %I for %P on S_REPORT.
+	* core/dispatcher.c: corrected _got_signal from int to sig_atomic_t.
+	* core/socket.c: rewritten to never call poll() within SIGIO handler.
+	* core/lib.c: fixed endless loop with zero %P in printl().
+
 Tue Jan 11 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/foxeye.h, core/protos.h, core/dispatcher.c, core/modules.c, core/socket.c, core/wtmp.c, doc/module.template.c, modules/Makefile, modules/autolog/autolog.c, modules/irc/irc.c, modules/irc-channel/irc-channel.c, modules/irc-ctcp/dcc.c, modules/logs/logs.c, modules/lua/lua.c, modules/modes/modes.c, modules/tcl/modtcl.c:
 	  fixed few more incompatibilities with 64bit arch.

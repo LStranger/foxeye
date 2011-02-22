@@ -117,7 +117,7 @@ Signals to interfaces.
     format:
       %@ - generally "from" name not only host (bot name for example);
       %# - connection time string (in format of DateString+TimeString);
-      %I - socket id (starting from 1, i.e. 0 means there is no socket);
+      %P - socket id (starting from 1, i.e. 0 means there is no socket);
       %L - if it's not I_SERVICE or I_CLIENT then interface name;
       %* - other descriptive text.
   SS__RREEGG:
@@ -301,7 +301,7 @@ Common API:
 	Reenterability: none
 
   int GGeett__HHeellpp (const char *_f_s_t, const char *_s_e_c, INTERFACE *_i_f_a_c_e,
-		userflag _g_u_f, userflag _c_u_f, bindtable_t *_t_a_b_l_e,
+		userflag _g_u_f, userflag _c_u_f, struct bindtable_t *_t_a_b_l_e,
 		char *_p_r_e_f_i_x, int _m_o_d_e);
     Finds help matches first keyword _f_s_t and second keyword _s_e_c that are
     in bindtable _t_a_b_l_e and allowed for user with global userflags _g_u_f or
@@ -479,7 +479,7 @@ Common API:
 
 Bindings API:
 -------------
-  bindtable_t *AAdddd__BBiinnddttaabbllee (const char *_n_a_m_e, bttype_t _t_y_p_e);
+  struct bindtable_t *AAdddd__BBiinnddttaabbllee (const char *_n_a_m_e, bttype_t _t_y_p_e);
     Registers bindtable with some _n_a_m_e of some _t_y_p_e. Returns pointer to
     structure associated with _n_a_m_e. Subsequent call of Check_Bindtable()
     function will check that bindtable. If bindtable with the same name
@@ -488,8 +488,9 @@ Bindings API:
     call of Add_Bindtable() then converts bindtable to this _t_y_p_e.
 	Reenterability: none
 
-  binding_t *CChheecckk__BBiinnddttaabbllee (bindtable_t *_t_a_b_l_e, const char *_s_t_r,
-			      userflag _g_u_f, userflag _c_u_f, binding_t *_l_a_s_t);
+  struct binding_t *CChheecckk__BBiinnddttaabbllee (struct bindtable_t *_t_a_b_l_e,
+				     const char *_s_t_r, userflag _g_u_f,
+				     userflag _c_u_f, struct binding_t *_l_a_s_t);
     Checks bindtable _t_a_b_l_e for entries matched string _s_t_r for users with
     matching combination of global userflags _g_u_f and userflags for some
     service _c_u_f (see Add_Binding() description for more details). Returns
@@ -497,13 +498,13 @@ Bindings API:
     is last found binding.
 	Reenterability: none
 
-  const char *BBiinnddttaabbllee__NNaammee (bindtable_t *_t_a_b_l_e);
+  const char *BBiinnddttaabbllee__NNaammee (struct bindtable_t *_t_a_b_l_e);
     Returns name of already registered bindtable _t_a_b_l_e.
 	Reenterability: async-safe
 
-  binding_t *AAdddd__BBiinnddiinngg (const char *_t_a_b_l_e_n_a_m_e, const char *_m_a_s_k,
-			  userflag _g_u_f, userflag _c_u_f, Function _f_u_n_c,
-			  const char *_f_n_a_m_e);
+  struct binding_t *AAdddd__BBiinnddiinngg (const char *_t_a_b_l_e_n_a_m_e, const char *_m_a_s_k,
+				 userflag _g_u_f, userflag _c_u_f,
+				 Function _f_u_n_c, const char *_f_n_a_m_e);
     Adds binding to bindtable _t_a_b_l_e_n_a_m_e. Strings checked via bindtable
     have to match string _m_a_s_k with current type of mathcing and clients
     (or any events that will be checked by Check_Bindtable() afterwards)
@@ -526,7 +527,7 @@ Bindings API:
 	Reenterability: none
 
   void DDeelleettee__BBiinnddiinngg (const char *_t_a_b_l_e_n_a_m_e, Function _f_u_n_c,
-			   const char *_f_n_a_m_e);
+		       const char *_f_n_a_m_e);
     Deletes bindings that returning _f_u_n_c from bindtable _t_a_b_l_e_n_a_m_e. If
     _f_n_a_m_e is NULL then deletes all matched bindings, otherwise deletes
     bindings with the same name for script interpreter. Returns nothing.
@@ -534,7 +535,7 @@ Bindings API:
     each binding added on module init.
 	Reenterability: none
 
-  int RRuunnBBiinnddiinngg (binding_t *_b_i_n_d, const unsigned char *_u_s_e_r,
+  int RRuunnBBiinnddiinngg (struct binding_t *_b_i_n_d, const unsigned char *_u_s_e_r,
 		  const char *_f_s_t, const char *_s_e_c, char *_t_h_i_r_d, int _n_u_m,
 		  const char *_l_a_s_t);
     Runs script binding defined at _b_i_n_d, with arguments, formed from _u_s_e_r
@@ -606,8 +607,8 @@ Listfile API:
 
 #include "list.h"
 
-  clrec_t *FFiinndd__CClliieennttrreeccoorrdd (const unsigned char *_m_a_s_k, char **_n_a_m_e,
-			      userflag *_u_f, char *_n_e_t);
+  struct clrec_t *FFiinndd__CClliieennttrreeccoorrdd (const unsigned char *_m_a_s_k,
+				     char **_n_a_m_e, userflag *_u_f, char *_n_e_t);
     Finds user that is matched to hostmask _m_a_s_k (nick!ident@host]) and
     gets his user login _n_a_m_e (Lname below) and his userflags _u_f compiled
     from global flags and flags for network _n_e_t (if _n_e_t is NULL then for
@@ -621,7 +622,7 @@ Listfile API:
     to use it as few as possible.
 	Reenterability: thread-safe
 
-  clrec_t *LLoocckk__CClliieennttrreeccoorrdd (const char *_n_a_m_e);
+  struct clrec_t *LLoocckk__CClliieennttrreeccoorrdd (const char *_n_a_m_e);
     Locks Listfile record of user with Lname _n_a_m_e. Returns pointer to
     internal Listfile record structure or NULL if user was not found.
     Note: Locks in core are complex so until you want deadlock NEVER use
@@ -629,7 +630,7 @@ Listfile API:
     thread-safe or reenterable while any record in Listfile is locked!
 	Reenterability: thread-safe
 
-  clrec_t *LLoocckk__bbyyLLIIDD (lid_t _i_d);
+  struct clrec_t *LLoocckk__bbyyLLIIDD (lid_t _i_d);
     Attempts to lock Listfile record of user with LID _i_d. Returns pointer
     to internal Listfile record structure or NULL if user was not found.
     Note: Locks in core are complex so until you want deadlock NEVER use
@@ -641,12 +642,12 @@ Listfile API:
     record might be considered unreliable.
 	Reenterability: thread-safe
 
-  void UUnnlloocckk__CClliieennttrreeccoorrdd (clrec_t *_u_s_e_r);
+  void UUnnlloocckk__CClliieennttrreeccoorrdd (struct clrec_t *_u_s_e_r);
     Unlocks Listfile record locked by previous call Find_Clientrecord(),
     Lock_Clientrecord(), or Lock_byLID() function. Returns nothing.
 	Reenterability: thread-safe
 
-  char *GGeett__FFiieelldd (clrec_t *_u_s_e_r, const char *_f_n, time_t *_t_i_m_e);
+  char *GGeett__FFiieelldd (struct clrec_t *_u_s_e_r, const char *_f_n, time_t *_t_i_m_e);
     Returns content of Listfile field _f_n for user with internal Listfile
     record structure at _u_s_e_r. If _f_n is "" then returns current direct
     service console settings as string in form "console flags<space>
@@ -661,7 +662,7 @@ Listfile API:
     within it.
 	Reenterability: thread-safe
 
-  int SSeett__FFiieelldd (clrec_t *_u_s_e_r, const char *_f_n, const char *_v_a_l,
+  int SSeett__FFiieelldd (struct clrec_t *_u_s_e_r, const char *_f_n, const char *_v_a_l,
 		 time_t _t_i_m_e);
     Sets content of Listfile field _f_n for user with internal Listfile
     record structure at _u_s_e_r with value _v_a_l. Returns nonull value if
@@ -676,7 +677,7 @@ Listfile API:
     any ':' in the _v_a_l.
 	Reenterability: none
 
-  int GGrrooww__FFiieelldd (clrec_t *_u_s_e_r, const char *_f_n, const char *_v_a_l);
+  int GGrrooww__FFiieelldd (struct clrec_t *_u_s_e_r, const char *_f_n, const char *_v_a_l);
     If Listfile record structure _u_s_e_r has not field _f_n yet then
     does the same as previous function. Otherwise adds space and value
     _v_a_l to end of string field _f_n. Returns nonull value on success.
@@ -688,25 +689,25 @@ Listfile API:
     field is limited to 1024 bytes.
 	Reenterability: none
 
-  int AAdddd__MMaasskk (clrec_t *_u_s_e_r, const unsigned char *_m_a_s_k);
+  int AAdddd__MMaasskk (struct clrec_t *_u_s_e_r, const unsigned char *_m_a_s_k);
     Adds hostmask _m_a_s_k at form nick!user@host for user with internal
     Listfile record structure at _u_s_e_r. See match() for hostmask details.
     Returned value is not 0 if successful.
 	Reenterability: none
 
-  int DDeelleettee__MMaasskk (clrec_t *_u_s_e_r, const unsigned char *_m_a_s_k);
+  int DDeelleettee__MMaasskk (struct clrec_t *_u_s_e_r, const unsigned char *_m_a_s_k);
     Deletes all hostmasks matching _m_a_s_k from user with internal Listfile
     record structure at _u_s_e_r. See match() for _m_a_s_k details. Returns -1
     if no hostmasks left in the record.
 	Reenterability: none
 
-  userflag GGeett__FFllaaggss (clrec_t *_u_s_e_r, const char *_s_e_r_v);
+  userflag GGeett__FFllaaggss (struct clrec_t *_u_s_e_r, const char *_s_e_r_v);
     Returns userflags of user with internal Listfile record structure at
     _u_s_e_r for service _s_e_r_v. If _s_e_r_v is "" then returns direct service
     and global userflags. If _s_e_r_v is NULL then returns global userflags.
 	Reenterability: thread-safe
 
-  userflag SSeett__FFllaaggss (clrec_t *_u_s_e_r, const char *_s_e_r_v, userflag _u_f);
+  userflag SSeett__FFllaaggss (struct clrec_t *_u_s_e_r, const char *_s_e_r_v, userflag _u_f);
     Attempts to set userflags on internal Listfile record structure at
     _u_s_e_r for service _s_e_r_v according to _u_f. If _s_e_r_v is NULL then sets
     direct service and global userflags. Take in consideration that some
@@ -716,7 +717,7 @@ Listfile API:
     error.
 	Reenterability: none
 
-  lid_t GGeett__LLIIDD (clrec_t *_u_s_e_r);
+  lid_t GGeett__LLIIDD (struct clrec_t *_u_s_e_r);
     Returns LID for client with internal Listfile record _u_s_e_r. Returned
     LID is valid until it deleted from Listfile (you can be notified on
     that via bindtable "new-lname").
@@ -788,8 +789,8 @@ Wtmp API:
     Returns event number by it name _e_v_e_n_t.
 	Reenterability: thread-safe
 
-  int FFiinnddEEvveenntt (wtmp_t *_t_e_m_p, const char *_u_s_e_r, short _e_v_e_n_t, lid_t _i_d,
-	         time_t _u_p_t_o);
+  int FFiinnddEEvveenntt (struct wtmp_t *_t_e_m_p, const char *_u_s_e_r, short _e_v_e_n_t,
+		 lid_t _i_d, time_t _u_p_t_o);
     Finds last event for Lname _u_s_e_r and it number _e_v_e_n_t that was logged
     from some service _i_d not earlier than _u_p_t_o and writes it to array
     _t_e_m_p. Returns -1 if there was an error and 0 otherwise. If _e_v_e_n_t is
@@ -799,8 +800,8 @@ Wtmp API:
     _t_e_m_p zeroed.
 	Reenterability: thread-safe
 
-  int FFiinnddEEvveennttss (wtmp_t *_t_e_m_p, int _w_s, const char *_u_s_e_r, short _e_v_e_n_t,
-		  lid_t _i_d, time_t _u_p_t_o)
+  int FFiinnddEEvveennttss (struct wtmp_t *_t_e_m_p, int _w_s, const char *_u_s_e_r,
+		  short _e_v_e_n_t, lid_t _i_d, time_t _u_p_t_o)
     Finds not more than _w_s last events for Lname _u_s_e_r and it number _e_v_e_n_t
     that was logged from some service _i_d not earlier than _u_p_t_o and writes
     it to array _t_e_m_p of size _w_s in order that last event goes into cell
@@ -895,10 +896,11 @@ Scripts API:
     Optional message _m_s_g may be used in prompt by config generator.
     Returns 1 if function was registered.
       Function _f_u_n_c() gets string arguments (may be with ending spaces)
-    and returns 0 when error or any other value otherwise. Return value
-    is dependent on called function. In case of error BindResult may
-    contain error message or may be leaved untouched. If function can
-    be used in config file then it must allow duplicate calls.
+    and returns 0 on error or any other value otherwise. Return value is
+    dependent on called function. In case of error BindResult may contain
+    some error message or may be left untouched. Since the function can
+    be used in config file it must allow duplicate calls, possibly with
+    updated arguments.
 	Reenterability: none
 
   int UUnnrreeggiisstteerrFFuunnccttiioonn (const char *_c_m_d);
@@ -1036,18 +1038,21 @@ Direct client's connections API:
 --------------------------------
 #include "direct.h"
 
-  void DDcccc__PPaarrssee (peer_t *_s, char *_n_a_m_e, char *_c_m_d, userflag _g_f,
-		  userflag _c_f, int _i_d_x, int _b_o_t_c_h, bindtable_t *_s_s_b_t,
-		  char *_s_e_r_v_i_c_e);
+  void DDcccc__PPaarrssee (struct peer_t *_s, char *_n_a_m_e, char *_c_m_d, userflag _g_f,
+		  userflag _c_f, int _i_d_x, int _b_o_t_c_h,
+		  struct bindtable_t *_s_s_b_t, char *_s_e_r_v_i_c_e);
     Parses text line _c_m_d that came from session _s. If first char of _c_m_d
     is not period ('.') then sends text line to botnet channel _b_o_t_c_h.
     Else if there is service specific bindtable _s_s_b_t (for _s_e_r_v_i_c_e) then
     checks first word of the line for available command in it. If no
     such bindtable or command is not found in it then checks first word
     of the line in bindtable "dcc". If there is appropriate command then
-    runs function for it. Does logging if command was successful. Login
-    _n_a_m_e, direct access flags _g_f, service access flags _c_f, and socket ID
-    _i_d_x are for client of the session _s. Returns nothing.
+    runs function for it or else sends usage tip into _s. Does logging if
+    command was successful. Login _n_a_m_e, direct access flags _g_f, service
+    access flags _c_f, and socket ID _i_d_x are for client of the session _s.
+    This function can be used for any valid peer but it's not advisable
+    to use it for anything but direct session because bindings or usage
+    tip may break interface protocol otherwise. Returns nothing.
 	Reenterability: none
 
   idx_t LLiisstteenn__PPoorrtt (char *_c_l_n, char *_h_o_s_t, unsigned short *_p,
@@ -1107,7 +1112,7 @@ Connection chain API:
 ---------------------
 #include "direct.h"
 
-  int CCoonnnncchhaaiinn__GGrrooww (peer_t *_p_e_e_r, char _f);
+  int CCoonnnncchhaaiinn__GGrrooww (struct peer_t *_p_e_e_r, char _f);
     Adds filter of type _f at top of connection chain of _p_e_e_r. Returns 1
     if filter was added, 0 if filter not found, and -1 in case of error
     (which may be in case of dead connection or in case when there is
@@ -1131,12 +1136,12 @@ Connection chain API:
       on DO, and skips other RFC854 codes.
 	Reenterability: none
 
-  int CCoonnnncchhaaiinn__CChheecckk (peer_t *_p_e_e_r, char _f);
+  int CCoonnnncchhaaiinn__CChheecckk (struct peer_t *_p_e_e_r, char _f);
     Performs any checks that Connchain_Grow() does but does not actually
     add a filter into connection chain.
 	Reenterability: none
 
-  ssize_t CCoonnnncchhaaiinn__PPuutt (connchain_i **_c_c, idx_t _i_d_x, const char *_l_i_n_e,
+  ssize_t CCoonnnncchhaaiinn__PPuutt (struct connchain_i **_c_c, idx_t _i_d_x, const char *_l_i_n_e,
 			 size_t *_s);
     Tries to filter and send data of size _s from buffer _l_i_n_e through next
     link of connection chain _c_c for socket identifier _i_d_x. If _l_i_n_e is
@@ -1150,7 +1155,7 @@ Connection chain API:
     were sent. This function should never close or destroy the socket.
 	Reenterability: async-safe
 
-  ssize_t CCoonnnncchhaaiinn__GGeett (connchain_i **_c_c, idx_t _i_d_x, char *_b_u_f,
+  ssize_t CCoonnnncchhaaiinn__GGeett (struct connchain_i **_c_c, idx_t _i_d_x, char *_b_u_f,
 			 size_t _s);
     Tries to receive and filter data from socket _i_d_x through connection
     chain _c_c and put them into buffer _b_u_f of maximum size _s. If _b_u_f is
@@ -1161,18 +1166,18 @@ Connection chain API:
     that was received into _b_u_f.
 	Reenterability: thread-safe
 
-  CCoonnnncchhaaiinn__KKiillll (peer_t *_p_e_e_r);
+  CCoonnnncchhaaiinn__KKiillll (struct peer_t *_p_e_e_r);
     Macro, defined as: Connchain_Get(&_p_e_e_r->connchain,_p_e_e_r->socket,NULL,0)
     Used for terminating connection chain. Returns value E_NOSOCKET but
     generates warning if that value left unused.
 	Reenterability: thread-safe
 
-  PPeeeerr__PPuutt (peer_t *_p_e_e_r, const char *_b_u_f, size_t *_s);
+  PPeeeerr__PPuutt (struct peer_t *_p_e_e_r, const char *_b_u_f, size_t *_s);
     Macro, defined as: Connchain_Put(&_p_e_e_r->connchain,_p_e_e_r->socket,_b_u_f,_s)
     Used for putting data on the top of connection chain.
 	Reenterability: thread-safe
 
-  PPeeeerr__GGeett (peer_t *_p_e_e_r, char *_b_u_f, size_t _s);
+  PPeeeerr__GGeett (struct peer_t *_p_e_e_r, char *_b_u_f, size_t _s);
     Macro, defined as: Connchain_Get(&_p_e_e_r->connchain,_p_e_e_r->socket,_b_u_f,_s)
     Used for the getting data from the top of connection chain.
 	Reenterability: thread-safe
@@ -1181,26 +1186,26 @@ Charset conversions API:
 ------------------------
 #include "conversion.h"
 
-  conversion_t *GGeett__CCoonnvveerrssiioonn (const char *_c_s);
+  struct conversion_t *GGeett__CCoonnvveerrssiioonn (const char *_c_s);
     Allocates and returns conversion descriptor for charset name _c_s. If
     _c_s is not valid charset name then returns NULL. If _c_s is internal
     charset then returns NULL too.
 	Reenterability: thread-safe
 
-  void FFrreeee__CCoonnvveerrssiioonn (conversion_t *_c_o_n_v);
+  void FFrreeee__CCoonnvveerrssiioonn (struct conversion_t *_c_o_n_v);
     Releases conversion descriptor _c_o_n_v. Returns nothing.
 	Reenterability: thread-safe
 
-  conversion_t *CClloonnee__CCoonnvveerrssiioonn (conversion_t *_c_o_n_v);
+  struct conversion_t *CClloonnee__CCoonnvveerrssiioonn (struct conversion_t *_c_o_n_v);
     Allocates and returns conversion descriptor that is equal to _c_o_n_v.
 	Reenterability: thread-safe
 
-  const char *CCoonnvveerrssiioonn__CChhaarrsseett (conversion_t *_c_o_n_v);
+  const char *CCoonnvveerrssiioonn__CChhaarrsseett (struct conversion_t *_c_o_n_v);
     Returns charset name for conversion descriptor _c_o_n_v.
 	Reenterability: thread-safe
 
-  size_t DDoo__CCoonnvveerrssiioonn (conversion_t *_c_o_n_v, char **_o_u_t, size_t _o_u_t_s_z,
-			const char *_i_n, size_t _i_n_s_z);
+  size_t DDoo__CCoonnvveerrssiioonn (struct conversion_t *_c_o_n_v, char **_o_u_t,
+			size_t _o_u_t_s_z, const char *_i_n, size_t _i_n_s_z);
     Does conversion of text line _i_n of size _i_n_s_z from charset defined by
     conversion descriptor _c_o_n_v to internal charset. Puts converted text
     into buffer _o_u_t of size _o_u_t_s_z. If there is no conversion need then
@@ -1208,8 +1213,8 @@ Charset conversions API:
     converted line.
 	Reenterability: thread-safe
 
-  size_t UUnnddoo__CCoonnvveerrssiioonn (conversion_t *_c_o_n_v, char **_o_u_t, size_t _o_u_t_s_z,
-			  const char *_i_n, size_t _i_n_s_z);
+  size_t UUnnddoo__CCoonnvveerrssiioonn (struct conversion_t *_c_o_n_v, char **_o_u_t,
+			  size_t _o_u_t_s_z, const char *_i_n, size_t _i_n_s_z);
     Does conversion of text line _i_n of size _i_n_s_z from internal charset
     to charset defined by conversion descriptor _c_o_n_v. Puts converted
     text into buffer _o_u_t of size _o_u_t_s_z. If there is no conversion need

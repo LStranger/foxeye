@@ -46,11 +46,19 @@
 # include <sys/filio.h>
 #endif
 
+/*
+ * Sequence:		socket.domain:	pollfd.fd:
+ * unallocated		NULL		-1
+ * allocated		NULL		>= 0
+ * domain resolved	domain		>= 0
+ * shutdown		domain		-1
+ * unallocated		NULL		-1
+ */
 typedef struct
 {
   char *domain;			/* if free then this is NULL */
+  sig_atomic_t ready;
   unsigned short port;
-  int ready;
 } socket_t;
 
 static pid_t _mypid;
@@ -60,11 +68,14 @@ static idx_t _Salloc = 0;
 static idx_t _Snum = 0;
 static struct pollfd *Pollfd = NULL;
 
+/* lock for socket allocation; deallocation will be done without lock */
 static pthread_mutex_t LockPoll = PTHREAD_MUTEX_INITIALIZER;
+
+static volatile sig_atomic_t _got_sigio = 0;
 
 static void sigio_handler (int signo)
 {
-  poll (Pollfd, _Snum, 0);
+  _got_sigio = 1;
 }
 
 void CloseSocket (idx_t idx)
@@ -120,7 +131,14 @@ ssize_t ReadSocket (char *buf, idx_t idx, size_t sr, int mode)
   if (Pollfd[idx].fd < 0)
     rev = POLLERR;
   else
+  {
+    if (_got_sigio)
+    {
+      _got_sigio = 0;
+      poll (Pollfd, _Snum, 0);
+    }
     rev = Pollfd[idx].revents;
+  }
   /* now check for incomplete connection... */
   if (sock->ready == FALSE)
   {
@@ -173,7 +191,7 @@ ssize_t WriteSocket (idx_t idx, const char *buf, size_t *ptr, size_t *sw, int mo
     return 0;
   DBG ("trying write socket %hd: %p +%zu", idx, &buf[*ptr], *sw);
   sg = write (Pollfd[idx].fd, &buf[*ptr], *sw);
-  Pollfd[idx].revents = 0;		/* we wrote socket, reset state */
+//  Pollfd[idx].revents = 0;		/* we wrote socket, reset state */
   if (sg < 0 && errno != EAGAIN)
     return (E_ERRNO - errno);
   else if (sg <= 0)			/* EAGAIN */
@@ -338,7 +356,13 @@ idx_t AnswerSocket (idx_t listen)
   rev = Pollfd[listen].revents;
   if (!rev)
   {
-    poll (&Pollfd[listen], 1, POLL_TIMEOUT);
+    if (_got_sigio)
+    {
+      _got_sigio = 0;
+      poll (Pollfd, _Snum, 0);
+    }
+    else
+      poll (&Pollfd[listen], 1, POLL_TIMEOUT);
     rev = Pollfd[listen].revents;
   }
   if (!(rev & (POLLIN | POLLPRI | POLLNVAL | POLLERR)) || /* no events */

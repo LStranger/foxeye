@@ -269,10 +269,6 @@ typedef struct req_t
   char string[MESSAGEMAX];	/* text of request or signal */
 } REQUEST;
 
-#ifdef HAVE_ICONV
-typedef struct conversion_t conversion_t;
-#endif
-
 typedef enum
 {
   S_REPORT = 1,			/* generate report to loggers */
@@ -305,7 +301,7 @@ struct _if_t
   INTERFACE *prev;		/* for nested interface - pointer to upper */
   void *data;			/* extra data - free by Delete_Iface() */
 #ifdef HAVE_ICONV
-  conversion_t *conv;		/* charset conversions descriptor */
+  struct conversion_t *conv;	/* charset conversions descriptor */
 #endif
   int qsize;			/* queue FIFO size */
 };
@@ -398,7 +394,7 @@ typedef enum
 
 #define A_MODEMASK	(A_MASKED-1)
 
-typedef struct binding_t
+struct binding_t
 {
   userflag gl_uf;		/* need global userflag for user */
   userflag ch_uf;		/* need channel userflag for user */
@@ -408,7 +404,7 @@ typedef struct binding_t
   Function func;		/* called subprogram */
   struct binding_t *next;	/* next (not for B_UNIQ) binding */
   struct binding_t *prev;	/* previous (for B_U* types) binding */
-} binding_t;
+};
 
 typedef enum
 {
@@ -420,8 +416,6 @@ typedef enum
   B_UCOMPL,			/* unique binding for keyword with completion */
   B_UNIQMASK			/* unique binding with wildcards */
 } bttype_t;
-
-typedef struct bindtable_t bindtable_t;
 
 #include "protos.h"
 

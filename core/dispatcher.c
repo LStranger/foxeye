@@ -352,7 +352,7 @@ static void vsadd_request (ifi_t *to, iftype_t ift, const char *mask,
   char *ch;
   unsigned int i = 0, n, ii;
 #ifdef HAVE_ICONV
-  conversion_t *conv = NULL;
+  struct conversion_t *conv = NULL;
   request_t *req = NULL; /* will be initialized but make compiler happy */
   size_t s;
 #endif
@@ -1211,7 +1211,7 @@ static int write_pid (pid_t pid)
 
 static pthread_mutex_t SigLock = PTHREAD_MUTEX_INITIALIZER;
 
-static int _got_signal = 0;
+static volatile sig_atomic_t _got_signal = 0;
 
 static void normal_handler (int signo)
 {

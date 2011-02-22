@@ -6,7 +6,7 @@ module lua
 :%*
 :
 :This module provides support for scripts that are written in Lua programming\
- language.
+ language. Script file mask is "*.lua".
 
 lua
 :%* text

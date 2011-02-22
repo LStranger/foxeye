@@ -28,22 +28,27 @@
  * Common data typedef and last link handlers for connchain.
  */
 
+typedef struct connchain_buffer __connchain_buffer; /* for next func */
+
 struct connchain_i			/* internal use only */
 {
-  ssize_t (*recv) (connchain_i **, idx_t, char *, size_t, connchain_buffer **);
-  ssize_t (*send) (connchain_i **, idx_t, const char *, size_t *, connchain_buffer **);
-  connchain_buffer *buf;		/* instance specific buffer */
-  connchain_i *next;			/* for collector and chain */
+  ssize_t (*recv) (struct connchain_i **, idx_t, char *, size_t, struct connchain_buffer **);
+  ssize_t (*send) (struct connchain_i **, idx_t, const char *, size_t *, struct connchain_buffer **);
+  struct connchain_buffer *buf;		/* instance specific buffer */
+  struct connchain_i *next;		/* for collector and chain */
   char tc;
 };
 
-bindtable_t *BT_CChain;
+static struct bindtable_t *BT_CChain;
+
+typedef struct connchain_i connchain_i;
 
 ALLOCATABLE_TYPE (connchain_i, _CC_, next) /* alloc_connchain_i(), free_... */
 
 /* send raw data into socket, *chain and *b are undefined here */
-static ssize_t _connchain_send (connchain_i **chain, idx_t idx,
-				const char *data, size_t *sz, connchain_buffer **b)
+static ssize_t _connchain_send (struct connchain_i **chain, idx_t idx,
+				const char *data, size_t *sz,
+				struct connchain_buffer **b)
 {
   ssize_t i, ptr = 0;
 
@@ -64,8 +69,9 @@ static ssize_t _connchain_send (connchain_i **chain, idx_t idx,
 }
 
 /* receive raw data from socket, *chain and *b are undefined here */
-static ssize_t _connchain_recv (connchain_i **chain, idx_t idx,
-				char *data, size_t sz, connchain_buffer **b)
+static ssize_t _connchain_recv (struct connchain_i **chain, idx_t idx,
+				char *data, size_t sz,
+				struct connchain_buffer **b)
 {
   ssize_t i = E_NOSOCKET;
 
@@ -82,7 +88,7 @@ static ssize_t _connchain_recv (connchain_i **chain, idx_t idx,
 }
 
 /* allocate starting link structure */
-static void _connchain_create (peer_t *peer)
+static void _connchain_create (struct peer_t *peer)
 {
   peer->connchain = alloc_connchain_i();
   peer->connchain->recv = &_connchain_recv;
@@ -97,11 +103,11 @@ static void _connchain_create (peer_t *peer)
  * Management of connchains.
  */
 
-int Connchain_Grow (peer_t *peer, char c)
+int Connchain_Grow (struct peer_t *peer, char c)
 {
   connchain_i *chain, *chk;
   char tc[2];
-  binding_t *b;
+  struct binding_t *b;
 
   if (peer->socket < 0)
     return -1;				/* nothing to do */
@@ -138,13 +144,13 @@ int Connchain_Grow (peer_t *peer, char c)
   return 1;
 }
 
-int Connchain_Check (peer_t *peer, char c)
+int Connchain_Check (struct peer_t *peer, char c)
 {
   connchain_i *chk;
   char tc[2];
-  binding_t *b;
-  ssize_t (*recv) (connchain_i **, idx_t, char *, size_t, connchain_buffer **);
-  ssize_t (*send) (connchain_i **, idx_t, const char *, size_t *, connchain_buffer **);
+  struct binding_t *b;
+  ssize_t (*recv) (connchain_i **, idx_t, char *, size_t, struct connchain_buffer **);
+  ssize_t (*send) (connchain_i **, idx_t, const char *, size_t *, struct connchain_buffer **);
 
   if (c == 0)
     return 1;				/* idle call */
@@ -220,12 +226,12 @@ struct connchain_buffer			/* local buffer type for filter 'x' */
 {
   connchain_b in;			/* incoming message buffer */
   connchain_b out;			/* outgoing message buffer */
-  peer_t *peer;				/* for notification */
+  struct peer_t *peer;			/* for notification */
 };
 
 /* get full line, add CR+LF, put into buffer and send it */
 static ssize_t _ccfilter_x_send (connchain_i **ch, idx_t id, const char *str,
-				 size_t *sz, connchain_buffer **b)
+				 size_t *sz, struct connchain_buffer **b)
 {
   connchain_b *bb = &(*b)->out;
   ssize_t i;
@@ -332,7 +338,7 @@ static ssize_t _ccfx_get_line (connchain_b *bb, ssize_t i, char *str, size_t sz)
 
 /* trying to get line and return it when CR+LF occured, skipping CR+LF */
 static ssize_t _ccfilter_x_recv (connchain_i **ch, idx_t id, char *str,
-				 size_t sz, connchain_buffer **b)
+				 size_t sz, struct connchain_buffer **b)
 {
   connchain_b *bb = &(*b)->in;
   ssize_t i;
@@ -407,16 +413,16 @@ static ssize_t _ccfilter_x_recv (connchain_i **ch, idx_t id, char *str,
 }
 
 BINDING_TYPE_connchain_grow(_ccfilter_x_init);
-static int _ccfilter_x_init (peer_t *peer,
-	ssize_t (**recv) (connchain_i **, idx_t, char *, size_t, connchain_buffer **),
-	ssize_t (**send) (connchain_i **, idx_t, const char *, size_t *, connchain_buffer **),
-	connchain_buffer **b)
+static int _ccfilter_x_init (struct peer_t *peer,
+	ssize_t (**recv) (connchain_i **, idx_t, char *, size_t, struct connchain_buffer **),
+	ssize_t (**send) (connchain_i **, idx_t, const char *, size_t *, struct connchain_buffer **),
+	struct connchain_buffer **b)
 {
   *recv = &_ccfilter_x_recv;
   *send = &_ccfilter_x_send;
   if (b == NULL)
     return 1;
-  *b = safe_malloc (sizeof(connchain_buffer));
+  *b = safe_malloc (sizeof(struct connchain_buffer));
   (*b)->in.inbuf = (*b)->in.bufpos = (*b)->out.inbuf = (*b)->out.bufpos = 0;
   (*b)->peer = peer;
   return 1;

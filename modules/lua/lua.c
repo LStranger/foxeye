@@ -495,7 +495,7 @@ static int _lua_event (lua_State *L) /* foxeye.event(type,lname[,value]) */
 
 static int _lua_efind (lua_State *L) /* time,value = foxeye.EFind(type,lname[,time]) */
 {
-  wtmp_t wtmp;
+  struct wtmp_t wtmp;
   time_t t;
 
   if (lua_gettop (L) < 2 || lua_gettop (L) > 3)
@@ -748,7 +748,7 @@ static int _lua_cinfos (lua_State *L) /* list = infos(lname) */
 
 static int _lua_chave (lua_State *L) /* x = have(lname[,serv[,flag]]) */
 {
-  clrec_t *client;
+  struct clrec_t *client;
   const char *srv = NULL, *flstr = NULL;
   userflag uf;
   char buff[64];
@@ -789,7 +789,7 @@ static int _lua_chave (lua_State *L) /* x = have(lname[,serv[,flag]]) */
 
 static int _lua_cset (lua_State *L) /* set(lname,field[,value]) */
 {
-  clrec_t *client;
+  struct clrec_t *client;
   const char *field, *val;
   int n;
 
@@ -822,7 +822,7 @@ static int _lua_cset (lua_State *L) /* set(lname,field[,value]) */
 
 static int _lua_cget (lua_State *L) /* val,flag,time = get(lname,field) */
 {
-  clrec_t *client;
+  struct clrec_t *client;
   const char *field, *val;
   time_t exp = 0;
   userflag uf;
@@ -910,9 +910,13 @@ static int lua_call_function (lua_State *L) /* int = func(arg) */
   if (!lua_isstring (Lua, 1) ||
       !lua_islightuserdata (Lua, lua_upvalueindex (1)))
     return luaL_error (Lua, "incorrect function call");
+  BindResult = NULL;
   fn = lua_touserdata (Lua, lua_upvalueindex (1));
   i = fn (lua_tostring (Lua, 1));
-  lua_pushinteger (Lua, i);
+  if (i != 0 && BindResult != NULL)
+    lua_pushstring (Lua, BindResult);
+  else
+    lua_pushinteger (Lua, i);
   return 1;
 }
 
@@ -1089,7 +1093,7 @@ static int lua_unregister_variable (const char *name)
 
 
 BINDING_TYPE_dcc (dc_lua);
-static int dc_lua (peer_t *from, char *args)
+static int dc_lua (struct peer_t *from, char *args)
 {
   if (!args)
     return 0;

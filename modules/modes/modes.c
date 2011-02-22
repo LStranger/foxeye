@@ -50,9 +50,9 @@ static int _modes_bancmp (lid_t id, const char *mask, INTERFACE *tmp)
 /* note for the side effect - if some nonamed excempt/invite/autoop/etc.
    already exists then it will be reverted to ban here! */
 BINDING_TYPE_dcc (dc_chban);
-static int dc_chban (peer_t *from, char *args)
+static int dc_chban (struct peer_t *from, char *args)
 {
-  clrec_t *u;
+  struct clrec_t *u;
   char *lname, *reason, *c, *tgt;
   lid_t id = ID_REM; /* shut up compiler */
   int sticky;
@@ -265,9 +265,9 @@ static int dc_chban (peer_t *from, char *args)
 
 		/* .+ban [%]mask service|* [+time] [reason] */
 BINDING_TYPE_dcc (dc_pban);
-static int dc_pban (peer_t *from, char *args)
+static int dc_pban (struct peer_t *from, char *args)
 {
-  clrec_t *u;
+  struct clrec_t *u;
   char *lname, *c, *tgt;
   lid_t id;
   int sticky;
@@ -426,9 +426,9 @@ static int dc_pban (peer_t *from, char *args)
 
 		/* .-ban mask */
 BINDING_TYPE_dcc (dc_mban);
-static int dc_mban (peer_t *from, char *args)
+static int dc_mban (struct peer_t *from, char *args)
 {
-  clrec_t *u;
+  struct clrec_t *u;
   char *lname;
   lid_t id = ID_REM; /* shut up compiler */
   INTERFACE *tmp;
@@ -469,10 +469,10 @@ static int dc_mban (peer_t *from, char *args)
 
 		/* .comment lname [text] */
 BINDING_TYPE_dcc (dc_comment);
-static int dc_comment (peer_t *who, char *args)
+static int dc_comment (struct peer_t *who, char *args)
 {
   char *c, *r;
-  clrec_t *u;
+  struct clrec_t *u;
 
   if (!args)
     return 0;				/* need at least 1 arg */
@@ -510,7 +510,7 @@ static int dc_comment (peer_t *who, char *args)
 
 		/* .greeting [service[@net]] [--lname] [text|"NONE"] */
 BINDING_TYPE_dcc (dc_greeting);
-static int dc_greeting (peer_t *who, char *args)
+static int dc_greeting (struct peer_t *who, char *args)
 {
   char sname[IFNAMEMAX+1];	/* for sname + netname */
 #if IFNAMEMAX < 127
@@ -519,7 +519,7 @@ static int dc_greeting (peer_t *who, char *args)
   char buf[IFNAMEMAX+1];
 #endif
   char *netname, *tgt;
-  clrec_t *u;
+  struct clrec_t *u;
   userflag uf, tf;
 
   if (!args)

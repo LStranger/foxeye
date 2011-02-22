@@ -49,7 +49,7 @@ typedef struct user_fr
   lid_t id;
 } user_fr;
 
-struct USERRECORD
+struct clrec_t
 {
   lid_t uid;
   userflag flag;
@@ -63,7 +63,7 @@ struct USERRECORD
   union				/* NULL by default */
   {
     char *info;			/* the "info" field or ban comment */
-    struct USERRECORD *owner;	/* owner of this alias */
+    struct clrec_t *owner;	/* owner of this alias */
   }u;
   char *charset;		/* the "charset" field - no default */
   char *login;			/* the ".login" field - "motd" by default */
@@ -73,13 +73,13 @@ struct USERRECORD
   pthread_mutex_t mutex;
 };
 
-static const clrec_t CONSOLEUSER = { 0, -1, NULL, NULL, 0, 0, NULL, NULL, NULL,
+static const struct clrec_t CONSOLEUSER = { 0, -1, NULL, NULL, 0, 0, NULL, NULL, NULL,
 		{ NULL }, NULL, NULL, NULL, 0, NULL, PTHREAD_MUTEX_INITIALIZER };
 
 static NODE *UTree = NULL;		/* list of USERRECORDs */
-static clrec_t *UList[LID_MAX-LID_MIN+1];
+static struct clrec_t *UList[LID_MAX-LID_MIN+1];
 
-static bindtable_t *BT_ChLname;
+static struct bindtable_t *BT_ChLname;
 
 static time_t _savetime = 0;
 
@@ -204,7 +204,7 @@ static void _delhost (user_hr **hr)
 }
 
 /*--- RW --- UFLock read ---*/
-static clrec_t *_findbylname (const char *lname)
+static struct clrec_t *_findbylname (const char *lname)
 {
   char lclname[IFNAMEMAX+1];
 
@@ -213,9 +213,9 @@ static clrec_t *_findbylname (const char *lname)
 }
 
 /*--- R --- UFLock read --- no HLock ---*/
-static clrec_t *_findthebest (const char *mask, clrec_t *prefer)
+static struct clrec_t *_findthebest (const char *mask, struct clrec_t *prefer)
 {
-  clrec_t *u, *user = NULL;
+  struct clrec_t *u, *user = NULL;
   user_hr *hr;
   int n, p = 0, matched = 0;
   lid_t lid;
@@ -248,7 +248,7 @@ static clrec_t *_findthebest (const char *mask, clrec_t *prefer)
 }
 
 /*--- W --- no HLock ---*/
-static int _add_usermask (clrec_t *user, const char *mask)
+static int _add_usermask (struct clrec_t *user, const char *mask)
 {
   user_hr *hr;
   user_hr **h;
@@ -286,7 +286,7 @@ static int _add_usermask (clrec_t *user, const char *mask)
 }
 
 /*--- W --- no HLock ---*/
-static int _del_usermask (clrec_t *user, const char *mask)
+static int _del_usermask (struct clrec_t *user, const char *mask)
 {
   user_hr **h;
   int i = 0;
@@ -429,9 +429,9 @@ static int spname_valid (const char *a)
 }
 
 /*--- W --- UFLock write ---*/
-static clrec_t *_add_userrecord (const char *name, userflag uf, lid_t id)
+static struct clrec_t *_add_userrecord (const char *name, userflag uf, lid_t id)
 {
-  clrec_t *user = NULL;
+  struct clrec_t *user = NULL;
   int i;
 
   DBG ("_add_userrecord/%c(%#x):%s:%hd",
@@ -449,7 +449,7 @@ static clrec_t *_add_userrecord (const char *name, userflag uf, lid_t id)
     return NULL;
   else if (i >= 0)
   {
-    user = safe_calloc (1, sizeof(clrec_t));
+    user = safe_calloc (1, sizeof(struct clrec_t));
     /* set fields */
     user->lname = safe_strdup (name);
     i = safe_strlen (name);
@@ -507,7 +507,7 @@ static clrec_t *_add_userrecord (const char *name, userflag uf, lid_t id)
 /*--- W --- no locks ---*/
 static void _new_lname_bindings (const char *oldname, const char *newname)
 {
-  binding_t *bind = NULL;
+  struct binding_t *bind = NULL;
   while ((bind = Check_Bindtable (BT_ChLname, oldname, U_ALL, U_ANYCH, bind)))
   {
     if (bind->name)
@@ -517,10 +517,10 @@ static void _new_lname_bindings (const char *oldname, const char *newname)
   }
 }
 
-static void _del_aliases (clrec_t *);
+static void _del_aliases (struct clrec_t *);
 
 /*--- W --- UFLock write --- no other locks ---*/
-static void _delete_userrecord (clrec_t *user, int to_unlock)
+static void _delete_userrecord (struct clrec_t *user, int to_unlock)
 {
   user_chr *chr;
   user_fr *f;
@@ -594,10 +594,10 @@ static void _delete_userrecord (clrec_t *user, int to_unlock)
 }
 
 /*--- W --- UFLock write ---*/
-static void _add_aliases (clrec_t *owner, char *list)
+static void _add_aliases (struct clrec_t *owner, char *list)
 {
   char n[LNAMELEN+1];
-  clrec_t *ur;
+  struct clrec_t *ur;
 
   while (*list)
   {
@@ -611,9 +611,9 @@ static void _add_aliases (clrec_t *owner, char *list)
 }
 
 /*--- W --- UFLock write --- no other locks ---*/
-static void _del_aliases (clrec_t *owner)
+static void _del_aliases (struct clrec_t *owner)
 {
-  register clrec_t *ur;
+  register struct clrec_t *ur;
   lid_t lid;
 
   lid = LID_MIN;
@@ -631,7 +631,7 @@ static void _del_aliases (clrec_t *owner)
 /*--- W --- no locks ---*/
 int Add_Clientrecord (const char *name, const uchar *mask, userflag uf)
 {
-  clrec_t *user = NULL;
+  struct clrec_t *user = NULL;
   char flags[64];			/* I hope, it enough for 18 flags :) */
 
   /* we cannot add alias with this! */
@@ -672,7 +672,7 @@ int Add_Clientrecord (const char *name, const uchar *mask, userflag uf)
 /*--- W --- no locks ---*/
 int Add_Alias (const char *name, const char *hname)
 {
-  register clrec_t *user = NULL, *owner;
+  register struct clrec_t *user = NULL, *owner;
 
   /* create the structure */
   rw_wrlock (&UFLock);
@@ -694,7 +694,7 @@ int Add_Alias (const char *name, const char *hname)
 /*--- W --- no locks ---*/
 void Delete_Clientrecord (const char *lname)
 {
-  clrec_t *user;
+  struct clrec_t *user;
 
   if (!lname)
     return;
@@ -713,7 +713,7 @@ void Delete_Clientrecord (const char *lname)
 /*--- W --- no locks ---*/
 int Change_Lname (const char *newname, const char *oldname)
 {
-  clrec_t *user;
+  struct clrec_t *user;
   int i;
   INTERFACE *iface;
 
@@ -760,7 +760,7 @@ int Change_Lname (const char *newname, const char *oldname)
 /*--- R --- no locks ---*/
 lid_t FindLID (const char *lname)
 {
-  clrec_t *user;
+  struct clrec_t *user;
   register lid_t id;
 
   if (!lname || !*lname)			/* own lid */
@@ -777,7 +777,7 @@ lid_t FindLID (const char *lname)
 }
 
 /*--- R --- no locks ---*/
-lid_t Get_LID (clrec_t *user)
+lid_t Get_LID (struct clrec_t *user)
 {
   return user->uid;
 }
@@ -828,7 +828,7 @@ int Get_Clientlist (INTERFACE *iface, userflag uf, const char *fn,
   char buf[MESSAGEMAX];
   size_t len;
   lid_t lid;
-  clrec_t *u;
+  struct clrec_t *u;
   user_hr *h;
   int n, canbenonamed;
   char *fnisservice;
@@ -881,7 +881,7 @@ int Get_Hostlist (INTERFACE *iface, lid_t id)
 {
   char buf[MESSAGEMAX];
   size_t len;
-  clrec_t *u;
+  struct clrec_t *u;
   user_hr *h;
   int n = 0;
 
@@ -905,7 +905,7 @@ int Get_Fieldlist (INTERFACE *iface, lid_t id)
 {
   char buf[MESSAGEMAX];
   size_t len;
-  clrec_t *u;
+  struct clrec_t *u;
   int n = 0;
   user_chr *chr;
   user_fr *fr;
@@ -951,7 +951,7 @@ int Get_Fieldlist (INTERFACE *iface, lid_t id)
 /*--- W --- no locks ---*/
 unsigned short Get_Hosthash (const char *lname, const char *host)
 {
-  clrec_t *u;
+  struct clrec_t *u;
   user_hr *h;
   char lchost[HOSTMASKLEN+1];
 
@@ -974,7 +974,7 @@ unsigned short Get_Hosthash (const char *lname, const char *host)
 /*--- RW --- UFLock read --- no FLock ---*/
 static lid_t _get_index_sp (const char *field)
 {
-  clrec_t *ur = _findbylname (field);
+  struct clrec_t *ur = _findbylname (field);
 
     if (!*field)
       return R_CONSOLE;
@@ -1021,10 +1021,10 @@ static lid_t _get_index_fr (const char *field)
 
 /*--- R --- no locks ---*/
 /* returns UFLock locked if found */
-clrec_t *Find_Clientrecord (const uchar *mask, char **lname, userflag *uf,
-			    char *net)
+struct clrec_t *Find_Clientrecord (const uchar *mask, char **lname,
+				   userflag *uf, char *net)
 {
-  clrec_t *user = NULL;
+  struct clrec_t *user = NULL;
 
   if (!mask || !*mask)
     return NULL;
@@ -1059,9 +1059,9 @@ clrec_t *Find_Clientrecord (const uchar *mask, char **lname, userflag *uf,
 
 /*--- RW --- no locks ---*/
 /* returns UFLock locked if found */
-clrec_t *Lock_Clientrecord (const char *name)
+struct clrec_t *Lock_Clientrecord (const char *name)
 {
-  clrec_t *user;
+  struct clrec_t *user;
 
   rw_rdlock (&UFLock);
   user = _findbylname (name);
@@ -1078,9 +1078,9 @@ clrec_t *Lock_Clientrecord (const char *name)
 
 /*--- RW --- no locks ---*/
 /* returns UFLock locked if found */
-clrec_t *Lock_byLID (lid_t id)
+struct clrec_t *Lock_byLID (lid_t id)
 {
-  clrec_t *user;
+  struct clrec_t *user;
 
   rw_rdlock (&UFLock);
   if ((user = UList[id-LID_MIN]))
@@ -1095,7 +1095,7 @@ clrec_t *Lock_byLID (lid_t id)
 }
 
 /*--- RW --- UFLock read and built-in --- no other locks ---*/
-void Unlock_Clientrecord (clrec_t *user)
+void Unlock_Clientrecord (struct clrec_t *user)
 {
   if (!user)
     return;
@@ -1104,7 +1104,7 @@ void Unlock_Clientrecord (clrec_t *user)
 }
 
 /*--- R --- UFLock read and built-in --- no other locks ---*/
-char *Get_Field (clrec_t *user, const char *field, time_t *ctime)
+char *Get_Field (struct clrec_t *user, const char *field, time_t *ctime)
 {
   lid_t i;
   user_fr *f;
@@ -1189,7 +1189,8 @@ static inline void _del_channel (user_chr **chr, user_chr *c)
  * so you must do it yourself
  */
 /*--- W --- UFLock read and built-in --- no other locks ---*/
-int Set_Field (clrec_t *user, const char *field, const char *val, time_t exp)
+int Set_Field (struct clrec_t *user, const char *field, const char *val,
+	       time_t exp)
 {
   lid_t i;
   user_fr *f;
@@ -1349,7 +1350,7 @@ int Set_Field (clrec_t *user, const char *field, const char *val, time_t exp)
  * almost the same as Set_Field() but adds value to existing field
  */
 /*--- W --- UFLock and built-in --- no other locks ---*/
-int Grow_Field (clrec_t *user, const char *field, const char *val)
+int Grow_Field (struct clrec_t *user, const char *field, const char *val)
 {
   char result[LONG_STRING];
   char *f;
@@ -1372,7 +1373,7 @@ int Grow_Field (clrec_t *user, const char *field, const char *val)
 userflag Match_Client (char *domain, char *ident, const char *lname)
 {
   userflag uf = 0;
-  clrec_t *ur = NULL;
+  struct clrec_t *ur = NULL;
   user_hr *hr;
   char uhost[STRING];
   char c = '@';
@@ -1429,7 +1430,7 @@ userflag Match_Client (char *domain, char *ident, const char *lname)
 }
 
 /*--- R --- UFLock and built-in --- no other locks ---*/
-userflag Get_Flags (clrec_t *user, const char *serv)
+userflag Get_Flags (struct clrec_t *user, const char *serv)
 {
   userflag uf;
   register lid_t i;
@@ -1454,7 +1455,7 @@ userflag Get_Flags (clrec_t *user, const char *serv)
 }
 
 /*--- W --- UFLock and built-in --- no other locks ---*/
-userflag Set_Flags (clrec_t *user, const char *serv, userflag uf)
+userflag Set_Flags (struct clrec_t *user, const char *serv, userflag uf)
 {
   lid_t i;
   user_chr *chr;
@@ -1496,7 +1497,7 @@ userflag Set_Flags (clrec_t *user, const char *serv, userflag uf)
 /*--- R --- no locks ---*/
 userflag Get_Clientflags (const char *lname, const char *serv)
 {
-  clrec_t *user;
+  struct clrec_t *user;
   userflag uf;
 
   rw_rdlock (&UFLock);
@@ -1516,7 +1517,7 @@ userflag Get_Clientflags (const char *lname, const char *serv)
 }
 
 /*--- W --- UFLock and built-in --- no other locks ---*/
-int Add_Mask (clrec_t *user, const uchar *mask)
+int Add_Mask (struct clrec_t *user, const uchar *mask)
 {
   int i = 0;
 
@@ -1533,7 +1534,7 @@ int Add_Mask (clrec_t *user, const uchar *mask)
 }
 
 /*--- W --- UFLock and built-in --- no other locks ---*/
-int Delete_Mask (clrec_t *user, const uchar *mask)
+int Delete_Mask (struct clrec_t *user, const uchar *mask)
 {
   register int x;
 
@@ -1577,7 +1578,7 @@ void Status_Clients (INTERFACE *iface)
 	       r, s, d, i, (long int)(r+s+d+i));
   New_Request (iface, 0,
 	       "Listfile memory usage: records %ld, hosts %ld, subfields %ld bytes.",
-	       (long int)(n + (r+s+d) * sizeof(clrec_t)), h, f);
+	       (long int)(n + (r+s+d) * sizeof(struct clrec_t)), h, f);
   d -= _scan_lids (LID_MIN, ID_REM);
   i -= _scan_lids (ID_ME+1, ID_ANY-1);
   r -= _scan_lids (ID_ANY+1, LID_MAX);
@@ -1815,7 +1816,7 @@ static int _load_listfile (const char *filename, int update)
 {
   char buff[HUGE_STRING];
   char ffn[LONG_STRING];
-  clrec_t *ur;
+  struct clrec_t *ur;
   FILE *fp;
   char *c, *v, *cc;
   unsigned int _a, _u, _r, _k;			/* add, update, remove, keep */
@@ -2130,10 +2131,10 @@ int Merge_Listfile (char *path)
   return _load_listfile (path, 1);
 }
 
-static int _nonamed_record_is_invalid (clrec_t *ur)
+static int _nonamed_record_is_invalid (struct clrec_t *ur)
 {
   register user_chr *sr;
-  register clrec_t *sur;
+  register struct clrec_t *sur;
   /* validate record - nonamed has to have host and at least one
      of flags U_DENY | U_ACCESS | U_INVITE | U_DEOP | U_QUIET | U_IGNORED
      on at least one subrecord */
@@ -2166,7 +2167,7 @@ static int _write_listfile (char *str, FILE *fp)
 static int _save_listfile (const char *filename, int quiet)
 {
   FILE *fp;
-  clrec_t *ur;
+  struct clrec_t *ur;
   user_hr *hr;
   user_chr *chr;
   user_fr *fr;
@@ -2228,7 +2229,7 @@ static int _save_listfile (const char *filename, int quiet)
       pthread_mutex_lock (&ur->mutex);
       for (chr = ur->channels; chr && i; )
       {
-	register clrec_t *sur;
+	register struct clrec_t *sur;
 
 	if (chr->cid == R_CONSOLE)
 	  sur = NULL;				/* it's NULL but for any case */
@@ -2334,7 +2335,7 @@ static iftype_t userfile_signal (INTERFACE *iface, ifsig_t signal)
 /* all rest: --- W --- no locks ---*/
 /* ----------------------------------------------------------------------------
  * Internal dcc bindings:
- * int func(peer_t *from, char *args)
+ * int func(struct peer_t *from, char *args)
  */
 
 static void parse_chattr (char *text, userflag *toset, userflag *tounset)
@@ -2418,7 +2419,7 @@ static void check_perm (userflag to, userflag by, userflag ufmask,
  * chattr +a-b |+x-y [#chan]	1	2a	3/0
  */
 BINDING_TYPE_dcc (dc_chattr);
-static int dc_chattr (peer_t *dcc, char *args)
+static int dc_chattr (struct peer_t *dcc, char *args)
 {
   userflag ufp, ufm;
   userflag uf, cf;
@@ -2427,8 +2428,8 @@ static int dc_chattr (peer_t *dcc, char *args)
   char plus[64+4];			/* I hope it enough for 2*21 flags :) */
   char Chan[IFNAMEMAX+1];
   char *minus;
-  clrec_t *user;
-  const clrec_t *who;
+  struct clrec_t *user;
+  const struct clrec_t *who;
   user_chr *chr;
 
   if (!args)
@@ -2672,9 +2673,9 @@ static int dc_chattr (peer_t *dcc, char *args)
 }
 
 BINDING_TYPE_dcc (dc__phost);
-static int dc__phost (peer_t *dcc, char *args)
+static int dc__phost (struct peer_t *dcc, char *args)
 {
-  clrec_t *user;
+  struct clrec_t *user;
   char *lname = args;
 
   if (!args)
@@ -2700,9 +2701,9 @@ static int dc__phost (peer_t *dcc, char *args)
 }
 
 BINDING_TYPE_dcc (dc__mhost);
-static int dc__mhost (peer_t *dcc, char *args)
+static int dc__mhost (struct peer_t *dcc, char *args)
 {
-  clrec_t *user;
+  struct clrec_t *user;
   char *lname = args;
 
   if (!args)
@@ -2723,7 +2724,7 @@ static int dc__mhost (peer_t *dcc, char *args)
 }
 
 BINDING_TYPE_dcc (dc__puser);
-static int dc__puser (peer_t *dcc, char *args)
+static int dc__puser (struct peer_t *dcc, char *args)
 {
   register int i;
   char *net = args;
@@ -2776,7 +2777,7 @@ static int dc__puser (peer_t *dcc, char *args)
     *attr = ' ';		/* release last token */
   if (i && net && net < lname)	/* only when we are adding networks */
   {
-    clrec_t *u = Lock_Clientrecord (lname);
+    struct clrec_t *u = Lock_Clientrecord (lname);
 
     pthread_mutex_lock (&FLock);
     _R_f += safe_strlen (net) + 1;
@@ -2794,9 +2795,9 @@ static int dc__puser (peer_t *dcc, char *args)
 }
 
 BINDING_TYPE_dcc (dc__muser);
-static int dc__muser (peer_t *dcc, char *args)
+static int dc__muser (struct peer_t *dcc, char *args)
 {
-  clrec_t *user;
+  struct clrec_t *user;
   userflag uf;
 
   rw_wrlock (&UFLock);
@@ -2815,12 +2816,12 @@ static int dc__muser (peer_t *dcc, char *args)
   return 1;
 }
 
-static bindtable_t *BT_Pass = NULL;
+static struct bindtable_t *BT_Pass = NULL;
 
 static int user_chpass (const char *pass, char **crypted)
 {
   char *spass = NULL;			/* generate a new passwd */
-  register binding_t *bind = NULL, *bind2 = NULL;
+  register struct binding_t *bind = NULL, *bind2 = NULL;
   int i;
 
   while ((bind2 = Check_Bindtable (BT_Pass, "*", U_ALL, U_ANYCH, bind)))
@@ -2842,9 +2843,9 @@ static int user_chpass (const char *pass, char **crypted)
 }
 
 BINDING_TYPE_dcc (dc_passwd);
-static int dc_passwd (peer_t *dcc, char *args)
+static int dc_passwd (struct peer_t *dcc, char *args)
 {
-  register clrec_t *user;
+  register struct clrec_t *user;
   int i;
 
   if (!args)					/* don't allow to remove */
@@ -2868,9 +2869,9 @@ static int dc_passwd (peer_t *dcc, char *args)
 }
 
 BINDING_TYPE_dcc (dc_chpass);
-static int dc_chpass (peer_t *dcc, char *args)
+static int dc_chpass (struct peer_t *dcc, char *args)
 {
-  register clrec_t *user;
+  register struct clrec_t *user;
   register char *lname = args;
   int i;
 
@@ -2908,7 +2909,7 @@ static int dc_chpass (peer_t *dcc, char *args)
 }
 
 BINDING_TYPE_dcc (dc_nick);
-static int dc_nick (peer_t *dcc, char *args)
+static int dc_nick (struct peer_t *dcc, char *args)
 {
   char *oldname = safe_strdup (dcc->iface->name);
   register int i;
@@ -2921,7 +2922,7 @@ static int dc_nick (peer_t *dcc, char *args)
 }
 
 BINDING_TYPE_dcc (dc_chnick);
-static int dc_chnick (peer_t *dcc, char *args)
+static int dc_chnick (struct peer_t *dcc, char *args)
 {
   char *oldname = args;
   char *newname = NextWord (args);
@@ -2937,7 +2938,7 @@ static int dc_chnick (peer_t *dcc, char *args)
 }
 
 BINDING_TYPE_dcc (dc_reload);
-static int dc_reload (peer_t *dcc, char *args)
+static int dc_reload (struct peer_t *dcc, char *args)
 {
   /* can use Listfile variable - I hope iface locked now */
   if (_load_listfile (Listfile, 0))
@@ -2946,7 +2947,7 @@ static int dc_reload (peer_t *dcc, char *args)
 }
 
 BINDING_TYPE_dcc (dc_save);
-static int dc_save (peer_t *dcc, char *args)
+static int dc_save (struct peer_t *dcc, char *args)
 {
   /* can use Listfile variable - I hope iface locked now */
   if (_save_listfile (Listfile, 0))
@@ -2958,7 +2959,7 @@ static int dc_save (peer_t *dcc, char *args)
 static void _catch_undeleted (void *ptr)
 {
   ERROR ("list.c:_catch_undeleted: not empty record found: %s",
-	 ((clrec_t *)ptr)->lclname);
+	 ((struct clrec_t *)ptr)->lclname);
   _delete_userrecord (ptr, 0);
 }
 
@@ -2969,7 +2970,7 @@ char *IFInit_Users (void)
   /* do cleanup if this was restart */
   if (ListfileIface)
   {
-    clrec_t *ur;
+    struct clrec_t *ur;
     lid_t lid = LID_MIN;
     register int i, _f;
 

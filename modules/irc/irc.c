@@ -52,11 +52,11 @@ typedef struct irc_server {
   char *mynick;
   INTERFACE *pmsgout;			/* with lname */
   size_t (*lc)(char *, const char *, size_t); /* lowercase nick conversion */
-  peer_t p;
-//not used in peer_t:
+  struct peer_t p;
+//not used in struct peer_t:
 //  userflag uf;
 //  void (*parse) (struct peer_t *, char *, char *, userflag, userflag, int, int,
-//	 bindtable_t *, char *);/* function to parse/broadcast line */
+//	 struct bindtable_t *, char *);/* function to parse/broadcast line */
 } irc_server;
 
 typedef struct irc_await {
@@ -83,13 +83,13 @@ static char irc_default_realname[REALNAMELEN+1] = "";
 static char irc_umode[33] = "";
 static bool irc_privmsg_commands = FALSE;	/* disallowed by default */
 
-static bindtable_t *BT_Irc = NULL;	/* incoming IRC message */
-static bindtable_t *BT_IrcConn = NULL;	/* connected to server */
-static bindtable_t *BT_IrcDisc = NULL;	/* connection to server lost */
-static bindtable_t *BT_IrcNChg = NULL;	/* some nick changed, internal only */
-static bindtable_t *BT_IrcSignoff = NULL; /* someone quits, internal only */
-static bindtable_t *BT_IrcNSplit = NULL; /* netsplit detected, internal only */
-static bindtable_t *BT_IrcMyQuit = NULL; /* we terminating connection */
+static struct bindtable_t *BT_Irc = NULL;	/* incoming IRC message */
+static struct bindtable_t *BT_IrcConn = NULL;	/* connected to server */
+static struct bindtable_t *BT_IrcDisc = NULL;	/* connection to server lost */
+static struct bindtable_t *BT_IrcNChg = NULL;	/* some nick changed, internal only */
+static struct bindtable_t *BT_IrcSignoff = NULL; /* someone quits, internal only */
+static struct bindtable_t *BT_IrcNSplit = NULL; /* netsplit detected, internal only */
+static struct bindtable_t *BT_IrcMyQuit = NULL; /* we terminating connection */
 
 
 /* --- Thread handler ------------------------------------------------------- */
@@ -325,9 +325,9 @@ static char *_irc_getnext_server (irc_server *serv, const char *add,
 }
 
 /* run bindings */
-static void _irc_run_conn_bind (irc_server *serv, bindtable_t *bt)
+static void _irc_run_conn_bind (irc_server *serv, struct bindtable_t *bt)
 {
-  binding_t *bind = NULL;
+  struct binding_t *bind = NULL;
   char *name = _irc_current_server (serv, NULL);
 
   Set_Iface (serv->p.iface);
@@ -435,7 +435,7 @@ static int _irc_try_server (irc_server *serv, const char *tohost, int banned,
   return 0;
 }
 
-static char *_irc_try_nick (irc_server *serv, clrec_t *clr)
+static char *_irc_try_nick (irc_server *serv, struct clrec_t *clr)
 {
   register char *c;
   char nn[NAMEMAX+1];
@@ -552,7 +552,7 @@ static int _irc_send (irc_server *serv, char *line)
 static char *_irc_get_lname (char *nuh, userflag *uf, char *net)
 {
   char *c;
-  clrec_t *u;
+  struct clrec_t *u;
 
   DBG ("irc:_irc_get_lname:looking for %s", nuh);
   u = Find_Clientrecord (nuh, &c, uf, net);
@@ -576,9 +576,10 @@ static iftype_t _irc_signal (INTERFACE *iface, ifsig_t sig)
   unsigned short port;
   size_t bufpos, inbuf;
   INTERFACE *tmp;
-  binding_t *bind;
-  clrec_t *nclr;
+  struct binding_t *bind;
+  struct clrec_t *nclr;
   char report[STRING];
+  char servhost[HOSTLEN+6];
 
   switch (sig)
   {
@@ -665,10 +666,15 @@ static iftype_t _irc_signal (INTERFACE *iface, ifsig_t sig)
 	  reason = _("disconnecting IRC server");
 	  break;
       }
+      if (port)
+      {
+	snprintf (servhost, sizeof(servhost), "%s/%hu", domain, port);
+	domain = servhost;
+      }
       /* %N - my nick, %@ - server name, %L - network name, %# - connected at,
-	 %I - socket id, %P - port, %* - state */
+	 %P - socket id, %* - state */
       printl (report, sizeof(report), ReportFormat, 0, serv->mynick, domain,
-	      iface->name, serv->p.start, (uint32_t)serv->p.socket + 1, port,
+	      iface->name, serv->p.start, (uint32_t)0, serv->p.socket + 1,
 	      0, reason);
       tmp = Set_Iface (iface);
       New_Request (tmp, F_REPORT, "%s", report);
@@ -738,7 +744,7 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
 	  (sw = ReadSocket (thebuf, serv->p.socket, sizeof(thebuf),
 			    M_RAW)) >= 0)
       {
-	clrec_t *clr;
+	struct clrec_t *clr;
 	char *ident, *realname, *sl;
 
 	LOG_CONN (_("Connected to %s, registering..."), iface->name);
@@ -875,7 +881,7 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
     char uhb[HOSTMASKLEN+1]; /* nick!user@host */
     char *params[19]; /* network sender command args ... NULL */
     char *prefix, *p, *uh;
-    binding_t *bind;
+    struct binding_t *bind;
 
     /* connection established, we may send data */
     if ((sw = _irc_send (serv, req ? req->string : NULL)) == 1)
@@ -1059,7 +1065,7 @@ static int irc__nextnick (INTERFACE *net, char *sv, char *me, unsigned char *src
 		int parc, char **parv, size_t (*lc)(char *, const char *, size_t))
 { /* Parameters: current new text */
   irc_server *serv = net->data;
-  clrec_t *clr;
+  struct clrec_t *clr;
 
   dprint (4, "irc__nextnick: %s: nickname %s juped", net->name, serv->mynick);
   clr = Lock_Clientrecord (net->name);
@@ -1198,7 +1204,7 @@ static int irc_quit (INTERFACE *net, char *sv, char *me, unsigned char *src,
 #endif
     userflag uf;
     int s;
-    binding_t *bind;
+    struct binding_t *bind;
 
     strfcpy (target, src, NAMEMAX+1); /* use old nick for interfaces */
     irc_privmsgout_cancel (((irc_server *)net->data)->pmsgout, src);
@@ -1338,7 +1344,7 @@ static int irc_nick (INTERFACE *net, char *sv, char *me, unsigned char *src,
   size_t s;
   char *lname;
   userflag uf;
-  binding_t *bind;
+  struct binding_t *bind;
   INTERFACE *i;
 
   /* test if it's me */
@@ -1437,7 +1443,7 @@ static void _irc_update_isupport (INTERFACE *net, int parc, char **parv)
   unsigned int i;
   int nicklen, topiclen, maxbans, maxchannels, modes, maxtargets;
   size_t (*lc) (char *, const char *, size_t);
-  clrec_t *clr;
+  struct clrec_t *clr;
   char chanmodes[SHORT_STRING];
   char prefix[32];
   char umodes[32];
@@ -1637,7 +1643,7 @@ BINDING_TYPE_irc_connected (ic_default);
 static void ic_default (INTERFACE *iface, char *server, char *nick,
 			size_t (*lc) (char *, const char *, size_t))
 {
-  clrec_t *clr;
+  struct clrec_t *clr;
   char *msg;
 
   if (*irc_umode != 0)

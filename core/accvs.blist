@@ -11,7 +11,7 @@
  ----------------
 
 DCC   "ddcccc"            UCOMPL
-  int func(peer_t *_f_r_o_m, char *_a_r_g_s);
+  int func(struct peer_t *_f_r_o_m, char *_a_r_g_s);
     Used when user enters the command on partyline. Partyline member
     identified with session _f_r_o_m. Arguments _a_r_g_s to command are stripped
     from leading spaces and if no arguments were found then _a_r_g_s is NULL.
@@ -21,7 +21,7 @@ DCC   "ddcccc"            UCOMPL
       Script args: Lname Dcc-idx args
 
 -     "ssss--**"           UCOMPL
-  int func(peer_t *_w_h_o, INTERFACE *_w_h_e_r_e, char *_a_r_g_s);
+  int func(struct peer_t *_w_h_o, INTERFACE *_w_h_e_r_e, char *_a_r_g_s);
     Used when user _w_h_o enters server-specific command on user interface.
     Other side (I_SERVICE or I_CLIENT) is specified by _w_h_e_r_e. Arguments
     _a_r_g_s to command are stripped from leading spaces. "**" in the name
@@ -30,21 +30,21 @@ DCC   "ddcccc"            UCOMPL
       Matching: first word of command without leading '.'.
 
 CHAT  "cchhaatt"           MASK
-  (int) void func(peer_t *_f_r_o_m, char *_m_s_g);
+  (int) void func(struct peer_t *_f_r_o_m, char *_m_s_g);
     Used when somebody says anything (text _m_s_g) on the partyline/botnet.
     Partyline member identified with session _f_r_o_m.
       Matching: full text line.
       Script args: Lname BotChannel msg
 
 ACT   "cchhaatt-aacctt"       MASK
-  (int) void func(peer_t *_f_r_o_m, char *_m_s_g);
+  (int) void func(struct peer_t *_f_r_o_m, char *_m_s_g);
     Used when somebody does an action (text _m_s_g) on the partyline/botnet.
     Partyline member identified with session _f_r_o_m.
       Matching: full text line.  (any channel userflags are ignored)
       Script args: Lname BotChannel msg
 
 FILT  "iinn--ffiilltteerr"      MASK
-  (int) void func(peer_t *_f_r_o_m, char *_m_s_g, size_t _m_s_g_l_e_n);
+  (int) void func(struct peer_t *_f_r_o_m, char *_m_s_g, size_t _m_s_g_l_e_n);
     Used for filtering text _m_s_g on the partyline before parsing. All
     filters matched user (identified by _f_r_o_m) flags and text mask will
     be applied. Null-terminated text at area _m_s_g no longer than _m_s_g_l_e_n
@@ -54,7 +54,7 @@ FILT  "iinn--ffiilltteerr"      MASK
       Bind result: new text line.
 
 -     "oouutt--ffiilltteerr"     MASK
-  (int) void func(peer_t *_t_o, char *_m_s_g, size_t _m_s_g_l_e_n);
+  (int) void func(struct peer_t *_t_o, char *_m_s_g, size_t _m_s_g_l_e_n);
     Used for filtering text _m_s_g before sending to partyline user. All
     filters matched user (identified by _t_o) flags and text mask will be
     applied. Null-terminated text at area _m_s_g no longer than _m_s_g_l_e_n can
@@ -64,13 +64,13 @@ FILT  "iinn--ffiilltteerr"      MASK
       Bind result: new text line.
 
 CHON  "cchhaatt--oonn"        MASK
-  (int) void func(peer_t *_w_h_o);
+  (int) void func(struct peer_t *_w_h_o);
     Used when somebody _w_h_o enters a DCC CHAT partyline.
       Matching: Lname.
       Script args: Lname Dcc-idx
 
 CHOF  "cchhaatt--ooffff"       MASK
-  (int) void func(peer_t *_w_h_o);
+  (int) void func(struct peer_t *_w_h_o);
     Used when somebody _w_h_o "logoff" from DCC CHAT partyline.
       Matching: Lname.
       Script args: Lname Dcc-idx
@@ -116,7 +116,7 @@ UNLD  "uunnllooaadd"         MASK
       Script args: mod
 
 -     "llooggiinn"          MASK
-  (int) void func(char *_w_h_o, char *_i_d_e_n_t, char *_h_o_s_t, peer_t *_p_e_e_r,
+  (int) void func(char *_w_h_o, char *_i_d_e_n_t, char *_h_o_s_t, struct peer_t *_p_e_e_r,
 		  char _b_u_f[SHORT_STRING], char **_m_s_g);
     Used when connection with someone is established and we got their
     Lname _w_h_o. The binding is always called from thread but dispatcher is
@@ -198,11 +198,11 @@ UNLD  "uunnllooaadd"         MASK
       Matching: none.
 
 -     "ccoonnnncchhaaiinn--ggrrooww" MATCHCASE
-  int func(peer_t *_p_e_e_r, ssize_t (**_r_e_c_v)(connchain_i **, idx_t,
-			    char *, size_t, connchain_buffer **),
-	   ssize_t (**_s_e_n_d)(connchain_i **, idx_t, const char *,
-			    size_t *, connchain_buffer **),
-	   connchain_buffer **_b_u_f);
+  int func(struct peer_t *_p_e_e_r, ssize_t (**_r_e_c_v)(struct connchain_i **, idx_t,
+			    char *, size_t, struct connchain_buffer **),
+	   ssize_t (**_s_e_n_d)(struct connchain_i **, idx_t, const char *,
+			    size_t *, struct connchain_buffer **),
+	   struct connchain_buffer **_b_u_f);
     Used when Connchain_Grow() function is called. It tries to setup a
     connection chain link for some _p_e_e_r. Value of _p_e_e_r can be used for
     identification on the setup or for notification to its interface (by

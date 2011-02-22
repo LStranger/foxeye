@@ -60,11 +60,11 @@ typedef struct dcc_priv_t
 
 static dcc_priv_t *ActDCC = NULL;	/* chain of active sessions */
 
-static bindtable_t *BT_IDcc;		/* "ctcp-dcc" : CTCP DCC bindings */
-static bindtable_t *BT_Login;		/* "login" bindtable from Core */
-static bindtable_t *BT_Dnload;		/* "dcc-got" : received a file */
-static bindtable_t *BT_Cctcp;		/* a bindtable from module "irc" */
-static bindtable_t *BT_Upload;		/* "dcc-sent" : received a file */
+static struct bindtable_t *BT_IDcc;	/* "ctcp-dcc" : CTCP DCC bindings */
+static struct bindtable_t *BT_Login;	/* "login" bindtable from Core */
+static struct bindtable_t *BT_Dnload;	/* "dcc-got" : received a file */
+static struct bindtable_t *BT_Cctcp;	/* a bindtable from module "irc" */
+static struct bindtable_t *BT_Upload;	/* "dcc-sent" : received a file */
 
 
 static long int ircdcc_ahead_size = 0;	/* "turbo" mode to speed up transfer */
@@ -175,9 +175,9 @@ static iftype_t _dcc_sig_2 (INTERFACE *iface, ifsig_t signal)
 	pthread_mutex_unlock (&dcc->mutex);
 	txt = buf;
       }
-      /* %@ - uh, %L - Lname, %I - socket, %* text */
+      /* %@ - uh, %L - Lname, %P - socket, %* text */
       printl (msg, sizeof(msg), ReportFormat, 0, NULL, dcc->uh, dcc->lname,
-	      NULL, (uint32_t)dcc->socket + 1, 0, 0, txt);
+	      NULL, (uint32_t)0, dcc->socket + 1, 0, txt);
       tmp = Set_Iface (iface);
       New_Request (tmp, F_REPORT, "%s", msg);
       Unset_Iface();
@@ -259,11 +259,11 @@ static void chat_handler (char *lname, char *ident, char *host, void *data)
 {
   char buf[SHORT_STRING];
   userflag uf;
-  binding_t *bind;
+  struct binding_t *bind;
   size_t sz, sp;
   char *msg;
   dcc_priv_t *dcc = data;
-  peer_t *peer;
+  struct peer_t *peer;
 
   dprint (4, "dcc:chat_handler for %s", lname);
   /* check for allowance */
@@ -278,7 +278,7 @@ static void chat_handler (char *lname, char *ident, char *host, void *data)
   /* if UI exists then it have binding for everyone so will create UI window */
   bind = Check_Bindtable (BT_Login, "*", uf, 0, NULL);
   msg = NULL;
-  peer = safe_malloc (sizeof(peer_t));
+  peer = safe_malloc (sizeof(struct peer_t));
   peer->socket = dcc->socket;
   peer->state = dcc->state;
   peer->dname = NULL;
@@ -474,8 +474,8 @@ static void isend_handler (char *lname, char *ident, char *host, void *data)
   {
     char *c;
     userflag uf;
-    clrec_t *u;
-    binding_t *b;
+    struct clrec_t *u;
+    struct binding_t *b;
 
     c = strchr (dcc->iface->name, '@') + 1; /* network name */
     if (dcc->lname[0])			/* we know Lname already */
@@ -791,7 +791,7 @@ static void _dcc_send_handler (int res, void *input_data)
   fclose (f);
   if (ptr == dcc->size)				/* successfully downloaded */
   {
-    binding_t *bind = NULL;
+    struct binding_t *bind = NULL;
     userflag uf = Get_Clientflags (dcc->lname, NULL);
     const char *path;
 
@@ -1055,9 +1055,9 @@ static iftype_t _dcc_sig_1 (INTERFACE *iface, ifsig_t signal)
       }
       else				/* waiting for connection */
 	txt = "waiting for DCC connection";
-      /* %@ - uh, %L - Lname, %I - socket, %* text */
+      /* %@ - uh, %L - Lname, %P - socket, %* text */
       printl (msg, sizeof(msg), ReportFormat, 0, NULL, dcc->uh, dcc->lname,
-	      NULL, (uint32_t)dcc->socket + 1, 0, 0, txt);
+	      NULL, (uint32_t)0, dcc->socket + 1, 0, txt);
       tmp = Set_Iface (iface);
       New_Request (tmp, F_REPORT, "%s", msg);
       Unset_Iface();
@@ -1439,7 +1439,7 @@ static int ctcp_dcc (INTERFACE *client, unsigned char *who, char *lname,
 		     char *unick, char *msg)
 {
   userflag uf;
-  binding_t *bind = NULL;
+  struct binding_t *bind = NULL;
 
   dprint (4, "irc-ctcp:ctcp_dcc:got request from \"%s\"", NONULL(lname));
   uf = Get_Clientflags (lname, "");
@@ -1525,7 +1525,7 @@ static int ctcp_help (INTERFACE *client, unsigned char *who, char *lname,
 		      char *unick, char *msg)
 {
   char *c;
-  clrec_t *u;
+  struct clrec_t *u;
   userflag uf, cf;
 
   StrTrim (msg);			/* is it really wise? :) */
@@ -1587,7 +1587,7 @@ static unsigned int _ircdcc_dccid = 0;	/* unique token for passive sends */
 		/* .send [-passive] [-flush] target [path/]file */
 /* note: target is case sensitive parameter or else resume will be not available */
 BINDING_TYPE_ss_(ssirc_send);
-static int ssirc_send (peer_t *peer, INTERFACE *w, char *args)
+static int ssirc_send (struct peer_t *peer, INTERFACE *w, char *args)
 {
   char *c, *cc;
   int passive = 0, noresume = 0;
@@ -1714,10 +1714,16 @@ static void _irc_ctcp_register (void)
  */
 static iftype_t irc_ctcp_mod_sig (INTERFACE *iface, ifsig_t sig)
 {
+  INTERFACE *tmp;
+
   switch (sig)
   {
     case S_REPORT:
+      tmp = Set_Iface (iface);
+      New_Request (tmp, F_REPORT, "Module irc-ctcp:%s",
+		   ActDCC ? "" : " no active connections.");
       // TODO.......
+      Unset_Iface();
       break;
     case S_REG:
       _irc_ctcp_register();

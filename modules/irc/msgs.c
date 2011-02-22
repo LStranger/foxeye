@@ -36,19 +36,19 @@ typedef struct pmsgout_stack {
 } pmsgout_stack;
 
 
-static bindtable_t *BT_PubMsgMask;
-static bindtable_t *BT_PubNoticeMask;
-static bindtable_t *BT_PubMsgCmd;
-static bindtable_t *BT_PubNoticeCmd;
-static bindtable_t *BT_PubCtcp;
-static bindtable_t *BT_PubCtcr;
-static bindtable_t *BT_PrivMsgMask;
-static bindtable_t *BT_PrivNoticeMask;
-static bindtable_t *BT_PrivMsgCmd;
-static bindtable_t *BT_PrivNoticeCmd;
-static bindtable_t *BT_PrivCtcp;
-static bindtable_t *BT_PrivCtcr;
-static bindtable_t *BT_Flood;
+static struct bindtable_t *BT_PubMsgMask;
+static struct bindtable_t *BT_PubNoticeMask;
+static struct bindtable_t *BT_PubMsgCmd;
+static struct bindtable_t *BT_PubNoticeCmd;
+static struct bindtable_t *BT_PubCtcp;
+static struct bindtable_t *BT_PubCtcr;
+static struct bindtable_t *BT_PrivMsgMask;
+static struct bindtable_t *BT_PrivNoticeMask;
+static struct bindtable_t *BT_PrivMsgCmd;
+static struct bindtable_t *BT_PrivNoticeCmd;
+static struct bindtable_t *BT_PrivCtcp;
+static struct bindtable_t *BT_PrivCtcr;
+static struct bindtable_t *BT_Flood;
 
 static char *format_irc_message;
 static char *format_irc_notice;
@@ -64,14 +64,14 @@ static short *FloodCtcp;
 
 struct pmsgin_actions
 {
-  bindtable_t **priv_bt;
-  bindtable_t **pub_bt;
+  struct bindtable_t **priv_bt;
+  struct bindtable_t **pub_bt;
   size_t shift;
   char **format;
   char **cmdformat;
 };
 
-static bindtable_t *BT_NULL = NULL;
+static struct bindtable_t *BT_NULL = NULL;
 
 static struct pmsgin_actions PmsginTable[] = {
   { &BT_PrivMsgCmd,	&BT_PubMsgCmd,		0, &format_irc_message,	&format_irc_cmdmessage },
@@ -341,10 +341,10 @@ int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
   char *lname, *ft, *ae; /* ae - at exclamation */
   size_t msglen = 0;			/* avoiding compiler warning */
   INTERFACE *client;
-  clrec_t *clr;
+  struct clrec_t *clr;
   userflag uf, df = 0;
-  binding_t *bind;
-  bindtable_t *btmask;
+  struct binding_t *bind;
+  struct bindtable_t *btmask;
   int i;
 
   /* convert sender nick to lower case before searching for client */

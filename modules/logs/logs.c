@@ -320,7 +320,7 @@ static size_t textlog2html (char *buff, const char *text, size_t sz, flag_t flag
   int color = 0;
   int url = 0;
   const char *p = NULL;	/* URL ptr, NULL to make compiler happy */
-  register char ch;
+  register unsigned char ch;
   size_t i, sw, r;	/* counters */
 
   if ((flag & F_T_MASK) == F_T_ACTION)
@@ -338,7 +338,8 @@ static size_t textlog2html (char *buff, const char *text, size_t sz, flag_t flag
     i = 0, r = 5;	/* <br>\0 */
   while (i + r < sz)			/* reserved for 1 char */
   {
-    if ((ch = *text++) == '\0')		/* EOL */
+    ch = *(unsigned char *)text++;
+    if (ch == '\0')			/* EOL */
       break;
     if (url && ch <= ' ')		/* URL ends? */
     {
@@ -346,10 +347,12 @@ static size_t textlog2html (char *buff, const char *text, size_t sz, flag_t flag
       r -= sw;
       i += sw;
       url = 0;
-      buff[i++] = ch;	/* this char */
     }
-    else switch (ch)
-    {
+    if (url) {				/* URL continues */
+      url++;
+      r++;
+      buff[i++] = ch;	/* this char */
+    } else switch (ch) {
       case ' ':
 	if (color < 0)			/* ACTION nick hilighting */
 	{
@@ -510,11 +513,6 @@ static size_t textlog2html (char *buff, const char *text, size_t sz, flag_t flag
 	  break;
 	}
       default:
-	if (url)
-	{
-	  url++;
-	  r++;
-        }
 	buff[i++] = ch;
     }
   }
@@ -797,7 +795,7 @@ static void do_rotate (logfile_t *log)
 
 static char Flags[] = FLAG_T;
 
-static flag_t logfile_level (const char *a)
+static inline flag_t logfile_level (const char *a)
 {
   flag_t level = 0;
   char *c;
@@ -826,6 +824,16 @@ static char *logfile_printlevel (flag_t level)
   }
   *c = 0;
   return aa;
+}
+
+static inline void _logfile_set_rmode(logfile_t *log, int rmode)
+{
+  if (rmode & L_NOTS)
+    log->add_buf = &textlog_add_buf_nots;
+  else
+    log->add_buf = &textlog_add_buf_ts;
+  log->colormode = (rmode & (L_HTML | L_NOCL)) - L_NOCL;
+  log->rmode = (rmode & ~(L_NOTS | L_HTML | L_NOCL));
 }
 
 /*
@@ -903,10 +911,29 @@ static ScriptFunction (cfg_logfile)
   }
   else
     level = 0;
-  if (log || !level)
+  if (level == 0)			/* nothing to log */
   {
     FREE (&rpath);
     return 0;
+  }
+  if (log) {				/* it's reconfig, ok */
+    FREE(&rpath);
+    if (level != log->level) {		/* update levels */
+      log->level = level;
+      if ((level & F_PREFIXED) == level) /* only prefixed */
+	log->wantprefix = FALSE;
+      else
+	log->wantprefix = TRUE;
+    }
+    _logfile_set_rmode(log, rmode);
+    if (*args)
+      NextWord_Unquoted(mask, (char *)args, IFNAMEMAX+1); /* still const */
+    else
+      strcpy(mask, "*");
+    if (safe_strcmp(mask, log->iface->name)) /* update mask */
+      Rename_Iface(log->iface, mask);
+    dprint(2, "log:cgf_logfile: successed reconfig on %s", log->path);
+    return 1;
   }
   /* create new logfile with interface */
   fd = open_log_file (tpath);
@@ -928,12 +955,7 @@ static ScriptFunction (cfg_logfile)
     log->wantprefix = FALSE;
   else
     log->wantprefix = TRUE;
-  if (rmode & L_NOTS)
-    log->add_buf = &textlog_add_buf_nots;
-  else
-    log->add_buf = &textlog_add_buf_ts;
-  log->colormode = (rmode & (L_HTML | L_NOCL)) - L_NOCL;
-  log->rmode = (rmode & ~(L_NOTS | L_HTML | L_NOCL));
+  _logfile_set_rmode(log, rmode);
   if (*args)
     NextWord_Unquoted (mask, (char *)args, IFNAMEMAX+1); /* still const */
   else

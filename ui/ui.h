@@ -42,9 +42,9 @@ enum {
 
 #define UI_PKT_LEN 2048
 
-typedef struct {
+struct ui_pkt {
   unsigned short typelen;	/* type << 11 + len & 0x7ff */
   unsigned char buf[UI_PKT_LEN];
-} ui_pkt;
+};
 
 #endif

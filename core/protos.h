@@ -36,17 +36,19 @@ void New_Request (INTERFACE *, flag_t, const char *, ...)
 	__attribute__((format(printf, 3, 4)));
 int Relay_Request (iftype_t, char *, REQUEST *);
 int Get_Request (void);
-bindtable_t *Add_Bindtable (const char *, bttype_t) /* init.c */
+struct bindtable_t *Add_Bindtable (const char *, bttype_t) /* init.c */
 	__attribute__((warn_unused_result,nonnull(1)));
-const char *Bindtable_Name (bindtable_t *)
+const char *Bindtable_Name (struct bindtable_t *)
 	__attribute__((warn_unused_result,nonnull(1)));
-binding_t *Check_Bindtable (bindtable_t *, const char *, userflag, userflag,
-			    binding_t *) __attribute__((warn_unused_result));
-binding_t *Add_Binding (const char *, const char *, userflag, userflag,
-			Function, const char *) __attribute__((nonnull(1)));
+struct binding_t *Check_Bindtable (struct bindtable_t *, const char *,
+				   userflag, userflag, struct binding_t *)
+	__attribute__((warn_unused_result));
+struct binding_t *Add_Binding (const char *, const char *, userflag, userflag,
+			       Function, const char *)
+	__attribute__((nonnull(1)));
 void Delete_Binding (const char *, Function, const char *);
-int RunBinding (binding_t *, const uchar *, const char *, const char *, char *,
-		int, const char *);
+int RunBinding (struct binding_t *, const uchar *, const char *, const char *,
+		char *, int, const char *);
 int Lname_IsOn (const char *, const char *, const char **)
 	__attribute__((warn_unused_result));
 modeflag Inspect_Client (const char *, const char *, const char **,
@@ -55,7 +57,7 @@ modeflag Inspect_Client (const char *, const char *, const char **,
 int Add_Help (const char *) __attribute__((nonnull(1))); /* help.c */
 void Delete_Help (const char *);
 int Get_Help (const char *, const char *, INTERFACE *, userflag, userflag,
-		bindtable_t *, char *, int);
+		struct bindtable_t *, char *, int);
 int Add_Clientrecord (const char *, const uchar *, userflag) /* users.c */
 	__attribute__((warn_unused_result));
 int Add_Alias (const char *, const char *)
@@ -168,11 +170,11 @@ void StrTrim (char *);
 #define ALLOCATABLE_TYPE(type,tvar,next) \
 static size_t tvar##asize = 0; \
 static unsigned int tvar##num = 0, tvar##max = 0; \
-typedef struct ____##type { \
+struct ____##type { \
   struct ____##type *prv; \
   type a[ALLOCSIZE]; \
-} ____##type; \
-static ____##type *____L##type = NULL; \
+}; \
+static struct ____##type *____L##type = NULL; \
 static type *Free##tvar = NULL; \
 	__attribute__((warn_unused_result)) \
 static type *alloc_##type (void) \
@@ -181,11 +183,11 @@ static type *alloc_##type (void) \
   if (!Free##tvar) \
   { \
     register int i = ALLOCSIZE; \
-    ____##type *_L = safe_malloc (sizeof(____##type)); \
+    struct ____##type *_L = safe_malloc (sizeof(struct ____##type)); \
     _L->prv = ____L##type; \
     ____L##type = _L; \
     Free##tvar = cur = _L->a; \
-    tvar##asize += sizeof(____##type); \
+    tvar##asize += sizeof(struct ____##type); \
     while ((--i)) \
     { \
       cur->next = (void *)&cur[1]; \
@@ -208,7 +210,7 @@ static inline void free_##type (type *cur) \
 } \
 static inline void forget_##type (void) \
 { \
-  ____##type *_L; \
+  struct ____##type *_L; \
   while ((_L = ____L##type)) \
   { \
     ____L##type = _L->prv; \

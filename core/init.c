@@ -36,23 +36,23 @@ struct bindtable_t
   bttype_t type;
   const char *name;
   union {
-    binding_t *bind;
+    struct binding_t *bind;
     NODE *tree;
   } list;
-  binding_t *lr;			/* last resort - for B_UNIQ unly */
-  bindtable_t *next;
+  struct binding_t *lr;			/* last resort - for B_UNIQ unly */
+  struct bindtable_t *next;
 };
 
 /* ----------------------------------------------------------------------------
  * bindtables functions
  */
 
-static bindtable_t *Tables = NULL;
+static struct bindtable_t *Tables = NULL;
 
-static void _bt_convert2uniqtype (bindtable_t *bt, bttype_t type)
+static void _bt_convert2uniqtype (struct bindtable_t *bt, bttype_t type)
 {
-  binding_t *b;
-  binding_t **last = &bt->list.bind;
+  struct binding_t *b;
+  struct binding_t **last = &bt->list.bind;
 
   for (; (b = (*last)); last = &(*last)->next)
     while (b->next)
@@ -79,7 +79,7 @@ static void _bt_convert2uniqtype (bindtable_t *bt, bttype_t type)
     {
       if (Insert_Key (&bt->list.tree, b->key, b, 1))
       {
-	binding_t *b2 = b, *b3;
+	struct binding_t *b2 = b, *b3;
 
 	ERROR ("bindtable conversion error (tree error): \"%s\":\"%s\"",
 	       bt->name, b->key);
@@ -103,12 +103,12 @@ static void _bt_convert2uniqtype (bindtable_t *bt, bttype_t type)
   }
 }
 
-bindtable_t *Add_Bindtable (const char *name, bttype_t type)
+struct bindtable_t *Add_Bindtable (const char *name, bttype_t type)
 {
-  bindtable_t *bt;
+  struct bindtable_t *bt;
 
   if (Tables == NULL)
-    bt = Tables = safe_calloc (1, sizeof(bindtable_t));
+    bt = Tables = safe_calloc (1, sizeof(struct bindtable_t));
   else
   {
     for (bt = Tables; bt; bt = bt->next)
@@ -117,7 +117,7 @@ bindtable_t *Add_Bindtable (const char *name, bttype_t type)
 	break;
       if (!bt->next)
       {
-	bt->next = safe_calloc (1, sizeof(bindtable_t));
+	bt->next = safe_calloc (1, sizeof(struct bindtable_t));
 	bt = bt->next;
 	break;
       }
@@ -141,9 +141,9 @@ bindtable_t *Add_Bindtable (const char *name, bttype_t type)
   return bt;
 }
 
-static bindtable_t *Try_Bindtable (const char *name, int force_add)
+static struct bindtable_t *Try_Bindtable (const char *name, int force_add)
 {
-  bindtable_t *bt = Tables;
+  struct bindtable_t *bt = Tables;
 
   for (; bt; bt = bt->next)
     if (!safe_strcmp (bt->name, name))
@@ -153,12 +153,12 @@ static bindtable_t *Try_Bindtable (const char *name, int force_add)
   return Add_Bindtable (name, B_UNDEF);	/* default type */
 }
 
-binding_t *Add_Binding (const char *table, const char *mask, userflag gf,
-		      userflag cf, Function func, const char *name)
+struct binding_t *Add_Binding (const char *table, const char *mask, userflag gf,
+			       userflag cf, Function func, const char *name)
 {
-  bindtable_t *bt = Try_Bindtable (table, 1);
-  binding_t *bind = safe_malloc (sizeof(binding_t));
-  binding_t *b;
+  struct bindtable_t *bt = Try_Bindtable (table, 1);
+  struct binding_t *bind = safe_malloc (sizeof(struct binding_t));
+  struct binding_t *b;
 
   if (bt->type == B_UNIQ || bt->type == B_KEYWORD)
   {
@@ -184,7 +184,7 @@ binding_t *Add_Binding (const char *table, const char *mask, userflag gf,
 	return NULL;
       }
       /* now replace data in current leaf with new and insert new */
-      memcpy (bind, b, sizeof(binding_t));
+      memcpy (bind, b, sizeof(struct binding_t));
       b->prev = bind; /* new previous binding */
       bind = b;
     }
@@ -204,7 +204,7 @@ binding_t *Add_Binding (const char *table, const char *mask, userflag gf,
   }
   else /* not B_UNIQ */
   {
-    binding_t *last = NULL;
+    struct binding_t *last = NULL;
 
     bind->prev = NULL;				/* if it's really unique */
     for (b = bt->list.bind; b; b = b->next)	/* check if binding is duplicate */
@@ -248,8 +248,8 @@ binding_t *Add_Binding (const char *table, const char *mask, userflag gf,
 
 void Delete_Binding (const char *table, Function func, const char *name)
 {
-  bindtable_t *bt = Try_Bindtable (table, 0);
-  binding_t *bind, *b, *last = NULL, *next;
+  struct bindtable_t *bt = Try_Bindtable (table, 0);
+  struct binding_t *bind, *b, *last = NULL, *next;
 
   if (bt == NULL)
     return;
@@ -297,7 +297,7 @@ void Delete_Binding (const char *table, Function func, const char *name)
 	  {
 	    bind = b->prev;
 	    FREE (&b->name);
-	    memcpy (b, bind, sizeof(binding_t));
+	    memcpy (b, bind, sizeof(struct binding_t));
 	    FREE (&bind);
 	  }
 	  else				/* it's only binding - free leaf */
@@ -371,11 +371,12 @@ void Delete_Binding (const char *table, Function func, const char *name)
   }
 }
 
-binding_t *Check_Bindtable (bindtable_t *bt, const char *str, userflag gf,
-			  userflag scf, binding_t *bind)
+struct binding_t *Check_Bindtable (struct bindtable_t *bt, const char *str,
+				   userflag gf, userflag scf,
+				   struct binding_t *bind)
 {
   int i = 0;
-  binding_t *b;
+  struct binding_t *b;
   char buff[LONG_STRING];
   register char *ch = buff;
   register userflag tgf, tcf;
@@ -552,7 +553,7 @@ binding_t *Check_Bindtable (bindtable_t *bt, const char *str, userflag gf,
   return b;
 }
 
-const char *Bindtable_Name (bindtable_t *bt)
+const char *Bindtable_Name (struct bindtable_t *bt)
 {
   if (!bt)
     return NULL;
@@ -563,7 +564,7 @@ const char *Bindtable_Name (bindtable_t *bt)
 /* define functions & variables first */
 #include "init.h"
 
-int RunBinding (binding_t *bind, const uchar *uh, const char *fst,
+int RunBinding (struct binding_t *bind, const uchar *uh, const char *fst,
 		const char *sec, char *third, int num, const char *last)
 {
   char *tt0;
@@ -920,11 +921,11 @@ static int Start_FunctionFromConsole
  * internal core tables: variables, operators(functions), formats, flood types
  */
 
-static bindtable_t *BT_Reg = NULL;
-static bindtable_t *BT_Unreg = NULL;
-static bindtable_t *BT_Fn = NULL;
-static bindtable_t *BT_Unfn = NULL;
-static bindtable_t *BT_Script = NULL;
+static struct bindtable_t *BT_Reg = NULL;
+static struct bindtable_t *BT_Unreg = NULL;
+static struct bindtable_t *BT_Fn = NULL;
+static struct bindtable_t *BT_Unfn = NULL;
+static struct bindtable_t *BT_Script = NULL;
 
 static NODE *VTree = NULL;		/* variables */
 static NODE *STree = NULL;		/* operators */
@@ -941,7 +942,7 @@ typedef struct
 static void _lock_var (const char *name)
 {
   VarData *data;
-  binding_t *bind = NULL;
+  struct binding_t *bind = NULL;
 
   if (!(data = Find_Key (VTree, name)))
     return;
@@ -985,7 +986,7 @@ static int _add_var (const char *name, void *var, size_t *s)
 static int _register_var (const char *name, void *var, size_t s)
 {
   int i;
-  binding_t *bind = NULL;
+  struct binding_t *bind = NULL;
 
   if (!name || !var)
     return 0;
@@ -1029,7 +1030,7 @@ static int _del_var (const char *name)
 int UnregisterVariable (const char *name)
 {
   int i = 0;
-  binding_t *bind = NULL;
+  struct binding_t *bind = NULL;
 
   i = _del_var (name);				/* static binding ;) */
   while ((bind = Check_Bindtable (BT_Unreg, "*", U_ALL, U_ANYCH, bind)))
@@ -1096,7 +1097,7 @@ int
 RegisterFunction (const char *name, int (*func)(const char *), const char *msg)
 {
   int i;
-  binding_t *bind = NULL;
+  struct binding_t *bind = NULL;
 
   if (!name || !func)
     return 0;
@@ -1110,7 +1111,7 @@ RegisterFunction (const char *name, int (*func)(const char *), const char *msg)
 int UnregisterFunction (const char *name)
 {
   int i;
-  binding_t *bind = NULL;
+  struct binding_t *bind = NULL;
 
   i = _del_fn (name);				/* static binding ;) */
   while ((bind = Check_Bindtable (BT_Unfn, "*", U_ALL, U_ANYCH, bind)))
@@ -1376,7 +1377,7 @@ static char *_Scripts_List = NULL;
 
 static ScriptFunction (cfg_script)	/* to config - keep and store */
 {
-  binding_t *bind;
+  struct binding_t *bind;
   register size_t ss;
 
   if (!args || !*args)
@@ -1481,12 +1482,12 @@ int Save_Formats (void)
 
 /* ----------------------------------------------------------------------------
  * Internal dcc bindings:
- * int func(peer_t *from, char *args)
+ * int func(struct peer_t *from, char *args)
  */
 
 		/* .set [<variable>[ <value>]] */
 BINDING_TYPE_dcc (dc_set);
-static int dc_set (peer_t *dcc, char *args)
+static int dc_set (struct peer_t *dcc, char *args)
 {
   char var[STRING];
   VarData *data = NULL;
@@ -1549,7 +1550,7 @@ static int dc_set (peer_t *dcc, char *args)
 
 		/* .fset [<format variable>[ <value>]] */
 BINDING_TYPE_dcc (dc_fset);
-static int dc_fset (peer_t *dcc, char *args)
+static int dc_fset (struct peer_t *dcc, char *args)
 {
   char var[STRING];
   VarData2 *data = NULL;
@@ -1612,7 +1613,7 @@ static int dc_fset (peer_t *dcc, char *args)
 
 		/* .status [-a|<module name>] */
 BINDING_TYPE_dcc (dc_status);
-static int dc_status (peer_t *dcc, char *args)
+static int dc_status (struct peer_t *dcc, char *args)
 {
   char buff[STRING];
 
@@ -1645,11 +1646,11 @@ Started %* on %s at host %@."),
 
 		/* .binds [-l|<name>|-a [<name>]] */
 BINDING_TYPE_dcc (dc_binds);
-static int dc_binds (peer_t *dcc, char *args)
+static int dc_binds (struct peer_t *dcc, char *args)
 {
   int io;
-  bindtable_t *bt;
-  binding_t *b = NULL;
+  struct bindtable_t *bt;
+  struct binding_t *b = NULL;
   char *c;
   char flags[128];
   LEAF *l = NULL;
@@ -1800,7 +1801,7 @@ static int dc_binds (peer_t *dcc, char *args)
 		/* .module -l */
 		/* .module [-c|-d] <module name> */
 BINDING_TYPE_dcc (dc_module);
-static int dc_module (peer_t *dcc, char *args)
+static int dc_module (struct peer_t *dcc, char *args)
 {
   if (!args || !*args)
     return 0;
@@ -1813,7 +1814,7 @@ static int dc_module (peer_t *dcc, char *args)
 
 		/* .rehash */
 BINDING_TYPE_dcc (dc_rehash);
-static int dc_rehash (peer_t *dcc, char *args)
+static int dc_rehash (struct peer_t *dcc, char *args)
 {
   New_Request (dcc->iface, 0, "Rehashing...");
   if (ParseConfig (Config, 0))
@@ -1824,7 +1825,7 @@ static int dc_rehash (peer_t *dcc, char *args)
 
 		/* .restart */
 BINDING_TYPE_dcc (dc_restart);
-static int dc_restart (peer_t *dcc, char *args)
+static int dc_restart (struct peer_t *dcc, char *args)
 {
   New_Request (dcc->iface, 0, "Restarting...");
   kill (getpid(), SIGINT);
@@ -1833,7 +1834,7 @@ static int dc_restart (peer_t *dcc, char *args)
 
 		/* .die [<reason>] */
 BINDING_TYPE_dcc (dc_die);
-static int dc_die (peer_t *dcc, char *args)
+static int dc_die (struct peer_t *dcc, char *args)
 {
   char message[MESSAGEMAX];
 
@@ -1847,18 +1848,32 @@ static int dc_die (peer_t *dcc, char *args)
     bot_shutdown (args, 0);
 }
 
+		/* .chelp <command> */
+BINDING_TYPE_dcc(dc_chelp);
+static int dc_chelp(struct peer_t *dcc, char *args)
+{
+  if (args == NULL || *args == '\0')	/* should have a parameter */
+    return 0;
+  /* try if usage found first */
+  if (Get_Help ("function", args, dcc->iface, dcc->uf, 0, NULL, _("Usage: "), 0))
+    return 0;
+  /* full help */
+  Get_Help ("function", args, dcc->iface, dcc->uf, 0, NULL, NULL, 2);
+  return 1;
+}
+
 /* ----------------------------------------------------------------------------
  * helpers for client matching
  */
 
-static bindtable_t *BT_IsOn = NULL;
-static bindtable_t *BT_Inspect = NULL;
+static struct bindtable_t *BT_IsOn = NULL;
+static struct bindtable_t *BT_Inspect = NULL;
 
 int Lname_IsOn (const char *pub, const char *lname, const char **name)
 {
-  binding_t *bind;
+  struct binding_t *bind;
   const char *c, *nt;
-  clrec_t *netw;
+  struct clrec_t *netw;
 
   if (!pub)
     return 0;
@@ -1885,9 +1900,9 @@ int Lname_IsOn (const char *pub, const char *lname, const char **name)
 modeflag Inspect_Client (const char *pub, const char *name, const char **lname,
 			 const char **host, time_t *idle, short *cnt)
 {
-  binding_t *bind;
+  struct binding_t *bind;
   const char *c, *nt;
-  clrec_t *netw;
+  struct clrec_t *netw;
 #define static register
   BINDING_TYPE_inspect_client ((*f));
 #undef static
@@ -1935,7 +1950,7 @@ static iftype_t _init_sig (INTERFACE *iface, ifsig_t sig)
 
 static void _bind_destroy (void *bind)
 {
-  binding_t *b = bind;
+  struct binding_t *b = bind;
 
   if (b)
     FREE (&b->key);
@@ -1952,8 +1967,8 @@ void init (void)
   int g = O_GENERATECONF;
   char new_path[PATH_MAX+FILENAME_LENGTH+2];
   char *msg;
-  bindtable_t *bt;
-  binding_t *b;
+  struct bindtable_t *bt;
+  struct binding_t *b;
   INTERFACE *stub;
 
 //
@@ -2132,6 +2147,7 @@ void init (void)
   Add_Binding ("dcc", "restart", U_MASTER, U_NONE, &dc_restart, NULL);
   Add_Binding ("dcc", "die", U_OWNER, U_NONE, &dc_die, NULL);
   Add_Binding ("dcc", "set", U_MASTER, U_MASTER, &dc_set, NULL);
+  Add_Binding ("dcc", "chelp", U_OWNER, U_NONE, &dc_chelp, NULL);
   Unset_Iface();				/* out of stub */
   stub->ift = I_DIED;
 }

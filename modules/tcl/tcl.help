@@ -7,7 +7,7 @@ module tcl
 :
 :This module provides support for scripts that are written in Tcl programming\
  language. It is mostly compatible with eggdrop but read %mtcl.ref%n manual\
- first, please.
+ first, please. Script file mask is "*.tcl".
 
 tcl
 :%* text

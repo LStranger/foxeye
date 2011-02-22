@@ -148,7 +148,7 @@ static ssize_t _write_pipe (char *buf, size_t *sw)
 }
 
 typedef struct {
-  peer_t s;
+  struct peer_t s;
   char buf[MESSAGEMAX];
 } console_peer;
 

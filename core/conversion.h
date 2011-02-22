@@ -22,12 +22,12 @@
 #define	_CONVERSION_H	1
 #ifdef HAVE_ICONV
 
-conversion_t *Get_Conversion (const char *) __attribute__((warn_unused_result));
-void Free_Conversion (conversion_t *);
-conversion_t *Clone_Conversion (conversion_t *) __attribute__((warn_unused_result));
-const char *Conversion_Charset (conversion_t *);
-size_t Do_Conversion (conversion_t *, char **, size_t, const char *, size_t);
-size_t Undo_Conversion (conversion_t *, char **, size_t, const char *, size_t);
+struct conversion_t *Get_Conversion (const char *) __attribute__((warn_unused_result));
+void Free_Conversion (struct conversion_t *);
+struct conversion_t *Clone_Conversion (struct conversion_t *) __attribute__((warn_unused_result));
+const char *Conversion_Charset (struct conversion_t *);
+size_t Do_Conversion (struct conversion_t *, char **, size_t, const char *, size_t);
+size_t Undo_Conversion (struct conversion_t *, char **, size_t, const char *, size_t);
 
 #endif
 #endif

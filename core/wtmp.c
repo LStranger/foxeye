@@ -52,7 +52,7 @@ static short _get_event (const char *name)
 
   if (!_Egot)					/* no events before */
   {
-    clrec_t *user = Lock_Clientrecord ("");
+    struct clrec_t *user = Lock_Clientrecord ("");
     register char *events;
     register size_t sz;
 
@@ -90,7 +90,7 @@ static short _get_event (const char *name)
 /* returns event number if success or -1 if fail */
 static short _new_event (const char *name)
 {
-  clrec_t *user;
+  struct clrec_t *user;
   short i;
 
   pthread_mutex_lock (&WtmpLock);
@@ -132,11 +132,11 @@ short Event (const char *ev)
  * or for only fuid == fid otherwise
  * returns: -1 if file does not exist, number of found entries otherwise
  */
-static int _scan_wtmp (const char *path, wtmp_t *wtmp, int wn,
+static int _scan_wtmp (const char *path, struct wtmp_t *wtmp, int wn,
 		lid_t myid[], size_t *idn, short event, lid_t fid, time_t upto)
 {
   int fd, x = 0;
-  wtmp_t buff[64];
+  struct wtmp_t buff[64];
   ssize_t i;
   size_t k, n;
   struct stat st;
@@ -166,11 +166,11 @@ static int _scan_wtmp (const char *path, wtmp_t *wtmp, int wn,
     }
     i = read (fd, buff, k);
     DBG ("_scan_wtmp: trying %zu bytes (%zu wtmp_t): read %d bytes from %d at %u",
-	 k, k / sizeof(wtmp_t), (int)i, fd, (unsigned int)n);
+	 k, k / sizeof(struct wtmp_t), (int)i, fd, (unsigned int)n);
     if (i <= 0)			/* premature stopped, read error? */
       break;
     lseek (fd, -i, SEEK_CUR);	/* back to start of the block */
-    i /= sizeof(wtmp_t);
+    i /= sizeof(struct wtmp_t);
     k = 0;
     for (; i > 0 && wn; )
     {
@@ -206,7 +206,7 @@ static int _scan_wtmp (const char *path, wtmp_t *wtmp, int wn,
 	    if (event == W_ANY || event == buff[i].event ||
 		(event == W_END && buff[i].event == W_DOWN))
 	    {
-	      memcpy (&wtmp[x], &buff[i], sizeof(wtmp_t));
+	      memcpy (&wtmp[x], &buff[i], sizeof(struct wtmp_t));
 	      x++;
 	      wn--;
 	    }
@@ -227,7 +227,7 @@ static int _scan_wtmp (const char *path, wtmp_t *wtmp, int wn,
 
 /* finds not more than (ws) last matched events not older than (upto)
    returns number of found events */
-int FindEvents (wtmp_t *wtmp, int ws, const char *lname, short event,
+int FindEvents (struct wtmp_t *wtmp, int ws, const char *lname, short event,
 		lid_t fid, time_t upto)
 {
   lid_t myid[MYIDS_MAX]; /* I hope it's enough */
@@ -275,9 +275,10 @@ int FindEvents (wtmp_t *wtmp, int ws, const char *lname, short event,
 
 /* finds last matched event
    returns 0 if no error and fills array wtmp */
-int FindEvent (wtmp_t *wtmp, const char *lname, short event, lid_t fid, time_t upto)
+int FindEvent (struct wtmp_t *wtmp, const char *lname, short event, lid_t fid,
+	       time_t upto)
 {
-  memset (wtmp, 0, sizeof(wtmp_t));	/* empty it before start */
+  memset (wtmp, 0, sizeof(struct wtmp_t));	/* empty it before start */
   if (FindEvents (wtmp, 1, lname, event, fid, upto))
     return 0;
   return (-1);
@@ -285,7 +286,7 @@ int FindEvent (wtmp_t *wtmp, const char *lname, short event, lid_t fid, time_t u
 
 void NewEvent (short event, lid_t from, lid_t lid, short count)
 {
-  wtmp_t wtmp;
+  struct wtmp_t wtmp;
   char wp[LONG_STRING];
   int fd;
 
@@ -310,7 +311,7 @@ void NewEvent (short event, lid_t from, lid_t lid, short count)
 
 void NewEvents (short event, lid_t from, size_t n, lid_t ids[], short counts[])
 {
-  wtmp_t wtmp;
+  struct wtmp_t wtmp;
   char wp[LONG_STRING];
   int fd;
 
@@ -350,8 +351,8 @@ void RotateWtmp (void)
   int fd, dst = -1;
   register ssize_t j;
   ssize_t k;
-  wtmp_t buff[64];
-  wtmp_t buff2[64];
+  struct wtmp_t buff[64];
+  struct wtmp_t buff2[64];
   uint32_t bits;
   uint32_t *GoneBitmap = NULL;
   time_t t;
@@ -371,7 +372,7 @@ void RotateWtmp (void)
   /* check if we need to rotate - check the first event of $Wtmp */
   if ((fd = open (wfp, O_RDONLY)) >= 0)
   {
-    if (read (fd, buff, sizeof(wtmp_t)) > 0) /* we have readable Wtmp */
+    if (read (fd, buff, sizeof(struct wtmp_t)) > 0) /* we have readable Wtmp */
     {
       struct tm tm, tm0;
       time_t t2;
@@ -401,7 +402,7 @@ void RotateWtmp (void)
     {
       while ((k = read (fd, buff, sizeof(buff))) > 0)
       {
-	k /= sizeof(wtmp_t);
+	k /= sizeof(struct wtmp_t);
 	for (j = 0; j < k; j++)
 	  GoneBitmap[buff[j].uid] |= (uint32_t)1 << (buff[j].event);
       }
@@ -429,16 +430,16 @@ void RotateWtmp (void)
     if (dst >= 0)
       while ((k = read (fd, buff, sizeof(buff))) > 0)
       {
-	k /= sizeof(wtmp_t);
+	k /= sizeof(struct wtmp_t);
 	for (j = 0; j < k; )
 	{
 	  bits = (uint32_t)1 << (buff[j].event);
 	  if (GoneBitmap[buff[j].uid] & bits)	/* event expired */
-	    memmove (&buff[j], &buff[j+1], (--k - j) * sizeof(wtmp_t));
+	    memmove (&buff[j], &buff[j+1], (--k - j) * sizeof(struct wtmp_t));
 	  else					/* still actual */
 	    j++;
 	}
-	if (k && write (dst, buff, k * sizeof(wtmp_t)) <= 0) /* error! */
+	if (k && write (dst, buff, k * sizeof(struct wtmp_t)) <= 0) /* error! */
 	  break;
       }
     if (fd >= 0) close (fd);
@@ -466,7 +467,7 @@ void RotateWtmp (void)
       {
 	while ((k = read (fd, buff, sizeof(buff))) > 0)
 	{
-	  k /= sizeof(wtmp_t);
+	  k /= sizeof(struct wtmp_t);
 	  for (j = 0; j < k; j++)
 	    GoneBitmap[buff[j].uid] &= ~((uint32_t)1 << (buff[j].event));
 	}
@@ -477,7 +478,7 @@ void RotateWtmp (void)
     {
       while ((k = read (fd, buff, sizeof(buff))) > 0)
       {
-	k /= sizeof(wtmp_t);
+	k /= sizeof(struct wtmp_t);
 	for (j = 0; j < k; j++)
 	  GoneBitmap[buff[j].uid] &= ~((uint32_t)1 << (buff[j].event));
       }
@@ -503,18 +504,18 @@ void RotateWtmp (void)
 	  if ((size_t)j <= sizeof(buff))
 	  {
 	    lseek (fd, 0, SEEK_SET);
-	    k = j / sizeof(wtmp_t);
+	    k = j / sizeof(struct wtmp_t);
 	  }
 	  else
 	  {
 	    lseek (fd, -(off_t)sizeof(buff), SEEK_CUR);
-	    k = sizeof(buff) / sizeof(wtmp_t);
+	    k = sizeof(buff) / sizeof(struct wtmp_t);
 	  }
-	  j = read (fd, buff, k * sizeof(wtmp_t));
+	  j = read (fd, buff, k * sizeof(struct wtmp_t));
 	  if (j <= 0)
 	    break;
 	  lseek (fd, -j, SEEK_CUR);
-	  j /= sizeof(wtmp_t);
+	  j /= sizeof(struct wtmp_t);
 	  k = 0;
 	  for (; j > 0; )
 	  {
@@ -522,11 +523,11 @@ void RotateWtmp (void)
 	    bits = (uint32_t)1 << (buff[j].event);
 	    if (GoneBitmap[buff[j].uid] & bits)
 	    {
-	      memcpy (&buff2[k++], &buff[j], sizeof(wtmp_t));
+	      memcpy (&buff2[k++], &buff[j], sizeof(struct wtmp_t));
 	      GoneBitmap[buff[j].uid] &= ~bits;
 	    }
 	  }
-	  if (k && write (dst, buff2, k * sizeof(wtmp_t) <= 0)) /* error! */
+	  if (k && write (dst, buff2, k * sizeof(struct wtmp_t) <= 0)) /* error! */
 	    break;
 	  j = lseek (fd, 0, SEEK_CUR);
 	}
@@ -548,25 +549,25 @@ void RotateWtmp (void)
 	if ((size_t)j <= sizeof(buff))
 	{
 	  lseek (dst, 0, SEEK_SET);
-	  k = j / sizeof(wtmp_t);
+	  k = j / sizeof(struct wtmp_t);
 	}
 	else
 	{
 	  lseek (dst, -(off_t)sizeof(buff), SEEK_CUR);
-	  k = sizeof(buff) / sizeof(wtmp_t);
+	  k = sizeof(buff) / sizeof(struct wtmp_t);
 	}
-	j = read (dst, buff, k * sizeof(wtmp_t));
+	j = read (dst, buff, k * sizeof(struct wtmp_t));
 	if (j <= 0) /* error! */
 	  break;
 	lseek (dst, -j, SEEK_CUR);
-	j /= sizeof(wtmp_t);
+	j /= sizeof(struct wtmp_t);
 	k = 0;
 	for (; j > 0; )
 	{
 	  j--;
-	  memcpy (&buff2[k++], &buff[j], sizeof(wtmp_t));
+	  memcpy (&buff2[k++], &buff[j], sizeof(struct wtmp_t));
 	}
-	if (write (fd, buff2, k * sizeof(wtmp_t)) <= 0)
+	if (write (fd, buff2, k * sizeof(struct wtmp_t)) <= 0)
 	  break;
       }
       close (fd);

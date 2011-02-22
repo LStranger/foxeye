@@ -244,21 +244,22 @@ size_t unistrcut (const char *line, size_t len, int maxchars)
   }
   else if (MB_CUR_MAX > 1)	/* another multibyte charset is in use */
   {
-    register size_t cursize;
-    register int chsize = maxchars;
-    register const char *ch = line;
-    const char *chmax = &line[len];
+    register ssize_t cursize;
+    int chsize = maxchars;
+    const char *ch = line;
+    size_t todo = len;
     mbstate_t ms;
 
-    while (chsize > 0 && ch < chmax && *ch)
+    while (chsize > 0 && todo > 0 && *ch)
     {
-      cursize = mbrlen(ch, chmax - ch, &ms);
+      cursize = mbrlen(ch, todo, &ms);
       if (cursize <= 0)			/* break at invalid char */
 	break;
-      if (ch + cursize > chmax)
-	break;
+//      if (cursize > todo)
+//	break;
       chsize--;
       ch += cursize;
+      todo -= cursize;
     }
     len = ch - line;
   }
@@ -566,6 +567,36 @@ static size_t _try_subst (char *buf, size_t bs, const char *text, size_t s)
   return n;
 }
 
+/*
+ * count real chars in line and correct its size in case of invalid chars
+ */
+static int _count_chars (const char *line, size_t *len)
+{
+  if (MB_CUR_MAX > 1)			/* multibyte charset is in use */
+  {
+    register ssize_t cursize;
+    int chars = 0;
+    const char *ch = line;
+    size_t todo = *len;
+    mbstate_t ms;
+
+    while (todo > 0 && *ch)
+    {
+      cursize = mbrlen(ch, todo, &ms);
+      if (cursize <= 0)			/* break at invalid char */
+	break;
+      chars++;
+      ch += cursize;
+      todo -= cursize;
+    }
+    if (todo)
+      *len -= todo;
+    return chars;
+  }
+  else					/* 8bit encoding - just return */
+    return *len;
+}
+
 typedef struct {
   const char *t;	/* pointer to template */
   size_t i;		/* real chars in line */
@@ -734,11 +765,12 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
 	    uname (&unbuf);
 	  n = _try_subst (c, nmax, unbuf.sysname, nn);
 	  break;
-	case 'I':
+	case 'I':			/* IPv4 in dot notation */
 	  inet_ntop (AF_INET, &p->ip, tbuf, sizeof(tbuf));
 	  break;
-	case 'P':
-	  snprintf (tbuf, sizeof(tbuf), "%hu", p->port);
+	case 'P':			/* port number, zero is "" */
+	  snprintf (tbuf, sizeof(tbuf), "%.0hu", p->port);
+	  n = -1;			/* in case of zero mark as empty */
 	  break;
 	case 't':			/* current time */
 	  n = _try_subst (c, nmax, TimeString, nn);
@@ -835,8 +867,12 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
       {
 	if (n > 0)			/* if something was added */
 	{
+	  register int chars;
+
+	  chars = _count_chars (c, &n);
 	  c += n;
-	  p->i += n;
+	  p->i += chars;
+	  n = chars;
 	}
 	else				/* if no space available or empty */
 	  n = 0;

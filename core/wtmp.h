@@ -32,20 +32,20 @@
 #define W_DEL 4		/* delete uid */
 #define W_USER 5	/* start of user defined events */
 
-typedef struct
+struct wtmp_t
 {
   lid_t uid;
   lid_t fuid;		/* from (where) uid */
   short count;		/* event specific data */
   short event;
   uint32_t time;	/* to have struct of fixed size */
-} wtmp_t;
+};
 
 short Event (const char *)
 		__attribute__((warn_unused_result));	/* user event name -> event */
-int FindEvent (wtmp_t *, const char *, short, lid_t, time_t)
+int FindEvent (struct wtmp_t *, const char *, short, lid_t, time_t)
 		__attribute__((warn_unused_result));	/* Lname, event, from, upto */
-int FindEvents (wtmp_t *, int, const char *, short, lid_t, time_t)
+int FindEvents (struct wtmp_t *, int, const char *, short, lid_t, time_t)
 		__attribute__((warn_unused_result));	/* size, ... */
 void NewEvent (short, lid_t, lid_t, short);		/* event, from, lid, count */
 void NewEvents (short, lid_t, size_t, lid_t[], short[]);

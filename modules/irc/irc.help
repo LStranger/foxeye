@@ -10,7 +10,7 @@ module irc
  handling PING-PONG command pair; handling IRC clients interface.
  
  Format of hosts (servers) for network record:
-   [:password@]domain.name[/port][%flags]
+   [:password@]domain.name[/port][%%flags]
  where flags are connection-specific mandatory flags for creating connection\
  chain (see technical documentation for details).
  

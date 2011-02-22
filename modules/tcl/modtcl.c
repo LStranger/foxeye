@@ -163,10 +163,10 @@ static int _tcl_call_function (ClientData func, Tcl_Interp *tcl, int argc, TCLAR
   char string[LONG_STRING];
   char *c, *cs = string;
   size_t s, ss = sizeof(string) - 1;
-  int i = 0;
+  int i = 1;				/* skip function name */
   int (*f)(const char *) = func;
 
-  while (argc && ss)			/* make a string from argv[] */
+  while (--argc && ss)			/* make a string from argv[] */
   {
     c = ArgString (argv[i++], &s);
     if (cs != string)
@@ -193,6 +193,7 @@ static int _tcl_call_function (ClientData func, Tcl_Interp *tcl, int argc, TCLAR
     cs += s;
     ss -= s;
   }
+  *cs = '\0';				/* terminate string in buffer */
   BindResult = NULL;			/* cleanup before call */
   i = f (string);			/* call function */
   if (i == 0)
@@ -290,8 +291,8 @@ static int _tcl_bind (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS argv[])
   c = ArgString (argv[3], &s);		/* it's key/mask now */
   if (argc == 3) /* if no command name then find and return binding name */
   {
-    bindtable_t *bt = Add_Bindtable (tbt->name, B_UNDEF);
-    binding_t *bind = Check_Bindtable (bt, c, gf, cf | U_EQUAL, NULL);
+    struct bindtable_t *bt = Add_Bindtable (tbt->name, B_UNDEF);
+    struct binding_t *bind = Check_Bindtable (bt, c, gf, cf | U_EQUAL, NULL);
 
     if (bind && bind->name && bind->func == &_tcl_interface)
       ResultString (tcl, bind->name, strlen (bind->name));
@@ -843,7 +844,7 @@ static int script_tcl (char *filename)
 }
 
 BINDING_TYPE_dcc(dc_tcl);
-static int dc_tcl (peer_t *from, char *args)
+static int dc_tcl (struct peer_t *from, char *args)
 {
   char *c;
 
@@ -941,7 +942,7 @@ static int _tcl_interface (char *fname, int argc, const char *argv[])
  *  S_REPORT - out state info to log,
  *  S_REG - register everything.
  */
-static int module_signal (INTERFACE *iface, ifsig_t sig)
+static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
 {
   tcl_bindtable *tbt;
   tcl_timer *tt, **ptt;

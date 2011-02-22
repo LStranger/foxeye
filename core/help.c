@@ -259,7 +259,7 @@ void Delete_Help (const char *name)
 	    NONULL(((HELPGR *)t->helpgr)->key));
     FREE (&t);
   }
-  Add_Request (I_LOG, "*", F_BOOT, "Deleted helpfile %s", name);
+  Add_Request (I_LOG, "*", F_BOOT, "Unloaded helpfile %s", name);
   /* free memory */
   FREE (&h->hfile);
   FREE (&h->name);
@@ -332,7 +332,7 @@ static int _help_one_topic (char *text, INTERFACE *iface, char *prefix,
 }
 
 static int _help_all_topics (HELPGR *what, INTERFACE *iface, userflag gf,
-			     userflag cf, bindtable_t *table, int mode)
+			     userflag cf, struct bindtable_t *table, int mode)
 {
   const char *key;
   LEAF *leaf = NULL;
@@ -379,7 +379,7 @@ static int _help_all_topics (HELPGR *what, INTERFACE *iface, userflag gf,
 }
 
 int Get_Help (const char *fst, const char *sec, INTERFACE *iface, userflag gf,
-	      userflag cf, bindtable_t *table, char *prefix, int mode)
+	      userflag cf, struct bindtable_t *table, char *prefix, int mode)
 {
   const char *topic = NONULL(sec);	/* default topic=fst{sec} */
   HELPGR *h = Help;

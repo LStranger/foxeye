@@ -51,3 +51,12 @@
 #00052	04.01.2011  09.01.2011	command 'logfile' doesn't save flag 'p' to config
 #00053	09.01.2011  10.01.2011	Key for channel XXXXX was changed! (the same!)
 #00054	09.01.2011  10.01.2011	own join date is in wrong locale
+#00055	12.01.2011  13.01.2011	printl() counts bytes not chars for %Nx macros
+#00056	13.01.2011  13.01.2011	.tcl module -l -- SIGSEGV
+#00057	13.01.2011		SIGSEGV after .restart (by Mercurius)
+#00058	13.01.2011  13.01.2011	.module -l -- does not work
+#00059	13.01.2011		'-r ~/xxx' in logfile command does not expand
+#00060	14.01.2011  14.01.2011	html log: http://a.html^B : ^B ignored
+#00061	14.01.2011  14.01.2011	html log: http://there/Ужс.html : only http://there/
+#00062	21.01.2011  21.01.2011	channel flag U_HALFOP doesn't work
+#00063	19.02.2011  22.02.2011	mode lock doesn't work, channel left modeless

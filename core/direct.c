@@ -42,23 +42,25 @@ struct peer_priv
   INTERFACE *log;			/* interface for logs */
   INTERFACE *alias;			/* interface for botnet channel */
   char *netname;			/* service name (for "ss-*") */
-  bindtable_t *ssbt;			/* network-specitic bindtable */
+  struct bindtable_t *ssbt;		/* network-specitic bindtable */
 };
 
-static bindtable_t *BT_Crypt;
-static bindtable_t *BT_Dcc;
-static bindtable_t *BT_Chat;
-static bindtable_t *BT_Chatact;
-static bindtable_t *BT_Outfilter;
-static bindtable_t *BT_Infilter;
-static bindtable_t *BT_Login;
-static bindtable_t *BT_Chaton;
-static bindtable_t *BT_Chatoff;
-static bindtable_t *BT_Chatjoin;
-static bindtable_t *BT_Chatpart;
-static bindtable_t *BT_Connect;
+static struct bindtable_t *BT_Crypt;
+static struct bindtable_t *BT_Dcc;
+static struct bindtable_t *BT_Chat;
+static struct bindtable_t *BT_Chatact;
+static struct bindtable_t *BT_Outfilter;
+static struct bindtable_t *BT_Infilter;
+static struct bindtable_t *BT_Login;
+static struct bindtable_t *BT_Chaton;
+static struct bindtable_t *BT_Chatoff;
+static struct bindtable_t *BT_Chatjoin;
+static struct bindtable_t *BT_Chatpart;
+static struct bindtable_t *BT_Connect;
 
 #define DccIdx(a) ((int)(a)->socket + 1)
+
+typedef struct peer_t peer_t; /* for better usability */
 
 /*
  * Direct session management.
@@ -79,7 +81,7 @@ static char _userdccflag (userflag uf)
 
 static void _chat_join (peer_t *dcc)
 {
-  register binding_t *bind = NULL;
+  register struct binding_t *bind = NULL;
   char *on_bot;
   char *name;
   char *h;
@@ -121,7 +123,7 @@ static void _chat_join (peer_t *dcc)
 
 static void _chat_part (peer_t *dcc, char *quit)
 {
-  register binding_t *bind = NULL;
+  register struct binding_t *bind = NULL;
   char *on_bot;
   char ch[16];
   char *name = NULL;
@@ -171,7 +173,7 @@ static void setconsole (peer_t *dcc)
   int botch;
   char chan[128];
   userflag cf;
-  clrec_t *user;
+  struct clrec_t *user;
   char *line;
 
   /* return if arguments are invalid */
@@ -302,7 +304,7 @@ static short *flood_dcc;
 /* if s==0 then quiet termination (shutdown sequence) */
 static void _died_iface (INTERFACE *iface, char *buf, size_t s)
 {
-  binding_t *bind = NULL;
+  struct binding_t *bind = NULL;
   peer_t *dcc = iface->data;
   userflag cf = 0;
 
@@ -347,10 +349,10 @@ static void _died_iface (INTERFACE *iface, char *buf, size_t s)
 
 /* it's really static but it's used by console too :( */
 void Dcc_Parse (peer_t *dcc, char *name, char *cmd, userflag gf, userflag cf,
-		int dccidx, int botch, bindtable_t *ssbt, char *service)
+		int dccidx, int botch, struct bindtable_t *ssbt, char *service)
 {
   char *arg;
-  binding_t *bind;
+  struct binding_t *bind;
   INTERFACE *sif;
   int res;
 
@@ -417,7 +419,7 @@ static int dcc_request (INTERFACE *iface, REQUEST *req)
 {
   peer_t *dcc = iface->data;
   ssize_t sw;
-  binding_t *bind = NULL;
+  struct binding_t *bind = NULL;
   userflag cf = 0;
   char *cmd;
   char buf[MESSAGEMAX+LNAMELEN+4];	/* increased for possible prifix */
@@ -597,10 +599,10 @@ static iftype_t dcc_signal (INTERFACE *iface, ifsig_t signal)
       switch (dcc->state)
       {
         case P_LOGIN:
-	  /* %@ - hostname, %L and %N - Lname, %* - state */
+	  /* %@ - hostname, %L and %N - Lname, %P - socket, %* - state */
 	  printl (buf, sizeof(buf), ReportFormat, 0,
 		  dcc->iface->name, SocketDomain (dcc->socket, NULL),
-		  dcc->iface->name, NULL, (uint32_t)DccIdx(dcc), 0,
+		  dcc->iface->name, NULL, (uint32_t)0, dcc->socket + 1,
 		  0, "logging in");
 	  break;
 	default:
@@ -617,9 +619,9 @@ static iftype_t dcc_signal (INTERFACE *iface, ifsig_t signal)
 	  c[0] = _userdccflag (dcc->uf);
 	  strfcpy (&c[1], dcc->iface->name, sizeof(c)-1);
 	  /* %@ - hostname, %L and %N - Lname, %# - start time,
-	     %I - socket number, %P - port, %- - idle time, %* - state */
+	     %P - socket number, %- - idle time, %* - state */
 	  printl (buf, sizeof(buf), ReportFormat, 0,
-		  c, dom, &c[1], dcc->start, (uint32_t)DccIdx(dcc), p,
+		  c, dom, &c[1], dcc->start, (uint32_t)0, dcc->socket + 1,
 		  idle, (dcc->iface->ift & I_LOCKED) ? "chat off" : desc);
 	  FREE (&desc);
       }
@@ -671,8 +673,9 @@ static iftype_t dcc_signal (INTERFACE *iface, ifsig_t signal)
 int Check_Passwd (const char *pass, char *encrypted)
 {
   char *upass = NULL;
-  binding_t *bind = Check_Bindtable (BT_Crypt, encrypted, U_ALL, U_ANYCH, NULL);
+  struct binding_t *bind;
 
+  bind = Check_Bindtable (BT_Crypt, encrypted, U_ALL, U_ANYCH, NULL);
   if (bind && !bind->name)
   {
     upass = encrypted;
@@ -690,8 +693,9 @@ struct connchain_buffer
   size_t tosend;
 };
 
-static ssize_t _ccfilter_y_send (connchain_i **ch, idx_t id, const char *str,
-				 size_t *sz, connchain_buffer **b)
+static ssize_t _ccfilter_y_send(struct connchain_i **ch, idx_t id,
+				const char *str, size_t *sz,
+				struct connchain_buffer **b)
 {
   ssize_t i = E_NOSOCKET, ii = 0, left;
   char *c;
@@ -817,8 +821,8 @@ static size_t _do_rfc854_input (char *str, size_t sz, char *tosend, size_t *s)
   return done;
 }
 
-static ssize_t _ccfilter_y_recv (connchain_i **ch, idx_t id, char *str,
-				 size_t sz, connchain_buffer **b)
+static ssize_t _ccfilter_y_recv (struct connchain_i **ch, idx_t id, char *str,
+				 size_t sz, struct connchain_buffer **b)
 {
   ssize_t sr, sw;
 
@@ -840,16 +844,16 @@ static ssize_t _ccfilter_y_recv (connchain_i **ch, idx_t id, char *str,
 
 BINDING_TYPE_connchain_grow(_ccfilter_y_init);
 static int _ccfilter_y_init (peer_t *peer,
-	ssize_t (**recv)(connchain_i **, idx_t, char *, size_t, connchain_buffer **),
-	ssize_t (**send)(connchain_i **, idx_t, const char *, size_t *, connchain_buffer **),
-	connchain_buffer **b)
+	ssize_t (**recv)(struct connchain_i **, idx_t, char *, size_t, struct connchain_buffer **),
+	ssize_t (**send)(struct connchain_i **, idx_t, const char *, size_t *, struct connchain_buffer **),
+	struct connchain_buffer **b)
 {
   *recv = &_ccfilter_y_recv;
   *send = &_ccfilter_y_send;
   if (b == NULL)
     return 1;
   /* we will use buffer as marker, yes */
-  *b = safe_malloc (sizeof(connchain_buffer));
+  *b = safe_malloc (sizeof(struct connchain_buffer));
   (*b)->tosend = 0;
   return 1;
 }
@@ -859,11 +863,12 @@ static int _ccfilter_y_init (peer_t *peer,
  * Filter 'b' - eggdrop style filter bindtables handler. Local only.
  *   Note: it's not async-safe on send!
  */
-static ssize_t _ccfilter_b_send (connchain_i **ch, idx_t id, const char *str,
-				 size_t *sz, connchain_buffer **b)
+static ssize_t _ccfilter_b_send(struct connchain_i **ch, idx_t id,
+				const char *str, size_t *sz,
+				struct connchain_buffer **b)
 {
   ssize_t i = 0, left;
-  binding_t *bind;
+  struct binding_t *bind;
   char buf[MB_LEN_MAX*MESSAGEMAX];
 
   if (*b == NULL)			/* already terminated */
@@ -906,11 +911,11 @@ static ssize_t _ccfilter_b_send (connchain_i **ch, idx_t id, const char *str,
   return (i < 0) ? i : left;
 }
 
-static ssize_t _ccfilter_b_recv (connchain_i **ch, idx_t id, char *str,
-				 size_t sz, connchain_buffer **b)
+static ssize_t _ccfilter_b_recv (struct connchain_i **ch, idx_t id, char *str,
+				 size_t sz, struct connchain_buffer **b)
 {
   ssize_t sr;
-  binding_t *bind;
+  struct binding_t *bind;
 
   if (str == NULL)			/* they killed me */
     return E_NOSOCKET;
@@ -941,9 +946,9 @@ static ssize_t _ccfilter_b_recv (connchain_i **ch, idx_t id, char *str,
 
 BINDING_TYPE_connchain_grow(_ccfilter_b_init);
 static int _ccfilter_b_init (peer_t *peer,
-	ssize_t (**recv) (connchain_i **, idx_t, char *, size_t, connchain_buffer **),
-	ssize_t (**send) (connchain_i **, idx_t, const char *, size_t *, connchain_buffer **),
-	connchain_buffer **b)
+	ssize_t (**recv) (struct connchain_i **, idx_t, char *, size_t, struct connchain_buffer **),
+	ssize_t (**send) (struct connchain_i **, idx_t, const char *, size_t *, struct connchain_buffer **),
+	struct connchain_buffer **b)
 {
   if (!(IS_SESSION(peer)))		/* local only! */
     return 0;
@@ -970,7 +975,7 @@ static void get_chat (char *name, char *ident, char *host, peer_t *dcc,
   ssize_t sz, sp, pp;
   time_t t;
   int telnet = 0;
-  clrec_t *user;
+  struct clrec_t *user;
 
   /* turn off echo if telnet and check password */
   t = time(NULL) + dcc_timeout;
@@ -1039,7 +1044,7 @@ static void get_chat (char *name, char *ident, char *host, peer_t *dcc,
     return;
   }
   /* now it logged in so enable echo, create session and interface */
-  dcc->priv = safe_malloc (sizeof(peer_priv));
+  dcc->priv = safe_malloc (sizeof(struct peer_priv));
   dcc->priv->floodcnt = 0;
   dcc->priv->netname = NULL;
   dcc->priv->ssbt = NULL;
@@ -1084,12 +1089,12 @@ static char *session_handler_main (char *ident, char *host, peer_t *dcc,
 				   int botsonly, char buf[SHORT_STRING],
 				   char client[LNAMELEN+1])
 {
-  binding_t *bind;
+  struct binding_t *bind;
   size_t sz, sp;
   ssize_t get = 0;
   time_t t;
   char *msg;
-  clrec_t *clr;
+  struct clrec_t *clr;
 
   /* we have no client name at this point */  
   dcc->uf = Match_Client (host, ident, NULL);	/* check ident@domain */
@@ -1229,11 +1234,11 @@ static iftype_t port_signal (INTERFACE *iface, ifsig_t signal)
   switch (signal)
   {
     case S_REPORT:
-      /* %@ - hostname, %L - name, %I - socket num, %P - port, %* - state */
+      /* %@ - hostname, %L - name, %P - idx, %* - state */
       snprintf (msg, sizeof(msg), _("listening on port %hu"), acptr->lport);
       printl (buf, sizeof(buf), ReportFormat, 0,
 	      NULL, SocketDomain (acptr->socket, NULL), iface->name, NULL,
-	      (uint32_t)DccIdx(acptr), acptr->lport, 0, msg);
+	      (uint32_t)0, acptr->socket + 1, 0, msg);
       tmp = Set_Iface (iface);
       New_Request (tmp, F_REPORT, "%s", buf);
       Unset_Iface();
@@ -1599,7 +1604,7 @@ static int dc_away (peer_t *dcc, char *args)
 BINDING_TYPE_dcc (dc_me);
 static int dc_me (peer_t *dcc, char *args)
 {
-  binding_t *bind = NULL;
+  struct binding_t *bind = NULL;
   char ch[16];
 
   if (!args)
@@ -1661,7 +1666,7 @@ static int dc_boot (peer_t *dcc, char *args)
 }
 
 static void
-_set_console_parms (peer_t *dcc, clrec_t *user, char *fl, char *chan, int botch)
+_set_console_parms (peer_t *dcc, struct clrec_t *user, char *fl, char *chan, int botch)
 {
   char cons[SHORT_STRING];
 
@@ -1683,9 +1688,9 @@ _set_console_parms (peer_t *dcc, clrec_t *user, char *fl, char *chan, int botch)
 BINDING_TYPE_dcc (dc_charset);
 static int dc_charset (peer_t *dcc, char *args)
 {
-  conversion_t *conv;
+  struct conversion_t *conv;
   const char *charset;
-  clrec_t *u;
+  struct clrec_t *u;
 
   if (args)
   {
@@ -1716,7 +1721,7 @@ static int dc_chcharset (peer_t *dcc, char *args)
 {
   const char *charset;
   char *c;
-  clrec_t *u;
+  struct clrec_t *u;
 
   if (!args)				/* has to have at least 1 arg */
     return 0;
@@ -1746,7 +1751,7 @@ static int dc_chat (peer_t *dcc, char *args)
   char consfl[64];
   char chan[128] = "";
   int botch = atoi (NONULL(args));
-  clrec_t *user;
+  struct clrec_t *user;
 
   if (!IS_SESSION(dcc))			/* aliens can have only channel 0 */
     return 0;
@@ -1771,7 +1776,7 @@ static void _console_fl (peer_t *dcc, char *plus, char *minus, char *ch)
   char *cons = flags;
   register char *fl = flags;
   char chan[128];			/* channel from config */
-  clrec_t *user;
+  struct clrec_t *user;
   register int it = 0;
 
   minus = NONULL(minus);
@@ -2046,7 +2051,7 @@ static int dc_help (peer_t *dcc, char *args)
 {
   char *sec;
   char *fst;
-  bindtable_t *ssbt;
+  struct bindtable_t *ssbt;
   userflag df;
 
   if (!IS_SESSION(dcc))
@@ -2210,9 +2215,9 @@ static int dc_connect (peer_t *dcc, char *args)
 {
   char netname[IFNAMEMAX+1];
   char *snet;
-  clrec_t *netw;
+  struct clrec_t *netw;
   char *nt;
-  binding_t *bind;
+  struct binding_t *bind;
   userflag uf = 0;
 
   /* find the network and it type as @net->info */

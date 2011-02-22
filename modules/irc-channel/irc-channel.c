@@ -45,16 +45,16 @@ static NODE *IRCNetworks = NULL;
 static lid_t ChLids[SAVESIZE];
 static short ChCounts[SAVESIZE];
 
-static bindtable_t *BT_IrcJoin;
-static bindtable_t *BT_IrcKick;
-static bindtable_t *BT_IrcMChg;
-static bindtable_t *BT_IrcNJoin;
-static bindtable_t *BT_IrcNSplit;
-static bindtable_t *BT_IrcNChg;
-static bindtable_t *BT_IrcPart;
-static bindtable_t *BT_IrcSignoff;
-static bindtable_t *BT_IrcTopic;
-static bindtable_t *BT_Keychange;
+static struct bindtable_t *BT_IrcJoin;
+static struct bindtable_t *BT_IrcKick;
+static struct bindtable_t *BT_IrcMChg;
+static struct bindtable_t *BT_IrcNJoin;
+static struct bindtable_t *BT_IrcNSplit;
+static struct bindtable_t *BT_IrcNChg;
+static struct bindtable_t *BT_IrcPart;
+static struct bindtable_t *BT_IrcSignoff;
+static struct bindtable_t *BT_IrcTopic;
+static struct bindtable_t *BT_Keychange;
 
 static long int ircch_netsplit_log = 3;		/* collect for 3s */
 static long int ircch_netjoin_log = 20;		/* collect for 20s */
@@ -210,7 +210,7 @@ static void _ircch_del_lname (NICK *nick)
 
 static void _ircch_recheck_features (IRC *net)
 {
-  clrec_t *clr;
+  struct clrec_t *clr;
   char *c;
 
   clr = Lock_Clientrecord (&net->name[1]);
@@ -333,7 +333,7 @@ inline static void _ircch_format_chname (IRC *net, const char *chname,
 static CHANNEL *_ircch_get_channel0 (IRC *net, const char *ch, const char *real)
 {
   CHANNEL *chan;
-  clrec_t *u;
+  struct clrec_t *u;
 
   dprint (4, "_ircch_get_channel: trying%s %s", real ? "/creating" : "", ch);
   chan = Find_Key (net->channels, ch);
@@ -449,7 +449,7 @@ static char *_ircch_get_lname (char *nuh, userflag *sf, userflag *cf, lid_t *id,
 			       char *net, char *chan, char **info, NICK *nn)
 {
   char *c;
-  clrec_t *u;
+  struct clrec_t *u;
 
   if (nn && (nn->umode & A_REGISTERED))		/* we know lname aleady! */
   {
@@ -655,7 +655,7 @@ static void _ircch_recheck_link (IRC *net, LINK *link, char *lname,
 				 userflag uf, userflag cf, char *info, lid_t id)
 {
   LINK *nl;
-  wtmp_t wtmp;
+  struct wtmp_t wtmp;
 
   _ircch_update_link (link->nick, link, lname, id);
   if (!(link->mode & (A_ISON | A_ME)))			/* just joined */
@@ -701,7 +701,7 @@ NICK *ircch_retry_nick (IRC *net, const char *lcn)
 static void _ircch_quit_bindings (char *lname, userflag uf, userflag cf,
 				  char *who, char *chname, char *msg)
 {
-  binding_t *bind;
+  struct binding_t *bind;
 
   /* run script bindings */
   for (bind = NULL; (bind = Check_Bindtable (BT_IrcSignoff, who, uf, cf, bind)); )
@@ -719,7 +719,7 @@ static void _ircch_joined (LINK *link, char *nuh, char *atuh, userflag uf,
 			   userflag cf, char *chan)
 {
   char *c, *uh;
-  binding_t *bind;
+  struct binding_t *bind;
   int i;
   char str[MESSAGEMAX];
 
@@ -905,8 +905,8 @@ static void _ircch_netjoin_report (IRC *net, netsplit *split, CHANNEL *chan)
   LINK *link;
   char *c;
   size_t s = 0, nl;
-  clrec_t *u;
-  binding_t *bind;
+  struct clrec_t *u;
+  struct binding_t *bind;
   userflag uf, cf;
   char m;
   char str[MESSAGEMAX];
@@ -1369,7 +1369,7 @@ static void _ircch_net_got_activity (IRC *net, LINK *link)
 static void _ircch_join_channel (IRC *net, char *chname)
 {
   char *key, *c;
-  clrec_t *clr;
+  struct clrec_t *clr;
 
   clr = Lock_Clientrecord (chname);
   if (clr)
@@ -1419,7 +1419,7 @@ static iftype_t _ircch_sig (INTERFACE *iface, ifsig_t sig)
   IRC *net;
   LINK *link;
   INTERFACE *tmp;
-  register clrec_t *u;
+  register struct clrec_t *u;
 
   switch (sig)
   {
@@ -1520,10 +1520,18 @@ static int _ircch_req (INTERFACE *iface, REQUEST *req)
   IRC *net;
   char chname[IFNAMEMAX+1];
   register size_t s;
+  register LINK *n;
 
   net = _ircch_get_network2 (strrchr (iface->name, '@'));
   if (net)	/* we do polling timeouts this way */
     _ircch_netsplit_timeout (net);
+  if ((n = ((CHANNEL *)iface->data)->nicks) == NULL ||
+      (n->prevnick == NULL && (Get_Clientflags(iface->name, NULL) & U_HALFOP)))
+  {
+    dprint(3, "irc-channel:_ircch_req: do CYCLE for %s", iface->name);
+    New_Request(net->neti, 0, "PART %s :CYCLE", ((CHANNEL *)iface->data)->real);
+    return REQ_OK; /* ignoring request since we PARTing channel */
+  }
   if (!req)
     return REQ_OK;
   /* we have to send to real one name always to prevent errors */
@@ -1819,7 +1827,7 @@ static int irc_kick (INTERFACE *iface, char *svname, char *me, unsigned char *pr
   CHANNEL *ch;
   NICK *nt;
   char *lname, *c, *r;
-  binding_t *bind;
+  struct binding_t *bind;
   userflag uf, cf;
   netsplit *split;
   lid_t id;
@@ -1898,7 +1906,7 @@ static int irc_kick (INTERFACE *iface, char *svname, char *me, unsigned char *pr
       (Get_Clientflags (tlink->nick->lname, &net->neti->name[1]) & U_TOREVENGE ||
        Get_Clientflags (tlink->nick->lname, ch->chi->name) & U_TOREVENGE))
   {
-    clrec_t *u;
+    struct clrec_t *u;
     LINK *lme;
 
     /* set U_DEOP on channel record of link->nick */
@@ -2111,7 +2119,7 @@ static int irc_part (INTERFACE *iface, char *svname, char *me, unsigned char *pr
   NICK *nt;
   char *lname, *c, *r;
   userflag uf, cf;
-  binding_t *bind;
+  struct binding_t *bind;
   netsplit *split;
   lid_t id;
 #if HOSTMASKLEN >= MESSAGEMAX
@@ -2217,7 +2225,7 @@ static int irc_topic (INTERFACE *iface, char *svname, char *me, unsigned char *p
   size_t s;
   userflag uf, cf;
   LINK *link;
-  binding_t *bind;
+  struct binding_t *bind;
   lid_t id;
 #if HOSTMASKLEN >= MESSAGEMAX
   char str[HOSTMASKLEN+1];
@@ -2386,6 +2394,7 @@ static int irc_rpl_endofwho (INTERFACE *iface, char *svname, char *me,
     Set_Iface (ch->chi);
     Send_Signal (I_MODULE, "ui", S_FLUSH); /* notify the UI */
     Unset_Iface();
+    ircch_recheck_channel_modes(net, ch);
   }
   return 0;
 }
@@ -2986,7 +2995,7 @@ static void ircch_nick (INTERFACE *iface, char *lname, unsigned char *who,
   NICK *nick, *nnick;
   LINK *link;
   userflag uf, cf = 0;
-  binding_t *bind;
+  struct binding_t *bind;
   char *c, *cc;
   lid_t id;
 #if HOSTMASKLEN >= MESSAGEMAX
@@ -3121,7 +3130,7 @@ static void ircch_netsplit (INTERFACE *iface, char *lname, unsigned char *who,
   IRC *net;
   NICK *nick;
   LINK *link;
-  binding_t *bind;
+  struct binding_t *bind;
   userflag uf, cf;
 
   if (!(net = _ircch_get_network2 (iface->name)) ||
@@ -3461,7 +3470,7 @@ BINDING_TYPE_irc_priv_msg_ctcp (ctcp_identify);
 static int ctcp_identify (INTERFACE *client, unsigned char *who, char *lname,
 			  char *lcnick, char *msg)
 {
-  clrec_t *clr;
+  struct clrec_t *clr;
   IRC *net;
   NICK *nick;
   char *epass, *ln;

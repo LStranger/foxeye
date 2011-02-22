@@ -40,11 +40,11 @@ struct conversion_t
 };
 
 static pthread_mutex_t ConvLock = PTHREAD_MUTEX_INITIALIZER;
-static conversion_t *Conversions = NULL; /* first is internal */
+static struct conversion_t *Conversions = NULL; /* first is internal */
 
-static conversion_t *_get_conversion (const char *charset)
+static struct conversion_t *_get_conversion (const char *charset)
 {
-  conversion_t *conv, *last = NULL;
+  struct conversion_t *conv, *last = NULL;
 
   if (charset == NULL) /* for me assume it's internal charset */
     conv = Conversions;
@@ -57,7 +57,7 @@ static conversion_t *_get_conversion (const char *charset)
     }
   if (conv)
     return conv;
-  conv = safe_malloc (sizeof(conversion_t));
+  conv = safe_malloc (sizeof(struct conversion_t));
   conv->next = NULL;
   conv->prev = last;
   if (conv->prev)	/* it's not first */
@@ -76,9 +76,9 @@ static conversion_t *_get_conversion (const char *charset)
  *   - charset isn't handled
  *   - charset is internal
  */
-conversion_t *Get_Conversion (const char *charset)
+struct conversion_t *Get_Conversion (const char *charset)
 {
-  conversion_t *conv;
+  struct conversion_t *conv;
   iconv_t cd;
   int inuse;
   char name[64]; /* assume charset's name is at most 45 char long */
@@ -126,7 +126,7 @@ conversion_t *Get_Conversion (const char *charset)
  * frees conversion structure if it's used nowhere else
  * returns nothing
  */
-void Free_Conversion (conversion_t *conv)
+void Free_Conversion (struct conversion_t *conv)
 {
   if (conv == NULL)
     return;
@@ -157,7 +157,7 @@ void Free_Conversion (conversion_t *conv)
   pthread_mutex_unlock (&ConvLock);
 }
 
-conversion_t *Clone_Conversion (conversion_t *conv)
+struct conversion_t *Clone_Conversion (struct conversion_t *conv)
 {
   pthread_mutex_lock (&ConvLock);
   if (conv != NULL)
@@ -169,7 +169,7 @@ conversion_t *Clone_Conversion (conversion_t *conv)
   return conv;
 }
 
-const char *Conversion_Charset (conversion_t *conv)
+const char *Conversion_Charset (struct conversion_t *conv)
 {
   return conv ? conv->charset : Conversions->charset;
 }
@@ -221,14 +221,14 @@ static size_t _do_conversion (iconv_t cd, char **buf, size_t sz,
   return (sbuf - *buf);
 }
 
-size_t Do_Conversion (conversion_t *conv, char **buf, size_t bufsize,
+size_t Do_Conversion (struct conversion_t *conv, char **buf, size_t bufsize,
 		      const char *str, size_t len)
 {
   return _do_conversion (conv ? conv->cdin : (iconv_t)(-1), buf, bufsize,
 			 (const unsigned char *)str, len);
 }
 
-size_t Undo_Conversion (conversion_t *conv, char **buf, size_t bufsize,
+size_t Undo_Conversion (struct conversion_t *conv, char **buf, size_t bufsize,
 			const char *str, size_t len)
 {
   return _do_conversion (conv ? conv->cdout : (iconv_t)(-1), buf, bufsize,
@@ -237,7 +237,7 @@ size_t Undo_Conversion (conversion_t *conv, char **buf, size_t bufsize,
 
 void Status_Encodings (INTERFACE *iface)
 {
-  conversion_t *conv;
+  struct conversion_t *conv;
 
   /* do all cycle with lock set since New_Request() should never lock it */
   pthread_mutex_unlock (&ConvLock);

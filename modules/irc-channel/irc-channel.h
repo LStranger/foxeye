@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2005-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -132,9 +132,11 @@ LIST *ircch_find_mask (LIST *, char *);
 void ircch_remove_mask (LIST **, LIST *);
 
 void ircch_recheck_modes (IRC *, LINK *, userflag, userflag, char *, int);
+void ircch_recheck_channel_modes (IRC *, CHANNEL *);
 	/* bindtables: irc-modechg, keychange */
-int ircch_parse_modeline (IRC *, CHANNEL *, LINK *, char *, userflag, \
-				bindtable_t *, bindtable_t *, int, char **);
+int ircch_parse_modeline (IRC *, CHANNEL *, LINK *, char *, userflag,
+				struct bindtable_t *, struct bindtable_t *,
+				int, char **);
 void ircch_parse_configmodeline (IRC *, CHANNEL *, char *);
 void ircch_enforcer (IRC *, CHANNEL *);
 void ircch_expire (IRC *, CHANNEL *);

@@ -32,15 +32,23 @@
 # define RTLD_NOW DL_LAZY
 #endif
 
-static bindtable_t *BT_Modadd = NULL;
-static bindtable_t *BT_Moddel = NULL;
+static struct bindtable_t *BT_Modadd = NULL;
+static struct bindtable_t *BT_Moddel = NULL;
 
+static INTERFACE *_last_collected = NULL;
 static char ModuleList[LONG_STRING];
 
 static int scr_collect (INTERFACE *iface, REQUEST *req)
 {
-  if (req->from && req->from->name)
+  if (!req)
+    DBG ("modules.c:scr_collect: strange dummy call");
+  else if (req->from && req->from != _last_collected && req->from->name)
+  {
+    if (_last_collected != NULL)
+      strfcat (ModuleList, " ", sizeof(ModuleList));
     strfcat (ModuleList, req->from->name, sizeof(ModuleList));
+    _last_collected = req->from;
+  }
   return REQ_OK;
 }
 
@@ -54,7 +62,7 @@ ScriptFunction (FE_module)
   char *c;
   char name[SHORT_STRING];
   INTERFACE *tmp;
-  binding_t *bind = NULL;
+  struct binding_t *bind = NULL;
   SigFunction (*func) (char *);
   iftype_t (*mods) (INTERFACE *, ifsig_t);
   char path[STRING];
@@ -72,9 +80,11 @@ ScriptFunction (FE_module)
     {
       tmp = Add_Iface (I_TEMP, NULL, NULL, &scr_collect, NULL);
       ModuleList[0] = 0;
+      _last_collected = NULL;
       Set_Iface (tmp);
       ReportFormat = NULL;
       Send_Signal (I_MODULE, "*", S_REPORT);
+      while (Get_Request());
       Unset_Iface();
       tmp->ift = I_DIED;
       BindResult = ModuleList;
@@ -134,7 +144,9 @@ ScriptFunction (FE_module)
     if (Find_Iface (I_MODULE, name))
     {
       Unset_Iface();
-      return 0;
+      Add_Request(I_LOG, "*", F_BOOT,
+		  "Attempt to load already loaded module %s", name);
+      return 1;
     }
     /* find module and startup function */
 #ifndef STATIC
