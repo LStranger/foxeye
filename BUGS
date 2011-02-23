@@ -60,3 +60,4 @@
 #00061	14.01.2011  14.01.2011	html log: http://there/Ужс.html : only http://there/
 #00062	21.01.2011  21.01.2011	channel flag U_HALFOP doesn't work
 #00063	19.02.2011  22.02.2011	mode lock doesn't work, channel left modeless
+#00064	23.02.2011  23.02.2011	mode lock +l doesn't work

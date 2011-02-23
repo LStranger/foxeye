@@ -1385,7 +1385,7 @@ userflag Match_Client (char *domain, char *ident, const char *lname)
   {
     c = '!';
     uhost[0] = c;
-    ptr = strfcpy (&uhost[1], ident, IDENTLEN + 1) + 1;
+    ptr = unistrlower (&uhost[1], ident, IDENTLEN + 1) + 1;
   }
   uhost[ptr++] = '@';
   unistrlower (&uhost[ptr], domain, sizeof(uhost) - ptr);

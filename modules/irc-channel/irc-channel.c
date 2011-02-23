@@ -1520,16 +1520,27 @@ static int _ircch_req (INTERFACE *iface, REQUEST *req)
   IRC *net;
   char chname[IFNAMEMAX+1];
   register size_t s;
-  register LINK *n;
+  register LINK *me;
 
   net = _ircch_get_network2 (strrchr (iface->name, '@'));
   if (net)	/* we do polling timeouts this way */
     _ircch_netsplit_timeout (net);
-  if ((n = ((CHANNEL *)iface->data)->nicks) == NULL ||
-      (n->prevnick == NULL && (Get_Clientflags(iface->name, NULL) & U_HALFOP)))
+  me = ((CHANNEL *)iface->data)->nicks;	/* this is me */
+  if (me == NULL) {
+    DBG("irc-channel:_ircch_req on EMPTY channel %s",
+	((CHANNEL *)iface->data)->real);
+    return REQ_OK;
+  }
+  if (!(me->mode & (A_OP | A_HALFOP)) && me->prevnick == NULL && /* only unopped */
+      (Get_Clientflags(iface->name, "") & U_HALFOP) && /* and need CYCLE */
+      Time > me->activity + 10) /* and I'm inactive for 10 seconds already */
   {
-    dprint(3, "irc-channel:_ircch_req: do CYCLE for %s", iface->name);
-    New_Request(net->neti, 0, "PART %s :CYCLE", ((CHANNEL *)iface->data)->real);
+    if (!(((CHANNEL *)iface->data)->mode & A_ME) && /* in active state now */
+	(((CHANNEL *)iface->data)->mode & A_ISON)) {
+      dprint(3, "irc-channel:_ircch_req: do CYCLE for %s", iface->name);
+      New_Request(net->neti, 0, "PART %s :CYCLE", ((CHANNEL *)iface->data)->real);
+      ((CHANNEL *)iface->data)->mode |= A_ME; /* mark it as inactive */
+    }
     return REQ_OK; /* ignoring request since we PARTing channel */
   }
   if (!req)
@@ -1777,9 +1788,9 @@ static int irc_join (INTERFACE *iface, char *svname, char *me, unsigned char *pr
       FREE (&net->invited);
     }
     chan = _ircch_get_channel (net, parv[0], 1);
-    New_Request (iface, 0, "WHO %s", parv[0]);
     New_Request (iface, 0, "MODE %s\r\nMODE %s b\r\nMODE %s e\r\nMODE %s I",
 		 parv[0], parv[0], parv[0], parv[0]);
+    New_Request (iface, 0, "WHO %s", parv[0]); /* need this to be after MODE */
     if (chan->id != ID_REM)
       NewEvent (W_START, chan->id, ID_ME, 0);
     lname = r = NULL;
@@ -1902,7 +1913,7 @@ static int irc_kick (INTERFACE *iface, char *svname, char *me, unsigned char *pr
   /* do revenge */
 #define U_TOREVENGE (U_FRIEND | U_HALFOP | U_OP)
   if (tlink->nick->lname && !((uf | cf) & U_FRIEND) && /* except from revenge */
-      Get_Clientflags (ch->chi->name, NULL) & U_QUIET && /* +revenge */
+      Get_Clientflags (ch->chi->name, "") & U_QUIET && /* +revenge */
       (Get_Clientflags (tlink->nick->lname, &net->neti->name[1]) & U_TOREVENGE ||
        Get_Clientflags (tlink->nick->lname, ch->chi->name) & U_TOREVENGE))
   {
@@ -1957,7 +1968,7 @@ static int irc_kick (INTERFACE *iface, char *svname, char *me, unsigned char *pr
     Unset_Iface();
     for (split = net->splits; split; split = split->prev)
       _ircch_netsplit_purge_channel (split, ch); /* ignore errors */
-    if (Get_Clientflags (ch->chi->name, NULL) & U_HALFOP)
+    if (Get_Clientflags (ch->chi->name, "") & U_HALFOP)
     {
       snprintf (str, sizeof(str), "%s%s", ch->real, net->name);
       _ircch_join_channel (net, str);	/* do 'cycle' feature */
@@ -2187,10 +2198,10 @@ static int irc_part (INTERFACE *iface, char *svname, char *me, unsigned char *pr
     Unset_Iface();
     for (split = net->splits; split; split = split->prev)
       _ircch_netsplit_purge_channel (split, ch); /* ignore errors */
-    if (Get_Clientflags (ch->chi->name, NULL) & U_HALFOP)
+    if (Get_Clientflags (ch->chi->name, "") & U_HALFOP)
     {
       snprintf (str, sizeof(str), "%s%s", ch->real, net->name);
-      _ircch_join_channel (net, str);		/* do 'cycle' feature */
+      _ircch_join_channel (net, str);	/* do 'cycle' feature */
     }
     _ircch_destroy_channel (ch);
     nt = NULL;
@@ -2394,6 +2405,7 @@ static int irc_rpl_endofwho (INTERFACE *iface, char *svname, char *me,
     Set_Iface (ch->chi);
     Send_Signal (I_MODULE, "ui", S_FLUSH); /* notify the UI */
     Unset_Iface();
+    ch->mode &= ~A_ME;			/* it was mark for chanmode check */
     ircch_recheck_channel_modes(net, ch);
   }
   return 0;
@@ -2707,7 +2719,7 @@ static int irc_rpl_endofnames (INTERFACE *iface, char *svname, char *me,
       !(ch = _ircch_get_channel (net, parv[1], 0)))
     return -1;
   n = v = h = o = 0;
-  ch->mode |= A_ISON;		/* we done with join so let mark it */
+  ch->mode |= (A_ISON | A_ME);		/* we done with join so let mark it */
   for (link = ch->nicks; link; link = link->prevnick)
     if (link->mode & A_OP)
       o++;

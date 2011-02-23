@@ -88,7 +88,7 @@ typedef struct CHANNEL
   LINK *nicks;
   char *key;
   LIST *topic, *bans, *exempts, *invites;
-  modeflag mode;		/* current mode */
+  modeflag mode;		/* current mode, +A_ME when not fully synced */
   modeflag mlock, munlock;	/* from config */
   unsigned short limit;		/* if 0 then unlimited, -1 = modeunlock +l */
   lid_t id;

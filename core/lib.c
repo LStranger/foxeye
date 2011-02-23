@@ -580,6 +580,7 @@ static int _count_chars (const char *line, size_t *len)
     size_t todo = *len;
     mbstate_t ms;
 
+    memset(&ms, 0, sizeof(ms));		/* reset the state! */
     while (todo > 0 && *ch)
     {
       cursize = mbrlen(ch, todo, &ms);

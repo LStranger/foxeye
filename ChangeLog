@@ -13,11 +13,20 @@ TODO:
 	* *: to rearrange structures for alignment sake [0.10].
 	* core/help.c: to add support for '##$charset utf-8' at helpfile start.
 	* core/direct.c: to add support for charset and comments in motd file.
+	* modules/irc-channel/: to implement few CTCP commands: OP, etc.
 
 --- [0.9b] * to test all *
+Wed Feb 23 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/lib.c: fixed wrong chars counting, state reset was missed.
+	* modules/irc-channel/chmanagement.c: fixed setting mode +t and +l.
+	* modules/irc-channel/irc-channel.c: fixed order of MODE and WHO.
+
 Tue Feb 22 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
-	* modules/irc-channel/chmanagement.c: added applying channel mode lock
-	  when we got opped, it was missed before (bug#63).
+	* modules/irc-channel/irc-channel.*, modules/irc-channel/chmanagement.c:
+	  added appliance of channel mode lock when we got opped, it was missed
+	  before (bug#63).
+	* core/help.c: corrected log message.
+	* core/list.c: fixed checking ident in lower case at Match_Client().
 
 Fri Jan 21 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc/irc.help: fixed invalid description 'module irc'.

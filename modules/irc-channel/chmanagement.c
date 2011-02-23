@@ -295,11 +295,22 @@ static void _push_mode (IRC *net, LINK *target, modebuf *mbuf,
   char *CMD_MODE = "MODE";
   size_t i, m;
 
-  if (!_find_me_op (net, target->chan))
+  if (_find_me_op (net, target->chan))
+    i = 1;
+  else
+    i = 0;
+  DBG("_push_mode:MODE %s@%s 0x%x %c \"%s\" (%d)", target->nick->name,
+      target->chan->chi->name, mch, add ? '+' : '-', mask, (int)i);
+  if (!i)
     return; /* I'm not op there */
-  for (m = 0; m < MODECHARSMAX && !(mch & ((modeflag)1<<m)); m++);
-  if (m == MODECHARSMAX || mbuf->modechars[m] == 0)
-    return; /* oops, illegal mode! */
+  if (mch == A_KEYSET) {
+    if (mask == NULL)
+      return; /* illegal modechange! */
+  } else if (mch != A_LIMIT) {
+    for (m = 0; m < MODECHARSMAX && !(mch & ((modeflag)1<<m)); m++);
+    if (m == MODECHARSMAX || mbuf->modechars[m] == 0)
+      return; /* oops, illegal mode! */
+  }
   if (mbuf->cmd != CMD_MODE || mbuf->changes == net->maxmodes)
   {
     _flush_mode (net, target->chan, mbuf);
@@ -332,7 +343,12 @@ static void _push_mode (IRC *net, LINK *target, modebuf *mbuf,
       *mbuf->mchg = '-';
     mbuf->pos++;
   }
-  mbuf->mchg[mbuf->pos++] = mbuf->modechars[m];
+  if (mch == A_LIMIT)
+    mbuf->mchg[mbuf->pos++] = 'l';
+  else if (mch == A_KEYSET)
+    mbuf->mchg[mbuf->pos++] = 'k';
+  else
+    mbuf->mchg[mbuf->pos++] = mbuf->modechars[m];
   mbuf->changes++;
   target->lmct = Time;
   if (!i)
@@ -625,6 +641,8 @@ static void _recheck_channel_modes(IRC *net, LINK *me, modebuf *mbuf)
   modeflag m;
   char limit[16];
 
+  if (me->chan->mode & A_ME)	/* don't set mode while not in sync yet */
+    return;
   for (m = 1; m != 0; m <<= 1) { /* apply modelock + */
     if (!(me->chan->mode & m) && (me->chan->mlock & m)) {
       DBG("irc-channel:_recheck_channel_modes: enforcing 0x%x", m);
@@ -901,8 +919,11 @@ int ircch_parse_modeline (IRC *net, CHANNEL *chan, LINK *origin, char *prefix,
 	/* apply changes */
 	if (mch & A_KEYSET)
 	{
-	  if (mf == '-')
+	  if (mf == '-') {
+	    chan->mode &= ~A_KEYSET;
 	    schr = NULL;
+	  } else
+	    chan->mode |= A_KEYSET;
 	  for (bind = NULL; (bind = Check_Bindtable (mbt, chan->chi->name, uf,
 						     ocf, bind)); )
 	    if (!bind->name)
@@ -927,10 +948,14 @@ int ircch_parse_modeline (IRC *net, CHANNEL *chan, LINK *origin, char *prefix,
 	}
 	else if (mch & A_LIMIT)
 	{
-	  if (mf == '-')
+	  if (mf == '-') {
+	    chan->mode &= ~A_LIMIT;
 	    chan->limit = 0;
-	  else
+	  } else {
+	    chan->mode |= A_LIMIT;
 	    chan->limit = atoi (schr);
+	  }
+	  //TODO: update channel mode in Listfile if changed by owner?
 	}
 	else if (schr)			/* modechange for [schr] on channel */
 	{
@@ -1039,10 +1064,18 @@ void ircch_parse_configmodeline (IRC *net, CHANNEL *chan, char *mode)
       chan->munlock &= ~mch;
     }
   }
-  if (chan->mlock & A_KEYSET)
+  if (chan->mlock & A_LIMIT)
     chan->limit = atoi (NextWord (mode));
   else
     chan->limit = 0;
+  if (chan->mlock & A_KEYSET) {
+    clrec_t *u = Lock_Clientrecord(chan->chi->name);
+
+    if (u != NULL) {
+      chan->key = safe_strdup(Get_Field(u, "passwd", NULL));
+      Unlock_Clientrecord(u);
+    }
+  }
 }
 
 void ircch_enforcer (IRC *net, CHANNEL *chan)
@@ -1743,6 +1776,17 @@ static int ssirc_invite (struct peer_t *who, INTERFACE *where, char *args)
   return 1;
 }
 
+		/* OP passwd [channel] */
+//BINDING_TYPE_irc_priv_msg_ctcp(ctcp_op);
+//static int ctcp_version(INTERFACE *client, unsigned char *who, char *lname,
+//			char *unick, char *msg)
+//{
+  //check args
+  //check passwd
+  //find specified or next channel
+  //do op
+//}
+
 void ircch_set_ss (void)
 {
 #define NB(a,b,c) Add_Binding ("ss-irc", #a, b, c, &ssirc_##a, NULL)
@@ -1764,6 +1808,10 @@ void ircch_set_ss (void)
   NB (reset,	U_OP, U_OP);
   NB (invite,	U_HALFOP, U_HALFOP);
 #undef NB
+//  Add_Binding("irc-priv-msg-ctcp", "OP", 0, 0, &ctcp_op, NULL);
+//  Add_Binding("irc-priv-msg-ctcp", "HOP", 0, 0, &ctcp_hop, NULL);
+//  Add_Binding("irc-priv-msg-ctcp", "VOICE", 0, 0, &ctcp_voice, NULL);
+//  Add_Binding("irc-priv-msg-ctcp", "INVITE", 0, 0, &ctcp_invite, NULL);
 }
 
 void ircch_unset_ss (void)
@@ -1787,4 +1835,8 @@ void ircch_unset_ss (void)
   NB (reset);
   NB (invite);
 #undef NB
+//  Delete_Binding("irc-priv-msg-ctcp", &ctcp_op, NULL);
+//  Delete_Binding("irc-priv-msg-ctcp", &ctcp_hop, NULL);
+//  Delete_Binding("irc-priv-msg-ctcp", &ctcp_voice, NULL);
+//  Delete_Binding("irc-priv-msg-ctcp", &ctcp_invite, NULL);
 }
