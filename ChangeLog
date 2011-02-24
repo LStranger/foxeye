@@ -16,9 +16,13 @@ TODO:
 	* modules/irc-channel/: to implement few CTCP commands: OP, etc.
 
 --- [0.9b] * to test all *
+Thu Feb 24 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/lua/lua.c: fixed SIGSEGV on variable access.
+
 Wed Feb 23 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/lib.c: fixed wrong chars counting, state reset was missed.
-	* modules/irc-channel/chmanagement.c: fixed setting mode +t and +l.
+	* modules/irc-channel/chmanagement.c: fixed setting mode +t and +l
+	  (bug#64).
 	* modules/irc-channel/irc-channel.c: fixed order of MODE and WHO.
 
 Tue Feb 22 2011 Andriy Gritsenko <andrej@rep.kiev.ua>

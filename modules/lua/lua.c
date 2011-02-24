@@ -920,10 +920,10 @@ static int lua_call_function (lua_State *L) /* int = func(arg) */
   return 1;
 }
 
-#define _lua_getdata(l,n) lua_pushstring(l, "__data"); /* d */ \
-			  lua_rawget(l, n); /* D */ \
-			  if (!lua_istable(l, -1)) \
-			    return luaL_error(l, "there is no data array")
+#define _lua_getdata(_l,_n) lua_pushstring(_l, "__data"); /* d */ \
+			    lua_rawget(_l, _n); /* D */ \
+			    if (!lua_istable(_l, -1)) \
+			      return luaL_error(_l, "there is no data array")
 
 static void _lua_fe_name (const char *name)
 {
@@ -985,13 +985,15 @@ typedef struct {
 static int lua_get_fevar (lua_State *L) /* t k -> t t[k] : x = a[b] */
 {
   lua_fedata_t *data;
+  int n = lua_gettop(L); /* t k // n is index of k */
 
-  _lua_getdata (L, 1); /* T k D */
-  lua_pushvalue (L, 2); /* T k D k */
-  lua_rawget (L, 2); /* T k D D[k] */
+  DBG("lua:lua_get_fevar: stack is %d (should be 2)", n);
+  _lua_getdata (L, n - 1); /* T k D */
+  lua_pushvalue (L, n); /* T k D k */
+  lua_rawget (L, n + 1); /* T k D D[k] */
   data = lua_touserdata (L, -1);
   if (!data)
-    return luaL_error (L, "variable foxeye.%s is unknown.", lua_tostring (L, 2));
+    return luaL_error (L, "variable foxeye.%s is unknown", lua_tostring (L, n));
   lua_pop (L, 3); /* T */
   switch (data->s)
   {
@@ -1002,7 +1004,7 @@ static int lua_get_fevar (lua_State *L) /* t k -> t t[k] : x = a[b] */
       lua_pushboolean (L, (*(bool *)data->ptr & TRUE) ? 1 : 0); /* T t[k] */
       break;
     default: /* string */
-      lua_pushstring (L, (char *)data); /* T t[k] */
+      lua_pushstring (L, (char *)data->ptr); /* T t[k] */
   }
   return 1;
 }
@@ -1011,21 +1013,23 @@ static int lua_set_fevar (lua_State *L) /* T k v -> T (T[k]=v) : a[b] = c */
 {
   lua_fedata_t *data;
   char *msg = NULL;
+  int n = lua_gettop(L); /* t k v // n is index of v */
 
-  _lua_getdata (L, 1); /* T k v D */
-  lua_pushvalue (L, 2); /* T k v D k */
-  lua_rawget (L, 4); /* T k v D D[k] */
+  DBG("lua:lua_set_fevar: stack is %d (should be 3)", n);
+  _lua_getdata (L, n - 2); /* T k v D */
+  lua_pushvalue (L, n - 1); /* T k v D k */
+  lua_rawget (L, n + 1); /* T k v D D[k] */
   data = lua_touserdata (L, -1);
   if (!data)
     msg = " is unknown";
   else switch (data->s)
   {
     case 0: /* long int */
-      *(long int *)data->ptr = luaL_checklong (L, 3);
+      *(long int *)data->ptr = luaL_checklong (L, n);
       break;
     case 1: /* bool */
-      luaL_checktype (L, 3, LUA_TBOOLEAN);
-      if (lua_toboolean (L, 3))
+      luaL_checktype (L, n, LUA_TBOOLEAN);
+      if (lua_toboolean (L, n))
 	*(bool *)data->ptr |= TRUE;
       else
 	*(bool *)data->ptr &= ~TRUE;
@@ -1034,10 +1038,10 @@ static int lua_set_fevar (lua_State *L) /* T k v -> T (T[k]=v) : a[b] = c */
       msg = " is unchangeable";
       break;
     default: /* string */
-      strfcpy ((char *)data->ptr, luaL_checkstring (L, 3), data->s);
+      strfcpy ((char *)data->ptr, luaL_checkstring (L, n), data->s);
   }
   if (msg)
-    return luaL_error (L, "variable foxeye.%s%s.", lua_tostring (L, 2), msg);
+    return luaL_error (L, "variable foxeye.%s%s", lua_tostring (L, n - 1), msg);
   lua_pop (L, 4); /* T */
   return 0;
 }
@@ -1059,8 +1063,8 @@ static int lua_register_variable (const char *name, void *var, size_t size)
   data = lua_newuserdata (Lua, sizeof(lua_fedata_t)); /* T D k v */
   data->ptr = var;
   data->s = size;
-  dprint (4, "lua:lua_register_variable: registering \"%s\"",
-	  lua_tostring (Lua, 3));
+  dprint (4, "lua:lua_register_variable: registering \"%s\" (%p[%d]) into %p",
+	  lua_tostring (Lua, 3), var, (int)size, data);
   lua_rawset (Lua, 2); /* T D */
   lua_pop (Lua, 2); /* */
   return 1;
@@ -1106,10 +1110,16 @@ static int dc_lua (struct peer_t *from, char *args)
   }
   if (lua_gettop (Lua))
   {
-    New_Request (from->iface, 0,
-		 "Lua: execute of your input returned %d results, first one is %s, string value of it is: %s.",
-		 lua_gettop (Lua), lua_typename (Lua, lua_type (Lua, 1)),
-		 lua_tostring (Lua, 1));
+    register char *xx = lua_tostring(Lua, 1);
+
+    if (xx != NULL)
+      New_Request (from->iface, 0,
+		   "Lua: execute of your input returned %d results, first one is %s, string value of it is: %s.",
+		   lua_gettop (Lua), lua_typename (Lua, lua_type (Lua, 1)), xx);
+    else
+      New_Request (from->iface, 0,
+		   "Lua: execute of your input returned %d results, first one is %s.",
+		   lua_gettop (Lua), lua_typename (Lua, lua_type (Lua, 1)));
     lua_settop (Lua, 0);
   }
   else

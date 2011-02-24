@@ -1069,7 +1069,7 @@ void ircch_parse_configmodeline (IRC *net, CHANNEL *chan, char *mode)
   else
     chan->limit = 0;
   if (chan->mlock & A_KEYSET) {
-    clrec_t *u = Lock_Clientrecord(chan->chi->name);
+    struct clrec_t *u = Lock_Clientrecord(chan->chi->name);
 
     if (u != NULL) {
       chan->key = safe_strdup(Get_Field(u, "passwd", NULL));
