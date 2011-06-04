@@ -495,7 +495,8 @@ Bindings API:
     matching combination of global userflags _g_u_f and userflags for some
     service _c_u_f (see Add_Binding() description for more details). Returns
     first matched binding if _l_a_s_t equal NULL. Returns next match if _l_a_s_t
-    is last found binding.
+    is last found binding and if bindtable type is KEYWORD (see below)
+    then search will be done by previous literal ignoring _s_t_r.
 	Reenterability: none
 
   const char *BBiinnddttaabbllee__NNaammee (struct bindtable_t *_t_a_b_l_e);
@@ -547,33 +548,34 @@ Bindings API:
     Any error processing should be done by interpreter module.
 	Reenterability: none  (binding must be since Check_Bindtable)
 
-  int LLnnaammee__IIssOOnn (const char *_p_u_b_l_i_c, const char *_l_n_a_m_e,
+  int LLnnaammee__IIssOOnn (const char *_n_e_t, const char *_p_u_b_l_i_c, const char *_l_n_a_m_e,
 		  const char **_n_a_m_e);
     Checks if someone _l_n_a_m_e is currently online for me in the community
-    _p_u_b_l_i_c. Returns 0 if it isn't and not 0 otherwise. If pointer _n_a_m_e
-    is not NULL then on return it will point to string that contains
-    last seen nick of this client. If _l_n_a_m_e is NULL then checks for own
-    nickname on that network service.
+    _p_u_b_l_i_c on network _n_e_t. Returns 0 if it isn't and not 0 otherwise. If
+    pointer _n_a_m_e is not NULL then on return it will point to string that
+    contains last seen nick of this client. If _l_n_a_m_e is NULL then checks
+    for own nickname on that network service. _p_u_b_l_i_c may be NULL.
 	Reenterability: none
 
-  modeflag IInnssppeecctt__CClliieenntt (const char *_p_u_b_l_i_c, const char *_n_a_m_e,
-			   const char **_l_n_a_m_e, const char **_h_o_s_t,
-			   time_t *_i_d_l_e, short *_c_n_t);
-    Checks if someone with nick _n_a_m_e is currently in community _p_u_b_l_i_c.
-    Returns modeflags of _n_a_m_e and if _n_a_m_e is NULL then returns modeflags
-    the community currently has. If _l_n_a_m_e is not NULL then on return it
-    will point to string that contains Lname of this client. If _h_o_s_t is
-    not NULL then on return it will point to string that contains host
-    string (host or user@host) of this client. If _i_d_l_e is not NULL then
-    on return it will contain timestamp of last event for this client.
-    If _c_n_t is not NULL then on return it will contain service-specific
-    data counter (see also NewEvent() function). If _n_a_m_e is NULL then
-    _h_o_s_t will point to string that contains community topic. If _n_a_m_e is
-    hostmask (nick!user@host) then _h_o_s_t will point to string containing
-    matched mode for the community (for example, ban mask). In last two
-    cases _l_n_a_m_e will point to string that contains nick of client who
-    added that change. If _p_u_b_l_i_c is special name (i.e. name of network)
-    then checks global modeflags for the name in the network.
+  modeflag IInnssppeecctt__CClliieenntt (const char *_n_e_t, const char *_p_u_b_l_i_c,
+			   const char *_n_a_m_e, const char **_l_n_a_m_e,
+			   const char **_h_o_s_t, time_t *_i_d_l_e, short *_c_n_t);
+    Checks if someone with nick _n_a_m_e is currently in community _p_u_b_l_i_c on
+    network _n_e_t. Returns modeflags of _n_a_m_e and if _n_a_m_e is NULL then
+    returns modeflags the community currently has. If _l_n_a_m_e is not NULL
+    then on return it will point to string that contains Lname of this
+    client. If _h_o_s_t is not NULL then on return it will point to string
+    that contains host string (host or user@host) of this client. If _i_d_l_e
+    is not NULL then on return it will contain timestamp of last event
+    for this client. If _c_n_t is not NULL then on return it will contain
+    service-specific data counter (see also NewEvent() function). If _n_a_m_e
+    is NULL then _h_o_s_t will point to string that contains community topic.
+    If _n_a_m_e is hostmask (nick!user@host) then _h_o_s_t will point to string
+    containing matched mode for the community (for example, ban mask). In
+    last two cases _l_n_a_m_e will point to string that contains nick of the
+    client who made that change. If _p_u_b_l_i_c is NULL then checks global
+    modeflags for the _n_a_m_e (which can be only client name in this case)
+    in the network.
 	Reenterability: none
 
 Listfile API:

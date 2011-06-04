@@ -53,18 +53,18 @@ typedef struct netsplit
 {
   struct netsplit *prev;
   char *servers;		/* "left gone" string */
-  time_t at;			/* when started */
-  int stage;			/* stage of netsplit */
   SplitMember *members;		/* nicks@channels in this split */
   SplitMember *njlast;		/* for netsplit and netjoin reporting */
+  time_t at;			/* when started */
   time_t njlastact;
+  int stage;			/* stage of netsplit */
 } netsplit;
 
 typedef struct LIST
 {
   struct LIST *next;
-  time_t since;
   char *what;
+  time_t since;
   char by[1];			/* WARNING: structure of variable size! */
 } __attribute__ ((packed)) LIST;
 

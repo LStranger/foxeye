@@ -71,11 +71,13 @@ static struct pollfd *Pollfd = NULL;
 /* lock for socket allocation; deallocation will be done without lock */
 static pthread_mutex_t LockPoll = PTHREAD_MUTEX_INITIALIZER;
 
-static volatile sig_atomic_t _got_sigio = 0;
+//static volatile sig_atomic_t _got_sigio = 0;
 
+/* this one is called only from main thread (due to F_SETOWN) so safe to poll */
 static void sigio_handler (int signo)
 {
-  _got_sigio = 1;
+  //_got_sigio = 1;
+  poll(Pollfd, _Snum, 0);
 }
 
 void CloseSocket (idx_t idx)
@@ -92,8 +94,8 @@ void CloseSocket (idx_t idx)
 /*
  * returns -1 if too many opened sockets or idx 
  * note: there may be a problem with Socket[idx].domain and _Snum since its
- * are never locked but in reality these words must be changed at once so I
- * hope it must work anyway
+ * are never locked but in reality these words change are atomic operations
+ * so I hope it must work anyway
 */
 static idx_t allocate_socket ()
 {
@@ -105,7 +107,7 @@ static idx_t allocate_socket ()
   if (idx == _Salloc)
     return -1; /* no free sockets! */
   Pollfd[idx].fd = -1;
-  Pollfd[idx].events = POLLIN | POLLPRI | POLLOUT | POLLHUP | POLLERR;
+  Pollfd[idx].events = POLLIN | POLLPRI | POLLOUT;
   Pollfd[idx].revents = 0;
   Socket[idx].domain = NULL;
   Socket[idx].ready = FALSE;
@@ -124,53 +126,50 @@ ssize_t ReadSocket (char *buf, idx_t idx, size_t sr, int mode)
   ssize_t sg = (ssize_t)-1;
   short rev;
 
-  pthread_testcancel();				/* for non-POSIX systems */
-  if (idx < 0 || idx >= _Snum)
+  pthread_testcancel();			/* for non-POSIX systems */
+  if (idx < 0 || idx >= _Snum || Pollfd[idx].fd < 0)
     return (E_NOSOCKET);
   sock = &Socket[idx];
-  if (Pollfd[idx].fd < 0)
-    rev = POLLERR;
-  else
-  {
-    if (_got_sigio)
-    {
-      _got_sigio = 0;
-      poll (Pollfd, _Snum, 0);
-    }
+//  {
+//    if (_got_sigio)
+//    {
+//      _got_sigio = 0;
+//      poll (Pollfd, _Snum, 0);
+//    }
     rev = Pollfd[idx].revents;
-  }
+//  }
   /* now check for incomplete connection... */
   if (sock->ready == FALSE)
   {
-    if (!(rev & (POLLIN | POLLPRI | POLLERR | POLLOUT)))
+    if (!rev)
       return (E_AGAIN);		/* still waiting for connection */
-    if (rev & POLLERR)
-    {
-      CloseSocket (idx);
-      return (E_ERRNO - errno);	/* connection timeout or other error */
-    }
-    sock->ready = TRUE;		/* connection established! */
+    sock->ready = TRUE;		/* connection established or failed */
   }
   if (!rev && mode == M_POLL)
   {
     poll (&Pollfd[idx], 1, POLL_TIMEOUT);
     rev = Pollfd[idx].revents;
   }
-  if (rev & POLLNVAL)
+  if (rev & (POLLNVAL | POLLERR | POLLHUP)) {
     CloseSocket (idx);
-  if (rev & (POLLNVAL | POLLERR))
-    return (E_NOSOCKET);
+//    if (rev & POLLERR)
+//      return (E_ERRNO - errno);		/* asynchronous error occurred */
+    return (E_NOSOCKET);		/* cannot test errno variable ATM */
+  }
   else if (rev & (POLLIN | POLLPRI))
   {
     DBG ("trying read socket %hd", idx);
+    Pollfd[idx].revents = 0;		/* we'll read socket, reset state */
     if ((sg = read (Pollfd[idx].fd, buf, sr)) > 0 && mode != M_RAW)
       DBG ("got from socket %hd:[%-*.*s]", idx, (int)sg, (int)sg, buf);
-    if (sg < 0)
-    {
-      CloseSocket (idx);		/* if socket died then close it */
-      return (E_ERRNO - errno);		
+    if (sg == 0) {
+      CloseSocket (idx);		/* remote end closed connection */
+      return (E_NOSOCKET);
+    } else if (sg < 0) {
+      if (errno == EAGAIN)
+	return (0);
+      sg = E_ERRNO - errno;		/* remember error for return */
     }
-    Pollfd[idx].revents = 0;		/* we read socket, reset state */
   }
   else
     return 0;
@@ -184,7 +183,7 @@ ssize_t WriteSocket (idx_t idx, const char *buf, size_t *ptr, size_t *sw, int mo
 {
   ssize_t sg;
 
-  pthread_testcancel();				/* for non-POSIX systems */
+  pthread_testcancel();			/* for non-POSIX systems */
   if (idx < 0 || idx >= _Snum || Pollfd[idx].fd < 0)
     return E_NOSOCKET;
   if (!buf || !sw)
@@ -192,10 +191,10 @@ ssize_t WriteSocket (idx_t idx, const char *buf, size_t *ptr, size_t *sw, int mo
   DBG ("trying write socket %hd: %p +%zu", idx, &buf[*ptr], *sw);
   sg = write (Pollfd[idx].fd, &buf[*ptr], *sw);
 //  Pollfd[idx].revents = 0;		/* we wrote socket, reset state */
-  if (sg < 0 && errno != EAGAIN)
-    return (E_ERRNO - errno);
-  else if (sg <= 0)			/* EAGAIN */
-    return 0;
+  if (sg < 0)
+    return (errno == EAGAIN) ? 0 : (E_ERRNO - errno);
+  else if (sg == 0)			/* remote end closed connection */
+    return E_NOSOCKET;
   *ptr += sg;
   *sw -= sg;
   Socket[idx].ready = TRUE;		/* connected as we sent something */
@@ -355,16 +354,16 @@ idx_t AnswerSocket (idx_t listen)
     return (E_NOSOCKET);
   rev = Pollfd[listen].revents;
   if (!rev)
-  {
-    if (_got_sigio)
-    {
-      _got_sigio = 0;
-      poll (Pollfd, _Snum, 0);
-    }
-    else
+//  {
+//    if (_got_sigio)
+//    {
+//      _got_sigio = 0;
+//      poll (Pollfd, _Snum, 0);
+//    }
+//    else
       poll (&Pollfd[listen], 1, POLL_TIMEOUT);
-    rev = Pollfd[listen].revents;
-  }
+//    rev = Pollfd[listen].revents;
+//  }
   if (!(rev & (POLLIN | POLLPRI | POLLNVAL | POLLERR)) || /* no events */
       (rev & (POLLHUP | POLLOUT)))	/* or we are in CloseSocket() now */
     return (E_AGAIN);

@@ -3302,7 +3302,7 @@ static int ison_irc (const char *netn, const char *channel, const char *lname,
       nick = Find_Key (net->lnames, lname);
     if (nick && channel)	/* inspect channel presence */
     {
-      if ((ch = _ircch_get_channel0 (net, channel, NULL)))
+      if ((ch = _ircch_get_channel (net, channel, 0)))
 	for (link = nick->channels; link && link->chan != ch; )
 	  link = link->prevchan;
       if (!ch || !link)
@@ -3345,15 +3345,15 @@ static modeflag incl_irc (const char *netn, const char *channel, const char *nam
   modeflag mf = 0;
   int n;
   char lcname[HOSTMASKLEN+1];
-  
-  dprint (4, "ircch: ispect-client request for %s on \"%s%s\"", NONULL(name),
-	  NONULL(channel), channel ? "" : NONULL(netn));
+
+  dprint (4, "ircch: ispect-client request for %s on \"%s%s%s\"", NONULL(name),
+	  NONULL(channel), channel ? "@" : "", NONULL(netn));
   /* check all at first */
   if (netn && (net = _ircch_get_network2 (netn)))
   {
     if (!channel)
       ch = NULL;		/* request for global */
-    else if (!(ch = _ircch_get_channel0 (net, channel, NULL)))
+    else if (!(ch = _ircch_get_channel (net, channel, 0)))
       net = NULL;		/* request for unknown channel */
     if (net)
     {

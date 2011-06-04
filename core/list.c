@@ -28,11 +28,11 @@
 
 typedef struct user_chr
 {
-  lid_t cid;			/* channel index in list */
-  userflag flag;
   char *greeting;		/* greeting or ban comment */
-  time_t expire;
   struct user_chr *next;
+  time_t expire;
+  userflag flag;
+  lid_t cid;			/* channel index in list */
 } user_chr;
 
 typedef struct user_hr
@@ -51,12 +51,8 @@ typedef struct user_fr
 
 struct clrec_t
 {
-  lid_t uid;
-  userflag flag;
   char *lname;
   char *lclname;
-  unsigned progress : 1;	/* is 1 if updating */
-  unsigned ignored : 1;
   user_chr *channels;
   user_hr *host;
   char *passwd;			/* the "passwd" field */
@@ -68,8 +64,12 @@ struct clrec_t
   char *charset;		/* the "charset" field - no default */
   char *login;			/* the ".login" field - "motd" by default */
   char *logout;			/* the ".logoff" field - NULL by default */
-  time_t created;
   user_fr *fields;
+  time_t created;
+  userflag flag;
+  lid_t uid;
+  unsigned progress : 1;	/* is 1 if updating */
+  unsigned ignored : 1;
   pthread_mutex_t mutex;
 };
 

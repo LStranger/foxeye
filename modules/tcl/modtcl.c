@@ -375,7 +375,7 @@ static int _tcl_ison (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS argv[])
     lname = NULL;
   else
     lname = ArgString (argv[2], &s);
-  if (!Lname_IsOn (service, lname, &lname))
+  if (!Lname_IsOn (service, NULL, lname, &lname))
     lname = NULL;
   ResultString (tcl, NONULL(lname), safe_strlen(lname));
   return TCL_OK;			/* we got some result, nice */

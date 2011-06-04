@@ -42,7 +42,7 @@ Lname here is registration name (login name).
  nick = net.ison(service[,lname])
     - finds nick of lname on service; returns (nil) if lname is offline;
       if lname is omitted (or nil) then returns own nick on service.
- time,host,lname = net.check(service[,nick])
+ time,host,lname = net.check(network[,service[,nick]])
     - checks if nick is currently online on service and returns his/her
       last activity time, host string and lname; if nick omitted (or nil)
       then returns when, string and who set the topic on channel.

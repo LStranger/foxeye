@@ -36,13 +36,13 @@
 
 struct peer_priv
 {
-  flag_t loglev;
-  int botnet;				/* botnet channel, chat off if < 0 */
-  short floodcnt;			/* flood counter */
   INTERFACE *log;			/* interface for logs */
   INTERFACE *alias;			/* interface for botnet channel */
   char *netname;			/* service name (for "ss-*") */
   struct bindtable_t *ssbt;		/* network-specitic bindtable */
+  flag_t loglev;
+  int botnet;				/* botnet channel, chat off if < 0 */
+  short floodcnt;			/* flood counter */
 };
 
 static struct bindtable_t *BT_Crypt;

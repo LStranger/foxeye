@@ -33,10 +33,10 @@ struct conversion_t
 {
   struct conversion_t *next;
   struct conversion_t *prev;
-  int inuse;
   char *charset; /* allocated */
   iconv_t cdin; /* charset --> internal, NULL if charset==internal */
   iconv_t cdout; /* internal --> charset */
+  int inuse;
 };
 
 static pthread_mutex_t ConvLock = PTHREAD_MUTEX_INITIALIZER;

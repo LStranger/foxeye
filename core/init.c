@@ -33,7 +33,6 @@
 
 struct bindtable_t
 {
-  bttype_t type;
   const char *name;
   union {
     struct binding_t *bind;
@@ -41,6 +40,7 @@ struct bindtable_t
   } list;
   struct binding_t *lr;			/* last resort - for B_UNIQ unly */
   struct bindtable_t *next;
+  bttype_t type;
 };
 
 /* ----------------------------------------------------------------------------
@@ -170,6 +170,7 @@ struct binding_t *Add_Binding (const char *table, const char *mask, userflag gf,
       bind->name = safe_strdup (name);
       bind->func = func;
       bind->prev = bt->lr;
+      bind->hits = 0;
       bt->lr = bind;
       dprint (2, "binds: added last resort binding to bindtable \"%s\"%s%s",
 	      table, name ? " for interpreter function " : "", NONULL(name));
@@ -241,6 +242,7 @@ struct binding_t *Add_Binding (const char *table, const char *mask, userflag gf,
   bind->ch_uf = cf;
   bind->name = safe_strdup (name);
   bind->func = func;
+  bind->hits = 0;
   dprint (2, "binds: added binding to bindtable \"%s\" with mask \"%s\"%s%s",
 	  table, mask, name ? " for interpreter function " : "", NONULL(name));
   return bind;
@@ -548,8 +550,10 @@ struct binding_t *Check_Bindtable (struct bindtable_t *bt, const char *str,
   {
     dprint (3, "binds: bindtable \"%s\" string \"%s\", using last resort",
 	    bt->name, str);
+    bt->lr->hits++;
     return bt->lr;
   }
+  b->hits++;
   return b;
 }
 
@@ -1869,18 +1873,16 @@ static int dc_chelp(struct peer_t *dcc, char *args)
 static struct bindtable_t *BT_IsOn = NULL;
 static struct bindtable_t *BT_Inspect = NULL;
 
-int Lname_IsOn (const char *pub, const char *lname, const char **name)
+int Lname_IsOn (const char *net, const char *pub, const char *lname,
+		const char **name)
 {
   struct binding_t *bind;
-  const char *c, *nt;
+  const char *nt;
   struct clrec_t *netw;
 
-  if (!pub)
+  if (!net)
     return 0;
-  if ((c = strrchr (pub, '@'))) /* network community */
-    netw = Lock_Clientrecord (++c);
-  else /* my link */
-    netw = Lock_Clientrecord ((c = pub));
+  netw = Lock_Clientrecord (net);
   if (netw)
   {
     if ((Get_Flags (netw, NULL) & U_SPECIAL) &&
@@ -1894,25 +1896,23 @@ int Lname_IsOn (const char *pub, const char *lname, const char **name)
     bind = NULL;
   if (!bind || bind->name)
     return 0;		/* no such network/service */
-  return bind->func (c, (pub == c) ? NULL : pub, lname, name);
+  return bind->func (net, pub, lname, name);
 }
 
-modeflag Inspect_Client (const char *pub, const char *name, const char **lname,
-			 const char **host, time_t *idle, short *cnt)
+modeflag Inspect_Client (const char *net, const char *pub, const char *name,
+			 const char **lname, const char **host, time_t *idle,
+			 short *cnt)
 {
   struct binding_t *bind;
-  const char *c, *nt;
+  const char *nt;
   struct clrec_t *netw;
 #define static register
   BINDING_TYPE_inspect_client ((*f));
 #undef static
 
-  if (!pub)
+  if (!net)
     return 0;
-  if ((c = strrchr (pub, '@'))) /* network community */
-    netw = Lock_Clientrecord (++c);
-  else /* my link */
-    netw = Lock_Clientrecord ((c = pub));
+  netw = Lock_Clientrecord (net);
   if (netw)
   {
     if ((Get_Flags (netw, NULL) & U_SPECIAL) &&
@@ -1927,7 +1927,7 @@ modeflag Inspect_Client (const char *pub, const char *name, const char **lname,
   if (!bind || bind->name)
     return 0;		/* no such network/service */
   f = (void *)bind->func;
-  return f (c, (pub == c) ? NULL : pub, name, lname, host, idle, cnt);
+  return f (net, pub, name, lname, host, idle, cnt);
 }
 
 /* ----------------------------------------------------------------------------

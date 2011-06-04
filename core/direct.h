@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -35,16 +35,17 @@ typedef enum
 
 struct peer_t
 {
-  _peer_state state;
-  userflag uf;				/* global+direct flags */
   char *dname;				/* user away message / dest. name */
-  idx_t socket;                         /* what socket we have messages to */
-  time_t last_input;
   INTERFACE *iface;			/* main interface of this session */
   void (*parse) (struct peer_t *, char *, char *, userflag, userflag, int, int,
 		 struct bindtable_t *, char *); /* function to parse/broadcast line */
-  struct connchain_i *connchain;		/* connchain instance */
+  struct connchain_i *connchain;	/* connchain instance */
+  const char *network_type;		/* for connchain identification */
   struct peer_priv *priv;		/* session-specific data */
+  time_t last_input;
+  _peer_state state;
+  userflag uf;				/* global+direct flags */
+  idx_t socket;				/* what socket we have messages to */
   char start[20];			/* chat-on time */
 };
 

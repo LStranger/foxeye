@@ -1,21 +1,28 @@
 TODO:
 	* core/modules.c, core/init.*: to do partial reloading of config.
-	* tree/tree.c: to gather garbage in Delete_Key() (?).
+	* tree/tree.c: to join small nodes in Delete_Key() (?).
 	* core/lib.c: to implement %{subfmt} macro and SetSubformat().
 	* core/journal.c: to implement transactions journal (for botnet, etc.).
 	* modules/irc*: to do something with ident masks?
-	* core/init.c: to change Inspect_Client() parameters [0.10].
-	* core/init.c: to take NULL as string in Check_Bindtable as iteration
-	  parameter and to implement 'hits' value in structure [0.10].
-	* core/direct.h +: to add 'const char *network_type' field into peer_t
-	  for connchain identification [0.10].
 	* core/wtmp.c: to handle errors somehow?
-	* *: to rearrange structures for alignment sake [0.10].
 	* core/help.c: to add support for '##$charset utf-8' at helpfile start.
 	* core/direct.c: to add support for charset and comments in motd file.
 	* modules/irc-channel/: to implement few CTCP commands: OP, etc.
 
---- [0.9b] * to test all *
+--- [0.10.0]
+Sat Jun  4 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/init.c, core/protos.h, doc/modules.api, modules/autolog/autolog.c, modules/irc/msgs.c, modules/lua/lua.c, modules/lua/lua.ref, modules/tcl/modtcl.c:
+	  splitted first parameter of Lname_IsOn() and Inspect_Client() to two.
+	* core/init.c, core/foxeye.h: implemented hits value for bindings.
+	* core/direct.h: added 'const char *network_type' field into peer_t
+	  for connchain identification.
+	* core/foxeye.h, core/direct.*, core/conversion.c, core/init.c, core/list.c, modules/irc-channel/irc-channel.c:
+	  rearranged structures for alignment sake.
+
+--- [0.9b] ok
+Sun Apr 24 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/socket.c: fixed detection when remote end closed connection.
+
 Thu Feb 24 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/lua/lua.c: fixed SIGSEGV on variable access.
 
@@ -1151,7 +1158,7 @@ Sun Feb  5 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  few coredump fixes.
 	* modules/irc/*: added irc_lcs() helper to correct casemapping.
 
---- [0.21] ok
+--- [0.2.1] ok
 Sat Feb  4 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/list.c, core/Makefile: done some cleanup.
 
@@ -1164,7 +1171,7 @@ Fri Feb  3 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  Inspect_Client() - they have to work with network type instead of
 	  network name.
 
---- [0.20] ok
+--- [0.2.0] ok
 Sun Jan 29 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/list.c: reverted to case-sensitive Find_Clientrecord().
 	* core/foxeye.h: fixed size of HOSTMASKLEN and minor constants.
@@ -1343,7 +1350,7 @@ Sat Jan 15 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* configure.in: need autoconf >= 2.50.
 	* modules/irc: renamed from irc-common.
 
---- [0.12] ok
+--- [0.1.2] ok
 Wed May 22 2004 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/lib.c, core/protos.h, modules/irc-common/irc.c: moved
 	  parce_ircparam() into module.
@@ -1354,7 +1361,7 @@ Mon Mar 22 2004 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.*, core/init.c, core/list.c, core/main.c: changed
 	  session_t to peer_t as more associative.
 
---- [0.11] ok
+--- [0.1.1] ok
 Tue Nov 11 2003 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.c: we should not get default hostname for listen, fixed.
 	* core/dispatcher.c: fixed tree names error.
@@ -1458,7 +1465,7 @@ Fri Aug 16 2002 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* doc/help.format, core/dcc.c, core/init.h: removed "botnetnick"
 	  variable (for multiserver capability).
 
---- [0.10] ok
+--- [0.1.0] ok
 Sat May 25 2002 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dcc.c, core/init.*, core/dispatcher.c, core/wtmp.c, core/lib.c:
 	  improved functionality and fixed some holes.

@@ -262,9 +262,9 @@ typedef enum
  */
 typedef struct req_t
 {
+  struct _if_t *from;		/* what interface is from */
   iftype_t mask_if;		/* type interface request is to */
   flag_t flag;			/* subflag for requested iface */
-  struct _if_t *from;		/* what interface is from */
   unsigned char to[IFNAMEMAX+1]; /* mask for request filtering */
   char string[MESSAGEMAX];	/* text of request or signal */
 } REQUEST;
@@ -294,7 +294,6 @@ struct _if_t
 {
 	/* these can be safe readed when IFSignal or IFRequest started */
 	/* members ift, prev, data are writable that time, rest are read only */
-  iftype_t ift;			/* flagged type of interface */
   unsigned char *name;		/* registered name of that type interface */
   SigFunction IFSignal;		/* entry for signals */
   int (*IFRequest) (INTERFACE *, REQUEST *); /* entry for requests */
@@ -303,6 +302,7 @@ struct _if_t
 #ifdef HAVE_ICONV
   struct conversion_t *conv;	/* charset conversions descriptor */
 #endif
+  iftype_t ift;			/* flagged type of interface */
   int qsize;			/* queue FIFO size */
 };
 
@@ -396,14 +396,15 @@ typedef enum
 
 struct binding_t
 {
-  userflag gl_uf;		/* need global userflag for user */
-  userflag ch_uf;		/* need channel userflag for user */
   const char *key;		/* is matched to... */
   const char *name;		/* keyword for using by external script */
 /*  unsigned int internal : 1;	       if internal binding, name == NULL */
   Function func;		/* called subprogram */
   struct binding_t *next;	/* next (not for B_UNIQ) binding */
   struct binding_t *prev;	/* previous (for B_U* types) binding */
+  userflag gl_uf;		/* need global userflag for user */
+  userflag ch_uf;		/* need channel userflag for user */
+  int hits;			/* how many times binding was found */
 };
 
 typedef enum

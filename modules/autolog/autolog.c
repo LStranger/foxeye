@@ -370,7 +370,7 @@ static int _autolog_name_request (INTERFACE *iface, REQUEST *req)
     {
       n++;
       strfcpy (path, req->to, (n - req->to));
-      if (Inspect_Client (n, path, &l, NULL, NULL, NULL) &&
+      if (Inspect_Client (n, NULL, path, &l, NULL, NULL, NULL) &&
 	  safe_strcmp (l, log->d->lname))	/* Lname was changed? */
       {
 	gettimeofday (&tv0, NULL);
@@ -541,7 +541,7 @@ static int _autolog_net_request (INTERFACE *iface, REQUEST *req)
       s = strlen (req->to);
     /* if enabled then get client Lname and do with it */
     if (autolog_by_lname == TRUE && strfcpy (path, req->to, s+1) &&
-	Inspect_Client (&iface->name[1], path, &tpath, NULL, NULL, NULL) &&
+	Inspect_Client (&iface->name[1], NULL, path, &tpath, NULL, NULL, NULL) &&
 	tpath)				/* it's client with Lname */
     {
       s = strlen (tpath);

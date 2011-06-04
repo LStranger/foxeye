@@ -175,9 +175,8 @@ UNLD  "uunnllooaadd"         MASK
 	   const char **_n_a_m_e);
     Used by Lname_IsOn() function for calling network-specific procedure
     for community _p_u_b_l_i_c on the network _n_e_t. If _p_u_b_l_i_c is NULL then
-    check should be performed for network itself and else _p_u_b_l_i_c is
-    composite name. See description of the Lname_IsOn() function for
-    more details.
+    check should be performed for network itself. See description of the
+    Lname_IsOn() function for more details.
       Matching: network type.
 
 -     "iinnssppeecctt--cclliieenntt" UNIQ
@@ -186,9 +185,8 @@ UNLD  "uunnllooaadd"         MASK
 		      const char **_h_o_s_t, time_t *_i_d_l_e, short *_c_n_t);
     Used by Inspect_Client() function for calling network-specific
     procedure for community _p_u_b_l_i_c on the network _n_e_t. If _p_u_b_l_i_c is NULL
-    then check should be performed for network itself and else _p_u_b_l_i_c is
-    composite name. See description of the Inspect_Client() function for
-    more details.
+    then check should be performed for network itself. See description of
+    the Inspect_Client() function for more details.
       Matching: network type.
 
 -     "ttiimmee--sshhiifftt"     MASK

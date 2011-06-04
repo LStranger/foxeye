@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2008  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2005-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -355,8 +355,8 @@ int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
   else
     strfcpy (lcnick, from, NAMEMAX+1);
   /* let's check if it's identified user at first */
-  if (Inspect_Client (&pmsgout->name[1], from, (const char **)&lname, NULL,
-		      NULL, NULL) & A_REGISTERED)
+  if (Inspect_Client (&pmsgout->name[1], NULL, from, (const char **)&lname,
+		      NULL, NULL, NULL) & A_REGISTERED)
   {
     if ((clr = Lock_Clientrecord (lname)))	/* might it be deleted yet? */
       uf = Get_Flags (clr, &pmsgout->name[1]);	/* network flags */

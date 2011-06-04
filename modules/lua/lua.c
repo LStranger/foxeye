@@ -531,7 +531,7 @@ static int _lua_ison (lua_State *L) /* nick = net.ison(serv[,lname]) */
   }
   else
     lname = NULL;
-  if (!Lname_IsOn (lua_tostring (L, 1), lname, &lname))
+  if (!Lname_IsOn (lua_tostring (L, 1), NULL, lname, &lname))
     lname = NULL;
   if (lname)
     lua_pushstring (L, lname);
@@ -540,22 +540,30 @@ static int _lua_ison (lua_State *L) /* nick = net.ison(serv[,lname]) */
   return 1;
 }
 
-static int _lua_check (lua_State *L) /* time,host,lname = net.check(serv[,nick])*/
+static int _lua_check (lua_State *L) /* time,host,lname = net.check(net[,serv[,nick]]) */
 {
-  const char *lname, *host;
+  const char *lname, *host, *serv;
   time_t t;
 
-  if (lua_gettop (L) < 1 || lua_gettop (L) > 2)
+  if (lua_gettop (L) < 1 || lua_gettop (L) > 3)
     return luaL_error (L, "bad number of parameters");
   luaL_argcheck (L, lua_isstring (L, 1), 1, NULL);
-  if (lua_gettop (L) == 2)
+  if (lua_gettop(L) == 3) {
+    luaL_argcheck (L, lua_isstring (L, 3), 3, NULL);
+    lname = lua_tostring (L, 3);
+    if (lua_isstring(L, 2))
+      serv = lua_tostring (L, 2);
+    else
+      serv = NULL;
+  } else if (lua_gettop (L) == 2)
   {
     luaL_argcheck (L, lua_isstring (L, 2), 2, NULL);
     lname = lua_tostring (L, 2);
+    serv = NULL;
   }
   else
-    lname = NULL;
-  if (!Inspect_Client (lua_tostring (L, 1), lname, &lname, &host, &t, NULL))
+    lname = serv = NULL;
+  if (!Inspect_Client (lua_tostring (L, 1), serv, lname, &lname, &host, &t, NULL))
   {
     lname = NULL;
     host = NULL;
@@ -1110,7 +1118,7 @@ static int dc_lua (struct peer_t *from, char *args)
   }
   if (lua_gettop (Lua))
   {
-    register char *xx = lua_tostring(Lua, 1);
+    register const char *xx = lua_tostring(Lua, 1);
 
     if (xx != NULL)
       New_Request (from->iface, 0,
