@@ -18,6 +18,8 @@ Sat Aug  6 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/protos.h, core/dispatcher.c, core/init.c, core/list.c, modules/irc/msgs.c, modules/irc-channel/irc-channel.c, modules/irc-channel/chmanagement.c:
 	  added checking for NULL pointers in *printf parameters as not every
 	  libc handle them.
+	* *: moved from CVS tree to Git repository; need to implement prep
+	  source from it yet.
 
 Wed Jul 13 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc-channel/irc-channel.c: got SIGSEGV in _ircch_its_rejoin

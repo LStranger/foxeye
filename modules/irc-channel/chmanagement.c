@@ -293,7 +293,7 @@ static void _push_mode (IRC *net, LINK *target, modebuf *mbuf,
 			modeflag mch, int add, char *mask)
 {
   char *CMD_MODE = "MODE";
-  size_t i, m;
+  size_t i, m = 0;
 
   if (_find_me_op (net, target->chan))
     i = 1;
@@ -307,7 +307,7 @@ static void _push_mode (IRC *net, LINK *target, modebuf *mbuf,
     if (mask == NULL)
       return; /* illegal modechange! */
   } else if (mch != A_LIMIT) {
-    for (m = 0; m < MODECHARSMAX && !(mch & ((modeflag)1<<m)); m++);
+    while (m < MODECHARSMAX && !(mch & ((modeflag)1<<m))) m++;
     if (m == MODECHARSMAX || mbuf->modechars[m] == 0)
       return; /* oops, illegal mode! */
   }
