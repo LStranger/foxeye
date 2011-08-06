@@ -82,7 +82,7 @@ static void _bt_convert2uniqtype (struct bindtable_t *bt, bttype_t type)
 	struct binding_t *b2 = b, *b3;
 
 	ERROR ("bindtable conversion error (tree error): \"%s\":\"%s\"",
-	       bt->name, b->key);
+	       NONULL(bt->name), b->key);
 	b = b->next;
 	while (b2)
 	{
@@ -137,7 +137,7 @@ struct bindtable_t *Add_Bindtable (const char *name, bttype_t type)
     default:
       bt->type = type;
   }
-  dprint (2, "binds: added bindtable with name \"%s\"", name);
+  dprint (2, "binds: added bindtable with name \"%s\"", NONULL(name));
   return bt;
 }
 
@@ -173,7 +173,8 @@ struct binding_t *Add_Binding (const char *table, const char *mask, userflag gf,
       bind->hits = 0;
       bt->lr = bind;
       dprint (2, "binds: added last resort binding to bindtable \"%s\"%s%s",
-	      table, name ? " for interpreter function " : "", NONULL(name));
+	      NONULL(table), name ? " for interpreter function " : "",
+	      NONULL(name));
       return bind;
     }
     if (bt->list.tree && (b = Find_Key (bt->list.tree, mask)))
@@ -244,7 +245,8 @@ struct binding_t *Add_Binding (const char *table, const char *mask, userflag gf,
   bind->func = func;
   bind->hits = 0;
   dprint (2, "binds: added binding to bindtable \"%s\" with mask \"%s\"%s%s",
-	  table, mask, name ? " for interpreter function " : "", NONULL(name));
+	  NONULL(table), NONULL(mask),
+	  name ? " for interpreter function " : "", NONULL(name));
   return bind;
 }
 
@@ -264,7 +266,7 @@ void Delete_Binding (const char *table, Function func, const char *name)
       else
 	bt->lr = bind = b->prev;
       dprint (2, "binds: deleting last resort binding from bindtable \"%s\"",
-	      table);
+	      NONULL(table));
       FREE (&b->name);
       FREE (&b);
       b = bind;
@@ -286,7 +288,7 @@ void Delete_Binding (const char *table, Function func, const char *name)
 	if (b->func == func && (!name || !safe_strcmp (b->name, name)))
 	{
 	  dprint (2, "binds: deleting binding from bindtable \"%s\" with key \"%s\"",
-		  table, b->key);
+		  NONULL(table), NONULL(b->key));
 	  DBG ("init.c:-bind:%p unshifting %p after %p/tree", b, b->prev, last);
 	  if (last)			/* it's not first binding - remove */
 	  {
@@ -327,7 +329,7 @@ void Delete_Binding (const char *table, Function func, const char *name)
       if (bind->func == func && (!name || !safe_strcmp (b->name, name)))
       {
 	dprint (2, "binds: deleting binding from bindtable \"%s\" with mask \"%s\"",
-		table, bind->key);
+		NONULL(table), NONULL(bind->key));
 	DBG ("init.c:-bind:%p unshifting %p after %p nextto %p",
 		bind, bind->prev, next, last);
 	if (next)			/* it's not first binding */
@@ -422,7 +424,7 @@ struct binding_t *Check_Bindtable (struct bindtable_t *bt, const char *str,
   {
     if (bind)		/* check for invalid call */
     {
-      dprint (3, "binds: bindtable \"%s\" duplicate call", bt->name);
+      dprint (3, "binds: bindtable \"%s\" duplicate call", NONULL(bt->name));
       return NULL;
     }
     b = Find_Key (bt->list.tree, buff);
@@ -544,16 +546,18 @@ struct binding_t *Check_Bindtable (struct bindtable_t *bt, const char *str,
   if (bt->type == B_UCOMPL && !i)
     b = bind;			/* completion */
   if (b)
+  {
     dprint (3, "binds: bindtable \"%s\" string \"%s\", flags %#x/%#x, found mask \"%s\"",
-	    bt->name, str, gf, cf, b->key);
+	    NONULL(bt->name), NONULL(str), gf, cf, NONULL(b->key));
+    b->hits++;
+  }
   else if (bt->type == B_UNIQ && bt->lr)
   {
     dprint (3, "binds: bindtable \"%s\" string \"%s\", using last resort",
-	    bt->name, str);
+	    NONULL(bt->name), NONULL(str));
     bt->lr->hits++;
     return bt->lr;
   }
-  b->hits++;
   return b;
 }
 
@@ -1022,7 +1026,8 @@ static int _del_var (const char *name)
 
   if (!(data = Find_Key (VTree, name)))		/* not registered? */
   {
-    WARNING ("init: attempting to delete non-existent variable \"%s\"", name);
+    WARNING ("init: attempting to delete non-existent variable \"%s\"",
+	     NONULL(name));
     return 0;
   }
   dprint (2, "init:_del_var: %s", name);
@@ -1059,7 +1064,7 @@ _add_fn (const char *name, int (*func)(const char *), const char *msg)
   int i;
   VarData2 *data;
 
-  dprint (2, "init:_add_fn: %s", name);
+  dprint (2, "init:_add_fn: %s", NONULL(name));
   if (O_GENERATECONF != FALSE && msg)		/* ask for list */
     do {
       i = Start_FunctionFromConsole (name, func, msg);
@@ -1067,7 +1072,7 @@ _add_fn (const char *name, int (*func)(const char *), const char *msg)
   if ((data = Find_Key (STree, name)))		/* already registered */
   {
     if (data->f.n != func)
-      WARNING ("init: another ptr already binded to function \"%s\"", name);
+      WARNING ("init: another ptr already bound to function \"%s\"", name);
     else
       dprint (4, "init:_add_fn: retry on %s", name);
     return 0;
@@ -1088,7 +1093,8 @@ static int _del_fn (const char *name)
 
   if (!(data = Find_Key (STree, name)))		/* not registered? */
   {
-    WARNING ("init: attempting to delete non-existent function \"%s\"", name);
+    WARNING ("init: attempting to delete non-existent function \"%s\"",
+	     NONULL(name));
     return 0;
   }
   dprint (2, "init:_del_fn: %s", name);
@@ -1322,8 +1328,10 @@ int Config_Exec (const char *cmd, const char *args)
 
   if (!cmd || !(data = Find_Key (STree, cmd)))	/* no such command */
     return 0;					/* silent ignore */
+  if (!args)
+    args = "";
   dprint (4, "init:Config_Exec: %s %s", cmd, args);
-  return data->f.n (NONULL(args));
+  return data->f.n (args);
 }
 
 static int _set (VarData *data, register const char *val)
@@ -1697,7 +1705,7 @@ static int dc_binds (struct peer_t *dcc, char *args)
 	    c = "";
 	}
 	New_Request (dcc->iface, 0, "%c%-18.18s %s %d", bt->lr ? '*' : ' ',
-		     bt->name, c, io);
+		     NONULLP(bt->name), c, io);
       }
       return 1;
     }
@@ -1740,10 +1748,10 @@ static int dc_binds (struct peer_t *dcc, char *args)
 	  userflagtostr (b->ch_uf, &flags[strlen(flags)]);
 	}
 	if (b->name && b->func && b->func ("-", 0, NULL))
-	  New_Request (dcc->iface, 0, "%-23.23s %-7.7s %-15.15s %s", b->key,
-		       flags, BindResult, b->name);
+	  New_Request (dcc->iface, 0, "%-23.23s %-7.7s %-15.15s %s",
+		       NONULLP(b->key), flags, BindResult, b->name);
 	else
-	  New_Request (dcc->iface, 0, "%-23.23s %s", b->key, flags);
+	  New_Request (dcc->iface, 0, "%-23.23s %s", NONULLP(b->key), flags);
       }
       if (bt->type == B_UNIQ)
       {
@@ -1760,7 +1768,7 @@ static int dc_binds (struct peer_t *dcc, char *args)
   {
     if (!bt->list.bind)		/* list.bind has the same size as list.tree */
       continue;
-    New_Request (dcc->iface, 0, _("  Bindtable %s:"), bt->name);
+    New_Request (dcc->iface, 0, _("  Bindtable %s:"), NONULLP(bt->name));
     New_Request (dcc->iface, 0, "Key                     Flags   Interpreter     Command");
     if (bt->type == B_UNIQ)
     {
@@ -1783,10 +1791,10 @@ static int dc_binds (struct peer_t *dcc, char *args)
 	  userflagtostr (b->ch_uf, &flags[strlen(flags)]);
 	}
 	if (b->name && b->func && b->func ("-", 0, NULL))
-	  New_Request (dcc->iface, 0, "%-23.23s %-7.7s %-15.15s %s", b->key,
-		       flags, BindResult, b->name);
+	  New_Request (dcc->iface, 0, "%-23.23s %-7.7s %-15.15s %s",
+		       NONULLP(b->key), flags, BindResult, b->name);
 	else
-	  New_Request (dcc->iface, 0, "%-23.23s %s", b->key, flags);
+	  New_Request (dcc->iface, 0, "%-23.23s %s", NONULLP(b->key), flags);
       }
       if (bt->type == B_UNIQ)
       {

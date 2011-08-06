@@ -10,6 +10,20 @@ TODO:
 	* modules/irc-channel/: to implement few CTCP commands: OP, etc.
 
 --- [0.10.0]
+Sat Aug  6 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* configure: fixed check for GNU make, it should be based on $MAKE.
+	* core/protos.h: fixed conflict of ALLOCATABLE_TYPE macro with
+	  Solaris' headers.
+	* core/socket.c: undefined name sun as it's used as macro on Solaris.
+	* core/protos.h, core/dispatcher.c, core/init.c, core/list.c, modules/irc/msgs.c, modules/irc-channel/irc-channel.c, modules/irc-channel/chmanagement.c:
+	  added checking for NULL pointers in *printf parameters as not every
+	  libc handle them.
+
+Wed Jul 13 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/irc-channel/irc-channel.c: got SIGSEGV in _ircch_its_rejoin
+	  function, inserted check but it need to be fixed as it should be
+	  impossible.
+
 Sat Jun  4 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/init.c, core/protos.h, doc/modules.api, modules/autolog/autolog.c, modules/irc/msgs.c, modules/lua/lua.c, modules/lua/lua.ref, modules/tcl/modtcl.c:
 	  splitted first parameter of Lname_IsOn() and Inspect_Client() to two.

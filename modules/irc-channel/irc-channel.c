@@ -217,7 +217,7 @@ static void _ircch_recheck_features (IRC *net)
   if (clr)
   {
     c = Get_Field (clr, IRCPAR_FIELD, NULL);
-    DBG ("parse network parameters: [%s]", c);
+    DBG ("parse network parameters: [%s]", NONULL(c));
     if (c) while (*c)
     {
       if (!memcmp (c, IRCPAR_MODES, strlen(IRCPAR_MODES)) &&
@@ -626,7 +626,8 @@ static void _ircch_update_link (NICK *nick, LINK *link, char *lname, lid_t lid)
   /* check if either listfile was changed or client joined first time */
   if (safe_strcmp (lname, nick->lname))
   {
-    DBG ("_ircch_update_link: lname change %s -> %s", nick->lname, lname);
+    DBG ("_ircch_update_link: lname change %s -> %s", NONULLP(nick->lname),
+	 NONULLP(lname));
     if (nick->lname)			/* only if listfile was changed */
     {
       for (nl = nick->channels; nl; nl = nl->prevchan)
@@ -660,7 +661,8 @@ static void _ircch_recheck_link (IRC *net, LINK *link, char *lname,
   _ircch_update_link (link->nick, link, lname, id);
   if (!(link->mode & (A_ISON | A_ME)))			/* just joined */
   {
-    DBG ("_ircch_recheck_link:just joined %s, check last %lu", lname, Time - ircch_greet_time);
+    DBG ("_ircch_recheck_link:just joined %s, check last %lu", NONULLP(lname),
+	 Time - ircch_greet_time);
     if (!lname || ircch_greet_time <= 0 ||
 	(!FindEvent (&wtmp, lname, W_ANY, link->chan->id,
 		     Time - ircch_greet_time)/* &&
@@ -678,7 +680,8 @@ static void _ircch_recheck_link (IRC *net, LINK *link, char *lname,
       NewEvent (W_START, link->chan->id, id,
 		Get_Hosthash (lname, link->nick->host));
   }
-  dprint (4, "_ircch_recheck_link: success on %s[%hd]", lname, link->nick->id);
+  dprint (4, "_ircch_recheck_link: success on %s[%hd]", NONULLP(lname),
+	  link->nick->id);
   link->activity = Time;
 }
 
@@ -785,7 +788,7 @@ static void _ircch_quited (NICK *nick, char *lname, userflag uf,
 {
   LINK *link;
 
-  dprint (4, "_ircch_quited: %s (%s)%s", nick->name, lname,
+  dprint (4, "_ircch_quited: %s (%s)%s", nick->name, NONULLP(lname),
 	  (nick->umode & A_ISON) ? "" : " at netsplit");
   for (link = nick->channels; link; link = link->prevchan)
     _ircch_quited_log (nick, lname, uf, link, who, msg);
@@ -982,7 +985,8 @@ static void _ircch_netsplit_lost_report (IRC *net, SplitMember **sm, char *msg)
   NICK *nick, *n = NULL;
 
   nick = (*sm)->member->nick;
-  dprint (4, "_ircch_netsplit_lost_report: %s (%s)", nick->name, nick->lname);
+  dprint (4, "_ircch_netsplit_lost_report: %s (%s)", nick->name,
+	  NONULLP(nick->lname));
   nick->split = NULL;				/* remove it ASAP */
   while ((s = *sm))
   {
@@ -1228,7 +1232,12 @@ static void _ircch_its_rejoin (IRC *net, netsplit *split)
     if (s->member->mode & A_ISON)	/* it's what we hunt for */
     {
       nick = s->member->nick;
-      _ircch_netsplit_remove_nick (nick); /* remove from list now */
+      if (nick->split == split)
+	_ircch_netsplit_remove_nick (nick); /* remove from list now */
+      else
+	/* FIXME: this should be impossible here but happened once! */
+	ERROR("_ircch_its_rejoin: nick %s has netsplit ptr %p instead of %p",
+	      nick->name, nick->split, split);
       if (nick->lname)
 	uf = Get_Clientflags (nick->lname, NULL) |
 	     Get_Clientflags (nick->lname, &net->name[1]);
@@ -1475,7 +1484,8 @@ static iftype_t _ircch_sig (INTERFACE *iface, ifsig_t sig)
 	  lname = _ircch_get_lname (link->nick->host, NULL, NULL, NULL, NULL,
 				    NULL, NULL, link->nick);
 	DBG ("ircch:report: (pt2) nick %s host %s lname %s times %.13s/%lu",
-	     nick, c, lname, link->joined, (unsigned long int)link->activity);
+	     nick, c, NONULLP(lname), link->joined,
+	     (unsigned long int)link->activity);
 	printl (str, sizeof(str), ReportFormat, 0, nick, c,
 		(link->nick == net->me) ? "ME!" : lname, link->joined, 0, 0,
 		link->activity ? Time - link->activity : 0,
@@ -3082,7 +3092,7 @@ static void ircch_nick (INTERFACE *iface, char *lname, unsigned char *who,
     if (cc)	/* if lname was changed */
     {
       dprint (4, "ircch_nick: lname switched to %s, updating join time: %s => %s %s",
-	      nick->lname, link->joined, DateString, TimeString);
+	      NONULLP(nick->lname), link->joined, DateString, TimeString);
       snprintf (link->joined, sizeof(link->joined), "%s %s", DateString,
 		TimeString);
     }
@@ -3260,6 +3270,7 @@ static void nl_ircch (char *nl, char *ol)
   LEAF *l = NULL;
   NICK *nick;
 
+  /* ol should never be NULL here */
   while ((l = Next_Leaf (IRCNetworks, l, NULL)))
   {
     nick = Find_Key (((IRC *)l->s.data)->lnames, ol);
@@ -3269,7 +3280,7 @@ static void nl_ircch (char *nl, char *ol)
 	ERROR ("nl_ircch: tree error on deleting %s", nick->lname);
       FREE (&nick->lname);
       nl = safe_strdup (nl);
-      if (Insert_Key (&((IRC *)l->s.data)->lnames, nl, nick, 1))
+      if (nl && Insert_Key (&((IRC *)l->s.data)->lnames, nl, nick, 1))
 	ERROR ("nl_ircch: tree error on adding %s", nl);
       for (; nick; nick = nick->prev_TSL)
 	nick->lname = nl;

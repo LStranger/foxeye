@@ -300,7 +300,7 @@ static void _push_mode (IRC *net, LINK *target, modebuf *mbuf,
   else
     i = 0;
   DBG("_push_mode:MODE %s@%s 0x%x %c \"%s\" (%d)", target->nick->name,
-      target->chan->chi->name, mch, add ? '+' : '-', mask, (int)i);
+      target->chan->chi->name, mch, add ? '+' : '-', NONULL(mask), (int)i);
   if (!i)
     return; /* I'm not op there */
   if (mch == A_KEYSET) {
@@ -612,7 +612,7 @@ static void _recheck_modes (IRC *net, LINK *target, userflag rf,
     _push_mode (net, target, mbuf, A_VOICE, 1, NULL);
   /* greeting user if it is first joined after enough absence */
   DBG ("chmanagement:checking for greeting:%d:%c:%s:%c:%s", firstjoined,
-	(cf&U_SPEAK) ? '+' : '-', target->nick->lname,
+	(cf&U_SPEAK) ? '+' : '-', NONULL(target->nick->lname),
 	(target->chan->id==ID_REM) ? '-' : '+', target->chan->chi->name);
   if (firstjoined && (cf & U_SPEAK) && target->nick->lname &&
       target->chan->id != ID_REM)

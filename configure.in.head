@@ -146,7 +146,7 @@ if test "$fe_cv_static" = no; then
 fi
 
 dnl Some substitutions for modules/Makefile.mods
-case `eval "make -v -f NoFile 2>/dev/null"` in
+case `eval "$MAKE -v -f NoFile 2>/dev/null"` in
     GNU*)
 	MAKEIFGNU="ifdef"
 	MAKEELSE="else"

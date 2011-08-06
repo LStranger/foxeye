@@ -390,8 +390,8 @@ int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
       msg_type = 4;
     msglen--;
   }
-  dprint (4, "irc_privmsgin: got message from %s to %s of type %d", from, to,
-	  msg_type);
+  dprint (4, "irc_privmsgin: got message from %s to %s of type %d", from,
+	  NONULL(to), msg_type);
   /* find/create pmsgout for sender, pmsgout has to be nick@net */
   if ((client = _pmsgout_get_client (pmsgout->name, from)))
     Unset_Iface();

@@ -73,8 +73,9 @@ struct clrec_t
   pthread_mutex_t mutex;
 };
 
-static const struct clrec_t CONSOLEUSER = { 0, -1, NULL, NULL, 0, 0, NULL, NULL, NULL,
-		{ NULL }, NULL, NULL, NULL, 0, NULL, PTHREAD_MUTEX_INITIALIZER };
+static const struct clrec_t CONSOLEUSER = { NULL, NULL, NULL, NULL, NULL,
+			{ NULL }, NULL, NULL, NULL, NULL, 0, -1, 0, 0, 0,
+			PTHREAD_MUTEX_INITIALIZER };
 
 static NODE *UTree = NULL;		/* list of USERRECORDs */
 static struct clrec_t *UList[LID_MAX-LID_MIN+1];
@@ -436,7 +437,7 @@ static struct clrec_t *_add_userrecord (const char *name, userflag uf, lid_t id)
 
   DBG ("_add_userrecord/%c(%#x):%s:%hd",
        (uf & U_SPECIAL) ? 'S' : (id > ID_ME && id < ID_ANY) ? 'I' : 'N',
-       uf, name, id);
+       uf, NONULL(name), id);
   if (name && _findbylname (name))	/* already exists */
     i = -1;
   else if (uf & U_SPECIAL)		/* special and composite names */
@@ -642,7 +643,8 @@ int Add_Clientrecord (const char *name, const uchar *mask, userflag uf)
     name = NULL;
   if (!name && match ("*@*", mask) < 0)
   {
-    ERROR ("Add_Clientrecord: invalid hostmask pattern %s ignored.", mask);
+    ERROR ("Add_Clientrecord: invalid hostmask pattern %s ignored.",
+	   NONULLP((char *)mask));
     mask = NULL;
   }
   if (!name && !mask)		/* empty name has to have valid mask */
@@ -661,10 +663,10 @@ int Add_Clientrecord (const char *name, const uchar *mask, userflag uf)
   if (uf)
     Add_Request (I_LOG, "*", mask ? (F_USERS | F_AHEAD) : F_USERS,
 		 _("Added name %s with flag(s) %s."),
-		 name, userflagtostr (uf, flags));
+		 NONULLP(name), userflagtostr (uf, flags));
   else
     Add_Request (I_LOG, "*", mask ? (F_USERS | F_AHEAD) : F_USERS,
-		 _("Added name %s."), name);
+		 _("Added name %s."), NONULLP(name));
   /* all OK */
   return 1;
 }
@@ -725,7 +727,8 @@ int Change_Lname (const char *newname, const char *oldname)
       usernick_valid (newname) < 0 || _findbylname (newname))
   {
     rw_unlock (&UFLock);
-    WARNING ("list.c:Change_Lname: cannot do %s => %s.", oldname, newname);
+    WARNING ("list.c:Change_Lname: cannot do %s => %s.", NONULLP(oldname),
+	     NONULLP(newname));
     return 0;
   }
   /* rename user record */
@@ -1128,7 +1131,8 @@ char *Get_Field (struct clrec_t *user, const char *field, time_t *ctime)
       {
 	if (ctime)
 	  *ctime = c->expire;
-	DBG ("Get_Field:%s:%s[%d]=%s", user->lname, field, (int)i, c->greeting);
+	DBG ("Get_Field:%s:%s[%d]=%s", NONULLP(user->lname), field, (int)i,
+	     NONULL(c->greeting));
 	return (c->greeting);
       }
     return NULL;
@@ -1201,7 +1205,7 @@ int Set_Field (struct clrec_t *user, const char *field, const char *val,
   /* we cannot modify Lname with this! */
   if (field == NULL)
     return 0;
-  DBG ("Set_Field: %s=%s (%lu)", field, val, (unsigned long)exp);
+  DBG ("Set_Field: %s=%s (%lu)", field, NONULL(val), (unsigned long)exp);
   c = NULL;
   if ((fn = strrchr (field, '@')) || !*field)	/* try service first */
   {
@@ -1462,7 +1466,7 @@ userflag Set_Flags (struct clrec_t *user, const char *serv, userflag uf)
 
   if (!user)
     return 0;
-  DBG ("Set_Flags: %s=%#x", serv, uf);
+  DBG ("Set_Flags: %s=%#x", NONULLP(serv), uf);
   uf &= ~U_IMMUTABLE;				/* hold on those */
   if (!serv)
   {
@@ -1728,7 +1732,8 @@ static user_chr *_cral_add (char *name, user_chr **chr, char *greeting,
   tmp = _cral_get();
   tmp->next = (*cral)->a.first;
   (*cral)->a.first = tmp;
-  DBG ("list:_cral_add: adding channel %s:%s, %p->%p", name, greeting, tmp->next, tmp);
+  DBG ("list:_cral_add: adding channel %s:%s, %p->%p", name, NONULL(greeting),
+       tmp->next, tmp);
   tmp->x.chr = chr = _add_channel (chr, R_NO);
   (*chr)->greeting = safe_strdup (greeting);
   pthread_mutex_lock (&FLock);
@@ -1888,7 +1893,7 @@ static int _load_listfile (const char *filename, int update)
 	  if (!ch)
 	  {
 	    ERROR ("_load_listfile: unknown subrecord %s(%hd) for \"%s\"",
-		   cc, lid, ur->lname);
+		   cc, lid, NONULL(ur->lname));
 	    break;
 	  }
 	  ch->flag = strtouserflag (_next_field (&c), NULL);
@@ -2095,10 +2100,10 @@ static int _load_listfile (const char *filename, int update)
 	}
 	ur->created = (time_t) strtol (c, NULL, 10);		/* 9 */
 	dprint (4, "Got info for %s user %s:%s%s info=%s created=%lu",
-		(ur->flag & U_SPECIAL) ? "special" : "normal", ur->lname,
-		(ur->flag & U_SPECIAL) ? " network=" : "",
-		(ur->flag & U_SPECIAL) ? ur->logout : "", NONULL(ur->u.info),
-		(unsigned long int)ur->created);
+		(ur->flag & U_SPECIAL) ? "special" : "normal",
+		NONULLP(ur->lname), (ur->flag & U_SPECIAL) ? " network=" : "",
+		(ur->flag & U_SPECIAL) ? (NONULL(ur->logout)) : "",
+		NONULL(ur->u.info), (unsigned long int)ur->created);
 	ur->progress = 1;
     }
   }
@@ -2239,7 +2244,7 @@ static int _save_listfile (const char *filename, int quiet)
 	  register user_chr *c = chr;
 
 	  DBG ("dropped unknown service %d(%s) subrecord from \"%s\": %s",
-	       (int)chr->cid, sur ? sur->lname : "",
+	       (int)chr->cid, (sur && sur->lname) ? sur->lname : "",
 	       NONULL(ur->lname), NONULL(chr->greeting));
 	  chr = chr->next;
 	  _del_channel (&ur->channels, c);	/* remove invalid subrecord */

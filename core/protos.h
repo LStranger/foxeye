@@ -141,6 +141,7 @@ void StrTrim (char *);
 
 #define FOREVER while (1)
 #define NONULL(x) x?x:""
+#define NONULLP(x) x?x:"(null)"
 #define FREE(x) safe_free((void **)x)
 
 #define ISSPACE(c) isspace((uchar)c)
@@ -183,10 +184,10 @@ static type *alloc_##type (void) \
   if (!Free##tvar) \
   { \
     register int i = ALLOCSIZE; \
-    struct ____##type *_L = safe_malloc (sizeof(struct ____##type)); \
-    _L->prv = ____L##type; \
-    ____L##type = _L; \
-    Free##tvar = cur = _L->a; \
+    struct ____##type *_l = safe_malloc (sizeof(struct ____##type)); \
+    _l->prv = ____L##type; \
+    ____L##type = _l; \
+    Free##tvar = cur = _l->a; \
     tvar##asize += sizeof(struct ____##type); \
     while ((--i)) \
     { \
@@ -210,11 +211,11 @@ static inline void free_##type (type *cur) \
 } \
 static inline void forget_##type (void) \
 { \
-  struct ____##type *_L; \
-  while ((_L = ____L##type)) \
+  struct ____##type *_l; \
+  while ((_l = ____L##type)) \
   { \
-    ____L##type = _L->prv; \
-    FREE (&_L); \
+    ____L##type = _l->prv; \
+    FREE (&_l); \
   } \
 }
 

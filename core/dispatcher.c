@@ -165,7 +165,7 @@ void bot_shutdown (char *message, int e)
   if (lastdebuglog)
   {
     if (ShutdownR)
-      DBG ("%s", message);
+      DBG ("%s", ShutdownR);
     fclose (lastdebuglog);
     lastdebuglog = NULL;
   }

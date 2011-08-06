@@ -46,6 +46,9 @@
 # include <sys/filio.h>
 #endif
 
+/* solaris have this name as macro so drop it now */
+#undef sun
+
 /*
  * Sequence:		socket.domain:	pollfd.fd:
  * unallocated		NULL		-1
