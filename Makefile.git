@@ -1,7 +1,8 @@
+#!/usr/bin/make -f
 
-cvs:
+dist:
 	@echo ""
-	@echo "This Makefile is only for the CVS repository"
+	@echo "This Makefile is only for the Git repository"
 	@echo "It will be deleted before making the distribution"
 	@echo ""
 	@echo "*** Concatenating configure tests into configure.in"

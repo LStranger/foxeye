@@ -788,7 +788,7 @@ static void _ircch_quited (NICK *nick, char *lname, userflag uf,
 {
   LINK *link;
 
-  dprint (4, "_ircch_quited: %s (%s)%s", nick->name, NONULLP(lname),
+  dprint (4, "_ircch_quited: %s (%s)%s", nick->name, NONULL(lname),
 	  (nick->umode & A_ISON) ? "" : " at netsplit");
   for (link = nick->channels; link; link = link->prevchan)
     _ircch_quited_log (nick, lname, uf, link, who, msg);

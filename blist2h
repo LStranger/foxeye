@@ -19,7 +19,7 @@ while read line; do
 	    ;;
 	*)
 	    if test -n "$tag"; then
-		if (echo "$line" | grep -q "); *$"); then
+		if (echo "$line" | grep "); *$" >/dev/null); then
 		    echo "$line" | sed -e 's/^ *([a-z]*)/ /' -e 's/_.//g' \
 			-e 's/;//'
 		else
