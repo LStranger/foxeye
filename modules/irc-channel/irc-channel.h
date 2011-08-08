@@ -137,7 +137,7 @@ void ircch_recheck_channel_modes (IRC *, CHANNEL *);
 int ircch_parse_modeline (IRC *, CHANNEL *, LINK *, char *, userflag,
 				struct bindtable_t *, struct bindtable_t *,
 				int, char **);
-void ircch_parse_configmodeline (IRC *, CHANNEL *, char *);
+void ircch_parse_configmodeline (IRC *, CHANNEL *, struct clrec_t *, char *);
 void ircch_enforcer (IRC *, CHANNEL *);
 void ircch_expire (IRC *, CHANNEL *);
 

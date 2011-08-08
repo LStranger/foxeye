@@ -350,7 +350,7 @@ static CHANNEL *_ircch_get_channel0 (IRC *net, const char *ch, const char *real)
     register char *modeline = Get_Field (u, "info", NULL);
 
     if (modeline)
-      ircch_parse_configmodeline (net, chan, modeline);
+      ircch_parse_configmodeline (net, chan, u, modeline);
     chan->id = Get_LID (u);
     Unlock_Clientrecord (u);
   }
