@@ -531,6 +531,7 @@ static int _irc_send (irc_server *serv, char *line)
 	  serv->p.iface->name, sw);
   /* try to send buffer */
   sd = Peer_Put ((&serv->p), buf, &sw);
+  DBG("_irc_send: Peer_Put() returned %zd", sd);
   if (sd < 0)				/* error here */
     return -1;
   if (sd == 0)
@@ -905,8 +906,8 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
 	  LOG_CONN (_("Timeout for IRC server %s (%d seconds)..."),
 		    serv->p.dname, (int)(Time - serv->p.last_input));
 	  serv->p.state = P_DISCONNECTED;
+	  reject = 1;
 	}
-	reject = 1;
       }
     }
     else	/* congratulations, we got the input! */

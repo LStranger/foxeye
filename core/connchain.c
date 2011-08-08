@@ -240,6 +240,7 @@ static ssize_t _ccfilter_x_send (connchain_i **ch, idx_t id, const char *str,
     return E_NOSOCKET;
   if (bb->inbuf > 0)			/* there is something to send */
   {
+    DBG("connchain.c:_ccfilter_x_send: sending buffer =%zu +%zd", bb->bufpos, bb->inbuf);
     i = Connchain_Put (ch, id, &bb->buf[bb->bufpos], &bb->inbuf);
     if (i < 0)				/* some error, end us */
     {
@@ -263,6 +264,7 @@ static ssize_t _ccfilter_x_send (connchain_i **ch, idx_t id, const char *str,
   if (i > (ssize_t)sizeof(bb->buf) - 2)	/* line + CR/LF */
     i = sizeof(bb->buf) - 2;
   memcpy (bb->buf, str, i);
+  DBG("connchain.c:_ccfilter_x_send: added to buffer +%zd", i);
   *sz -= i;
   bb->buf[i] = '\r';			/* CR */
   bb->buf[i+1] = '\n';			/* LF */

@@ -17,6 +17,7 @@ Mon Aug  8 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  name of channel due to non-POSIX vsprintf() on OpenSolaris.
 	* modules/irc-channel/irc-channel.*, modules/irc-channel/chmanagement.c:
 	  fixed a deadlock in ircch_parse_configmodeline().
+	* modules/irc/irc.c: fixed repeated message sending on timeout.
 
 Sat Aug  6 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* configure: fixed check for GNU make, it should be based on $MAKE.
