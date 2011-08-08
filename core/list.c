@@ -1065,6 +1065,7 @@ struct clrec_t *Find_Clientrecord (const uchar *mask, char **lname,
 struct clrec_t *Lock_Clientrecord (const char *name)
 {
   struct clrec_t *user;
+  int err;
 
   rw_rdlock (&UFLock);
   user = _findbylname (name);
@@ -1072,7 +1073,15 @@ struct clrec_t *Lock_Clientrecord (const char *name)
   {
     if (user->flag & U_ALIAS)
       user = user->u.owner;
-    pthread_mutex_lock (&user->mutex);
+    err = pthread_mutex_trylock (&user->mutex);
+    if (err) {
+      rw_unlock (&UFLock);
+      user = NULL;
+      /* pthread_mutex_trylock should not return unknown error
+         so strerror is safe */
+      ERROR("list.c:Lock_Clientrecord: cannot lock %s: %s", name, strerror(err));
+    } else
+      DBG("list.c:Lock_Clientrecord: locked %s", name);
     return user;
   }
   rw_unlock (&UFLock);
@@ -1084,13 +1093,22 @@ struct clrec_t *Lock_Clientrecord (const char *name)
 struct clrec_t *Lock_byLID (lid_t id)
 {
   struct clrec_t *user;
+  int err;
 
   rw_rdlock (&UFLock);
   if ((user = UList[id-LID_MIN]))
   {
     if (user->flag & U_ALIAS)
       user = user->u.owner;
-    pthread_mutex_lock (&user->mutex);
+    err = pthread_mutex_trylock (&user->mutex);
+    if (err) {
+      rw_unlock (&UFLock);
+      user = NULL;
+      /* pthread_mutex_trylock should not return unknown error
+         so strerror is safe */
+      ERROR("list.c:Lock_byLID: cannot lock id %hu: %s", id, strerror(err));
+    } else
+      DBG("list.c:Lock_byLID: locked %hu", id);
     return user;
   }
   rw_unlock (&UFLock);
@@ -1100,10 +1118,15 @@ struct clrec_t *Lock_byLID (lid_t id)
 /*--- RW --- UFLock read and built-in --- no other locks ---*/
 void Unlock_Clientrecord (struct clrec_t *user)
 {
+  int err;
+
   if (!user)
     return;
-  pthread_mutex_unlock (&user->mutex);
+  DBG("list.c:Unlock_Clientrecord: unlocking \"%s\"", NONULL(user->lname));
+  err = pthread_mutex_unlock (&user->mutex);
   rw_unlock (&UFLock);
+  if (err)
+    ERROR("list.c:Unlock_Clientrecord: cannot unlock: %s", strerror(err));
 }
 
 /*--- R --- UFLock read and built-in --- no other locks ---*/
@@ -1946,7 +1969,7 @@ static int _load_listfile (const char *filename, int update)
 		else
 		  flag |= ch->flag;
 	      }
-	      pthread_mutex_lock (&ur->mutex);
+	      pthread_mutex_unlock (&ur->mutex);
 	      /* validate record - nonamed has to have host and at least one of
 		 flags U_DENY | U_ACCESS | U_INVITE | U_DEOP | U_QUIET | U_IGNORED
 		 on at least one subrecord */
