@@ -277,13 +277,13 @@ static void _flush_mode (IRC *net, CHANNEL *chan, modebuf *mbuf)
 
   if (mbuf->cmd == NULL || mbuf->changes == 0)
     return;
-  c = strrchr (chan->chi->name, '@');
-  if (c) s = c - (char *)chan->chi->name; /* int should be enough for it */
-  else s = strlen (chan->chi->name);
+//  c = strrchr (chan->chi->name, '@');
+//  if (c) s = c - (char *)chan->chi->name; /* int should be enough for it */
+//  else s = strlen (chan->chi->name);
   mbuf->mchg[mbuf->pos] = 0;
   mbuf->args[mbuf->apos] = 0;
-  DBG("_flush_mode:%s %.*s %s %s", mbuf->cmd, s, chan->chi->name, mbuf->mchg, mbuf->args);
-  New_Request (net->neti, 0, "%s %.*s %s %s", mbuf->cmd, s, chan->chi->name,
+  DBG("_flush_mode:%s %s %s %s", mbuf->cmd, chan->real, mbuf->mchg, mbuf->args);
+  New_Request (net->neti, 0, "%s %s %s %s", mbuf->cmd, chan->real,
 	       mbuf->mchg, mbuf->args);
   mbuf->cmd = NULL;
   mbuf->changes = mbuf->pos = mbuf->apos = 0;
