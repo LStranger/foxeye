@@ -10,6 +10,12 @@ TODO:
 	* modules/irc-channel/: to implement few CTCP commands: OP, etc.
 
 --- [0.10.0]
+Mon Aug  8 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/list.c: fixed two possible deadlocks, added debug diagnostics.
+	* modules/irc-channel/chmanagement.c: changed control message to be
+	  send with channel name we got from server instead of predefined
+	  name of channel due to non-POSIX vsprintf() on OpenSolaris.
+
 Sat Aug  6 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* configure: fixed check for GNU make, it should be based on $MAKE.
 	* core/protos.h: fixed conflict of ALLOCATABLE_TYPE macro with
