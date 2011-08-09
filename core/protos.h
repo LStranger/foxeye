@@ -74,10 +74,10 @@ void dprint (int, const char *, ...)		/* dispatch.c */
 void bot_shutdown (char *, int) __attribute__ ((noreturn));
 int dispatcher (INTERFACE *);
 
-#define ERROR(a...) dprint (0, ##a)
-#define WARNING(a...) dprint (1, ##a)
+#define ERROR(...) dprint (0, __VA_ARGS__)
+#define WARNING(...) dprint (1, __VA_ARGS__)
 
-#define DBG(a...) dprint (100, ##a)
+#define DBG(...) dprint (100, __VA_ARGS__)
 
 /* ----------------------------------------------------------------------------
  * Common library functions and definitions

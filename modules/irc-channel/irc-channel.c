@@ -503,7 +503,6 @@ static void _ircch_destroy_network (IRC *net)
   SplitMember *sm;
 
   dprint (4, "ircch: destroying network %s", net->name);
-  FREE (&net->name);
   if (net->invited)
   {
     pthread_cancel (net->invited->th);
@@ -517,6 +516,7 @@ static void _ircch_destroy_network (IRC *net)
   Destroy_Tree (&net->channels, &_ircch_destroy_channel);
   Destroy_Tree (&net->nicks, &_ircch_destroy_nick); /* it must be already empty */
   Destroy_Tree (&net->lnames, NULL);
+  FREE (&net->name);
   while ((split = net->splits))
   {
     net->splits = split->prev;
@@ -723,7 +723,6 @@ static void _ircch_joined (LINK *link, char *nuh, char *atuh, userflag uf,
 {
   char *c, *uh;
   struct binding_t *bind;
-  int i;
   char str[MESSAGEMAX];
 
   if (chan)
@@ -738,10 +737,10 @@ static void _ircch_joined (LINK *link, char *nuh, char *atuh, userflag uf,
   for (bind = NULL; (bind = Check_Bindtable (BT_IrcJoin, str, uf, cf, bind)); )
   {
     if (bind->name)
-      i = RunBinding (bind, nuh, link->nick->lname ? link->nick->lname : "*",
-		      link->chan->chi->name, NULL, -1, NULL);
+      RunBinding (bind, nuh, link->nick->lname ? link->nick->lname : "*",
+		  link->chan->chi->name, NULL, -1, NULL);
     else
-      i = bind->func (nuh, link->nick->lname, link->chan->chi);
+      bind->func (nuh, link->nick->lname, link->chan->chi);
   }
   /* %N - nick, %@ - user@host, %L - lname, %# - channel */
   uh = safe_strchr (nuh, '!');
@@ -1746,7 +1745,6 @@ static int irc_join (INTERFACE *iface, char *svname, char *me, unsigned char *pr
   char *ch, *lname, *r;
   userflag uf, cf;
   lid_t id;
-  size_t s;
   char lcn[HOSTMASKLEN+1];
 
   if (!prefix || parc == 0 || !(net = _ircch_get_network (iface->name, 0, lc)))
@@ -1755,9 +1753,9 @@ static int irc_join (INTERFACE *iface, char *svname, char *me, unsigned char *pr
   if ((ch = safe_strchr (prefix, '!')))
     *ch = 0;
   if (lc)
-    s = lc (lcn, prefix, NAMEMAX+1);
+    lc (lcn, prefix, NAMEMAX+1);
   else
-    s = strfcpy (lcn, prefix, NAMEMAX+1);
+    strfcpy (lcn, prefix, NAMEMAX+1);
   if ((nick = _ircch_get_nick (net, lcn, 0)) && nick->split)
   {
     if (ch) *ch = '!';
@@ -2660,7 +2658,6 @@ static int irc_rpl_namreply (INTERFACE *iface, char *svname, char *me,
   LINK *link;
   char *c, *cc, *cx;
   char nn;
-  size_t sz;
   char lcn[NAMEMAX+1];
 
   if (parc != 4 || !(net = _ircch_get_network (iface->name, 0, lc)))
@@ -2668,7 +2665,6 @@ static int irc_rpl_namreply (INTERFACE *iface, char *svname, char *me,
   chan = _ircch_get_channel (net, parv[2], 0);
   if (chan)
   {
-    sz = 0;
     for (c = parv[3]; c && *c; c = cc)
     {
       cc = strchr (c, ' ');			/* select a token */

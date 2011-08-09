@@ -345,7 +345,7 @@ static void _irc_run_conn_bind (irc_server *serv, struct bindtable_t *bt)
 #define _irc_connected(serv) _irc_run_conn_bind (serv, BT_IrcConn)
 #define _irc_disconnected(serv) _irc_run_conn_bind (serv, BT_IrcDisc)
 
-#define LOG_CONN(a...) Add_Request (I_LOG, "*", F_CONN, ##a)
+#define LOG_CONN(...) Add_Request (I_LOG, "*", F_CONN, __VA_ARGS__)
 /*
  * do first try (serv->servlist is NULL) or retry if autoreconnect is on
  * creates new connection thread and irc_await for it

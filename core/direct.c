@@ -299,7 +299,7 @@ static char *getconsole (peer_t *dcc, char *str, size_t sz)
 
 static short *flood_dcc;
 
-#define LOG_CONN(a...) Add_Request (I_LOG, "*", F_CONN, ##a)
+#define LOG_CONN(...) Add_Request (I_LOG, "*", F_CONN, __VA_ARGS__)
 
 /* if s==0 then quiet termination (shutdown sequence) */
 static void _died_iface (INTERFACE *iface, char *buf, size_t s)

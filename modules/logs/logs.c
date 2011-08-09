@@ -546,8 +546,7 @@ static iftype_t logfile_signal (INTERFACE *iface, ifsig_t sig)
       Set_Iface (iface);	/* get all queue now if possible */
       while (Get_Request());
       Unset_Iface();
-      FREE (&log->path);	/* these are allocated */
-      FREE (&log->rpath);
+      FREE (&log->rpath);	/* these are allocated */
     case S_SHUTDOWN:
       if (ShutdownR && *ShutdownR && (log->level & (F_BOOT | F_ERROR | F_WARN)))
 	textlog_add_buf (log, ShutdownR, strlen(ShutdownR), strlen(log_prefix), -1, 0);
@@ -563,6 +562,8 @@ static iftype_t logfile_signal (INTERFACE *iface, ifsig_t sig)
 	if ((x != EACCES && x != EAGAIN) || ++lockcount >= logfile_locks)
 	  break;		/* try to flush log up to 16 times */
       close (log->fd);
+      if (sig == S_TERMINATE)
+	FREE (&log->path);
       break;
     case S_FLUSH:
       flush_log (log, 1, 0);

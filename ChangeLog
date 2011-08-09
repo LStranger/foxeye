@@ -10,6 +10,15 @@ TODO:
 	* modules/irc-channel/: to implement few CTCP commands: OP, etc.
 
 --- [0.10.0]
+Tue Aug  9 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/direct.c, core/protos.h, modules/irc/irc.c, modules/irc-ctcp/dcc.c:
+	  fixed variable arg macros to compliance with standards.
+	* configure: changed compiler for Solaris to be c99.
+	* core/foxeye.h: updated features to SUSv3/POSIX.1-2001.
+	* modules/irc-channel/irc-channel.c: fixed few compiler warnings.
+	* modules/irc-channel/irc-channel.c, modules/logs/logs.c: fixed
+	  SIGSEGV on Solaris.
+
 Mon Aug  8 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/list.c: fixed two possible deadlocks, added debug diagnostics.
 	* modules/irc-channel/chmanagement.c: changed control message to be

@@ -6,7 +6,8 @@
   to send them to channel (_c_h_a_n below).
 
 JOIN  "iirrcc--jjooiinn"       MASK
-  int func(unsigned char *_w_h_o, const char *_l_n_a_m_e, INTERFACE *_c_h_a_n);
+  (int) void func(unsigned char *_w_h_o, const char *_l_n_a_m_e,
+		  INTERFACE *_c_h_a_n);
     Used when someone _l_n_a_m_e with nick!user@host _w_h_o joins IRC channel
     _c_h_a_n. Note: matching uses network+global flags instead of global
     ones.

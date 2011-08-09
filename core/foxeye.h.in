@@ -19,7 +19,13 @@
  */
 
 /* strict POSIX.2 */
-#define _POSIX2_SOURCE 1
+/* #define _POSIX2_SOURCE 1 */
+#define _POSIX_C_SOURCE 200112L
+#define _XOPEN_SOURCE 700
+
+#ifdef __sun
+# pragma error_messages (off, E_ARG_INCOMPATIBLE_WITH_ARG_L)
+#endif
 
 #ifdef HAVE_CONFIG_H
 # include "../config.h"

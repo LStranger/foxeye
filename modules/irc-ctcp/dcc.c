@@ -125,7 +125,7 @@ static void free_dcc (dcc_priv_t *dcc)
   free_dcc_priv_t (dcc);
 }
 
-#define LOG_CONN(a...) Add_Request (I_LOG, "*", F_CONN, ##a)
+#define LOG_CONN(...) Add_Request (I_LOG, "*", F_CONN, __VA_ARGS__)
 
 /* sequence (m - dispathcer's thread, 1...3 - new threads):
     m	got DCC CHAT or DCC SEND or CTCP CHAT (last one skips thread 1 part)

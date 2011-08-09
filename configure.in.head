@@ -6,6 +6,25 @@ AM_INIT_AUTOMAKE(foxeye, 0.10.0)
 
 AC_CANONICAL_HOST
 
+dnl Some non-standard compiler defaults
+if test "x$CC" = x; then
+    case "$host_os" in
+	bsd*)
+	    if test ! "${host_os}" = bsdi2; then
+		CC="shlicc"
+	    fi
+	    ;;
+	solaris*)
+	    CC="c99"
+	    ;;
+	*)
+	    ;;
+    esac
+fi
+if test "x$CC" != x; then
+    AC_MSG_RESULT(compiler is set to $CC)
+fi
+
 AC_USE_SYSTEM_EXTENSIONS
 dnl AC_AIX
 AC_ISC_POSIX
@@ -120,7 +139,6 @@ if test "$fe_cv_static" = no; then
 	    ;;
 	bsd*)
 	    if test ! "${host_os}" = bsdi2; then
-		CC="shlicc"
 		LD="shlicc -r"
 	    fi
 	    ;;
