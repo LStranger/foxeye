@@ -10,6 +10,9 @@ TODO:
 	* modules/irc-channel/: to implement few CTCP commands: OP, etc.
 
 --- [0.10.0]
+Wed Aug 10 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/irc/irc.c: fixed another printf coredump on Solaris.
+
 Tue Aug  9 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.c, core/protos.h, modules/irc/irc.c, modules/irc-ctcp/dcc.c:
 	  fixed variable arg macros to compliance with standards.

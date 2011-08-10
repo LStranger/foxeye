@@ -983,9 +983,9 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
       }
       if (i == -1)
 	ERROR ("strange IRC command from %s: %s %s%s%s%s%s%s",
-		prefix ? prefix : serv->p.dname, params[2], i ? params[3] : "",
-		i > 1 ? " " : "", i > 1 ? params[4] : "", i > 2 ? " " : "",
-		i > 2 ? params[5] : "", i > 3 ? " ..." : "");
+		prefix ? prefix : (NONULLP(serv->p.dname)), params[2],
+		i ? params[3] : "", i > 1 ? " " : "", i > 1 ? params[4] : "",
+		i > 2 ? " " : "", i > 2 ? params[5] : "", i > 3 ? " ..." : "");
       if (serv->p.state != P_LOGIN && serv->p.state != P_TALK &&
 	  serv->p.state != P_IDLE)
 	reject = 1;	/* bindings might reset connection */
