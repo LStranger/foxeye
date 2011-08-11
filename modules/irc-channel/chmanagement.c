@@ -1775,16 +1775,92 @@ static int ssirc_invite (struct peer_t *who, INTERFACE *where, char *args)
   return 1;
 }
 
+static LINK *_ctcp_find_target(INTERFACE *client, char *lname, char *unick,
+			       char *tgt, IRC **net, char *b, size_t s,
+			       modeflag checkmf, LINK **meptr)
+{
+  CHANNEL *ch;
+  LINK *link, *me;
+  char *nn;
+
+  DBG ("_ctcp_find_target:%s:%s:%s", client->name, lname, NONULL(tgt));
+  if (tgt == NULL)
+    return NULL;			/* erroreneous argument */
+  if (tgt[0]) {				/* channel was specified */
+    if (!ischannelname(tgt) || !(nn = strchr(client->name, '@')))
+      return NULL;			/* cannot determine channel */
+    NextWord_Unquoted(b, tgt, s);
+    strfcat(b, nn, s);
+    ch = ircch_find_service(b, net);
+    if (!ch || !*net)
+      return NULL;			/* no such channel known */
+    me = _find_me_op(*net, ch);
+    if (!me || !(me->mode & checkmf))	/* cannot op them! */
+      return NULL;
+    link = ircch_find_link(*net, unick, ch);
+    if (link->mode & checkmf)		/* already opped */
+      return NULL;
+    if (meptr)
+      *meptr = me;
+    return link;
+  }
+  ircch_find_service(client->name, net); /* just to get network here */
+  for (link = ircch_find_link(*net, unick, NULL); link; link = link->prevchan) {
+    if (link->mode & checkmf)		/* already opped */
+      continue;
+    me = _find_me_op(*net, link->chan);
+    if (me && (me->mode & checkmf))
+      break;
+    me = NULL;				/* cannot op them! */
+  }
+  if (meptr)
+    *meptr = me;
+  return link;				/* no channel where I can op them */
+}
+
 		/* OP passwd [channel] */
-//BINDING_TYPE_irc_priv_msg_ctcp(ctcp_op);
-//static int ctcp_version(INTERFACE *client, unsigned char *who, char *lname,
-//			char *unick, char *msg)
-//{
-  //check args
-  //check passwd
-  //find specified or next channel
-  //do op
-//}
+BINDING_TYPE_irc_priv_msg_ctcp(ctcp_op);
+static int ctcp_op(INTERFACE *client, unsigned char *who, char *lname,
+		   char *unick, char *msg)
+{
+  struct clrec_t *u;
+  char *crp;
+  IRC *net;
+  LINK *tgt, *me;
+  int fail;
+  modebuf mbuf;
+  char pass[IFNAMEMAX+1];
+
+  /* check args */
+  if (!client || !lname)	/* not identified */
+    return 0;
+  msg = NextWord_Unquoted(pass, msg, sizeof(pass));
+  /* check passwd */
+  u = Lock_Clientrecord(lname);
+  if (u == NULL)
+    fail = 1;
+  else if ((crp = Get_Field(u, "passwd", NULL)) == NULL)
+    fail = 1;
+  else
+    fail = Check_Passwd(pass, crp);
+  if (u)
+    Unlock_Clientrecord(u);
+  if (fail)
+    return 0;			/* FIXME: inform client somehow? */
+  /* find specified or next channel */
+  tgt = _ctcp_find_target(client, lname, unick, msg, &net, pass, sizeof(pass),
+			  (A_ADMIN | A_OP), &me);
+  if (!tgt)
+    return 0;			/* cannot op requestor there */
+  /* do op */
+  _make_modechars (mbuf.modechars, net);
+  mbuf.changes = mbuf.pos = mbuf.apos = 0;
+  mbuf.cmd = NULL;
+  /* TODO: make some eggdrop-style assumptions for giving flags? */
+  _push_mode (net, tgt, &mbuf, A_OP, 1, NULL);
+  _flush_mode (net, tgt->chan, &mbuf);
+  return 1;
+}
 
 void ircch_set_ss (void)
 {

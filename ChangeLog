@@ -12,6 +12,7 @@ TODO:
 --- [0.10.0]
 Wed Aug 10 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc/irc.c: fixed another printf coredump on Solaris.
+	* modules/irc-channel/chmanagement.c: made draft for CTCP OP handler.
 
 Tue Aug  9 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.c, core/protos.h, modules/irc/irc.c, modules/irc-ctcp/dcc.c:
