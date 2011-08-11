@@ -260,7 +260,7 @@ idx_t GetSocket (unsigned short type)
 /* For a listening process - we have to get ECONNREFUSED to own port :) */
 int SetupSocket (idx_t idx, char *domain, unsigned short port)
 {
-  in_port_t *pptr;
+  in_port_t *pptr = NULL;
   inet_addr_t addr;
   socklen_t len;
   struct linger ling;
@@ -287,7 +287,7 @@ int SetupSocket (idx_t idx, char *domain, unsigned short port)
     pptr = &addr.s_in6.sin6_port;
     len = sizeof(addr.s_in6.sin6_addr);
     if (!domain)
-      memcpy(&addr.s_in6.sin6_addr, in6addr_any, len);
+      memcpy(addr.s_in6.sin6_addr.s6_addr, in6addr_any.s6_addr, len);
 #else
     memset (&addr.s_in, 0, sizeof(addr.s_in));
     addr.sa.sa_family = AF_INET;
@@ -495,6 +495,8 @@ idx_t AnswerSocket (idx_t listen)
   }
 #endif
 	break;
+      default:
+	ptr = &in6addr_any;
     }
 #endif
     Socket[idx].domain = safe_strdup(inet_ntop(addr.sa.sa_family, ptr,

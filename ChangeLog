@@ -10,6 +10,9 @@ TODO:
 	* modules/irc-channel/: to implement few CTCP commands: OP, etc.
 
 --- [0.10.0]
+Thu Aug 11 2011 Denis Kozadaev <denis@irc.tambov.ru>
+	* core/socket.c: made draft implementation of IPv6 support.
+
 Wed Aug 10 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc/irc.c: fixed another printf coredump on Solaris.
 	* modules/irc-channel/chmanagement.c: made draft for CTCP OP handler.
