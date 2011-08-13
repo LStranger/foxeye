@@ -49,7 +49,7 @@ AC_DEFUN([AC_CHECK_DEBUG],
 AC_ARG_ENABLE(debug,
     [  --enable-debug          creates debugging code],
 [
-if test "$enableval" = "no"; then
+if test "x$enable_debug" = xno; then
   AC_SET_NODEBUG
 else
   dnl disable optimization and add extra warnings if it's debug compilation
@@ -143,5 +143,53 @@ else
 	AC_MSG_RESULT(//translit//ignore)
 	AC_DEFINE([TRANSLIT_IGNORE], ["//TRANSLIT//IGNORE"])
     fi
+fi
+])
+
+AC_DEFUN([AC_CHECK_IPV6],
+[dnl Bit of borrowed from rusnet-irc configure script
+AC_ARG_ENABLE(ipv6,
+    [  --enable-ipv6           enables IPv6 connections support],
+    [], [enableval=no])
+if test "x$enable_ipv6" = xyes; then
+    AC_CACHE_CHECK([IPv6 system type], fe_cv_v6type,
+    [
+	fe_cv_v6type=
+	dnl check for posix type support
+	AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
+#include <unistd.h>
+#include <netinet/in.h>]], [[struct in6_addr addr]])],
+			  [fe_cv_v6type=native])
+
+	dnl check for linux specific header/library
+	if test "x$fe_cv_v6type" = x; then
+	    if test -d /usr/inet6; then
+		AC_EGREP_CPP(yes, [
+#include "/usr/inet6/include/netinet/in.h"
+#ifdef _INET6APPS_NETINET_IN_H
+yes
+#endif], fe_cv_v6type=linux)
+	    fi
+	fi
+
+	if test "x$fe_cv_v6type" = x; then
+	    fe_cv_v6type=unknown
+	fi
+    ])
+
+    dnl eventually update LIBS
+    case $fe_cv_v6type in
+    unknown)
+	AC_MSG_WARN([Cannot support IPv6 on this system, disabling it.])
+	;;
+    linux)
+	LIBS="-L/usr/inet6/lib -linet6 $LIBS"
+	CFLAGS="$CFLAGS -I/usr/inet6/include"
+	AC_DEFINE([ENABLE_IPV6], [1])
+	;;
+    *)
+	AC_DEFINE([ENABLE_IPV6], [1], [Define to enable IPv6 support])
+	;;
+    esac
 fi
 ])

@@ -10,6 +10,9 @@ TODO:
 	* modules/irc-channel/: to implement few CTCP commands: OP, etc.
 
 --- [0.10.0]
+Sat Aug 13 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* configure: added option --enable-ipv6, borrowed from rusnet-ircd.
+
 Thu Aug 11 2011 Denis Kozadaev <denis@irc.tambov.ru>
 	* core/socket.c: made draft implementation of IPv6 support.
 
