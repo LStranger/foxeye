@@ -49,7 +49,7 @@ AC_DEFUN([AC_CHECK_DEBUG],
 AC_ARG_ENABLE(debug,
     [  --enable-debug          creates debugging code],
 [
-if test "x$enable_debug" = xno; then
+if test "x$enableval" = xno; then
   AC_SET_NODEBUG
 else
   dnl disable optimization and add extra warnings if it's debug compilation
