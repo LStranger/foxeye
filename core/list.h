@@ -35,7 +35,7 @@ int Get_Hostlist (INTERFACE *, lid_t);
 int Get_Fieldlist (INTERFACE *, lid_t);
 unsigned short Get_Hosthash (const char *, const char *)
 			__attribute__((warn_unused_result));
-userflag Match_Client (char *, char *, const char *)
+userflag Match_Client (const char *, const char *, const char *)
 			__attribute__((warn_unused_result));
 userflag Get_Clientflags (const char *, const char *)
 			__attribute__((warn_unused_result));

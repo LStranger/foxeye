@@ -753,7 +753,7 @@ Listfile API:
     right away so there will be no chance to get another record on that
     LID.
 	Reenterability: none
-  
+
   int GGeett__FFiieellddlliisstt (INTERFACE *_i_f_a_c_e, lid_t _i_d);
     Sends list (space separated) of known fields for Listfile record with
     LID _i_d to interface _i_f_a_c_e via New_Request(). Only services (either
@@ -763,8 +763,9 @@ Listfile API:
     record on that LID. Note2: special names in reports will be prepended
     with '@' to make difference with custom field names.
 	Reenterability: none
-  
-  userflag MMaattcchh__CClliieenntt (char *_h_o_s_t, char *_i_d_e_n_t, const char *_n_a_m_e);
+
+  userflag MMaattcchh__CClliieenntt (const char *_h_o_s_t, const char *_i_d_e_n_t,
+			 const char *_n_a_m_e);
     Returns OR'ed userflags for all found Listfile records matched to
     users with hostmask _i_d_e_n_t@_h_o_s_t and with Lname mask _n_a_m_e.
 	Reenterability: thread-safe
@@ -979,7 +980,7 @@ Sockets API:
     GetSocket() and closed only by it.
     	Reenterability: thread-safe
 
-  int SSeettuuppSSoocckkeett (idx_t _i_d_x, char *_d_o_m_a_i_n, unsigned short _p_o_r_t);
+  int SSeettuuppSSoocckkeett (idx_t _i_d_x, const char *_d_o_m_a_i_n, unsigned short _p_o_r_t);
     Sets up new socket in non-block mode, establishes connection with
     Internet address with name _d_o_m_a_i_n to port _p_o_r_t if its mode is M_RAW
     or opens a new listening socket if its mode is M_LIST, M_LINP, or
@@ -1006,11 +1007,17 @@ Sockets API:
     it must be closed after. Returns nothing.
 	Reenterability: async-safe
 
-  char *SSoocckkeettDDoommaaiinn (idx_t _i_d_x, unsigned short *_p);
+  const char *SSoocckkeettDDoommaaiinn (idx_t _i_d_x, unsigned short *_p);
     Returns domain name for socket _i_d_x. If _p is not NULL then also puts
     port of the socket in *_p. If socket is opened in listen mode then
     returns own domain and port. If no matched socket found then _p will
     be left untouched and function returns empty string but no NULL.
+	Reenterability: async-safe
+
+  const char *SSoocckkeettIIPP (idx_t _i_d_x);
+    Returns textual representation (name) for IP of socket _i_d_x. If socket
+    is opened in listen mode then returns listening IP name. If there is
+    no such socket then returns empty string but no NULL.
 	Reenterability: async-safe
 
   char *SSoocckkeettEErrrroorr (int _e_r_r, char *_b_u_f, size_t _s_z);
@@ -1057,11 +1064,11 @@ Direct client's connections API:
     tip may break interface protocol otherwise. Returns nothing.
 	Reenterability: none
 
-  idx_t LLiisstteenn__PPoorrtt (char *_c_l_n, char *_h_o_s_t, unsigned short *_p,
+  idx_t LLiisstteenn__PPoorrtt (char *_c_l_n, const char *_h_o_s_t, unsigned short *_p,
 		  char *_c_o_n_f_l_i_n_e, void *_i_d,
 		  void (*_p_r_e_h_a_n_d_l_e_r) (pthread_t _t_h, void **_i_d, idx_t _a_s),
-		  void (*_h_a_n_d_l_e_r) (char *_c_l_n, char *_i_d_e_n_t, char *_h_o_s_t,
-				   void *_i_d));
+		  void (*_h_a_n_d_l_e_r) (char *_c_l_n, char *_i_d_e_n_t,
+				   const char *_h_o_s_t, void *_i_d));
     Opens listener for client name _c_l_n on port _p. If _p contains 0 then
     tries ports accordingly to variable "dcc-port-range". It opens a
     socket and when connection is accepted then creates new thread where
@@ -1092,7 +1099,7 @@ Direct client's connections API:
     _p_r_e_h_a_n_d_l_e_r should not call any but async-safe functions in that case.
 	Reenterability: none
 
-  int CCoonnnneecctt__HHoosstt (char *_h_o_s_t, unsigned short _p_o_r_t, pthread_t *_t_h,
+  int CCoonnnneecctt__HHoosstt (const char *_h_o_s_t, unsigned short _p_o_r_t, pthread_t *_t_h,
 		    idx_t *_s_o_c_k_e_t, void (*_h_a_n_d_l_e_r) (int _r_e_s, void *_i_d),
 		    void *_i_d);
     Attempts to create a thread to open outgoing connection to some _h_o_s_t

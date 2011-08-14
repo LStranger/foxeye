@@ -60,6 +60,7 @@
 typedef struct
 {
   char *domain;			/* if free then this is NULL */
+  char *ipname;
   sig_atomic_t ready;
   unsigned short port;
 } socket_t;
@@ -226,6 +227,7 @@ int KillSocket (idx_t *idx)
   dprint (4, "socket:KillSocket: fd=%d", Pollfd[i].fd);
   CloseSocket (i);		/* must be first for reentrance */
   Socket[i].port = 0;
+  FREE (&Socket[i].ipname);
   FREE (&Socket[i].domain);	/* indicator of free socket */
   return 0;
 }
@@ -257,8 +259,41 @@ idx_t GetSocket (unsigned short type)
   return idx;
 }
 
+/* returns allocated ip textual representation for socket address */
+static char *_make_socket_ipname(inet_addr_t *addr, char *buf, size_t bufsize)
+{
+  register const void *ptr;
+
+#ifdef ENABLE_IPV6
+  switch (addr->sa.sa_family) {	/* prepare ip textual representation */
+  case AF_INET:
+#endif
+    ptr = &addr->s_in.sin_addr;
+#ifdef ENABLE_IPV6
+    break;
+  case AF_INET6:
+    ptr = &addr->s_in6.sin6_addr;
+#if	0
+			if ((ptr[0] == 0x0) && (ptr[1] == 0x0) &&
+				(ptr[2] == 0x0) && (ptr[3] == 0x0) &&
+				(ptr[4] == 0x0) && (ptr[5] == 0x0) &&
+				(ptr[6] == 0x0) && (ptr[7] == 0x0) &&
+				(ptr[8] == 0x0) && (ptr[9] == 0x0) &&
+				(((ptr[10] == 0x0) && (ptr[11] == 0x0)) ||
+				((ptr[10] == 0xFF) && (ptr[11] == 0xFF)))) {
+				/* v4 to v6 mapped */
+  }
+#endif
+    break;
+  default:
+    ptr = &in6addr_any;
+  }
+#endif
+  return safe_strdup(inet_ntop(addr->sa.sa_family, ptr, buf, bufsize));
+}
+
 /* For a listening process - we have to get ECONNREFUSED to own port :) */
-int SetupSocket (idx_t idx, char *domain, unsigned short port)
+int SetupSocket (idx_t idx, const char *domain, unsigned short port)
 {
   in_port_t *pptr = NULL;
   inet_addr_t addr;
@@ -376,10 +411,13 @@ int SetupSocket (idx_t idx, char *domain, unsigned short port)
 #endif
   if (type != M_UNIX)
   {
+    Socket[idx].ipname = _make_socket_ipname(&addr, hname, sizeof(hname));
     i = getnameinfo (&addr.sa, len, hname, sizeof(hname), NULL, 0, 0);
     /* TODO: work on errors? */
     if (i == 0)
       domain = hname;
+    else if (domain == NULL) /* make it not NULL */
+      domain = Socket[idx].ipname;
   }
   Socket[idx].domain = safe_strdup (domain);
   return 0;
@@ -467,45 +505,16 @@ idx_t AnswerSocket (idx_t listen)
   DBG ("socket:AnswerSocket: %hd (fd=%d)", idx, sockfd);
   if (Socket[listen].port == 0)
     return (idx);		/* no domains for Unix sockets */
+  Socket[idx].ipname = _make_socket_ipname(&addr, hname, sizeof(hname));
   i = getnameinfo (&addr.sa, len, hname, sizeof(hname), NULL, 0, 0);
-  if (i == 0)
-    Socket[idx].domain = safe_strdup (hname); /* subst canonical name */
-  else /* error of getnameinfo() */
-  {
-    const void *ptr;
-
-#ifdef ENABLE_IPV6
-    switch (addr.sa.sa_family) {
-      case AF_INET:
-#endif
-	ptr = &addr.s_in.sin_addr;
-#ifdef ENABLE_IPV6
-	break;
-      case AF_INET6:
-	ptr = &addr.s_in6.sin6_addr;
-#if	0
-			if ((ptr[0] == 0x0) && (ptr[1] == 0x0) &&
-				(ptr[2] == 0x0) && (ptr[3] == 0x0) &&
-				(ptr[4] == 0x0) && (ptr[5] == 0x0) &&
-				(ptr[6] == 0x0) && (ptr[7] == 0x0) &&
-				(ptr[8] == 0x0) && (ptr[9] == 0x0) &&
-				(((ptr[10] == 0x0) && (ptr[11] == 0x0)) ||
-				((ptr[10] == 0xFF) && (ptr[11] == 0xFF)))) {
-				/* v4 to v6 mapped */
-  }
-#endif
-	break;
-      default:
-	ptr = &in6addr_any;
-    }
-#endif
-    Socket[idx].domain = safe_strdup(inet_ntop(addr.sa.sa_family, ptr,
-					       hname, sizeof(hname)));
-  }
+  if (i == 0)			/* subst canonical name */
+    Socket[idx].domain = safe_strdup (hname);
+  else				/* error of getnameinfo() */
+    Socket[idx].domain = safe_strdup(Socket[idx].ipname);
   return (idx);
 }
 
-char *SocketDomain (idx_t idx, unsigned short *port)
+const char *SocketDomain (idx_t idx, unsigned short *port)
 {
   char *d = NULL;
   /* check if idx is invalid */
@@ -515,6 +524,16 @@ char *SocketDomain (idx_t idx, unsigned short *port)
       *port = Socket[idx].port;
     d = Socket[idx].domain;
   }
+  return NONULL(d);
+}
+
+const char *SocketIP (idx_t idx)
+{
+  char *d = NULL;
+
+  /* check if idx is invalid */
+  if (idx >= 0 && idx < _Snum)
+    d = Socket[idx].ipname;
   return NONULL(d);
 }
 

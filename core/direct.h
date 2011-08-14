@@ -54,11 +54,11 @@ int Check_Passwd (const char *, char *);		/* plain, encrypted */
 void Dcc_Parse (struct peer_t *, char *, char *, userflag, userflag, int, int,
 		struct bindtable_t *, char *);		/* default parser */
 
-idx_t Listen_Port (char *, char *, unsigned short *, char *, void *,
+idx_t Listen_Port (char *, const char *, unsigned short *, char *, void *,
 		   void (*) (pthread_t, void **, idx_t),
-		   void (*) (char *, char *, char *, void *))
+		   void (*) (char *, char *, const char *, void *))
 			__attribute__((warn_unused_result));
-int Connect_Host (char *, unsigned short, pthread_t *, idx_t *,
+int Connect_Host (const char *, unsigned short, pthread_t *, idx_t *,
 		  void (*) (int, void *), void *)
 			__attribute__((warn_unused_result));
 

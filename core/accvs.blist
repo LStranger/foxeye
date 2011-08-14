@@ -76,7 +76,7 @@ CHOF  "cchhaatt--ooffff"       MASK
       Script args: Lname Dcc-idx
 
 CHJN  "cchhaatt--jjooiinn"      MASK
-  (int) void func(INTERFACE *_i_f_a_c_e, int _b_c_h_a_n, char *_h_o_s_t);
+  (int) void func(INTERFACE *_i_f_a_c_e, int _b_c_h_a_n, const char *_h_o_s_t);
     Used when somebody _i_f_a_c_e (coming from _h_o_s_t) joins a botnet channel
     _b_c_h_a_n.
       Matching: bchan.  (userflags are ignored)

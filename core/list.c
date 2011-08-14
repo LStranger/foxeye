@@ -1397,7 +1397,7 @@ int Grow_Field (struct clrec_t *user, const char *field, const char *val)
 }
 
 /*--- R --- no locks ---*/
-userflag Match_Client (char *domain, char *ident, const char *lname)
+userflag Match_Client (const char *domain, const char *ident, const char *lname)
 {
   userflag uf = 0;
   struct clrec_t *ur = NULL;

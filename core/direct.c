@@ -84,7 +84,7 @@ static void _chat_join (peer_t *dcc)
   register struct binding_t *bind = NULL;
   char *on_bot;
   char *name;
-  char *h;
+  const char *h;
   char *cc;
   char ch[16];
 
@@ -584,7 +584,8 @@ static iftype_t dcc_signal (INTERFACE *iface, ifsig_t signal)
   int idle;
   INTERFACE *tmp;
   unsigned short p;
-  char *dom, *desc;
+  const char *dom;
+  char *desc;
 
   if (!dcc || dcc->socket < 0)		/* already killed? */
     return I_DIED;
@@ -1085,7 +1086,7 @@ static void get_chat (char *name, char *ident, char *host, peer_t *dcc,
  *   ident, host, and socket are from connection
  *   adds 'x' connection chain link in any case
  */
-static char *session_handler_main (char *ident, char *host, peer_t *dcc,
+static char *session_handler_main (char *ident, const char *host, peer_t *dcc,
 				   int botsonly, char buf[SHORT_STRING],
 				   char client[LNAMELEN+1])
 {
@@ -1159,7 +1160,7 @@ static char *session_handler_main (char *ident, char *host, peer_t *dcc,
   return msg;
 }
 
-static void session_handler (char *ident, char *host, void *data, int flag)
+static void session_handler (char *ident, const char *host, void *data, int flag)
 {
   char buf[SHORT_STRING];
   char client[LNAMELEN+1];
@@ -1221,7 +1222,7 @@ typedef struct
   int tst:1;
   pthread_t th;
   void (*prehandler) (pthread_t, void **, idx_t);
-  void (*handler) (char *, char *, char *, void *);
+  void (*handler) (char *, char *, const char *, void *);
 } accept_t;
 
 static iftype_t port_signal (INTERFACE *iface, ifsig_t signal)
@@ -1281,7 +1282,7 @@ static void _accept_port_cleanup (void *input_data)
 /* fields but client, lport, socket, prehadler, handler, data are undefined */
 static void *_accept_port (void *input_data)
 {
-  char *domain;
+  const char *domain;
   char ident[24];
   char buf[SHORT_STRING];
   ssize_t sz;
@@ -1428,9 +1429,10 @@ static void *_listen_port (void *input_data)
  * Returns: -1 if no listening or listen socket ID on success.
  */
 static idx_t
-Listen_Port_main (char *client, char *host, unsigned short port, char *confline,
-		  void *data, void (*prehandler) (pthread_t, void **, idx_t),
-		  void (*handler) (char *, char *, char *, void *))
+Listen_Port_main (char *client, const char *host, unsigned short port,
+		  char *confline, void *data,
+		  void (*prehandler) (pthread_t, void **, idx_t),
+		  void (*handler) (char *, char *, const char *, void *))
 {
   accept_t *acptr;
   idx_t p;
@@ -1478,9 +1480,10 @@ static void _assign_port_range (unsigned short *ps, unsigned short *pe)
     *pe = *ps;
 }
 
-idx_t Listen_Port (char *client, char *host, unsigned short *sport, char *confline,
-		   void *data, void (*prehandler) (pthread_t, void **, idx_t),
-		   void (*handler) (char *, char *, char *, void *))
+idx_t Listen_Port (char *client, const char *host, unsigned short *sport,
+		   char *confline, void *data,
+		   void (*prehandler) (pthread_t, void **, idx_t),
+		   void (*handler) (char *, char *, const char *, void *))
 {
   unsigned short port, pe;
   idx_t idx;
@@ -1545,7 +1548,7 @@ static void *_connect_host (void *input_data)
 }
 #undef cptr
 
-int Connect_Host (char *host, unsigned short port, pthread_t *th, idx_t *idx,
+int Connect_Host (const char *host, unsigned short port, pthread_t *th, idx_t *idx,
 		  void (*handler) (int, void *), void *id)
 {
   connect_t *cptr;
@@ -2564,26 +2567,26 @@ static int _dellistenport (char *pn)
 
 static int _s_h_value[8] = {0,0,0,0,0,0,0,0};
 
-static void session_handler_0 (char *client, char *ident, char *host, void *d) {
+static void session_handler_0 (char *client, char *ident, const char *host, void *d) {
   session_handler (ident, host, d, 0); }
-static void session_handler_1 (char *client, char *ident, char *host, void *d) {
+static void session_handler_1 (char *client, char *ident, const char *host, void *d) {
   session_handler (ident, host, d, _s_h_value[0]); }
-static void session_handler_2 (char *client, char *ident, char *host, void *d) {
+static void session_handler_2 (char *client, char *ident, const char *host, void *d) {
   session_handler (ident, host, d, _s_h_value[1]); }
-static void session_handler_3 (char *client, char *ident, char *host, void *d) {
+static void session_handler_3 (char *client, char *ident, const char *host, void *d) {
   session_handler (ident, host, d, _s_h_value[2]); }
-static void session_handler_4 (char *client, char *ident, char *host, void *d) {
+static void session_handler_4 (char *client, char *ident, const char *host, void *d) {
   session_handler (ident, host, d, _s_h_value[3]); }
-static void session_handler_5 (char *client, char *ident, char *host, void *d) {
+static void session_handler_5 (char *client, char *ident, const char *host, void *d) {
   session_handler (ident, host, d, _s_h_value[4]); }
-static void session_handler_6 (char *client, char *ident, char *host, void *d) {
+static void session_handler_6 (char *client, char *ident, const char *host, void *d) {
   session_handler (ident, host, d, _s_h_value[5]); }
-static void session_handler_7 (char *client, char *ident, char *host, void *d) {
+static void session_handler_7 (char *client, char *ident, const char *host, void *d) {
   session_handler (ident, host, d, _s_h_value[6]); }
-static void session_handler_8 (char *client, char *ident, char *host, void *d) {
+static void session_handler_8 (char *client, char *ident, const char *host, void *d) {
   session_handler (ident, host, d, _s_h_value[7]); }
 
-typedef void (*_s_h_proc_type)(char *,char *,char *,void *);
+typedef void (*_s_h_proc_type)(char *,char *,const char *,void *);
 
 static _s_h_proc_type _s_h_proc[8] = {
   &session_handler_1,

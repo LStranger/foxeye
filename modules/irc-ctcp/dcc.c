@@ -255,7 +255,7 @@ static iftype_t _dcc_sig_2 (INTERFACE *iface, ifsig_t signal)
 /* ----------------------------------------------------------------------------
    thread 2 (both CTCP CHAT and CTCP DCC CHAT connection handler) */
 
-static void chat_handler (char *lname, char *ident, char *host, void *data)
+static void chat_handler (char *lname, char *ident, const char *host, void *data)
 {
   char buf[SHORT_STRING];
   userflag uf;
@@ -374,7 +374,7 @@ static void _dcc_inc_pre (pthread_t th, void **data, idx_t as)
     .socket	socket ID
     .th		thread ID
     .mutex	initialised and unlocked if it's from (p)SEND */
-static void isend_handler (char *lname, char *ident, char *host, void *data)
+static void isend_handler (char *lname, char *ident, const char *host, void *data)
 {
   char *buff;
   dcc_priv_t *dcc = data;
@@ -833,7 +833,8 @@ static void _dcc_send_handler (int res, void *input_data)
 
 /* the same but for passive mode - incoming connect to our send.
    lname contains nick@net and dcc->iface is invalid */
-static void _dcc_send_phandler (char *lname, char *ident, char *host, void *input_data)
+static void _dcc_send_phandler (char *lname, char *ident, const char *host,
+				void *input_data)
 {
   /* don't check ident and host - we can be wrong on that */
   /* unlocked now but dispatcher will wait this thread to join before freeing */

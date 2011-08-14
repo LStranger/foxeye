@@ -573,7 +573,7 @@ static char *_irc_get_lname (char *nuh, userflag *uf, char *net)
 static iftype_t _irc_signal (INTERFACE *iface, ifsig_t sig)
 {
   irc_server *serv = (irc_server *)iface->data;
-  char *reason, *domain;
+  const char *reason, *domain;
   unsigned short port;
   size_t bufpos, inbuf;
   INTERFACE *tmp;

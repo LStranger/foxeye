@@ -38,13 +38,14 @@
 #define POLL_TIMEOUT	200	/* in milliseconds - M_POLL from threads */
 
 idx_t GetSocket (unsigned short);		/* allocate one socket */
-int SetupSocket (idx_t, char *, unsigned short); /* socket, domain, port */
+int SetupSocket (idx_t, const char *, unsigned short); /* socket, domain, port */
 int KillSocket (idx_t *);			/* forget the socket */
 void CloseSocket (idx_t);			/* just close it */
 ssize_t ReadSocket (char *, idx_t, size_t, int); /* read full line, strip \r\n */
 ssize_t WriteSocket (idx_t, const char *, size_t *, size_t *, int);
 idx_t AnswerSocket (idx_t);
-char *SocketDomain (idx_t, unsigned short *);	/* returns nonull value! */
+const char *SocketDomain (idx_t, unsigned short *); /* returns nonull value! */
+const char *SocketIP (idx_t);			/* the same but text IP */
 char *SocketError (int, char *, size_t);
 
 int _fe_init_sockets (void);

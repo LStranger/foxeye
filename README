@@ -50,6 +50,10 @@ Undocumented options.
 Version control.
     Any version A.BCxxx must be compatible. It means if something was changed
   in the core headers then it must be subject for version change.
+    Note: since the version 0.10 versions with release number equal to 0 (i.e.
+  such as 0.10.0.1 and so on) are 'developer' versions and are not subject for
+  this version control as protocol/arrays may be changed with any build number
+  change so should be not used for making any release package.
 
 Why I may need iconv?
     Iconv is a library which can do conversion from one charset to another.
