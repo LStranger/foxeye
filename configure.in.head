@@ -56,7 +56,7 @@ ac_default_prefix="${HOME}/${PACKAGE}"
 m4_pattern_allow(LIBOBJ)
 
 if test "$ac_cv_c_inline" != no ; then
-    AC_DEFINE(HAVE_INLINE, 1, [Define to 1 if you have working inline modifier])
+    AC_DEFINE(HAVE_INLINE, 1, [Define to 1 if you have working `inline' modifier.])
     AC_SUBST(HAVE_INLINE)
 fi
 
@@ -131,12 +131,12 @@ if test "$fe_cv_static" = no; then
 	freebsd*)
 	    LD="${LD} -shared"
 	    CPPFLAGS="-fpic ${CPPFLAGS}"
-	    AC_DEFINE(_FREEBSD, 1, [Define to 1 if on FreeBSD])
+	    AC_DEFINE(_FREEBSD, 1, [Define to 1 if on FreeBSD.])
 	    ;;
 	openbsd* | netbsd*)
 	    LD="ld -x -Bshareable"
 	    CPPFLAGS="-fpic ${CPPFLAGS}"
-	    AC_DEFINE(_OPENBSD, 1, [Define to 1 if on OpenBSD])
+	    AC_DEFINE(_OPENBSD, 1, [Define to 1 if on OpenBSD.])
 	    ;;
 	bsd*)
 	    if test ! "${host_os}" = bsdi2; then
@@ -157,7 +157,7 @@ if test "$fe_cv_static" = no; then
 	    LD="ld -b"
 	    CPPFLAGS="-fPIC ${CPPFLAGS}"
 	    LDFLAGS="-Wl,-E ${LDFLAGS}"
-	    AC_DEFINE(_HPUX, 1, [Define to 1 if on HP-UX])
+	    AC_DEFINE(_HPUX, 1, [Define to 1 if on HP-UX.])
 	    ;;
 	*)
 	    ;;
@@ -194,12 +194,15 @@ AC_SEARCH_LIBS(log, m)
 AC_SEARCH_LIBS(gethostbyname, [dns nsl])
 
 if test "$fe_cv_static" = no; then
-    AC_SEARCH_LIBS(dlopen, dl, [AC_DEFINE(HAVE_DLOPEN, 1, [Define to 1 if you have dlopen function])],
+    AC_SEARCH_LIBS(dlopen, dl,
+	[AC_DEFINE(HAVE_DLOPEN, 1, [Define to 1 if you have the `dlopen' function.])],
 	[AC_MSG_WARN([    Sorry, modules are not available now])
 	fe_cv_static=yes
     ])
 fi
 
+dnl AM_ICONV uses strange variable ac_t in reports so reset it now
+ac_t=
 AC_CHECK_ICONV
 
 AC_CHECK_IPV6
@@ -251,7 +254,7 @@ else
     ])
 fi
 if test "$ac_cv_sa_handler" = yes; then
-    AC_DEFINE(HAVE_SA_HANDLER, 1, [Define to 1 if you have sa_handler in struct sigaction])
+    AC_DEFINE(HAVE_SA_HANDLER, 1, [Define to 1 if you have `sa_handler' in struct sigaction.])
 fi
 
 AC_CACHE_CHECK([whether you need libcrypt], ac_cv_need_libcrypt,
@@ -268,7 +271,7 @@ AC_CACHE_CHECK([whether you need libcrypt], ac_cv_need_libcrypt,
     ])
 ])
 if test "$ac_cv_have_crypt" = no; then
-    AC_MSG_ERROR([	You cannot compile the bot for without password encription!])
+    AC_MSG_ERROR([	You have no encryption library but need it for password save.])
 fi
 if test "$ac_cv_need_libcrypt" = yes; then
     LIBS="-lcrypt ${LIBS}"

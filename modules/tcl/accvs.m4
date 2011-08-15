@@ -135,7 +135,7 @@ Tcl_AppendElement(interp, NULL);
 eval "$fe_cv_have_tcl"
 
 if test "$have_tcl" != no; then
-    AC_DEFINE(HAVE_TCL, 1, [Define to 1 if you have a Tcl])
+    AC_DEFINE(HAVE_TCL, 1, [Define to 1 if you have the Tcl interpreter library.])
     if test "$fe_tcl_includes" != default; then
 	CPPFLAGS="${fe_tcl_includes} ${CPPFLAGS}"
     fi
@@ -149,11 +149,11 @@ if test "$have_tcl" != no; then
     LIBS="$fe_tcl_libs $LIBS"
     try_lib=`echo $fe_tcl_libs | sed -e 's/^.*-ltcl/tcl/' -e 's/ .*//'`
     AC_CHECK_LIB([$try_lib], Tcl_CreateObjCommand, [
-	AC_DEFINE(HAVE_TCL8X, 1, [Define to 1 for Tcl 8.x because it can work much faster])
+	AC_DEFINE(HAVE_TCL8X, 1, [Define to 1 if you have the Tcl version 8.0 or above.])
     ])
     dnl check for multithreaded tcl
     AC_CHECK_LIB([$try_lib], Tcl_MutexFinalize, [
-	AC_DEFINE(HAVE_TCL_MULTITHREAD, 1, [Define to 1 if Tcl interpreter is multithreaded])
+	AC_DEFINE(HAVE_TCL_MULTITHREAD, 1, [Define to 1 if your Tcl interpreter supports mutexes.])
     ])
     dnl check for some functions (8.1+)
     AC_CHECK_FUNCS(Tcl_SetSystemEncoding)

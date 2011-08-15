@@ -14,6 +14,7 @@ Mon Aug 15 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* configure: fixed issue with xgettext on Solaris.
 	* tree/tree.c, modules/lua/lua.c, modules/tcl/modtcl.c: fixed few
 	  warnings.
+	* configure: fixed spelling on few messages.
 
 Sun Aug 14 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/socket.*, doc/modules.api: added new function SocketIP().

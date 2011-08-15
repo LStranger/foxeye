@@ -49,6 +49,9 @@ dist:
 	@echo "    If you haven't done so in a while, run ./configure --help"
 	@sleep 1
 
+git-clean:
+	@git clean -fdx
+
 cvs-clean:
 	@if test ! -d CVS; then \
 	  echo "you don't have a toplevel CVS directory."; \

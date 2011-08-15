@@ -178,13 +178,13 @@ else
 	else
 	    AC_MSG_RESULT(yes)
 	    AC_DEFINE([HAVE_CYRILLIC_TRANSLIT], 1,
-		    [Define to 1 if your iconv can do cyrillic transliteration])
+		    [Define to 1 if your iconv can do cyrillic transliteration.])
 	fi
 	AC_MSG_CHECKING(for order of //ignore and //translit)
 	if test x`echo proba|$ac_iconv_bin -t ascii//translit//ignore 2>/dev/null` != xproba; then
 	    AC_MSG_RESULT(//ignore//translit)
 	    AC_DEFINE([TRANSLIT_IGNORE], ["//IGNORE//TRANSLIT"],
-			[Order ot //ignore and //translit on iconv setup])
+			[Order ot //ignore and //translit on iconv setup.])
 	else
 	    AC_MSG_RESULT(//translit//ignore)
 	    AC_DEFINE([TRANSLIT_IGNORE], ["//TRANSLIT//IGNORE"])
@@ -239,7 +239,7 @@ yes
 	AC_DEFINE([ENABLE_IPV6], [1])
 	;;
     *)
-	AC_DEFINE([ENABLE_IPV6], [1], [Define to enable IPv6 support])
+	AC_DEFINE([ENABLE_IPV6], [1], [Define to enable IPv6 support.])
 	;;
     esac
 fi
