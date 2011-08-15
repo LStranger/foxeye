@@ -14,6 +14,7 @@ Sun Aug 14 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/socket.*, doc/modules.api: added new function SocketIP().
 	* core/direct.*, core/list.*, core/socket.*, doc/modules.api, modules/irc/irc.c:
 	  changed few parameters from char* to const char* to be more strict.
+	* configure: implemented extended --with-libiconv-prefix option.
 
 Sat Aug 13 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* configure: added option --enable-ipv6, borrowed from rusnet-ircd.

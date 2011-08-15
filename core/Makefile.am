@@ -10,11 +10,11 @@ bin_PROGRAMS = foxeye
 foxeye_SOURCES = direct.c dispatcher.c help.c init.c lib.c main.c modules.c \
 	sheduler.c socket.c list.c wtmp.c conversion.c connchain.c
 
-foxeye_LDADD = @LD_MODS@ $(LIBOBJS) $(INTLOBJS) $(LTLIBINTL) @STATICLIBS@ \
-	-L$(top_srcdir)/tree -ltree
+foxeye_LDADD = @LD_MODS@ $(LIBOBJS) $(INTLOBJS) $(LTLIBINTL) $(LIBICONV) \
+	@STATICLIBS@ -L$(top_srcdir)/tree -ltree
 foxeye_DEPENDENCIES = $(LIBOBJS) $(INTLOBJS)
 
-INCLUDES = -I$(top_srcdir)/tree
+INCLUDES = @ICONV_INCLUDES@ -I$(top_srcdir)/tree
 DEFS = @DEFS@ -DLOCALEDIR=\"$(localedir)\" -DMODULESDIR=\"$(pkglibdir)\" \
 	-DHELPDIR=\"$(helpdir)\"
 

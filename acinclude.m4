@@ -76,72 +76,123 @@ if test x${$1} = xyes; then $3="$2 ${$3}"; fi
 
 AC_DEFUN([AC_CHECK_ICONV],
 [AC_MSG_CHECKING(for iconv paths)
-AC_CACHE_VAL(ac_cv_have_iconv,
-    [dnl check for default includes first...
+ac_iconv_libpath=
+dnl Reusing AM_ICONV --with-libiconv-prefix variable
+case "x$with_libiconv_prefix" in
+dnl --without-libiconv-prefix
+xno)
+    AC_MSG_RESULT(disabled)
+    dnl AM_ICONV will check it
+    am_cv_func_iconv=no
+    ac_iconv_libpath=no
+    ;;
+dnl Neither --with-libiconv-prefix nor --without-libiconv-prefix given
+x)
+    ac_iconv_bin=
+    dnl check for default includes first...
     fe_save_CPPFLAGS="$CPPFLAGS"
     fe_save_LIBS="$LIBS"
     AC_TRY_CPP([#include <iconv.h>],
 	ac_iconv_includes=,
 	[dnl not found, now try to find...
-	CPPFLAGS="-I/usr/local/include $CPPFLAGS"
-	AC_TRY_CPP([#include <iconv.h>],
-	    ac_iconv_includes=/usr/local/include,
-	    ac_iconv_includes=no
-    )])
+	AC_TRY_CPP([#include "/usr/local/include/iconv.h"],
+	    ac_iconv_includes=-I/usr/local/include,
+	    [ac_iconv_includes=no
+	    AC_MSG_RESULT(no header found)
+    ])])
     if test "x$ac_iconv_includes" != xno ; then
+	CPPFLAGS="$ac_iconv_includes ${CPPFLAGS}"
 	dnl check if we need -liconv...
 	AC_TRY_LINK([#include <iconv.h>], [
 iconv_open("","");
-], ac_iconv_libs=,
-	    [dnl check for default library first...
+], [ac_iconv_libpath=],
+		[dnl so far we need -liconv
 		LIBS="${LIBS} -liconv"
+		dnl check for default library first...
 		AC_TRY_LINK([#include <iconv.h>], [
 iconv_open("","");
-], ac_iconv_libs=,
+], [ac_iconv_libpath=],
 		    [dnl not found, now try to find...
 		    LIBS="${LIBS} -L/usr/local/lib"
 		    AC_TRY_LINK([#include <iconv.h>], [
 iconv_open("","");
-], ac_iconv_libs=/usr/local/lib,
-		    ac_iconv_libs=no
-	)])])
+], [ac_iconv_libpath="/usr/local/lib"],
+		    [ac_iconv_libpath=no
+		    AC_MSG_RESULT(no library found)
+	])])])
     fi
-    LIBS="$fe_save_LIBS"
     CPPFLAGS="$fe_save_CPPFLAGS"
-    ac_cv_have_iconv="ac_iconv_includes=$ac_iconv_includes ac_iconv_libs=$ac_iconv_libs"
-])
+    LIBS="$fe_save_LIBS"
+    ;;
+xyes)
+    ;;
+dnl Absolute paths
+x/*)
+    ac_iconv_bin="$with_libiconv_prefix/bin/iconv"
+#    ac_iconv_includes="-I$with_libiconv_prefix/include"
+    ;;
+dnl Relative paths
+*)
+    with_libiconv_prefix="`pwd`/$with_libiconv_prefix"
+    ac_iconv_bin="$with_libiconv_prefix/bin/iconv"
+#    ac_iconv_includes="-I$with_libiconv_prefix/include"
+    ;;
+esac
 
-eval "$ac_cv_have_iconv"
+#eval "$ac_cv_have_iconv"
 
-if test "x$ac_iconv_libs" = xno -o "x$ac_iconv_includes" = xno ; then
-    AC_MSG_RESULT(fault)
+if test "x$ac_iconv_libpath" = xno -o "x$ac_iconv_includes" = xno ; then
+    dnl AM_ICONV will check it
+    am_cv_func_iconv=no
 else
     AC_MSG_RESULT(ok)
-    if test "x$ac_iconv_includes" != x ; then
-	CPPFLAGS="-I$ac_iconv_includes ${CPPFLAGS}"
+    fe_save_CPPFLAGS="$CPPFLAGS"
+    fe_save_LIBS="$LIBS"
+    CPPFLAGS="$ac_iconv_includes ${CPPFLAGS}"
+    if test "x$ac_iconv_libpath" != x; then
+	LIBS="-L$ac_iconv_libpath ${LIBS}"
     fi
-    if test "x$ac_iconv_libs" != x ; then
-	LDFLAGS="-L$ac_iconv_libs ${LDFLAGS}"
-    fi
+    dnl AM_ICONV will set LIBICONV to library and path if needed
+    AM_ICONV
+    ac_iconv_includes="$ac_iconv_includes $INCICONV"
+    INCICONV=
+    LIBS="$fe_save_LIBS"
+    CPPFLAGS="$fe_save_CPPFLAGS"
+    if test "$am_cv_func_iconv" = yes; then
+	dnl Well, usable iconv found
+#	if test "x$ac_iconv_alib" != x; then
+#	    STATICLIBS="${STATICLIBS} $ac_iconv_alib"
+#	fi
+	if test "x$ac_iconv_libpath" != x ; then
+	    LDFLAGS="-L$ac_iconv_libpath -R$ac_iconv_libpath ${LDFLAGS}"
+	fi
 
-    AC_MSG_CHECKING(for russian translit)
-    dnl set LC_ALL due to configure might set it to C
-    if test x`echo проба|LC_ALL= LC_CTYPE=uk_UA.KOI8-U iconv -t ascii//translit 2>/dev/null` != xproba; then
-	AC_MSG_RESULT(no)
-	AC_MSG_WARN(Your iconv doesn't support Cyrillic translit!)
-    else
-	AC_MSG_RESULT(yes)
-	AC_DEFINE([HAVE_CYRILLIC_TRANSLIT], 1,
+	AC_MSG_CHECKING(for russian translit)
+	if test "x$ac_iconv_bin" = x; then
+	    ac_iconv_bin=iconv
+	fi
+	dnl set LC_ALL due to configure might set it to C
+	if test x`echo проба|LC_ALL= LC_CTYPE=uk_UA.KOI8-U $ac_iconv_bin -t ascii//translit 2>/dev/null` != xproba; then
+	    AC_MSG_RESULT(no)
+	    AC_MSG_WARN(Your iconv doesn't support Cyrillic translit!)
+	else
+	    AC_MSG_RESULT(yes)
+	    AC_DEFINE([HAVE_CYRILLIC_TRANSLIT], 1,
 		    [Define to 1 if your iconv can do cyrillic transliteration])
-    fi
-    AC_MSG_CHECKING(for order of //ignore and //translit)
-    if test x`echo proba|iconv -t ascii//translit//ignore 2>/dev/null` != xproba; then
-	AC_MSG_RESULT(//ignore//translit)
-	AC_DEFINE([TRANSLIT_IGNORE], ["//IGNORE//TRANSLIT"],
-		    [Order ot //ignore and //translit on iconv setup])
-    else
-	AC_MSG_RESULT(//translit//ignore)
-	AC_DEFINE([TRANSLIT_IGNORE], ["//TRANSLIT//IGNORE"])
+	fi
+	AC_MSG_CHECKING(for order of //ignore and //translit)
+	if test x`echo proba|$ac_iconv_bin -t ascii//translit//ignore 2>/dev/null` != xproba; then
+	    AC_MSG_RESULT(//ignore//translit)
+	    AC_DEFINE([TRANSLIT_IGNORE], ["//IGNORE//TRANSLIT"],
+			[Order ot //ignore and //translit on iconv setup])
+	else
+	    AC_MSG_RESULT(//translit//ignore)
+	    AC_DEFINE([TRANSLIT_IGNORE], ["//TRANSLIT//IGNORE"])
+	fi
+
+	dnl it will be included first to avoid possible conflicts
+	ICONV_INCLUDES="$ac_iconv_includes"
+	AC_SUBST(ICONV_INCLUDES)
     fi
 fi
 ])
@@ -151,7 +202,7 @@ AC_DEFUN([AC_CHECK_IPV6],
 AC_ARG_ENABLE(ipv6,
     [  --enable-ipv6           enables IPv6 connections support],
     [], [enableval=no])
-if test "x$enable_ipv6" = xyes; then
+if test "x$enableval" = xyes; then
     AC_CACHE_CHECK([IPv6 system type], fe_cv_v6type,
     [
 	fe_cv_v6type=
