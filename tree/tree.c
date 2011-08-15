@@ -481,7 +481,7 @@ static inline const char *_leaf_key (LEAF *l)
     if (n->parent == NULL)
       break;				/* it's root node */
   }
-  return (l->key - i);
+  return ((char *)l->key - i);
 }
 
 const char *Leaf_Key (LEAF *l)

@@ -420,7 +420,7 @@ typedef struct tcl_timer
   struct tcl_timer *prev;
 } tcl_timer;
 
-ALLOCATABLE_TYPE (tcl_timer, TT_, prev);
+ALLOCATABLE_TYPE (tcl_timer, TT_, prev)
 
 static tcl_timer *Tcl_Last_Timer = NULL;
 

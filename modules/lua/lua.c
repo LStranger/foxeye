@@ -586,7 +586,7 @@ typedef struct lua_timer
   struct lua_timer *prev;
 } lua_timer;
 
-ALLOCATABLE_TYPE (lua_timer, LT_, prev);
+ALLOCATABLE_TYPE (lua_timer, LT_, prev)
 
 static lua_timer *Lua_Last_Timer = NULL;
 
