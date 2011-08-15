@@ -40,6 +40,7 @@ AC_PROG_RANLIB
 AC_PROG_LN_S
 AC_PATH_PROG(BASENAME, basename)
 AC_PATH_PROG(BASH, bash)
+AC_PATH_PROGS(XGETTEXT, [gxgettext xgettext])
 dnl AC_CHECK_PROGS(SGML2TXT, "docbook-to-man", test -f \$@ || sgml2txt)
 
 dnl Checks for C compiler features
