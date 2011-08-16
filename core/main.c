@@ -503,14 +503,17 @@ int main (int argc, char *argv[])
   /* try to get Nick */
   if (O_DEFAULTCONF == FALSE && !*Nick && Config && (fp = fopen (Config, "r")))
   {
-    char *ne = &buff[2];		/* skip `#!' magic */
+    char *ne;
 
     if (fgets (buff, sizeof(buff), fp))	/* try to get RunPath from config */
     {
-      while (*ne && *ne == ' ') ne++;
-      StrTrim (ne);
-      if (buff[0] == '#' && buff[1] == '!')
+      if (buff[0] == '#' && buff[1] == '!') {
+	ne = &buff[2];			/* skip `#!' magic */
+	while (*ne && *ne == ' ') ne++;
+	StrTrim (ne);
 	RunPath = safe_strdup (ne);
+      } else				/* our first line has no magic */
+	rewind(fp);
     }
     while (fgets (buff, sizeof(buff), fp))
     {

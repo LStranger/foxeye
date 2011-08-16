@@ -63,3 +63,5 @@
 #00064	23.02.2011  23.02.2011	mode lock +l doesn't work
 #00065	23.02.2011		.adduser -- does not work for other channels
 #00066	23.02.2011		.console #Holomi@bubuta -- 'no such channel'
+#00067	16.08.2011  16.08.2011	it opens "./.pid" even if nick is in config
+#00068	16.08.2011		it should open random file not static .pid

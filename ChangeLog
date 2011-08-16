@@ -10,6 +10,9 @@ TODO:
 	* modules/irc-channel/: to implement few CTCP commands: OP, etc.
 
 --- [0.10.0]
+Tue Aug 16 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/main.c: fixed error getting Nick from non-generated config.
+
 Mon Aug 15 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* configure: fixed issue with xgettext on Solaris.
 	* tree/tree.c, modules/lua/lua.c, modules/tcl/modtcl.c: fixed few
