@@ -292,7 +292,7 @@ static inline char *_make_socket_ipname(inet_addr_t *addr, char *buf,
 /* For a listening process - we have to get ECONNREFUSED to own port :) */
 int SetupSocket (idx_t idx, const char *domain, unsigned short port)
 {
-  int i, sockfd = Pollfd[idx].fd, type = (int)Socket[idx].port, fam;
+  int i, sockfd = Pollfd[idx].fd, type = (int)Socket[idx].port;
   socklen_t len;
   inet_addr_t addr;
   struct linger ling;
@@ -312,14 +312,12 @@ int SetupSocket (idx_t idx, const char *domain, unsigned short port)
   }
   else
   {
-    memset (&addr, 0, sizeof(addr));
-    /* sockaddr_in is compatible with sockaddr_in6 up to port member */
-    addr.s_in.sin_port = htons(port);
     if (!domain) {
       /* NULL domain means we want listen every IPv4 address,
          for listening on every IPv6 we can ask for domain "::" */
-      addr.sa.sa_family = AF_INET;
       len = sizeof(addr.s_in);
+      /* memset(&addr.s_in, 0, len); */
+      addr.s_in.sin_family = AF_INET;
       addr.s_in.sin_addr.s_addr = htonl(INADDR_ANY);
     } else {
       struct addrinfo *ai;
@@ -336,29 +334,19 @@ int SetupSocket (idx_t idx, const char *domain, unsigned short port)
 	inet_addr_t *ha = (inet_addr_t *)ai->ai_addr;
 
 	len = ai->ai_addrlen;
-	addr.sa.sa_family = ai->ai_family;
+	memcpy(&addr.sa, &ha->sa, len);
+	/* addr.sa.sa_family = ai->ai_family; */
+	freeaddrinfo (ai);
 #ifdef ENABLE_IPV6
-	switch (addr.sa.sa_family) {
-	case AF_INET:
-#endif
-	  memcpy(&addr.s_in.sin_addr, &ha->s_in.sin_addr, len);
-#ifdef ENABLE_IPV6
-	  break;
-	case AF_INET6:
+	if (addr.sa.sa_family != AF_INET) {
 	  /* close IPv4 socket and open IPv6 one instead */
 	  close(sockfd);
-	  Pollfd[idx].fd = sockfd = socket(AF_INET6, SOCK_STREAM, 0);
-	  DBG("closed IPv4 socket fd=%d and opened IPv6 one fd=%d",
+	  sockfd = socket(addr.sa.sa_family, SOCK_STREAM, 0);
+	  DBG("closed IPv4 socket (fd=%d) and opened IPv6 one (fd=%d)",
 	      Pollfd[idx].fd, sockfd);
 	  Pollfd[idx].fd = sockfd;
-	  memcpy(&addr.s_in6.sin6_addr, &ha->s_in6.sin6_addr, len);
-	  break;
-	default:
-	  freeaddrinfo(ai);
-	  return (E_NOSOCKET);
 	}
 #endif
-	freeaddrinfo (ai);
       }
       else if (i == EAI_AGAIN)
 	return E_RESOLVTIMEOUT;
@@ -367,6 +355,8 @@ int SetupSocket (idx_t idx, const char *domain, unsigned short port)
       else
 	return E_NOSUCHDOMAIN;
     }
+    /* sockaddr_in is compatible with sockaddr_in6 up to port member */
+    addr.s_in.sin_port = htons(port);
   }
   i = 1;
   setsockopt (sockfd, SOL_SOCKET, SO_KEEPALIVE, (void *) &i, sizeof(i));
