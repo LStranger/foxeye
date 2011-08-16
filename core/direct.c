@@ -1495,7 +1495,7 @@ idx_t Listen_Port (char *client, const char *host, unsigned short *sport,
   while (port <= pe)
   {
     idx = Listen_Port_main (client, host, port, confline, data, prehandler, handler);
-    dprint (4, "Listen_Port: %s:%hu: returned %d", host, port, (int)idx);
+    dprint (4, "Listen_Port: %s:%hu returned %d", NONULLP(host), port, (int)idx);
     if (idx >= 0)
     {
       *sport = port;
@@ -1504,7 +1504,7 @@ idx_t Listen_Port (char *client, const char *host, unsigned short *sport,
     port++;
   }
   return -1;
-}  
+}
 
 typedef struct
 {

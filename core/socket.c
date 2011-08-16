@@ -243,11 +243,7 @@ idx_t GetSocket (unsigned short type)
   else if (type == M_UNIX)
     Pollfd[idx].fd = sockfd = socket (AF_UNIX, SOCK_STREAM, 0);
   else
-#ifdef ENABLE_IPV6
-    Pollfd[idx].fd = sockfd = socket (AF_INET6, SOCK_STREAM, 0);
-#else
     Pollfd[idx].fd = sockfd = socket (AF_INET, SOCK_STREAM, 0);
-#endif
   pthread_mutex_unlock (&LockPoll);
   /* note: there is a small chance we get it closed right away if there was
      two of CloseSocket() in the same time and we managed to get it between
@@ -260,7 +256,8 @@ idx_t GetSocket (unsigned short type)
 }
 
 /* returns allocated ip textual representation for socket address */
-static char *_make_socket_ipname(inet_addr_t *addr, char *buf, size_t bufsize)
+static inline char *_make_socket_ipname(inet_addr_t *addr, char *buf,
+					size_t bufsize)
 {
   register const void *ptr;
 
@@ -295,11 +292,10 @@ static char *_make_socket_ipname(inet_addr_t *addr, char *buf, size_t bufsize)
 /* For a listening process - we have to get ECONNREFUSED to own port :) */
 int SetupSocket (idx_t idx, const char *domain, unsigned short port)
 {
-  in_port_t *pptr = NULL;
-  inet_addr_t addr;
+  int i, sockfd = Pollfd[idx].fd, type = (int)Socket[idx].port, fam;
   socklen_t len;
+  inet_addr_t addr;
   struct linger ling;
-  int i, sockfd = Pollfd[idx].fd, type = (int)Socket[idx].port;
   char hname[NI_MAXHOST+1];
 
   /* check for errors! */
@@ -316,57 +312,53 @@ int SetupSocket (idx_t idx, const char *domain, unsigned short port)
   }
   else
   {
-#ifdef ENABLE_IPV6
-    memset (&addr.s_in6, 0, sizeof(addr.s_in6));
-    addr.sa.sa_family = AF_INET6;
-    pptr = &addr.s_in6.sin6_port;
-    len = sizeof(addr.s_in6.sin6_addr);
-    if (!domain)
-      memcpy(addr.s_in6.sin6_addr.s6_addr, in6addr_any.s6_addr, len);
-#else
-    memset (&addr.s_in, 0, sizeof(addr.s_in));
-    addr.sa.sa_family = AF_INET;
-    pptr = &addr.s_in.sin_port;
-    len = sizeof(addr.s_in.sin_addr);
-    if (!domain)
+    memset (&addr, 0, sizeof(addr));
+    /* sockaddr_in is compatible with sockaddr_in6 up to port member */
+    addr.s_in.sin_port = htons(port);
+    if (!domain) {
+      /* NULL domain means we want listen every IPv4 address,
+         for listening on every IPv6 we can ask for domain "::" */
+      addr.sa.sa_family = AF_INET;
+      len = sizeof(addr.s_in);
       addr.s_in.sin_addr.s_addr = htonl(INADDR_ANY);
-#endif
-    else
-    {
-      struct addrinfo *haddr;
+    } else {
+      struct addrinfo *ai;
 #ifndef ENABLE_IPV6
       static struct addrinfo hints = { .ai_family = AF_INET, .ai_socktype = 0,
 				       .ai_protocol = 0, .ai_flags = 0 };
 
-      i = getaddrinfo (domain, NULL, &hints, &haddr);
+      i = getaddrinfo (domain, NULL, &hints, &ai);
 #else
-      i = getaddrinfo (domain, NULL, NULL, &haddr);
+      i = getaddrinfo (domain, NULL, NULL, &ai);
 #endif
       if (i == 0)
       {
-	inet_addr_t *ha = (inet_addr_t *)&haddr->ai_addr;
+	inet_addr_t *ha = (inet_addr_t *)ai->ai_addr;
 
+	len = ai->ai_addrlen;
+	addr.sa.sa_family = ai->ai_family;
 #ifdef ENABLE_IPV6
-	switch (haddr->ai_family) {
+	switch (addr.sa.sa_family) {
 	case AF_INET:
-	  pptr = &addr.s_in.sin_port;
-	  len = sizeof(addr.s_in.sin_addr);
 #endif
 	  memcpy(&addr.s_in.sin_addr, &ha->s_in.sin_addr, len);
 #ifdef ENABLE_IPV6
 	  break;
 	case AF_INET6:
-	  pptr = &addr.s_in6.sin6_port;
-	  len = sizeof(addr.s_in6.sin6_addr);
+	  /* close IPv4 socket and open IPv6 one instead */
+	  close(sockfd);
+	  Pollfd[idx].fd = sockfd = socket(AF_INET6, SOCK_STREAM, 0);
+	  DBG("closed IPv4 socket fd=%d and opened IPv6 one fd=%d",
+	      Pollfd[idx].fd, sockfd);
+	  Pollfd[idx].fd = sockfd;
 	  memcpy(&addr.s_in6.sin6_addr, &ha->s_in6.sin6_addr, len);
 	  break;
 	default:
-	  freeaddrinfo (haddr);
+	  freeaddrinfo(ai);
 	  return (E_NOSOCKET);
 	}
-	addr.sa.sa_family = haddr->ai_family;
 #endif
-	freeaddrinfo (haddr);
+	freeaddrinfo (ai);
       }
       else if (i == EAI_AGAIN)
 	return E_RESOLVTIMEOUT;
@@ -375,7 +367,6 @@ int SetupSocket (idx_t idx, const char *domain, unsigned short port)
       else
 	return E_NOSUCHDOMAIN;
     }
-    *pptr = htons(port);
   }
   i = 1;
   setsockopt (sockfd, SOL_SOCKET, SO_KEEPALIVE, (void *) &i, sizeof(i));
@@ -394,7 +385,8 @@ int SetupSocket (idx_t idx, const char *domain, unsigned short port)
 	getsockname (sockfd, &addr.sa, &len) < 0)
       return (E_ERRNO - errno);
     if (type != M_UNIX)
-      Socket[idx].port = ntohs (*pptr);
+      /* update listening port with real opened one not asked */
+      Socket[idx].port = ntohs (addr.s_in.sin_port);
   }
   else
   {

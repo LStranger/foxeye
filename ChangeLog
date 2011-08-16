@@ -12,6 +12,8 @@ TODO:
 --- [0.10.0]
 Tue Aug 16 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/main.c: fixed error getting Nick from non-generated config.
+	* core/direct.c: fixed possible SIGSEGV in Listen_Port().
+	* core/socket.c: got IPv6 support working.
 
 Mon Aug 15 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* configure: fixed issue with xgettext on Solaris.
