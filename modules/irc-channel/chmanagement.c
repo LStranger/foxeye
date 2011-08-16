@@ -1777,11 +1777,13 @@ static int ssirc_invite (struct peer_t *who, INTERFACE *where, char *args)
 
 static LINK *_ctcp_find_target(INTERFACE *client, char *lname, char *unick,
 			       char *tgt, IRC **net, char *b, size_t s,
-			       modeflag checkmf, LINK **meptr)
+			       modeflag checkmf, LINK **meptr, userflag checkuf,
+			       userflag checknouf)
 {
   CHANNEL *ch;
-  LINK *link, *me;
+  LINK *link, *me = NULL;
   char *nn;
+  userflag uf;
 
   DBG ("_ctcp_find_target:%s:%s:%s", client->name, lname, NONULL(tgt));
   if (tgt == NULL)
@@ -1798,7 +1800,15 @@ static LINK *_ctcp_find_target(INTERFACE *client, char *lname, char *unick,
     if (!me || !(me->mode & checkmf))	/* cannot op them! */
       return NULL;
     link = ircch_find_link(*net, unick, ch);
+    if (!link)				/* requestor isn't there */
+      return NULL;
     if (link->mode & checkmf)		/* already opped */
+      return NULL;
+    if (checkuf || checknouf)
+      uf = Get_Clientflags(lname, ch->chi->name);
+    if (checkuf && (checkuf & uf) == 0)	/* no access granted */
+      return NULL;
+    if (checknouf & uf)			/* denied over global */
       return NULL;
     if (meptr)
       *meptr = me;
@@ -1809,8 +1819,14 @@ static LINK *_ctcp_find_target(INTERFACE *client, char *lname, char *unick,
     if (link->mode & checkmf)		/* already opped */
       continue;
     me = _find_me_op(*net, link->chan);
-    if (me && (me->mode & checkmf))
-      break;
+    if (!me)
+      continue;
+    if (me->mode & checkmf) {
+      if (checkuf || checknouf)
+	uf = Get_Clientflags(lname, link->chan->chi->name);
+      if ((!checkuf || (checkuf & uf)) && (checknouf & uf) == 0)
+	break;
+    }
     me = NULL;				/* cannot op them! */
   }
   if (meptr)
@@ -1818,10 +1834,9 @@ static LINK *_ctcp_find_target(INTERFACE *client, char *lname, char *unick,
   return link;				/* no channel where I can op them */
 }
 
-		/* OP passwd [channel] */
-BINDING_TYPE_irc_priv_msg_ctcp(ctcp_op);
-static int ctcp_op(INTERFACE *client, unsigned char *who, char *lname,
-		   char *unick, char *msg)
+static int _ctcp_opping(INTERFACE *client, unsigned char *who, char *lname,
+			char *unick, char *msg, modeflag checkmf, modeflag set,
+			userflag checkuf, userflag checknocuf)
 {
   struct clrec_t *u;
   char *crp;
@@ -1843,24 +1858,60 @@ static int ctcp_op(INTERFACE *client, unsigned char *who, char *lname,
     fail = 1;
   else
     fail = Check_Passwd(pass, crp);
+  if (!fail && (Get_Flags(u, NULL) & checkuf))
+    checkuf = 0;		/* global access granted */
+  else
+    checknocuf = 0;		/* check only channel access */
   if (u)
     Unlock_Clientrecord(u);
   if (fail)
     return 0;			/* FIXME: inform client somehow? */
   /* find specified or next channel */
   tgt = _ctcp_find_target(client, lname, unick, msg, &net, pass, sizeof(pass),
-			  (A_ADMIN | A_OP), &me);
+			  checkmf, &me, checkuf, checknocuf);
   if (!tgt)
-    return 0;			/* cannot op requestor there */
-  /* do op */
+    return 0;			/* cannot flag requestor there */
+  /* do flagging */
   _make_modechars (mbuf.modechars, net);
   mbuf.changes = mbuf.pos = mbuf.apos = 0;
   mbuf.cmd = NULL;
-  /* TODO: make some eggdrop-style assumptions for giving flags? */
-  _push_mode (net, tgt, &mbuf, A_OP, 1, NULL);
+  _push_mode (net, tgt, &mbuf, set, 1, NULL);
   _flush_mode (net, tgt->chan, &mbuf);
   return 1;
 }
+
+		/* OP passwd [channel] */
+BINDING_TYPE_irc_priv_msg_ctcp(ctcp_op);
+static int ctcp_op(INTERFACE *client, unsigned char *who, char *lname,
+		   char *unick, char *msg)
+{
+  return _ctcp_opping(client, who, lname, unick, msg, (A_ADMIN | A_OP), A_OP,
+		      U_OP, U_DEOP);
+}
+
+		/* HOP passwd [channel] */
+BINDING_TYPE_irc_priv_msg_ctcp(ctcp_hop);
+static int ctcp_hop(INTERFACE *client, unsigned char *who, char *lname,
+		    char *unick, char *msg)
+{
+  return _ctcp_opping(client, who, lname, unick, msg,
+		      (A_ADMIN | A_OP | A_HALFOP), A_HALFOP, (U_OP | U_HALFOP),
+		      U_DEOP);
+}
+
+		/* VOICE passwd [channel] */
+BINDING_TYPE_irc_priv_msg_ctcp(ctcp_voice);
+static int ctcp_voice(INTERFACE *client, unsigned char *who, char *lname,
+		      char *unick, char *msg)
+{
+  return _ctcp_opping(client, who, lname, unick, msg,
+		      (A_ADMIN | A_OP | A_HALFOP), A_VOICE,
+		      (U_OP | U_HALFOP | U_VOICE),
+		      U_QUIET);
+}
+
+		/* INVITE passwd channel */
+BINDING_TYPE_irc_priv_msg_ctcp(ctcp_passwd);
 
 void ircch_set_ss (void)
 {
