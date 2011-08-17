@@ -1,0 +1,28 @@
+-=-=-=-=-  This file describes changes in recent releases of FoxEye  -=-=-=-=-
+
+Changes in version 0.10 since 0.9:
+
+- IPv6 addresses support.  You have to run configure script with option
+    --enable-ipv6 to enable it.  Function Listen_Port() will listen for
+    IPv4 connections on every IPv4 interface if is called with NULL as
+    domain name.  To listen for both IPv4 and IPv6 use "::" name.
+
+- The Solaris OS support revoked, works fine on 64-bit OpenSolaris 11
+    (snv_105) but gmake should be used instead of make as modules can't
+    be made with it.
+
+- Merged libiconv detection with AM_ICONV macro from gettext tests, now
+    path to libiconv defined with --with-libiconv-prefix option to the
+    configure script works correctly.
+
+- New '.chelp' command to show help on config/script commands.
+
+- Works on 64-bit platforms.
+
+- New running option '-q' (quiet) to not complain about already running
+    but silently exit.  Intended to be used when ran from crontab.
+
+- KEYWORD type bindtables are now near stackable variant of UNIQ type
+    bindtables.
+
+- Default password encription is DES now.
