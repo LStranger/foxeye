@@ -235,16 +235,6 @@ static inline void forget_##type (void) \
  * Prototypes for broken systems
  */
 
-#ifdef HAVE_SRAND48
-# define LRAND lrand48
-# define SRAND srand48
-# define DRAND drand48
-#else
-# define LRAND rand
-# define SRAND srand
-# define DRAND (double)rand
-#endif /* HAVE_SRAND48 */
-
 #ifndef HAVE_RENAME
 # define rename movefile
 #endif
@@ -259,9 +249,9 @@ static inline void forget_##type (void) \
 #endif
 
 /* AIX doesn't define these in any headers (sigh) */
-#ifndef HAVE_STRCASECMP
-int strcasecmp (const char *, const char *);
-int strncasecmp (const char *, const char *, size_t);
+#ifndef HAVE_STRNCASECMP
+extern int strcasecmp (const char *, const char *);
+extern int strncasecmp (const char *, const char *, size_t);
 #endif
 
 /* Sun's rwlocks may be implemented different ways... */

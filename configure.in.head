@@ -241,9 +241,8 @@ else
 fi
 
 dnl Checks for library functions.
-AC_CHECK_FUNCS(rename getrusage getdtablesize clock srand48 bzero sigaction)
-AC_CHECK_FUNCS(sigemptyset strncasecmp setpgid uname snprintf vsnprintf)
-AC_CHECK_FUNCS(gethostname getwd strtol pthread_kill_other_threads_np towlower)
+AC_CHECK_FUNCS(rename sigaction strncasecmp towlower)
+AC_CHECK_FUNCS(pthread_kill_other_threads_np)
 
 if test "$ac_cv_func_sigaction" = yes; then
     ac_cv_sa_handler=yes

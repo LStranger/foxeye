@@ -20,8 +20,10 @@
 
 #include "foxeye.h"
 
-#ifdef HAVE_DLFCN_H
-#include <dlfcn.h>
+#ifndef STATIC
+# ifdef HAVE_DLFCN_H
+#  include <dlfcn.h>
+# endif
 #endif
 
 #include "modules.h"

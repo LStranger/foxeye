@@ -15,6 +15,7 @@ Wed Aug 17 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc-channel/chmanagement.c: implemented CTCP commands: OP,
 	  HOP, VOICE, INVITE.
 	* modules/irc-ctcp/dcc.c, configure: got rid of gethostbyname().
+	* configure, core/protos.h: removed obsolete checks.
 
 Tue Aug 16 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/main.c: fixed error getting Nick from non-generated config.
