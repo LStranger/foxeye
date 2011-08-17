@@ -2,7 +2,7 @@ dnl Process this file with autoconf to produce a configure script.
 AC_PREREQ(2.50)
 AC_INIT(core/foxeye.h)
 AM_CONFIG_HEADER(config.h)
-AM_INIT_AUTOMAKE(foxeye, 0.10.0.1)
+AM_INIT_AUTOMAKE(foxeye, 0.10.0.2)
 
 AC_CANONICAL_HOST
 
@@ -26,9 +26,9 @@ if test "x$CC" != x; then
 fi
 
 AC_USE_SYSTEM_EXTENSIONS
-dnl AC_AIX
+# AC_AIX
 AC_ISC_POSIX
-dnl AC_MINIX
+# AC_MINIX
 
 dnl Checks for programs.
 AC_PROG_CC
@@ -49,8 +49,8 @@ AC_C_VOLATILE
 AC_C_INLINE
 
 dnl Checks for system features to implement optimizations
-dnl AC_C_BIGENDIAN
-dnl AC_CHECK_SIZEOF(int)
+# AC_C_BIGENDIAN
+# AC_CHECK_SIZEOF(int)
 
 ac_default_prefix="${HOME}/${PACKAGE}"
 m4_pattern_allow(LIBOBJ)
@@ -190,8 +190,8 @@ AC_HAVE_LIBRARY(thr)
 dnl Checks for libraries and extensions
 AC_SEARCH_LIBS(socket, socket)
 AC_SEARCH_LIBS(connect, nsl)
-AC_SEARCH_LIBS(log, m)
-AC_SEARCH_LIBS(gethostbyname, [dns nsl])
+# AC_SEARCH_LIBS(log, m)
+AC_SEARCH_LIBS(getaddrinfo, [dns nsl])
 
 if test "$fe_cv_static" = no; then
     AC_SEARCH_LIBS(dlopen, dl,
@@ -296,7 +296,7 @@ AC_SUBST(LD)
 AC_SUBST(LD_MODS)
 AC_SUBST(BASENAME)
 AC_SUBST(EXTRA_HDR)
-AC_SUBST(MODLIBS) dnl see modules/Makefile.mods.in
+AC_SUBST(MODLIBS)
 AC_SUBST(STATICLIBS)
 
 AM_GNU_GETTEXT

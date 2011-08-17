@@ -905,14 +905,17 @@ static int _dcc_connect (dcc_priv_t *dcc)
   if (port == 0)	/* it's passive mode! */
   {
     uint32_t ip_local;			/* my IP in host byte order */
-    struct hostent *hptr;
+    struct addrinfo *ai;
+    static struct addrinfo hints = { .ai_family = AF_INET, .ai_socktype = 0,
+				     .ai_protocol = 0, .ai_flags = 0 };
 
-    if (!(hptr = gethostbyname (hostname)))
-    {
+    /* TODO: move getaddrinfo() and Add_Request() into the thread! */
+    if ((getaddrinfo(hostname, NULL, &hints, &ai)) != 0) {
       ERROR ("Cannot resolve own IP for CTCP SEND (passive)!");
       return 1;
     }
-    ip_local = ntohl (*(uint32_t *)hptr->h_addr_list[0]);
+    ip_local = ntohl(((struct sockaddr_in *)ai->ai_addr)->sin_addr.s_addr);
+    freeaddrinfo(ai);
     if ((dcc->socket = Listen_Port (dcc->iface->name, hostname, &port, NULL, dcc,
 				    &_dcc_pasv_pre, &_dcc_send_phandler)) < 0)
     {
@@ -1463,7 +1466,9 @@ static int ctcp_chat (INTERFACE *client, unsigned char *who, char *lname,
   dcc_priv_t *dcc = new_dcc();
   unsigned short port = 0;
   uint32_t ip_local;			/* my IP in host byte order */
-  struct hostent *hptr;
+  struct addrinfo *ai;
+  static struct addrinfo hints = { .ai_family = AF_INET, .ai_socktype = 0,
+				   .ai_protocol = 0, .ai_flags = 0 };
 
   if (ircdcc_allow_dcc_chat != TRUE)
   {
@@ -1474,12 +1479,13 @@ static int ctcp_chat (INTERFACE *client, unsigned char *who, char *lname,
   dcc->filename = NULL;
   strfcpy (dcc->uh, who, sizeof(dcc->uh));
   strfcpy (dcc->lname, lname, sizeof(dcc->lname)); /* report may want it */
-  if (!(hptr = gethostbyname (hostname)))
-  {
+  /* TODO: move getaddrinfo() and New_Request() into the thread! */
+  if ((getaddrinfo(hostname, NULL, &hints, &ai)) != 0) {
     ERROR (_("Cannot resolve own IP for CTCP CHAT!"));
     return 1;
   }
-  ip_local = ntohl (*(uint32_t *)hptr->h_addr_list[0]);
+  ip_local = ntohl(((struct sockaddr_in *)ai->ai_addr)->sin_addr.s_addr);
+  freeaddrinfo(ai);
   if ((dcc->socket = Listen_Port (lname, hostname, &port, NULL, dcc,
 				  &_dcc_inc_pre, &chat_handler)) < 0)
   {
@@ -1595,7 +1601,9 @@ static int ssirc_send (struct peer_t *peer, INTERFACE *w, char *args)
   char *net;
   dcc_priv_t *dcc;
   uint32_t ip_local;			/* my IP in host byte order */
-  struct hostent *hptr;
+  struct addrinfo *ai;
+  static struct addrinfo hints = { .ai_family = AF_INET, .ai_socktype = 0,
+				   .ai_protocol = 0, .ai_flags = 0 };
   unsigned short port = 0;
   struct stat sb;
   char target[IFNAMEMAX+1];
@@ -1638,13 +1646,14 @@ static int ssirc_send (struct peer_t *peer, INTERFACE *w, char *args)
   else
     net = w->name;
   /* all parameters are OK, it's time to make request and start thread */
-  if (!(hptr = gethostbyname (hostname)))
-  {
+  /* TODO: move getaddrinfo() and Add_Request() into the thread! */
+  if ((getaddrinfo(hostname, NULL, &hints, &ai)) != 0) {
     ERROR (_("Cannot resolve own IP for DCC SEND!"));
     *cc = ' ';
     return 1;
   }
-  ip_local = ntohl (*(uint32_t *)hptr->h_addr_list[0]);
+  ip_local = ntohl(((struct sockaddr_in *)ai->ai_addr)->sin_addr.s_addr);
+  freeaddrinfo(ai);
   dcc = new_dcc();
   dcc->size = sb.st_size;
   dcc->ahead = ircdcc_ahead_size;	/* set some defaults */
@@ -1672,7 +1681,7 @@ static int ssirc_send (struct peer_t *peer, INTERFACE *w, char *args)
     /* done... we should wait for responce now so we can connect there */
   }
   else if ((dcc->socket = Listen_Port (c, hostname, &port, NULL, dcc,
-				  &_dcc_inc_pre, &isend_handler)) < 0)
+				       &_dcc_inc_pre, &isend_handler)) < 0)
   {
     ERROR ("sending to %s: could not open listening port!", args);
     free_dcc (dcc);

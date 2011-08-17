@@ -1858,7 +1858,7 @@ static int _ctcp_opping(INTERFACE *client, unsigned char *who, char *lname,
     fail = 1;
   else
     fail = Check_Passwd(pass, crp);
-  if (!fail && (Get_Flags(u, NULL) & checkuf))
+  if (!fail && (Get_Flags(u, strchr(client->name, '@')) & checkuf))
     checkuf = 0;		/* global access granted */
   else
     checknocuf = 0;		/* check only channel access */
@@ -1911,7 +1911,66 @@ static int ctcp_voice(INTERFACE *client, unsigned char *who, char *lname,
 }
 
 		/* INVITE passwd channel */
-BINDING_TYPE_irc_priv_msg_ctcp(ctcp_passwd);
+BINDING_TYPE_irc_priv_msg_ctcp(ctcp_invite);
+static int ctcp_invite(INTERFACE *client, unsigned char *who, char *lname,
+		       char *unick, char *msg)
+{
+  struct clrec_t *u;
+  char *c;
+  IRC *net;
+  CHANNEL *ch;
+  LINK *me;
+  size_t s;
+  userflag gf, cf;
+  int fail;
+  char pass[IFNAMEMAX+1];
+
+  /* check args */
+  if (!client || !lname)	/* not identified */
+    return 0;
+  msg = NextWord_Unquoted(pass, msg, sizeof(pass));
+  StrTrim(msg);
+  /* check passwd */
+  u = Lock_Clientrecord(lname);
+  if (u == NULL)
+    fail = 1;
+  else if ((c = Get_Field(u, "passwd", NULL)) == NULL)
+    fail = 1;
+  else
+    fail = Check_Passwd(pass, c);
+  if (!fail) {
+    if (!ischannelname(msg) || !(c = strchr(client->name, '@')))
+      fail = 1;
+    else {
+      s = strfcpy(pass, msg, sizeof(pass));
+      strfcpy(&pass[s], c, sizeof(pass) - s);
+      ch = ircch_find_service(pass, &net);
+      if (!ch || !(ch->mode & A_INVITEONLY)) /* not +i channel */
+	fail = 1;
+      else			/* get channel flags */
+	cf = Get_Flags(u, ch->chi->name);
+    }
+  }
+  if (!fail)			/* get global flags */
+    gf = Get_Flags(u, c);	/* it's still network name */
+  if (u)
+    Unlock_Clientrecord(u);
+  if (fail)
+    return 0;			/* FIXME: inform client somehow? */
+  /* check if we can operate on channel */
+  if (!(me = _find_me_op(net, ch))) /* cannot op them */
+    return 0;
+  if (ircch_find_link(net, unick, ch)) /* already on chan */
+    return 0;
+  if (!(cf & (U_OP | U_HALFOP | U_INVITE)) && /* not welcomed to channel */
+      (!(gf & (U_OP | U_HALFOP | U_INVITE)) || (cf & U_DENY)))
+    return 0;
+  /* do invite */
+  for (c = who; *c && *c != '!' && *c != '@'; c++); /* get just nick from it */
+  s = c - (char *)who;
+  New_Request(net->neti, 0, "INVITE %.*s %s", (int)s, who, ch->real);
+  return 1;
+}
 
 void ircch_set_ss (void)
 {
@@ -1934,10 +1993,10 @@ void ircch_set_ss (void)
   NB (reset,	U_OP, U_OP);
   NB (invite,	U_HALFOP, U_HALFOP);
 #undef NB
-//  Add_Binding("irc-priv-msg-ctcp", "OP", 0, 0, &ctcp_op, NULL);
-//  Add_Binding("irc-priv-msg-ctcp", "HOP", 0, 0, &ctcp_hop, NULL);
-//  Add_Binding("irc-priv-msg-ctcp", "VOICE", 0, 0, &ctcp_voice, NULL);
-//  Add_Binding("irc-priv-msg-ctcp", "INVITE", 0, 0, &ctcp_invite, NULL);
+  Add_Binding("irc-priv-msg-ctcp", "OP", 0, 0, &ctcp_op, NULL);
+  Add_Binding("irc-priv-msg-ctcp", "HOP", 0, 0, &ctcp_hop, NULL);
+  Add_Binding("irc-priv-msg-ctcp", "VOICE", 0, 0, &ctcp_voice, NULL);
+  Add_Binding("irc-priv-msg-ctcp", "INVITE", 0, 0, &ctcp_invite, NULL);
 }
 
 void ircch_unset_ss (void)
@@ -1961,8 +2020,8 @@ void ircch_unset_ss (void)
   NB (reset);
   NB (invite);
 #undef NB
-//  Delete_Binding("irc-priv-msg-ctcp", &ctcp_op, NULL);
-//  Delete_Binding("irc-priv-msg-ctcp", &ctcp_hop, NULL);
-//  Delete_Binding("irc-priv-msg-ctcp", &ctcp_voice, NULL);
-//  Delete_Binding("irc-priv-msg-ctcp", &ctcp_invite, NULL);
+  Delete_Binding("irc-priv-msg-ctcp", &ctcp_op, NULL);
+  Delete_Binding("irc-priv-msg-ctcp", &ctcp_hop, NULL);
+  Delete_Binding("irc-priv-msg-ctcp", &ctcp_voice, NULL);
+  Delete_Binding("irc-priv-msg-ctcp", &ctcp_invite, NULL);
 }

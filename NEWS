@@ -2,6 +2,14 @@
 
 Changes in version 0.10 since 0.9:
 
+- New IRC CTCP commands: OP for getting +o; HOP for getting +h; VOICE for
+    getting +v on controlled channels; INVITE for inviting on invite only
+    channels - all with syntax identical to Eggdrop's PRIVMSG commands.
+    CTCP INVITE has little difference as we have INVITE user flag so we
+    allow user to get invited if he/she has one of OP, HOP, or INVITE
+    channel flag or have one of OP, HOP, or INVITE global/network flag
+    but have not DENY channel flag.
+
 - IPv6 addresses support.  You have to run configure script with option
     --enable-ipv6 to enable it.  Function Listen_Port() will listen for
     IPv4 connections on every IPv4 interface if is called with NULL as
@@ -9,10 +17,10 @@ Changes in version 0.10 since 0.9:
 
 - The Solaris OS support revoked, works fine on 64-bit OpenSolaris 11
     (snv_105) but gmake should be used instead of make as modules can't
-    be made with it.
+    be made with Solaris' make.
 
 - Merged libiconv detection with AM_ICONV macro from gettext tests, now
-    path to libiconv defined with --with-libiconv-prefix option to the
+    path to libiconv which given to --with-libiconv-prefix option of the
     configure script works correctly.
 
 - New '.chelp' command to show help on config/script commands.
