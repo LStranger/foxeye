@@ -6,6 +6,16 @@ AM_INIT_AUTOMAKE(foxeye, 0.10.0.2)
 
 AC_CANONICAL_HOST
 
+dnl Checks for programs.
+AC_PROG_MAKE_SET
+AC_PROG_INSTALL
+AC_PROG_RANLIB
+AC_PROG_LN_S
+AC_PATH_PROG(BASENAME, basename)
+AC_PATH_PROG(BASH, bash)
+AC_PATH_PROGS(XGETTEXT, [gxgettext xgettext])
+dnl AC_CHECK_PROGS(SGML2TXT, "docbook-to-man", test -f \$@ || sgml2txt)
+
 dnl Some non-standard compiler defaults
 if test "x$CC" = x; then
     case "$host_os" in
@@ -25,25 +35,15 @@ if test "x$CC" != x; then
     AC_MSG_RESULT(compiler is set to $CC)
 fi
 
+dnl Checks for C compiler features
+AC_PROG_CC
+AC_PROG_CC_C99
 AC_USE_SYSTEM_EXTENSIONS
 # AC_AIX
-AC_ISC_POSIX
+# AC_ISC_POSIX
 # AC_MINIX
-
-dnl Checks for programs.
-AC_PROG_CC
-AC_PROG_GCC_TRADITIONAL
-AC_PROG_CXX
-AC_PROG_MAKE_SET
-AC_PROG_INSTALL
-AC_PROG_RANLIB
-AC_PROG_LN_S
-AC_PATH_PROG(BASENAME, basename)
-AC_PATH_PROG(BASH, bash)
-AC_PATH_PROGS(XGETTEXT, [gxgettext xgettext])
-dnl AC_CHECK_PROGS(SGML2TXT, "docbook-to-man", test -f \$@ || sgml2txt)
-
-dnl Checks for C compiler features
+# AC_PROG_GCC_TRADITIONAL
+# AC_PROG_CXX
 AC_C_CONST
 AC_C_VOLATILE
 AC_C_INLINE
