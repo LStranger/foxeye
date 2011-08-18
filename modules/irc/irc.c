@@ -1563,7 +1563,7 @@ static void _irc_update_isupport (INTERFACE *net, int parc, char **parv)
     _set_isupport (IRCPAR_CASEMAPPING, "rfc1459");
 #undef _set_isupport
   value[i] = 0;
-  DBG ("irc_update_isupport: [%s]->[%s]", cs, value);
+  DBG ("irc_update_isupport: [%s]->[%s]", NONULL(cs), value);
   if (safe_strcmp (cs, value) &&
     !Set_Field (clr, IRCPAR_FIELD, value, 0))
       Add_Request (I_LOG, "*", F_WARN, "irc:irc_update_isupport: could not save.");

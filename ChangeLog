@@ -17,6 +17,7 @@ Thu Aug 18 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  more callback to Listen_Port() but it's still from main thread not
 	  moved to listener so delays are still possible on the own domain
 	  resolving.
+	* modules/irc/irc.c: fixed another *printf SIGSEGV on Solaris.
 
 Wed Aug 17 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* NEWS: added a file with short description of recent changes.
