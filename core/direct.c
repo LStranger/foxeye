@@ -1431,7 +1431,7 @@ static void *_listen_port (void *input_data)
 static idx_t
 Listen_Port_main (char *client, const char *host, unsigned short port,
 		  char *confline, void *data,
-		  int (*cb) (const struct addrinfo *, void *),
+		  int (*cb) (const struct sockaddr *, void *),
 		  void (*prehandler) (pthread_t, void **, idx_t),
 		  void (*handler) (char *, char *, const char *, void *))
 {
@@ -1484,7 +1484,7 @@ static void _assign_port_range (unsigned short *ps, unsigned short *pe)
 
 idx_t Listen_Port (char *client, const char *host, unsigned short *sport,
 		   char *confline, void *data,
-		   int (*cb) (const struct addrinfo *, void *),
+		   int (*cb) (const struct sockaddr *, void *),
 		   void (*prehandler) (pthread_t, void **, idx_t),
 		   void (*handler) (char *, char *, const char *, void *))
 {

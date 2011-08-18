@@ -981,20 +981,17 @@ Sockets API:
 	Reenterability: thread-safe
 
   int SSeettuuppSSoocckkeett (idx_t _i_d_x, const char *_d_o_m_a_i_n, unsigned short _p_o_r_t,
-		   int (*_c_a_l_l_b_a_c_k)(const struct addrinfo *_a_i, void *_c_b_d),
+		   int (*_c_a_l_l_b_a_c_k)(const struct sockaddr *_s_a, void *_c_b_d),
 		   void *_c_b_d);
     Sets up new socket in non-block mode, establishes connection with
     Internet address with name _d_o_m_a_i_n to port _p_o_r_t if its mode is M_RAW
     or opens a new listening socket if its mode is M_LIST, M_LINP, or
     M_UNIX. If socket mode is M_LINP then listening socket will be opened
     only for single connection. Parameter _p_o_r_t is ignored when listening
-    Unix socket (socket mode is M_UNIX). Returns 0 if success or error
-    code otherwise. If socket mode is not M_UNIX, _c_a_l_l_b_a_c_k is not NULL,
-    and _d_o_m_a_i_n is not NULL then function _c_a_l_l_b_a_c_k will be called with
-    address _a_i and callback data _c_b_d right after _d_o_m_a_i_n address was
-    succesfully resolved. Reenterability of _c_a_l_l_b_a_c_k should be the same
-    as reenterability of caller of SetupSocket. If _c_a_l_l_b_a_c_k returned any
-    error code (i.e. not 0) then SetupSocket stops and returns it.
+    Unix socket (socket mode is M_UNIX). Returns 0 on success or error
+    code otherwise. If _c_a_l_l_b_a_c_k is not NULL then function _c_a_l_l_b_a_c_k will
+    be called with address _s_a and callback data _c_b_d as last step of the
+    socket setup.
 	Reenterability: thread-safe
 
   idx_t AAnnsswweerrSSoocckkeett (idx_t _i_d_x);
@@ -1073,7 +1070,7 @@ Direct client's connections API:
 
   idx_t LLiisstteenn__PPoorrtt (char *_c_l_n, const char *_h_o_s_t, unsigned short *_p,
 		  char *_c_o_n_f_l_i_n_e, void *_i_d,
-		  int (*_l_c_b) (const struct addrinfo *_a_i, void *_i_d),
+		  int (*_l_c_b) (const struct sockaddr *_s_a, void *_i_d),
 		  void (*_p_r_e_h_a_n_d_l_e_r) (pthread_t _t_h, void **_i_d, idx_t _a_s),
 		  void (*_h_a_n_d_l_e_r) (char *_c_l_n, char *_i_d_e_n_t,
 				   const char *_h_o_s_t, void *_i_d));
@@ -1105,10 +1102,9 @@ Direct client's connections API:
     is called with _a_s equal to -1 and undefined _t_h to notify caller about
     that. Since that might be also as result of emergency shutdown,
     _p_r_e_h_a_n_d_l_e_r should not call any but async-safe functions in that case.
-    If _l_c_b is not NULL and _h_o_s_t is not NULL then _l_c_b will be called from
-    listening thread right after _h_o_s_t was successfully resolved. In case
-    of any errors _l_c_b will be called with _a_i equal to NULL. Function _l_c_b
-    should be thread-safe.
+    If _l_c_b is not NULL then _l_c_b will be called from listening thread
+    after successful socket setup. In case of any errors _l_c_b will be
+    called with _s_a equal to NULL. Function _l_c_b should be thread-safe.
 	Reenterability: none
 
   int CCoonnnneecctt__HHoosstt (const char *_h_o_s_t, unsigned short _p_o_r_t, pthread_t *_t_h,

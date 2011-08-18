@@ -23,6 +23,7 @@
 #include <netinet/in.h>
 #include <sys/un.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 #include <sys/poll.h>
 #include <signal.h>
 #include <setjmp.h>
@@ -287,7 +288,7 @@ static inline char *_make_socket_ipname(inet_addr_t *addr, char *buf,
 
 /* For a listening process - we have to get ECONNREFUSED to own port :) */
 int SetupSocket(idx_t idx, const char *domain, unsigned short port,
-		int (*callback)(const struct addrinfo *, void *),
+		int (*callback)(const struct sockaddr *, void *),
 		void *callback_data)
 {
   int i, sockfd = Pollfd[idx].fd, type = (int)Socket[idx].port;
@@ -334,11 +335,7 @@ int SetupSocket(idx_t idx, const char *domain, unsigned short port,
 	len = ai->ai_addrlen;
 	memcpy(&addr.sa, &ha->sa, len);
 	/* addr.sa.sa_family = ai->ai_family; */
-	if (callback != NULL)
-	  i = callback(ai, callback_data);
 	freeaddrinfo (ai);
-	if (i != 0)
-	  return i;
 #ifdef ENABLE_IPV6
 	if (addr.sa.sa_family != AF_INET) {
 	  /* close IPv4 socket and open IPv6 one instead */
@@ -367,21 +364,20 @@ int SetupSocket(idx_t idx, const char *domain, unsigned short port,
   ling.l_linger = 0;
   setsockopt (sockfd, SOL_SOCKET, SO_LINGER, (void *) &ling, sizeof(ling));
   fcntl (sockfd, F_SETOWN, _mypid);
-  if (type == M_LIST || type == M_LINP || type == M_UNIX)
+  if (type == M_LIST || type == M_LINP)
   {
-    int backlog = 3;
-
+    i = 3; /* backlog */
     if (type == M_LINP)
-      backlog = 1;
-    if (bind (sockfd, &addr.sa, len) < 0 || listen (sockfd, backlog) < 0 ||
+      i = 1;
+    if (bind (sockfd, &addr.sa, len) < 0 || listen (sockfd, i) < 0 ||
 	getsockname (sockfd, &addr.sa, &len) < 0)
       return (E_ERRNO - errno);
-    if (type != M_UNIX)
-      /* update listening port with real opened one not asked */
-      Socket[idx].port = ntohs (addr.s_in.sin_port);
-  }
-  else
-  {
+    /* update listening port with real opened one not asked */
+    Socket[idx].port = ntohs (addr.s_in.sin_port);
+  } else if (type == M_UNIX) {
+    if (bind (sockfd, &addr.sa, len) < 0 || listen (sockfd, 3) < 0)
+      return (E_ERRNO - errno);
+  } else {
     if ((i = connect (sockfd, &addr.sa, len)) < 0)
       return (E_ERRNO - errno);
     Socket[idx].port = port;
@@ -404,6 +400,8 @@ int SetupSocket(idx_t idx, const char *domain, unsigned short port,
       domain = Socket[idx].ipname;
   }
   Socket[idx].domain = safe_strdup (domain);
+  if (callback != NULL)
+    return callback(&addr.sa, callback_data);
   return 0;
 }
 

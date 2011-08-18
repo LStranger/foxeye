@@ -40,13 +40,12 @@
 
 #define POLL_TIMEOUT	200	/* in milliseconds - M_POLL from threads */
 
-/* those are required for struct addrinfo */
+/* this is required for struct sockaddr */
 #include <sys/socket.h>
-#include <netdb.h>
 
 idx_t GetSocket (unsigned short);		/* allocate one socket */
 int SetupSocket (idx_t, const char *, unsigned short, /* socket, domain, port */
-		 int (*)(const struct addrinfo *, void *), void *);
+		 int (*)(const struct sockaddr *, void *), void *);
 int KillSocket (idx_t *);			/* forget the socket */
 void CloseSocket (idx_t);			/* just close it */
 ssize_t ReadSocket (char *, idx_t, size_t, int); /* read full line, strip \r\n */
