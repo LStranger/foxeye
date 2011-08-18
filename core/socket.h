@@ -32,7 +32,7 @@
 #define E_RESOLVTIMEOUT	-3	/* DNS search error */
 //#define E_UNREACHABLE	-4	/* host unreachable */
 #define E_NOTHREAD	-5	/* cannot create listening thread */
-//#define E_EOF		-6
+#define E_EOF		-6	/* remote end closed connection */
 #define E_UNDEFDOMAIN	-7
 #define E_NOSUCHDOMAIN	-8
 //#define E_NOCONNECT	-9
@@ -46,6 +46,7 @@
 idx_t GetSocket (unsigned short);		/* allocate one socket */
 int SetupSocket (idx_t, const char *, unsigned short, /* socket, domain, port */
 		 int (*)(const struct sockaddr *, void *), void *);
+void ResetSocket (idx_t, unsigned short);	/* reset after failed setup */
 int KillSocket (idx_t *);			/* forget the socket */
 void CloseSocket (idx_t);			/* just close it */
 ssize_t ReadSocket (char *, idx_t, size_t, int); /* read full line, strip \r\n */

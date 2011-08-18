@@ -90,9 +90,12 @@ static void sigio_handler (int signo)
   poll(Pollfd, _Snum, 0);
 }
 
+/* use this as mark of unused socket, -1 is just freed one */
+#define UNUSED_FD -2
+
 void CloseSocket (idx_t idx)
 {
-  if (Pollfd[idx].fd != -1)
+  if (Pollfd[idx].fd >= 0)
   {
     DBG ("socket:CloseSocket: %hd", idx);
     shutdown (Pollfd[idx].fd, SHUT_RDWR);
@@ -102,17 +105,17 @@ void CloseSocket (idx_t idx)
 }
 
 /*
- * returns -1 if too many opened sockets or idx 
- * note: there may be a problem with Socket[idx].domain and _Snum since its
- * are never locked but in reality these words change are atomic operations
- * so I hope it must work anyway
+ * returns -1 if too many opened sockets or idx
+ * note: there may be a problem with Socket[idx].fd since it is never locked
+ * but in reality that change is atomic operation so it must work anyway
+ * while we lock _Snum with mutex
 */
 static idx_t allocate_socket ()
 {
   idx_t idx;
 
   for (idx = 0; idx < _Snum; idx++)
-    if (Socket[idx].domain == NULL && Pollfd[idx].fd == -1)
+    if (Pollfd[idx].fd == UNUSED_FD)
       break;
   if (idx == _Salloc)
     return -1; /* no free sockets! */
@@ -120,6 +123,7 @@ static idx_t allocate_socket ()
   Pollfd[idx].events = POLLIN | POLLPRI | POLLOUT;
   Pollfd[idx].revents = 0;
   Socket[idx].domain = NULL;
+  Socket[idx].ipname = NULL;
   Socket[idx].ready = FALSE;
   if (idx == _Snum)
     _Snum++;
@@ -204,7 +208,7 @@ ssize_t WriteSocket (idx_t idx, const char *buf, size_t *ptr, size_t *sw, int mo
   if (sg < 0)
     return (errno == EAGAIN) ? 0 : (E_ERRNO - errno);
   else if (sg == 0)			/* remote end closed connection */
-    return E_NOSOCKET;
+    return E_EOF;
   *ptr += sg;
   *sw -= sg;
   Socket[idx].ready = TRUE;		/* connected as we sent something */
@@ -225,7 +229,8 @@ int KillSocket (idx_t *idx)
   CloseSocket (i);		/* must be first for reentrance */
   Socket[i].port = 0;
   FREE (&Socket[i].ipname);
-  FREE (&Socket[i].domain);	/* indicator of free socket */
+  FREE (&Socket[i].domain);
+  Pollfd[idx].fd = UNUSED_FD;	/* indicator of free socket */
   return 0;
 }
 
@@ -249,6 +254,26 @@ idx_t GetSocket (unsigned short type)
     return (E_NOSOCKET);
   Socket[idx].port = type;
   DBG ("socket:GetSocket: %d (fd=%d)", (int)idx, sockfd);
+  return idx;
+}
+
+/* recover after failed SetupSocket */
+void ResetSocket(idx_t idx, unsigned short type)
+{
+  register int sockfd;
+
+  if (Pollfd[idx].fd >= 0)
+    close(Pollfd[idx].fd);
+//  FREE (&Socket[i].ipname);
+//  FREE (&Socket[i].domain);
+  if (type == M_UNIX)
+    Pollfd[idx].fd = sockfd = socket (AF_UNIX, SOCK_STREAM, 0);
+  else
+    Pollfd[idx].fd = sockfd = socket (AF_INET, SOCK_STREAM, 0);
+  if (sockfd < 0)
+    return;
+  Socket[idx].port = type;
+  DBG ("socket:ResetSocket: %d (fd=%d)", (int)idx, sockfd);
   return idx;
 }
 
@@ -344,6 +369,8 @@ int SetupSocket(idx_t idx, const char *domain, unsigned short port,
 	  DBG("closed IPv4 socket (fd=%d) and opened IPv6 one (fd=%d)",
 	      Pollfd[idx].fd, sockfd);
 	  Pollfd[idx].fd = sockfd;
+	  if (sockfd < 0)
+	    return (E_NOSOCKET);
 	}
 #endif
       }
@@ -399,9 +426,9 @@ int SetupSocket(idx_t idx, const char *domain, unsigned short port,
     else if (domain == NULL) /* make it not NULL */
       domain = Socket[idx].ipname;
   }
-  Socket[idx].domain = safe_strdup (domain);
   if (callback != NULL)
     return callback(&addr.sa, callback_data);
+  Socket[idx].domain = safe_strdup (domain);
   return 0;
 }
 
@@ -541,6 +568,9 @@ char *SocketError (int er, char *buf, size_t s)
       break;
     case E_NOTHREAD:
       strfcpy (buf, "cannot create listening thread", s);
+      break;
+    case E_EOF:
+      strfcpy (buf, "remote end closed connection", s);
       break;
     case E_UNDEFDOMAIN:
       strfcpy (buf, "domain not defined", s);
