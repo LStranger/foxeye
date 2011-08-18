@@ -230,7 +230,7 @@ int KillSocket (idx_t *idx)
   Socket[i].port = 0;
   FREE (&Socket[i].ipname);
   FREE (&Socket[i].domain);
-  Pollfd[idx].fd = UNUSED_FD;	/* indicator of free socket */
+  Pollfd[i].fd = UNUSED_FD;	/* indicator of free socket */
   return 0;
 }
 
@@ -274,7 +274,6 @@ void ResetSocket(idx_t idx, unsigned short type)
     return;
   Socket[idx].port = type;
   DBG ("socket:ResetSocket: %d (fd=%d)", (int)idx, sockfd);
-  return idx;
 }
 
 /* returns allocated ip textual representation for socket address */
