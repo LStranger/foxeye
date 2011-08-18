@@ -21,6 +21,10 @@
 #ifndef _DIRECT_H
 #define _DIRECT_H 1
 
+/* those are required for struct addrinfo */
+#include <sys/socket.h>
+#include <netdb.h>
+
 typedef enum
 {
   P_DISCONNECTED = 0,			/* no socket yet / lost socket */
@@ -55,6 +59,7 @@ void Dcc_Parse (struct peer_t *, char *, char *, userflag, userflag, int, int,
 		struct bindtable_t *, char *);		/* default parser */
 
 idx_t Listen_Port (char *, const char *, unsigned short *, char *, void *,
+		   int (*) (const struct addrinfo *, void *),
 		   void (*) (pthread_t, void **, idx_t),
 		   void (*) (char *, char *, const char *, void *))
 			__attribute__((warn_unused_result));

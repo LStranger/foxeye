@@ -23,8 +23,6 @@
 #include <netinet/in.h>
 #include <sys/un.h>
 #include <arpa/inet.h>
-#include <netdb.h>
-#include <sys/socket.h>
 #include <sys/poll.h>
 #include <signal.h>
 #include <setjmp.h>
@@ -35,11 +33,9 @@
 
 #ifndef HAVE_SIGACTION
 # define sigaction sigvec
-#ifndef HAVE_STRUCT_SIGACTION_SA_HANDLER
 # define sa_handler sv_handler
 # define sa_mask sv_mask
 # define sa_flags sv_flags
-#endif
 #endif /* HAVE_SIGACTION */
 
 #ifdef HAVE_SYS_FILIO_H
@@ -290,7 +286,9 @@ static inline char *_make_socket_ipname(inet_addr_t *addr, char *buf,
 }
 
 /* For a listening process - we have to get ECONNREFUSED to own port :) */
-int SetupSocket (idx_t idx, const char *domain, unsigned short port)
+int SetupSocket(idx_t idx, const char *domain, unsigned short port,
+		int (*callback)(const struct addrinfo *, void *),
+		void *callback_data)
 {
   int i, sockfd = Pollfd[idx].fd, type = (int)Socket[idx].port;
   socklen_t len;
@@ -336,7 +334,11 @@ int SetupSocket (idx_t idx, const char *domain, unsigned short port)
 	len = ai->ai_addrlen;
 	memcpy(&addr.sa, &ha->sa, len);
 	/* addr.sa.sa_family = ai->ai_family; */
+	if (callback != NULL)
+	  i = callback(ai, callback_data);
 	freeaddrinfo (ai);
+	if (i != 0)
+	  return i;
 #ifdef ENABLE_IPV6
 	if (addr.sa.sa_family != AF_INET) {
 	  /* close IPv4 socket and open IPv6 one instead */

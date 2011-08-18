@@ -18,6 +18,9 @@
  * This file is part of FoxEye's source: sockets library API.
  */
 
+#ifndef _SOCKET_H
+#define _SOCKET_H 1
+
 #define M_RAW		0
 #define M_POLL		2
 #define M_LIST		3
@@ -37,8 +40,13 @@
 
 #define POLL_TIMEOUT	200	/* in milliseconds - M_POLL from threads */
 
+/* those are required for struct addrinfo */
+#include <sys/socket.h>
+#include <netdb.h>
+
 idx_t GetSocket (unsigned short);		/* allocate one socket */
-int SetupSocket (idx_t, const char *, unsigned short); /* socket, domain, port */
+int SetupSocket (idx_t, const char *, unsigned short, /* socket, domain, port */
+		 int (*)(const struct addrinfo *, void *), void *);
 int KillSocket (idx_t *);			/* forget the socket */
 void CloseSocket (idx_t);			/* just close it */
 ssize_t ReadSocket (char *, idx_t, size_t, int); /* read full line, strip \r\n */
@@ -49,3 +57,5 @@ const char *SocketIP (idx_t);			/* the same but text IP */
 char *SocketError (int, char *, size_t);
 
 int _fe_init_sockets (void);
+
+#endif /* _SOCKET_H */

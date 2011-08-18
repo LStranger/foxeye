@@ -22,8 +22,6 @@
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <sys/socket.h>
-#include <netdb.h>
 #include <errno.h>
 
 #include "modules.h"
@@ -916,8 +914,9 @@ static int _dcc_connect (dcc_priv_t *dcc)
     }
     ip_local = ntohl(((struct sockaddr_in *)ai->ai_addr)->sin_addr.s_addr);
     freeaddrinfo(ai);
-    if ((dcc->socket = Listen_Port (dcc->iface->name, hostname, &port, NULL, dcc,
-				    &_dcc_pasv_pre, &_dcc_send_phandler)) < 0)
+    if ((dcc->socket = Listen_Port (dcc->iface->name, hostname, &port, NULL,
+				    dcc, NULL, &_dcc_pasv_pre,
+				    &_dcc_send_phandler)) < 0)
     {
       ERROR ("request for CTCP SEND from %s (passive): could not open listen port!",
 	     dcc->iface->name);
@@ -1486,7 +1485,7 @@ static int ctcp_chat (INTERFACE *client, unsigned char *who, char *lname,
   }
   ip_local = ntohl(((struct sockaddr_in *)ai->ai_addr)->sin_addr.s_addr);
   freeaddrinfo(ai);
-  if ((dcc->socket = Listen_Port (lname, hostname, &port, NULL, dcc,
+  if ((dcc->socket = Listen_Port (lname, hostname, &port, NULL, dcc, NULL,
 				  &_dcc_inc_pre, &chat_handler)) < 0)
   {
     ERROR ("CTCP CHAT from %s: could not open listen port!", client->name);
@@ -1680,7 +1679,7 @@ static int ssirc_send (struct peer_t *peer, INTERFACE *w, char *args)
     dcc->tid = NewTimer (I_TEMP, target, S_TIMEOUT, ircdcc_conn_timeout, 0, 0, 0);
     /* done... we should wait for responce now so we can connect there */
   }
-  else if ((dcc->socket = Listen_Port (c, hostname, &port, NULL, dcc,
+  else if ((dcc->socket = Listen_Port (c, hostname, &port, NULL, dcc, NULL,
 				       &_dcc_inc_pre, &isend_handler)) < 0)
   {
     ERROR ("sending to %s: could not open listening port!", args);

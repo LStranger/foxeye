@@ -1305,7 +1305,7 @@ static void *_accept_port (void *input_data)
   /* get ident of user */
   *ident = 0;
   acptr->id = GetSocket (M_RAW);
-  if (acptr->id >= 0 && SetupSocket (acptr->id, domain, 113) == 0)
+  if (acptr->id >= 0 && SetupSocket (acptr->id, domain, 113, NULL, NULL) == 0)
   {
     snprintf (buf, sizeof(buf), "%hu, %hu\n", p, acptr->lport);
     dprint (5, "ask host %s for ident: %s", domain, buf);
@@ -1431,21 +1431,23 @@ static void *_listen_port (void *input_data)
 static idx_t
 Listen_Port_main (char *client, const char *host, unsigned short port,
 		  char *confline, void *data,
+		  int (*cb) (const struct addrinfo *, void *),
 		  void (*prehandler) (pthread_t, void **, idx_t),
 		  void (*handler) (char *, char *, const char *, void *))
 {
   accept_t *acptr;
   idx_t p;
   int n = E_NOSOCKET;
-  
+
   if (!handler ||			/* stupidity check ;) */
       (port && port < 1024))		/* don't try system ports! */
     return -1;
   p = GetSocket (M_LIST);
   /* check for two more sockets - accepted and ident check */
   /* we can have delay here only on host (which is local) resolving */
+  /* FIXME: move SetupSocket() into _listen_port() */
   if (p < 0 || p >= SOCKETMAX - 2 ||
-      (n = SetupSocket (p, (host && *host) ? host : NULL, port)) < 0)
+      (n = SetupSocket (p, (host && *host) ? host : NULL, port, cb, data)) < 0)
   {
     KillSocket (&p);
     return (idx_t)n;
@@ -1482,6 +1484,7 @@ static void _assign_port_range (unsigned short *ps, unsigned short *pe)
 
 idx_t Listen_Port (char *client, const char *host, unsigned short *sport,
 		   char *confline, void *data,
+		   int (*cb) (const struct addrinfo *, void *),
 		   void (*prehandler) (pthread_t, void **, idx_t),
 		   void (*handler) (char *, char *, const char *, void *))
 {
@@ -1494,7 +1497,8 @@ idx_t Listen_Port (char *client, const char *host, unsigned short *sport,
     _assign_port_range (&port, &pe);
   while (port <= pe)
   {
-    idx = Listen_Port_main (client, host, port, confline, data, prehandler, handler);
+    idx = Listen_Port_main (client, host, port, confline, data, cb, prehandler,
+			    handler);
     dprint (4, "Listen_Port: %s:%hu returned %d", NONULLP(host), port, (int)idx);
     if (idx >= 0)
     {
@@ -1503,6 +1507,9 @@ idx_t Listen_Port (char *client, const char *host, unsigned short *sport,
     }
     port++;
   }
+  /* FIXME: move this into thread! */
+  if (cb)
+    cb(NULL, data);
   return -1;
 }
 
@@ -1529,7 +1536,7 @@ static void *_connect_host (void *input_data)
   /* set cleanup for the thread before any cancellation point */
   pthread_cleanup_push (&_connect_host_cleanup, input_data);
   if ((*cptr->idx = GetSocket (M_RAW)) >= 0)
-    i = SetupSocket (*cptr->idx, cptr->host, cptr->port);
+    i = SetupSocket (*cptr->idx, cptr->host, cptr->port, NULL, NULL);
   if (i == 0)
     dprint (4, "direct:_connect_host: connected to %s at port %hu: new socket %d",
 	    cptr->host, cptr->port, (int)*cptr->idx);
@@ -2621,9 +2628,9 @@ static iftype_t _port_retrier_s (INTERFACE *iface, ifsig_t signal)
     case S_TIMEOUT:
       r = (_port_retrier *)iface->data;
       if (r->u < 0)
-	socket = Listen_Port (NULL, hostname, &r->port, iface->name, NULL, NULL, &session_handler_0);
+	socket = Listen_Port (NULL, hostname, &r->port, iface->name, NULL, NULL, NULL, &session_handler_0);
       else
-	socket = Listen_Port (NULL, hostname, &r->port, iface->name, NULL, NULL, _s_h_proc[r->u]);
+	socket = Listen_Port (NULL, hostname, &r->port, iface->name, NULL, NULL, NULL, _s_h_proc[r->u]);
       if (socket >= 0)
       {
 	LOG_CONN (_("Listening on port %hu%s."), r->port,
@@ -2694,7 +2701,7 @@ ScriptFunction (FE_port)	/* to config - see thrdcc_signal() */
   if (ch == 0)
   {
     ii = -1;
-    socket = Listen_Port (NULL, hostname, &port, msg, NULL, NULL, &session_handler_0);
+    socket = Listen_Port (NULL, hostname, &port, msg, NULL, NULL, NULL, &session_handler_0);
   }
   else
   {
@@ -2705,7 +2712,7 @@ ScriptFunction (FE_port)	/* to config - see thrdcc_signal() */
 	_s_h_value[ii] = ch;
       if (_s_h_value[ii] == ch)
       {
-	socket = Listen_Port (NULL, hostname, &port, msg, NULL, NULL, _s_h_proc[ii]);
+	socket = Listen_Port (NULL, hostname, &port, msg, NULL, NULL, NULL, _s_h_proc[ii]);
 	break;
       }
     }

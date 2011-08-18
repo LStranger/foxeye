@@ -10,6 +10,14 @@ TODO:
 	* modules/irc-channel/: to implement few CTCP commands: OP, etc.
 
 --- [0.10.0]
+Thu Aug 18 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/socket.*, core/direct.c, doc/modules.api: added callback to
+	  SetupSocket().
+	* core/direct.*, doc/modules.api, modules/irc-ctcp/dcc.c: added one
+	  more callback to Listen_Port() but it's still from main thread not
+	  moved to listener so delays are still possible on the own domain
+	  resolving.
+
 Wed Aug 17 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* NEWS: added a file with short description of recent changes.
 	* modules/irc-channel/chmanagement.c: implemented CTCP commands: OP,
