@@ -38,7 +38,7 @@
 
 #ifndef HAVE_SIGACTION
 # define sigaction sigvec
-#ifndef HAVE_SA_HANDLER
+#ifndef HAVE_STRUCT_SIGACTION_SA_HANDLER
 # define sa_handler sv_handler
 # define sa_mask sv_mask
 # define sa_flags sv_flags

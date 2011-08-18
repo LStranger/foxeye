@@ -2,16 +2,4 @@ if test x"$MODLIBS" = x; then
     MODLIBS=true
 fi
 
-AC_OUTPUT(Makefile \
-        doc/Makefile \
-        help/Makefile \
-        scripts/Makefile \
-	tree/Makefile \
-        modules/Makefile \
-	modules/Makefile.mods \
-        core/Makefile \
-	core/init.h \
-	intl/Makefile \
-	ui/Makefile \
-	po/Makefile.in \
-	doc/foxeye.1)
+AC_OUTPUT
