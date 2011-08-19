@@ -1221,6 +1221,7 @@ typedef struct
   idx_t socket, id;
   int tst:1;
   pthread_t th;
+  int (*cb) (const struct sockaddr *, void *);
   void (*prehandler) (pthread_t, void **, idx_t);
   void (*handler) (char *, char *, const char *, void *);
 } accept_t;
@@ -1345,6 +1346,7 @@ static void *_accept_port (void *input_data)
       sscanf (buf, "%*[^:]: %[^: ] :%*[^:]: %23[^ \n]", buf, ident);
       if (strcmp (buf, "USERID"))		/* bad answer */
 	*ident = 0;
+      /* TODO: make support for OTHER ident prepending it with '=' */
     }
   } /* ident is checked */
   DBG ("_accept_port: killing ident socket");
@@ -1424,6 +1426,18 @@ static void *_listen_port (void *input_data)
 }
 #undef acptr
 
+static int _direct_listener_callback(const struct sockaddr *sa, void *acptr)
+{
+  register int ec;
+
+  if (((accept_t *)acptr)->cb == NULL)
+    return (0);
+  ec = ((accept_t *)acptr)->cb(sa, ((accept_t *)acptr)->data);
+  if (ec != E_AGAIN)
+    ((accept_t *)acptr)->cb = NULL;
+  return (ec);
+}
+
 /*
  * Global function for listening port.
  * Returns: -1 if no listening or listen socket ID on success.
@@ -1431,27 +1445,33 @@ static void *_listen_port (void *input_data)
 static idx_t
 Listen_Port_main (char *client, const char *host, unsigned short port,
 		  char *confline, void *data,
-		  int (*cb) (const struct sockaddr *, void *),
+		  int (**cb) (const struct sockaddr *, void *),
 		  void (*prehandler) (pthread_t, void **, idx_t),
 		  void (*handler) (char *, char *, const char *, void *))
 {
   accept_t *acptr;
   idx_t p;
   int n = E_NOSOCKET;
+  accept_t tmp; /* FIXME: need only until SetupSocket is in thread */
 
   if (!handler ||			/* stupidity check ;) */
       (port && port < 1024))		/* don't try system ports! */
     return -1;
   p = GetSocket (M_LIST);
+  tmp.cb = *cb;
+  tmp.data = data;
   /* check for two more sockets - accepted and ident check */
   /* we can have delay here only on host (which is local) resolving */
   /* FIXME: move SetupSocket() into _listen_port() */
   if (p < 0 || p >= SOCKETMAX - 2 ||
-      (n = SetupSocket (p, (host && *host) ? host : NULL, port, cb, data)) < 0)
+      (n = SetupSocket (p, (host && *host) ? host : NULL, port,
+			&_direct_listener_callback, &tmp)) < 0)
   {
     KillSocket (&p);
+    *cb = tmp.cb;
     return (idx_t)n;
   }
+  *cb = tmp.cb;
   acptr = safe_malloc (sizeof(accept_t));
   acptr->client = safe_strdup (client);
   acptr->confline = safe_strdup (confline);
@@ -1497,7 +1517,7 @@ idx_t Listen_Port (char *client, const char *host, unsigned short *sport,
     _assign_port_range (&port, &pe);
   while (port <= pe)
   {
-    idx = Listen_Port_main (client, host, port, confline, data, cb, prehandler,
+    idx = Listen_Port_main (client, host, port, confline, data, &cb, prehandler,
 			    handler);
     dprint (4, "Listen_Port: %s:%hu returned %d", NONULLP(host), port, (int)idx);
     if (idx >= 0)
@@ -1507,7 +1527,7 @@ idx_t Listen_Port (char *client, const char *host, unsigned short *sport,
     }
     port++;
   }
-  /* FIXME: move this into thread! */
+  /* FIXME: move this into thread and support E_AGAIN! */
   if (cb)
     cb(NULL, data);
   return -1;

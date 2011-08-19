@@ -7,7 +7,7 @@ TODO:
 	* core/wtmp.c: to handle errors somehow?
 	* core/help.c: to add support for '##$charset utf-8' at helpfile start.
 	* core/direct.c: to add support for charset and comments in motd file.
-	* modules/irc-channel/: to implement few CTCP commands: OP, etc.
+	* core/direct.c: to make listener open ports in background.
 
 --- [0.10.0]
 Thu Aug 18 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
