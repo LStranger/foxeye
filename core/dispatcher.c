@@ -22,6 +22,7 @@
 
 #include <signal.h>
 #include <errno.h>
+#include <fcntl.h>
 
 #define DISPATCHER_C 1
 
@@ -1155,11 +1156,11 @@ static void end_boot (void)
   pthread_mutex_unlock (&LockIface);
 }
 
-static void set_pid_path (void)
+static int set_pid_path (void)
 {
   char *ne;
 
-  if (!*Nick || !Config)
+  if (!Config)
     PID_path[0] = 0;
   /* what directory in? */
   else
@@ -1169,41 +1170,48 @@ static void set_pid_path (void)
     ne = &PID_path[1];
     PID_path[0] = '.';
   }
+  if (!*Nick) {
+    strfcpy (ne, "/XXXXXX", NAMEMAX+6);
+    return mkstemp(PID_path);
+  }
   snprintf (ne, NAMEMAX+6, "/%s.pid", Nick);
+  return open(PID_path, O_RDONLY);
 }
 
-static pid_t try_get_pid (void)
+static pid_t try_get_pid (int fd)
 {
-  FILE *fp;
+  ssize_t rd;
   char buff[SHORT_STRING];
 
-  if (!*PID_path)
+  if (fd < 0)
     return 0;
-  if (!(fp = fopen (PID_path, "r")))
-    return 0;
-  if (!fgets (buff, sizeof(buff), fp))
-    buff[0] = '\0';
-  fclose (fp);
+  rd = read(fd, buff, sizeof(buff)-1);
+  if (rd < 0)
+    rd = 0;
+  buff[rd] = '\0';
   return (pid_t)atoi (buff);
 }
 
-static int write_pid (pid_t pid)
+static int write_pid (int fd, pid_t pid)
 {
-  FILE *fp;
+  ssize_t s;
   char buff[SHORT_STRING];
 
-  snprintf (buff, sizeof(buff), "%ld", (long)pid);
-  if (!(fp = fopen (PID_path, "w")))
-    return -1;
-  if (!fwrite (buff, strlen (buff), 1, fp))
+  s = snprintf (buff, sizeof(buff), "%ld", (long)pid);
+  if (fd < 0)
+    fd = open(PID_path, O_WRONLY | O_CREAT | O_EXCL);
+  if (fd < 0)
+    return (-1);
+  errno = 0;
+  if (write(fd, buff, s) < s)
   {
     int i = errno;
 
-    fclose (fp);
+    close(fd);
     errno = i;
     return -1;
   }
-  fclose (fp);
+  close(fd);
   return 0;
 }
 
@@ -1277,14 +1285,15 @@ int dispatcher (INTERFACE *start_if)
   struct sigaction act;
   unsigned int i = 0, count = 0, max = 0;
   int limit = 0;
+  int pidfd;
   pid_t pid;
   pthread_mutexattr_t attr;
   char *oldpid;
   struct timespec tp;
 
   /* check if bot already runs */
-  set_pid_path();
-  pid = try_get_pid();
+  pidfd = set_pid_path();
+  pid = try_get_pid(pidfd);
   if (pid)
   {
     if (kill (pid, 0))
@@ -1293,6 +1302,8 @@ int dispatcher (INTERFACE *start_if)
 	perror _("kill PID file");
       if (errno != ESRCH)
 	return 6;
+      close(pidfd);
+      pidfd = -1;
       unlink (PID_path);
     }
     else
@@ -1313,13 +1324,15 @@ int dispatcher (INTERFACE *start_if)
       return 5;
     }
     /* OK, this is parent */
-    if (write_pid (pid) == 0) /* no errors */
+    if (write_pid (pidfd, pid) == 0) /* no errors */
       return 0;
     perror _("write PID file");
     kill (pid, SIGTERM);
     return 5;
   }
   /* this is the child... */
+  if (pidfd >= 0)
+    close(pidfd);
   if (freopen ("/dev/null", "r", stdin)) i=i;	/* IFs for compiler happiness */
   if (freopen ("/dev/null", "w", stdout)) i=i;
   setsid();
@@ -1378,18 +1391,23 @@ int dispatcher (INTERFACE *start_if)
   /* no nick??? */
   if (!*Nick)
     bot_shutdown (_("Cannot run without a nick!"), 3);
-  /* start random generator */
-  pid = getpid();
-  srand (pid);
   /* create new pid-file */
   oldpid = safe_strdup (PID_path);
-  set_pid_path();
-  if (safe_strcmp (oldpid, PID_path) && rename (oldpid, PID_path))
+  pidfd = set_pid_path();
+  /* if pidfd >= 0 now then either:
+     - Nick wasn't changed and it's pidfile written by parent
+     - new pidfile already exists, we cannot rename old one into it */
+  if (safe_strcmp(oldpid, PID_path) && (pidfd >= 0 || rename(oldpid, PID_path)))
   {
     unlink (oldpid);
     bot_shutdown (_("Cannot write a PID file!"), 3);
   }
   FREE (&oldpid);
+  if (pidfd >= 0)
+    close(pidfd);
+  /* start random generator */
+  pid = getpid();
+  srand48((long)pid);
   /* booted OK, send all messages :) */
   end_boot();
   tp.tv_sec = 0;
