@@ -1199,7 +1199,7 @@ static int write_pid (int fd, pid_t pid)
 
   s = snprintf (buff, sizeof(buff), "%ld", (long)pid);
   if (fd < 0)
-    fd = open(PID_path, O_WRONLY | O_CREAT | O_EXCL);
+    fd = open(PID_path, O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IRGRP | S_IROTH);
   if (fd < 0)
     return (-1);
   errno = 0;
