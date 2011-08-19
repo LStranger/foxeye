@@ -508,9 +508,12 @@ int main (int argc, char *argv[])
     if (fgets (buff, sizeof(buff), fp))	/* try to get RunPath from config */
     {
       if (buff[0] == '#' && buff[1] == '!') {
-	ne = &buff[2];			/* skip `#!' magic */
-	while (*ne && *ne == ' ') ne++;
-	StrTrim (ne);
+	register char *ns = &buff[2];	/* skip `#!' magic */
+	while (*ns && *ns == ' ') ns++;
+	for (ne = ns; *ns; ns++)	/* select one word */
+	  if (*ns == ' ' || *ns == '\t' || *ns == '\n')
+	    break;
+	*ns = '\0';
 	RunPath = safe_strdup (ne);
       } else				/* our first line has no magic */
 	rewind(fp);
