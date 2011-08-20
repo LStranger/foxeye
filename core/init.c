@@ -794,8 +794,9 @@ static char *_quote_expand (char *ptr)
   return _usage;
 }
 
-static void _add_var_to_config (const char *name, void *ptr, size_t s)
+static void _add_var_to_config (const char *name, void *ptr, size_t s, int changed)
 {
+  char *prefix = changed ? "" : "#";
   if (Init)
   {
     Set_Iface (Init);			/* flush everything now */
@@ -804,32 +805,32 @@ static void _add_var_to_config (const char *name, void *ptr, size_t s)
   }
   Get_Help ("set", name, ConfigFileIface, -1, -1, NULL, NULL, 1);
   if (s > 1)
-    New_Request (ConfigFileIface, F_REPORT, "set %s %s", name,
+    New_Request (ConfigFileIface, F_REPORT, "%sset %s %s", prefix, name,
 		 _quote_expand ((char *)ptr));
   else if (!s)
-    New_Request (ConfigFileIface, F_REPORT, "set %s %ld", name,
+    New_Request (ConfigFileIface, F_REPORT, "%sset %s %ld", prefix, name,
 		 *(long int *)ptr);
   else if ((*(bool *)ptr & 1) == TRUE)
-    New_Request (ConfigFileIface, F_REPORT, "set %s %son", name,
+    New_Request (ConfigFileIface, F_REPORT, "%sset %s %son", prefix, name,
 		 (*(bool *)ptr & ASK) ? "ask-" : "");
   else
-    New_Request (ConfigFileIface, F_REPORT, "set %s %soff", name,
+    New_Request (ConfigFileIface, F_REPORT, "%sset %s %soff", prefix, name,
 		 (*(bool *)ptr & ASK) ? "ask-" : "");
   Set_Iface (ConfigFileIface);
   while (Get_Request());		/* write file */
   Unset_Iface();
 }
 
-static void Get_ConfigFromConsole (const char *name, void *ptr, size_t s)
+static int Get_ConfigFromConsole (const char *name, void *ptr, size_t s)
 {
   INTERFACE *cons = Find_Iface (I_CONSOLE, NULL);
-  int prompt = 1;
+  int prompt = 1, changed = 0;
 
   if (!cons)
-    return;
+    return 0;
   Unset_Iface();	/* unlock after Find_Iface() */
   if (!Init)
-    return;
+    return 0;
   if (!(cons->ift & I_DIED)) do
     {
       if (prompt)
@@ -883,10 +884,12 @@ static void Get_ConfigFromConsole (const char *name, void *ptr, size_t s)
 	    *(bool *)ptr = TRUE | (*(bool *)ptr & CAN_ASK);
 	  else
 	    *(bool *)ptr = FALSE | (*(bool *)ptr & CAN_ASK);
+	  changed = 1;
 	}
 	break;
       }
     } while (!(cons->ift & I_DIED));
+    return changed;
 }
 
 static int Start_FunctionFromConsole
@@ -945,6 +948,7 @@ typedef struct
 {
   void *data;
   size_t len;		/* 0 - int, 1 - bool, 2 - constant, >2 - string */
+  bool changed;
   char name[1];
 } __attribute__ ((packed)) VarData;
 
@@ -964,18 +968,23 @@ static void _lock_var (const char *name)
 static int _add_var (const char *name, void *var, size_t *s)
 {
   VarData *data;
+  int i = 0;
 
   if (O_GENERATECONF != FALSE && *s != 2)	/* if not read-only */
-    Get_ConfigFromConsole (name, var, *s);
+    i = Get_ConfigFromConsole (name, var, *s);
+  data = Find_Key (VTree, name);
+  if (data && data->changed)
+    i = 1;
   if (ConfigFileFile && *s != 2)
-    _add_var_to_config (name, var, *s);
-  if ((data = Find_Key (VTree, name)))		/* already registered */
+    _add_var_to_config (name, var, *s, i);
+  if (data)					/* already registered */
   {
     if (data->data != var)
       WARNING ("init: another data is already bound to variable \"%s\"", name);
     else
     {
       dprint (4, "init:_add_var: retry on %s", name);
+      if (i) data->changed = TRUE;
       *s = data->len;				/* a little trick for locked */
     }
     return 0;
@@ -985,6 +994,7 @@ static int _add_var (const char *name, void *var, size_t *s)
   data->data = var;
   strcpy (data->name, name);
   data->len = *s;
+  if (i) data->changed = TRUE;
   if (!Insert_Key (&VTree, data->name, data, 1))	/* try unique name */
     return 1;
   free (data);
@@ -1363,6 +1373,7 @@ static int _set (VarData *data, register const char *val)
     default:					/* string */
       NextWord_Unquoted ((char *)data->data, (char *)val, data->len);
   }
+  data->changed = TRUE;
   return 1;
 }
 

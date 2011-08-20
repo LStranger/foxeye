@@ -7,14 +7,13 @@ TODO:
 	* core/wtmp.c: to handle errors somehow?
 	* core/help.c: to add support for '##$charset utf-8' at helpfile start.
 	* core/direct.c: to add support for charset and comments in motd file.
-	* core/direct.c: to make listener open ports in background.
-	* core/init.c: to implement commenting out unchanged defaults in the
-	  generated config.
 
 --- [0.10.0]
 Sat Aug 20 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.*, doc/modules.api, modules/irc-ctcp/dcc.c: changed
 	  functioning of Listen_Port() so it does most of work in background.
+	* core/init.c: implemented commenting out unchanged defaults in the
+	  generated config.
 
 Fri Aug 19 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c: rewritten PID file handling, should never write
