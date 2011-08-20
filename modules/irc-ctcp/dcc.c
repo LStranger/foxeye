@@ -22,7 +22,6 @@
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <netdb.h>
 #include <errno.h>
 
 #include "modules.h"
@@ -44,11 +43,13 @@ typedef struct dcc_priv_t
   uint32_t ptr, startptr;		/* size got, start pointers */
   uint32_t rate;			/* average (16s) filetransfer speed */
   long int ahead;			/* R/O local value of ahead parameter */
+  unsigned int token;			/* R/O in thread */
   idx_t socket;				/* owned by thread, inherited later */
   pthread_t th;				/* undefined in P_DISCONNECTED state */
   pthread_mutex_t mutex;		/* for ->ptr ... ->rate */
   _peer_state state;			/* locked by dispatcher */
   tid_t tid;				/* dispatcher-only, for S_TIMEOUT */
+  bool wait_accept;			/* we still waiting for DCC ACCEPT */
   char lname[LNAMELEN+1];		/* R/O in thread */
 #if HOSTMASKLEN >= LONG_STRING
   char uh[HOSTMASKLEN+1];		/* R/O in thread, nick!user@host */
@@ -101,6 +102,7 @@ static dcc_priv_t *new_dcc (void)
   {
     *p = dcc = alloc_dcc_priv_t();
     dcc->next = NULL;
+    pthread_mutex_init (&dcc->mutex, NULL);
   }
   dcc->state = P_DISCONNECTED;
   dcc->socket = -1;
@@ -121,6 +123,7 @@ static void free_dcc (dcc_priv_t *dcc)
     *p = dcc->next;
   else
     ERROR ("irc-ctcp:dcc.c:free_dcc: could not find %p to free it!", dcc);
+  pthread_mutex_destroy (&dcc->mutex);
   free_dcc_priv_t (dcc);
 }
 
@@ -182,7 +185,8 @@ static iftype_t _dcc_sig_2 (INTERFACE *iface, ifsig_t signal)
       Unset_Iface();
       break;
     case S_LOCAL:			/* we might get ACCEPT after timeout */
-      if (dcc->filename && !safe_strncmp (BindResult, "ACCEPT ", 7))
+      if (dcc->filename && dcc->wait_accept &&
+	  !safe_strncmp (BindResult, "ACCEPT ", 7))
       {
 	unsigned short port, port2;
 
@@ -214,6 +218,7 @@ static iftype_t _dcc_sig_2 (INTERFACE *iface, ifsig_t signal)
 	  break;
 	}
 	dcc->startptr = strtoul (NextWord (txt), NULL, 10);
+	dcc->wait_accept = FALSE;
 	pthread_mutex_unlock (&dcc->mutex);
 	LOG_CONN (_("DCC: got ACCEPT, transfer resumed at %u."), dcc->startptr);
       }
@@ -229,8 +234,6 @@ static iftype_t _dcc_sig_2 (INTERFACE *iface, ifsig_t signal)
 	pthread_join (dcc->th, NULL);	/* ...it die itself, waiting for it */
 	Set_Iface (NULL);		/* restore status quo */
       }
-      if (dcc->filename)		/* free dcc_priv_t fields */
-	pthread_mutex_destroy (&dcc->mutex);
       FREE (&dcc->filename);
       KillTimer (dcc->tid);		/* if it's still on timeout */
       free_dcc (dcc);
@@ -329,15 +332,21 @@ static void chat_handler (char *lname, char *ident, const char *host, void *data
 
 /* thread 2 (incoming connection) */
 
+struct dcc_listener_data {
+  dcc_priv_t *dcc;
+};
+
 /* connected for CTCP CHAT / .send, fields (if dcc is found) are now:
-    .filename	NULL
+    .filename	NULL / path
     .state	P_DISCONNECTED
     .socket	listening socket id
     .uh		nick!user@host / nick@net */
 static void _dcc_inc_pre (pthread_t th, void **data, idx_t as)
 {
-  register dcc_priv_t *dcc = *data;
+  register struct dcc_listener_data *dld = *data;
+  register dcc_priv_t *dcc = dld->dcc;
 
+  *data = dcc;				/* pass it to handler */
   if (as == -1)				/* listener terminated */
   {
     if (dcc)
@@ -360,19 +369,19 @@ static void _dcc_inc_pre (pthread_t th, void **data, idx_t as)
   }
 }
 
-/* connected for sending file, lname is filename and fields are now:
+/* connected for sending file, fields are now:
     .size	file size on start
     .ahead	ircdcc_ahead_size
     .state	P_INITIAL
     .uh		nick@net, or nick@user!host if it's from (p)SEND
     .ptr	port
-    .startptr	0 or resume ptr
-    .filename	NULL, or filename if it's from (p)SEND
+    .startptr	0/1 or resume ptr
+    .filename	filename (allocated)
     .lname	"", or Lname if we got valid ACCEPT or (p)SEND request before
     .iface	thread interface (I_CONNECT nick@net)
     .socket	socket ID
     .th		thread ID
-    .mutex	initialised and unlocked if it's from (p)SEND */
+    .mutex	initialised and unlocked */
 static void isend_handler (char *lname, char *ident, const char *host, void *data)
 {
   char *buff;
@@ -388,12 +397,7 @@ static void isend_handler (char *lname, char *ident, const char *host, void *dat
   dprint (4, "dcc:isend_handler for %s to \"%s\".", lname, dcc->lname);
   buff = safe_malloc (MAXBLOCKSIZE);
   Set_Iface (dcc->iface);
-  if (!dcc->filename)			/* if it's from passive then it's set */
-  {
-    dcc->filename = safe_strdup (lname); /* now it's fixed */
-    pthread_mutex_init (&dcc->mutex, NULL);
-  }
-  else
+  if (host)				/* if it's from passive then it's NULL */
   {
     sr = strchr (dcc->uh, '@') - dcc->uh; /* size of nick */
     snprintf (&dcc->uh[sr], sizeof(dcc->uh) - sr, "!%s@%s", ident ? ident : "*",
@@ -589,9 +593,9 @@ static void _dcc_chat_handler (int res, void *input_data)
   }
 }
 
-/* connected for DCC SEND, fields are now:
+/* connected for DCC SEND (receiving file), fields are now:
     .size	offered size
-    .ptr	0 if we know about resume or not, or any other if we undecided
+    .ptr	port #
     .filename	full path (allocated)
     .ahead	ircdcc_ahead_size
     .state	P_INITIAL
@@ -620,12 +624,13 @@ static void _dcc_send_handler (int res, void *input_data)
   uint32_t ptr, nptr, ip;	/* current ptr in chunk, network-ordered, IP */
   uint32_t aptr, toget;		/* ahead ptr, toget */
   ssize_t bs, sbs, sw, sw2;	/* gotten block size, temp var */
-  int want_resume, ahead;	/* flag, current ahead size */
+  int ahead;			/* current ahead size */
   time_t t, t2;
   size_t statistics[16];	/* to calculate average speed */
   FILE *f, *rf;			/* opened file */
   void *buff;
   char *uh, *sfn;
+  bool wait_accept;
 
   dprint (4, "dcc:_dcc_send_handler: %d", res);
   if (res != 0)					/* some error catched */
@@ -635,7 +640,7 @@ static void _dcc_send_handler (int res, void *input_data)
     Unset_Iface();
   }
   pthread_mutex_lock (&dcc->mutex);		/* prepare to work */
-  want_resume = dcc->ptr;
+  wait_accept = dcc->wait_accept;
   dcc->ptr = 0;
   ip = dcc->rate;
   dcc->rate = 0;
@@ -649,7 +654,7 @@ static void _dcc_send_handler (int res, void *input_data)
   ahead = 0;
   time (&t);
   memset (statistics, 0, sizeof(statistics));
-  if (want_resume)		/* if waiting for ACCEPT then open temp file */
+  if (wait_accept)		/* if waiting for ACCEPT then open temp file */
     f = tmpfile();
   else if ((f = fopen (dcc->filename, "wb")))	/* else open real file */
   {
@@ -749,7 +754,7 @@ static void _dcc_send_handler (int res, void *input_data)
       break;
   }
   pthread_mutex_lock (&dcc->mutex);
-  if (want_resume && dcc->startptr)
+  if (wait_accept && dcc->startptr)
   {
     /* if want_resume and got startptr then move file chunk to real file */
     aptr = dcc->startptr;
@@ -830,7 +835,7 @@ static void _dcc_send_handler (int res, void *input_data)
   Unset_Iface();
 }
 
-/* the same but for passive mode - incoming connect to our send.
+/* the same but for passive mode - incoming connect to our socket.
    lname contains nick@net and dcc->iface is invalid */
 static void _dcc_send_phandler (char *lname, char *ident, const char *host,
 				void *input_data)
@@ -846,11 +851,13 @@ static void _dcc_send_phandler (char *lname, char *ident, const char *host,
 }
 #undef dcc
 
-/* prehandler for passive sending */
+/* prehandler for passive DCC SEND */
 static void _dcc_pasv_pre (pthread_t th, void **data, idx_t as)
 {
-  register dcc_priv_t *dcc = *data;
+  register struct dcc_listener_data *dld = *data;
+  register dcc_priv_t *dcc = dld->dcc;
 
+  *data = dcc;				/* pass it to handler */
   if (as == -1)				/* listener terminated */
   {
     if (dcc)
@@ -876,7 +883,57 @@ static void _dcc_pasv_pre (pthread_t th, void **data, idx_t as)
 
 
 /* ----------------------------------------------------------------------------
+   pre-connection part
+   *** only incoming connections: DCC SEND(p) / CTCP CHAT / .send
+   called only from listening thread as result of listener creating attempt */
+
+  /* fields are now:
+    .size	offered size (only if DCC SEND / .send)
+    .filename	full path (allocated) or NULL if CHAT
+    .uh		nick@net
+    .token	token (only if DCC SEND / .send) */
+static int _dcc_callback(const struct sockaddr *sa, void *data)
+{
+  register struct dcc_listener_data *dld = data;
+  dcc_priv_t *dcc = NULL;
+  uint32_t ip_local;			/* my IP in host byte order */
+  unsigned short port;
+  char t[8];
+
+  if (dld)
+    dcc = dld->dcc;
+  if (sa == NULL) {
+failed:
+    if (dcc)
+      dcc->state = P_LASTWAIT;		/* for garbage gathering */
+    return E_NOSOCKET;
+  }
+  if (sa->sa_family != AF_INET)		/* only IPv4 is supported! */
+    goto failed;
+  dcc->ptr = port = ntohs(((struct sockaddr_in *)sa)->sin_port);
+  ip_local = ntohl(((struct sockaddr_in *)sa)->sin_addr.s_addr);
+  if (dcc->filename == NULL)
+    Add_Request(I_CLIENT, dcc->uh, F_T_CTCP, "DCC CHAT chat %u %hu", ip_local,
+		port);
+  else if (dcc->token)
+    Add_Request(I_CLIENT, dcc->uh, F_T_CTCP, "DCC SEND \"%s\" %u %hu %u %u",
+		dcc->filename, (unsigned int)ip_local, port,
+		(unsigned int)dcc->size, dcc->token);
+  else
+    Add_Request(I_CLIENT, dcc->uh, F_T_CTCP, "DCC SEND \"%s\" %u %hu %u",
+		dcc->filename, (unsigned int)ip_local, port, dcc->size);
+  snprintf (t, sizeof(t), "%hu", port); /* setup timeout timer */
+  Set_Iface (NULL);
+  if (ircdcc_conn_timeout > 0)
+    dcc->tid = NewTimer (I_LISTEN, t, S_TIMEOUT, ircdcc_conn_timeout, 0, 0, 0);
+  Unset_Iface();
+  return (0);
+}
+
+
+/* ----------------------------------------------------------------------------
    between-thread part (called on terminating interface of thread 1)
+   *** only DCC SEND and DCC CHAT requests
    attempts to create thread 2 */
 
   /* support for passive DCC (if port==0 then listen instead)
@@ -890,10 +947,8 @@ static int _dcc_connect (dcc_priv_t *dcc)
   unsigned short port;
   uint32_t ip;
 
-  port = dcc->ahead;
-  dprint (4, "dcc:_dcc_connect at port %hu.", port);
-  if (dcc->filename)
-    dcc->ptr = port;	/* little trick to know port number while .idx == -1 */
+  port = dcc->ptr;
+  dprint (4, "dcc:_dcc_connect to port %hu.", port);
   dcc->socket = -1;
   dcc->state = P_INITIAL;		/* reset it after _dcc_stage_1() */
   dcc->ahead = ircdcc_ahead_size;	/* we have full access now */
@@ -901,32 +956,18 @@ static int _dcc_connect (dcc_priv_t *dcc)
     dcc->ahead = 0;
   else if (dcc->ahead > 16)
     dcc->ahead = 16;
-  if (port == 0)	/* it's passive mode! */
+  if (port == 0)			/* it's passive mode! */
   {
-    uint32_t ip_local;			/* my IP in host byte order */
-    struct addrinfo *ai;
-    static struct addrinfo hints = { .ai_family = AF_INET, .ai_socktype = 0,
-				     .ai_protocol = 0, .ai_flags = 0 };
-
-    /* TODO: move getaddrinfo() and Add_Request() into the thread! */
-    if ((getaddrinfo(hostname, NULL, &hints, &ai)) != 0) {
-      ERROR ("Cannot resolve own IP for CTCP SEND (passive)!");
-      return 1;
-    }
-    ip_local = ntohl(((struct sockaddr_in *)ai->ai_addr)->sin_addr.s_addr);
-    freeaddrinfo(ai);
-    if ((dcc->socket = Listen_Port (dcc->iface->name, hostname, &port, NULL,
-				    dcc, NULL, &_dcc_pasv_pre,
-				    &_dcc_send_phandler)) < 0)
+    struct dcc_listener_data *dld = safe_malloc(sizeof(struct dcc_listener_data));
+    dld->dcc = dcc;
+    if (Listen_Port(dcc->iface->name, hostname, port, NULL, dld,
+		    &_dcc_callback, &_dcc_pasv_pre, &_dcc_send_phandler))
     {
       ERROR ("request for CTCP SEND from %s (passive): could not open listen port!",
 	     dcc->iface->name);
+      FREE(&dld);
       return 0;
     }
-    Add_Request (I_CLIENT, dcc->iface->name, F_T_CTCP,
-		 "DCC SEND \"%s\" %lu %hu %lu %u", dcc->filename,
-		 (unsigned long int)ip_local, port,
-		 (unsigned long int)dcc->size, dcc->ptr);
     return 1;
   }
   dcc->iface = Add_Iface (I_CONNECT, dcc->iface->name, &_dcc_sig_2, NULL, dcc);
@@ -947,7 +988,8 @@ static int _dcc_connect (dcc_priv_t *dcc)
 
 /* ----------------------------------------------------------------------------
    thread 1 - get confirmations for DCC SEND and DCC CHAT
-	- .state=P_INITIAL, .ahead=Port, .rate=IP, .uh=nick!user@host
+	- .state=P_INITIAL, .ptr=Port, .rate=IP, .uh=nick!user@host
+	  .startptr=Startptr, .token=Token
     states here are:
 	- P_INITIAL: waiting confirmation
 	- P_QUIT: declined to connect
@@ -972,23 +1014,23 @@ static void *_dcc_stage_1 (void *input_data)
     snprintf (msg, sizeof(msg), _("Get file \"%s\" from %s"), fname, dcc->uh);
   else
     snprintf (msg, sizeof(msg), _("Accept chat request from %s"), dcc->uh);
-  Set_Iface (NULL);
+  //Set_Iface (NULL);
   if (fname && dcc->startptr > 1)
     vb = ircdcc_do_resume_send;
   else if (fname)
     vb = ircdcc_accept_send;
   else
     vb = ircdcc_accept_chat;
-  Unset_Iface();
+  //Unset_Iface();
   vb = Confirm (msg, vb);
   if (fname && dcc->startptr != 1 &&
       ((dcc->startptr && vb == FALSE) ||	/* declined to resume */
        (!dcc->startptr && vb == TRUE)))		/* asked to get and overwrite */
   {
     snprintf (msg, sizeof(msg), _("Overvrite existing file \"%s\""), fname);
-    Set_Iface (NULL);
+    //Set_Iface (NULL);
     vb = ircdcc_do_overwrite;
-    Unset_Iface();
+    //Unset_Iface();
     vb = Confirm (msg, vb);
     dcc->startptr = 0;
   }
@@ -1002,16 +1044,16 @@ static void *_dcc_stage_1 (void *input_data)
   }
   if (fname && dcc->startptr > 1)
   {
-    if (dcc->ahead)			/* active mode */
+    Set_Iface (NULL);
+    if (dcc->ptr)			/* active mode */
       Add_Request (I_CLIENT, dcc->iface->name, F_T_CTCP,
-		   "DCC RESUME file.ext %hu %lu", (unsigned short)dcc->ahead,
+		   "DCC RESUME file.ext %hu %lu", (unsigned short)dcc->ptr,
 		   (unsigned long)dcc->startptr);
     else
       Add_Request (I_CLIENT, dcc->iface->name, F_T_CTCP,
-		   "DCC RESUME file.ext 0 %lu %lu",
-		   (unsigned long)dcc->startptr, (unsigned long)dcc->ptr);
-    Set_Iface (NULL);
-    dcc->ptr = dcc->startptr;		/* let thread know about resume */
+		   "DCC RESUME file.ext 0 %lu %u",
+		   (unsigned long)dcc->startptr, dcc->token);
+    dcc->wait_accept = TRUE;		/* let thread know about resume */
     dcc->startptr = 0;
     dcc->state = P_IDLE;		/* interface is still alive! */
     dcc->tid = NewTimer (I_CONNECT, dcc->iface->name, S_TIMEOUT,
@@ -1020,7 +1062,7 @@ static void *_dcc_stage_1 (void *input_data)
     return NULL;
   }
   Set_Iface (NULL);
-  dcc->startptr = dcc->ptr = 0;
+  dcc->startptr = 0;
   dcc->state = P_TALK;
   dcc->iface->ift |= I_FINWAIT;		/* ask dispatcher to kill thread 1 */
   Unset_Iface();
@@ -1030,7 +1072,8 @@ static void *_dcc_stage_1 (void *input_data)
 
 
 /* ----------------------------------------------------------------------------
-   thread 1 && between-thread not-thread part (signal handler) */
+   thread 1 && between-thread not-thread part (signal handler)
+   for DCC CHAT and DCC SEND */
 
 static iftype_t _dcc_sig_1 (INTERFACE *iface, ifsig_t signal)
 {
@@ -1075,17 +1118,18 @@ static iftype_t _dcc_sig_1 (INTERFACE *iface, ifsig_t signal)
       }
       break;
     case S_LOCAL:
-      if (dcc->filename && !strncmp (BindResult, "ACCEPT ", 7) &&
-	  dcc->state == P_IDLE &&	/* are we waiting for ACCEPT? */
+      if (dcc->filename && dcc->wait_accept && /* are we waiting for ACCEPT? */
+	  !strncmp (BindResult, "ACCEPT ", 7) && dcc->state == P_IDLE &&
 	  ((txt = NextWord_Unquoted (NULL, NextWord(BindResult), 0)))[0])
       {
-	if (dcc->ahead && atoi (txt) != dcc->ahead)
+	if (dcc->ptr && atoi (txt) != (int)dcc->ptr)
 	  break;			/* active mode and another port */
-	if (dcc->ahead == 0 && atoi (NextWord (NextWord (txt))) != (int)dcc->ptr)
+	if (dcc->ptr == 0 && atol (NextWord (NextWord (txt))) != (long)dcc->ptr)
 	  break;			/* passive mode and another token */
 	/* don't check filename, mIRC says it is "file.ext" anyway */
 	pthread_mutex_lock (&dcc->mutex);
 	dcc->startptr = strtoul (NextWord (txt), NULL, 10);
+	dcc->wait_accept = FALSE;
 	pthread_mutex_unlock (&dcc->mutex);
 	LOG_CONN (_("DCC: got ACCEPT, transfer resumed at %u."), dcc->startptr);
 	BindResult = NULL;		/* we used it so drop it */
@@ -1105,8 +1149,6 @@ static iftype_t _dcc_sig_1 (INTERFACE *iface, ifsig_t signal)
       if (dcc->state != P_TALK ||	/* if we aren't ready to connect */
 	  !_dcc_connect (dcc))		/* or failed to create thread 2 */
       {
-	if (dcc->filename)		/* free dcc_priv_t fields */
-	  pthread_mutex_destroy (&dcc->mutex);
 	FREE (&dcc->filename);
 	free_dcc (dcc);
       }
@@ -1131,12 +1173,13 @@ static int _dcc_start (dcc_priv_t *dcc, unsigned long ip, unsigned short port,
     .size	offered size (only if SEND)
     .startptr	1 if file doesn't exist, or to resume from this size
     .filename	full path (allocated) or NULL if CHAT
+    .uh		offered name ("chat" for CHAT)
 	we will set:
     .state	P_INITIAL
-    .ahead	port #
+    .ptr	port #
     .rate	IP #
-    .ptr	token if passive mode
-    .uh		nick!user@host
+    .token	token if passive mode
+    .uh		nick!user@host (active mode) or nick@net (passive mode)
     .lname	Lname
     .iface	thread interface (I_CONNECT nick@net)
     .th		thread ID
@@ -1150,22 +1193,21 @@ static int _dcc_start (dcc_priv_t *dcc, unsigned long ip, unsigned short port,
 //    return 0;
 //  }
   dcc->state = P_INITIAL;
-  dcc->ahead = port;
+  dcc->ptr = port;	/* little trick to know port number while .idx == -1 */
   dcc->rate = ip;
-  dcc->ptr = token;
-  strfcpy (dcc->uh, who, sizeof(dcc->uh));
+  dcc->token = token;
+  if (token)		/* passive mode */
+    strfcpy(dcc->uh, tgt, sizeof(dcc->uh));
+  else
+    strfcpy (dcc->uh, who, sizeof(dcc->uh));
   strfcpy (dcc->lname, NONULL(lname), sizeof(dcc->lname));
   dcc->iface = Add_Iface (I_CONNECT, tgt, &_dcc_sig_1, NULL, dcc);
   dprint (4, "dcc:_dcc_start at port %hu for %s.", port, tgt);
-  if (dcc->filename)
-    pthread_mutex_init (&dcc->mutex, NULL);
   if (pthread_create (&dcc->th, NULL, &_dcc_stage_1, dcc))
   {
     LOG_CONN (_("DCC: Cannot create thread!"));
     dcc->iface->ift = I_DIED;		/* OOPS, it died instantly */
     dcc->iface->data = NULL;		/* and it cannot own me! */
-    if (dcc->filename)
-      pthread_mutex_destroy (&dcc->mutex);
     free_dcc (dcc);
     return 0;
   }
@@ -1196,6 +1238,7 @@ static int dcc_chat (INTERFACE *w, uchar *who, char *lname, char *cw)
     return 0;
   }
   dcc->filename = NULL;
+  dcc->token = 0;
   c = safe_strchr (who, '!');
   if (c)
     c++;
@@ -1212,7 +1255,9 @@ static int dcc_chat (INTERFACE *w, uchar *who, char *lname, char *cw)
 
 // TODO:	/* DCC SCHAT chat <ip> <port> */
 
-		/* DCC SEND <filename> <ip> <port> <length> [<token>] */
+		/* DCC SEND <filename> <ip> <port> [<length>] -- actv recv
+		   DCC SEND <filename> XXX 0 <length> <token> -- pasv recv
+		   DCC SEND <filename> <ip> <port> <length> <token> -- pasv send */
 BINDING_TYPE_ctcp_dcc (dcc_send);
 static int dcc_send (INTERFACE *w, uchar *who, char *lname, char *cw)
 {
@@ -1243,6 +1288,8 @@ static int dcc_send (INTERFACE *w, uchar *who, char *lname, char *cw)
       Unset_Iface();			/* free our lock */
       /* check for consistency, they might lie us */
       dcc = target->data;
+      if (dcc == NULL)
+	return 0;			/* TODO: log it? */
       if (dcc->state != P_DISCONNECTED || dcc->lname[0] || !dcc->filename)
 	return 0;			/* it's wrong! */
       if ((cc = strchr (who, '!')))
@@ -1259,14 +1306,13 @@ static int dcc_send (INTERFACE *w, uchar *who, char *lname, char *cw)
       strfcpy (dcc->uh, who, sizeof(dcc->uh));
       if (lname)
 	strfcpy (dcc->lname, lname, sizeof(dcc->lname));
-      pthread_mutex_init (&dcc->mutex, NULL);
+      dcc->ptr = port;
       if (!Connect_Host (path, port, &dcc->th, &dcc->socket,
 			 &_isend_phandler, dcc)) /* trying to create thread */
       {
 	LOG_CONN (_("DCC: Cannot create connection thread to %s."), path);
 	dcc->iface->ift = I_DIED;	/* OOPS, it died instantly */
 	dcc->iface->data = NULL;	/* and it cannot own me! */
-	pthread_mutex_destroy (&dcc->mutex);
       }
       else
 	target->data = NULL;		/* it will be inherited */
@@ -1293,6 +1339,7 @@ static int dcc_send (INTERFACE *w, uchar *who, char *lname, char *cw)
   }
   dcc = new_dcc();
   dcc->size = size;
+  dcc->wait_accept = FALSE;
   NextWord_Unquoted (dcc->uh, c, sizeof(dcc->uh)); /* use it to extract filename */
   if ((c = strrchr (dcc->uh, '/')))		/* skip subdirs if there are */
     c++;
@@ -1464,11 +1511,7 @@ static int ctcp_chat (INTERFACE *client, unsigned char *who, char *lname,
 		      char *unick, char *msg)
 {
   dcc_priv_t *dcc = new_dcc();
-  unsigned short port = 0;
-  uint32_t ip_local;			/* my IP in host byte order */
-  struct addrinfo *ai;
-  static struct addrinfo hints = { .ai_family = AF_INET, .ai_socktype = 0,
-				   .ai_protocol = 0, .ai_flags = 0 };
+  struct dcc_listener_data *dld;
 
   if (ircdcc_allow_dcc_chat != TRUE)
   {
@@ -1477,28 +1520,17 @@ static int ctcp_chat (INTERFACE *client, unsigned char *who, char *lname,
   }
   /* dcc->state == P_DISCONNECTED */
   dcc->filename = NULL;
-  strfcpy (dcc->uh, who, sizeof(dcc->uh));
+  strfcpy (dcc->uh, client->name, sizeof(dcc->uh));
   strfcpy (dcc->lname, lname, sizeof(dcc->lname)); /* report may want it */
-  /* TODO: move getaddrinfo() and New_Request() into the thread! */
-  if ((getaddrinfo(hostname, NULL, &hints, &ai)) != 0) {
-    ERROR (_("Cannot resolve own IP for CTCP CHAT!"));
-    return 1;
-  }
-  ip_local = ntohl(((struct sockaddr_in *)ai->ai_addr)->sin_addr.s_addr);
-  freeaddrinfo(ai);
-  if ((dcc->socket = Listen_Port (lname, hostname, &port, NULL, dcc, NULL,
-				  &_dcc_inc_pre, &chat_handler)) < 0)
+  dld = safe_malloc(sizeof(struct dcc_listener_data));
+  dld->dcc = dcc;
+  /* FIXME: create interface to watch listener */
+  if (Listen_Port(lname, hostname, 0, NULL, dld, &_dcc_callback,
+		  &_dcc_inc_pre, &chat_handler))
   {
     ERROR ("CTCP CHAT from %s: could not open listen port!", client->name);
+    FREE(&dld);
     free_dcc (dcc);
-  }
-  else
-  {
-    char t[8];
-
-    snprintf (t, sizeof(t), "%hu", port);	/* setup timeout timer */
-    dcc->tid = NewTimer (I_LISTEN, t, S_TIMEOUT, ircdcc_conn_timeout, 0, 0, 0);
-    New_Request (client, F_T_CTCP, "DCC CHAT chat %u %hu", ip_local, port);
   }
   return 1;
 }
@@ -1571,6 +1603,7 @@ static iftype_t _isend_sig_w (INTERFACE *iface, ifsig_t signal)
 	sscanf (NextWord_Unquoted (NULL, &BindResult[7], 0), "%*s %llu", &size);
 	if (size >= dcc->size)		/* request is invalid */
 	  break;			/* so ignore it */
+	//TODO: check token!
 	dcc->startptr = size;		/* else setting pointer */
 	Add_Request (I_CLIENT, dcc->uh, F_T_CTCP, "DCC ACCEPT file.ext 0 %llu %s",
 		     size, strchr (iface->name, '#') + 1);
@@ -1600,10 +1633,6 @@ static int ssirc_send (struct peer_t *peer, INTERFACE *w, char *args)
   int passive = 0, noresume = 0;
   char *net;
   dcc_priv_t *dcc;
-  uint32_t ip_local;			/* my IP in host byte order */
-  struct addrinfo *ai;
-  static struct addrinfo hints = { .ai_family = AF_INET, .ai_socktype = 0,
-				   .ai_protocol = 0, .ai_flags = 0 };
   unsigned short port = 0;
   struct stat sb;
   char target[IFNAMEMAX+1];
@@ -1646,14 +1675,6 @@ static int ssirc_send (struct peer_t *peer, INTERFACE *w, char *args)
   else
     net = w->name;
   /* all parameters are OK, it's time to make request and start thread */
-  /* TODO: move getaddrinfo() and Add_Request() into the thread! */
-  if ((getaddrinfo(hostname, NULL, &hints, &ai)) != 0) {
-    ERROR (_("Cannot resolve own IP for DCC SEND!"));
-    *cc = ' ';
-    return 1;
-  }
-  ip_local = ntohl(((struct sockaddr_in *)ai->ai_addr)->sin_addr.s_addr);
-  freeaddrinfo(ai);
   dcc = new_dcc();
   dcc->size = sb.st_size;
   dcc->ahead = ircdcc_ahead_size;	/* set some defaults */
@@ -1663,37 +1684,38 @@ static int ssirc_send (struct peer_t *peer, INTERFACE *w, char *args)
   else if (dcc->ahead > 16)
     dcc->ahead = 16;
   dcc->lname[0] = 0;			/* thread signal handler need those */
-  dcc->filename = NULL;
+  dcc->filename = safe_strdup (c);
+  dcc->iface = NULL;
   snprintf (dcc->uh, sizeof(dcc->uh), "%s@%s", args, net); /* target@net */
-  *cc = ' ';
   if ((net = strrchr (c, '/')))
     net++;				/* filename to tell */
   else
     net = c;
   if (passive)
   {
+    register uint32_t ip_local = 0x7f000001; /* 127.0.0.1 - it's irrelevant */
+    if (_ircdcc_dccid == 0)		/* token 0 used as indicator */
+      _ircdcc_dccid = 1;
     Add_Request (I_CLIENT, dcc->uh, F_T_CTCP, "DCC SEND \"%s\" %u 0 %u %u",
 		 net, ip_local, dcc->size, _ircdcc_dccid);
     snprintf (target, sizeof(target), "irc-ctcp#%u", _ircdcc_dccid++);
-    dcc->filename = safe_strdup (c);
     dcc->iface = Add_Iface (I_TEMP, target, &_isend_sig_w, NULL, dcc);
     dcc->tid = NewTimer (I_TEMP, target, S_TIMEOUT, ircdcc_conn_timeout, 0, 0, 0);
     /* done... we should wait for responce now so we can connect there */
+  } else {
+    struct dcc_listener_data *dld = safe_malloc(sizeof(struct dcc_listener_data));
+    dld->dcc = dcc;
+    dcc->token = 0;
+    if (Listen_Port(c, hostname, port, NULL, dld, &_dcc_callback,
+		    &_dcc_inc_pre, &isend_handler))
+    {
+      ERROR ("sending to %s: could not open listening port!", args);
+      FREE(&dld);
+      FREE(&dcc->filename);
+      free_dcc (dcc);
+    }
   }
-  else if ((dcc->socket = Listen_Port (c, hostname, &port, NULL, dcc, NULL,
-				       &_dcc_inc_pre, &isend_handler)) < 0)
-  {
-    ERROR ("sending to %s: could not open listening port!", args);
-    free_dcc (dcc);
-  }
-  else
-  {
-    dcc->ptr = port;
-    snprintf (target, sizeof(target), "%hu", port); /* set timeout */
-    dcc->tid = NewTimer (I_LISTEN, target, S_TIMEOUT, ircdcc_conn_timeout, 0, 0, 0);
-    Add_Request (I_CLIENT, dcc->uh, F_T_CTCP, "DCC SEND \"%s\" %u %hu %u",
-		 net, ip_local, port, dcc->size);
-  }
+  *cc = ' ';
   return 1;
 }
 

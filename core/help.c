@@ -20,6 +20,8 @@
 
 #include "foxeye.h"
 
+#include <fcntl.h>
+
 #include "init.h"
 #include "tree.h"
 
@@ -79,8 +81,8 @@ static HELPGR *_get_helpgr (char *name)
 int Add_Help (const char *name)
 {
   char path[LONG_STRING];
-  FILE *fp = NULL;
-  long size;
+  int fd = -1;
+  off_t size;
   HELPFILE **hf;
   HELP **ht;
   char *data, *endc = NULL;
@@ -92,51 +94,50 @@ int Add_Help (const char *name)
   if (*locale)
   {
     snprintf (path, sizeof(path), "%s/%s.%s", HELPDIR, name, locale);
-    fp = fopen (path, "r");
+    fd = open (path, O_RDONLY);
     /* check if file.$lang exists */
-    if (!fp)
+    if (fd < 0)
     {
       snprintf (path, sizeof(path), "%s/%s.%.2s", HELPDIR, name, locale);
-      fp = fopen (path, "r");
+      fd = open (path, O_RDONLY);
     }
   }
   /* check for default helpfile */
-  if (!fp)
+  if (fd < 0)
   {
     snprintf (path, sizeof(path), "%s/%s", HELPDIR, name);
-    fp = fopen (path, "r");
+    fd = open (path, O_RDONLY);
   }
   /* last try: check if file.C exist */
-  if (!fp)
+  if (fd < 0)
   {
     snprintf (path, sizeof(path), "%s/%s.C", HELPDIR, name);
-    fp = fopen (path, "r");
+    fd = open (path, O_RDONLY);
   }
-  if (!fp)
+  if (fd < 0)
   /* may be it have to print error message? */
     return 0;
   /* scan the file for topics */
-  fseek (fp, 0L, SEEK_END);
-  size = ftell (fp);
+  size = lseek (fd, (off_t)0, SEEK_END);
   if (size < 0 || size > HELPFILEMAXSIZE)
   {
     Add_Request (I_LOG, "*", F_BOOT, "Cannot load help file: illegal size");
-    fclose (fp);
+    close (fd);
     return 0;
   }
-  fseek (fp, 0L, SEEK_SET);
+  lseek (fd, (off_t)0, SEEK_SET);
   for (hf = &HFiles; *hf; hf = &(*hf)->next);	/* find the tail */
   *hf = safe_calloc (1, sizeof(HELPFILE));
   (*hf)->hfile = safe_malloc ((size_t)size + 1);
-  if (fread ((*hf)->hfile, 1, (size_t)size, fp) != (size_t)size)
+  if (read (fd, (*hf)->hfile, (size_t)size) != (ssize_t)size)
   {
     Add_Request (I_LOG, "*", F_BOOT, "Help file reading error!");
-    fclose (fp);
+    close (fd);
     FREE (&(*hf)->hfile);
     FREE (hf);
     return 0;
   }
-  fclose (fp);
+  close (fd);
   (*hf)->name = safe_strdup (name);
   (*hf)->next = NULL;
   Add_Request (I_LOG, "*", F_BOOT, "Loading helpfile %s", path);

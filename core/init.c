@@ -25,6 +25,7 @@
 #include <signal.h>
 #include <ctype.h>
 #include <locale.h>
+#include <fcntl.h>
 
 #include "direct.h"
 #include "tree.h"
@@ -1472,21 +1473,21 @@ int Save_Formats (void)
 {
   LEAF *leaf = NULL;
   struct stat st;
-  FILE *f;
   const char *name;
+  int fd;
 
   if (!*FormatsFile || lstat (FormatsFile, &st) || !(st.st_mode & S_IWUSR))
     return -1;
   if (!(S_ISREG (st.st_mode)))			/* only regular file! */
     return -1;
-  if ((f = fopen (FormatsFile, "w")))
+  if ((fd = open (FormatsFile, O_WRONLY)))
   {
     while ((leaf = Next_Leaf (FTree, leaf, &name)))
     {
-      fprintf (f, "%s %s\n", name,
+      dprintf (fd, "%s %s\n", name,
 	       _quote_expand (((VarData2 *)leaf->s.data)->f.mt));
     }
-    fclose (f);
+    close (fd);
     return 0;
   }
   return -1;

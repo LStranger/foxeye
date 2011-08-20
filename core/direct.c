@@ -25,6 +25,7 @@
 #ifdef HAVE_CRYPT_H
 # include <crypt.h>
 #endif
+#include <fcntl.h>
 
 #include "socket.h"
 #include "direct.h"
@@ -1160,70 +1161,20 @@ static char *session_handler_main (char *ident, const char *host, peer_t *dcc,
   return msg;
 }
 
-static void session_handler (char *ident, const char *host, void *data, int flag)
-{
-  char buf[SHORT_STRING];
-  char client[LNAMELEN+1];
-  size_t sz;
-  peer_t *dcc;
-  register char *msg;
-
-  dcc = safe_malloc (sizeof(peer_t));
-  dcc->socket = *(idx_t *)data;
-  dcc->state = P_LOGIN;
-  dcc->dname = NULL;
-  dcc->parse = &Dcc_Parse;
-  dcc->connchain = NULL;
-  dcc->iface = NULL;
-  dcc->priv = NULL;
-  time (&dcc->last_input);
-  Set_Iface (NULL);
-  client[0] = 0; /* terminate it for case of error */
-  snprintf (dcc->start, sizeof(dcc->start), "%s %s", DateString, TimeString);
-  /* dispatcher is locked, can do connchain */
-  if (!Connchain_Grow (dcc, (flag & 0xff))) /* adding mandatory filters now */
-    msg = "connection chain error";	/* ouch... it should die */
-  else
-    msg = NULL;
-  Connchain_Grow (dcc, 'y');		/* adding telnet filter */
-  Unset_Iface();
-  if (msg == NULL)
-    msg = session_handler_main (ident, host, dcc, (flag & 256), buf, client);
-  if (msg)				/* was error on connection */
-  {
-    unsigned short p;
-
-    LOG_CONN (_("Connection from %s terminated: %s"), host, msg);
-    snprintf (buf, sizeof(buf), "Access denied: %s", msg);
-    sz = strlen (buf);
-    if (Peer_Put (dcc, buf, &sz) > 0)	/* it should be OK */
-      while (!(Peer_Put (dcc, NULL, &sz))); /* wait it to die */
-    SocketDomain (dcc->socket, &p);
-    /* %L - Lname, %P - port, %@ - hostname, %* - reason */
-    Set_Iface (NULL);
-    printl (buf, sizeof(buf), format_dcc_closed, 0,
-	    NULL, host, client, NULL, 0, p, 0, msg);
-    Unset_Iface();
-    /* cannot create connection */
-    LOG_CONN ("%s", buf);
-    if(Connchain_Kill (dcc))p=p;
-    KillSocket (&dcc->socket);
-    FREE (&dcc);
-  }
-}
 
 typedef struct
 {
   char *client;			/* it must be allocated by caller */
   char *confline;		/* the same */
   void *data;			/* from caller */
-  unsigned short lport;		/* listener port */
-  idx_t socket, id;
-  int tst:1;
-  pthread_t th;
   int (*cb) (const struct sockaddr *, void *);
   void (*prehandler) (pthread_t, void **, idx_t);
   void (*handler) (char *, char *, const char *, void *);
+  char *host;			/* host to listen */
+  unsigned short lport, eport;	/* listener port range */
+  idx_t socket, id;
+  int tst:1;
+  pthread_t th;
 } accept_t;
 
 static iftype_t port_signal (INTERFACE *iface, ifsig_t signal)
@@ -1259,6 +1210,7 @@ static iftype_t port_signal (INTERFACE *iface, ifsig_t signal)
       KillSocket (&acptr->socket);	/* free everything now */
       FREE (&acptr->client);
       FREE (&acptr->confline);
+      FREE (&acptr->data);
       /* we don't need to free acptr since dispatcher will do it for us */
       iface->ift |= I_DIED;
       break;
@@ -1365,20 +1317,73 @@ static void *_accept_port (void *input_data)
   return NULL;
 }
 
+static int _direct_listener_callback(const struct sockaddr *sa, void *input_data)
+{
+  register int ec;
+
+  if (acptr->cb == NULL)
+    return (0);
+  ec = acptr->cb(sa, acptr->data);
+  if (ec != E_AGAIN)
+    acptr->cb = NULL;
+  return (ec);
+}
+
+static void _listen_port_cleanup (void *input_data)
+{
+  KillSocket (&acptr->socket);
+  FREE (&acptr->client);
+  FREE (&acptr->confline);
+  FREE (&acptr->host);
+  FREE (&acptr->data);
+  safe_free (&input_data); /* FREE (&acptr) */
+}
+
 static void *_listen_port (void *input_data)
 {
   idx_t new_idx;
   accept_t *child;
   char buf[8];
   INTERFACE *iface;
+  char *host = acptr->host;
+  int n;
+  unsigned short port = acptr->lport;
 
-  if (!acptr->confline)
-    snprintf (buf, sizeof(buf), "%hu", acptr->lport);
+  /* set cleanup for the thread before any cancellation point */
+  pthread_cleanup_push (&_listen_port_cleanup, input_data);
+  /* listener is standalone yet and can be cancelled only from callback */
+  FOREVER {
+    n = SetupSocket(acptr->socket, (host && *host) ? host : NULL, port,
+		    &_direct_listener_callback, input_data);
+    DBG("_listen_port:SetupSocket for port %hu returned %d", port, n);
+    if (n == 0)
+      break;
+    if (port == acptr->eport &&		/* final try */
+	(!acptr->cb || acptr->cb(NULL, acptr->data) != E_AGAIN))
+					/* give it a chance */
+      break;
+    ResetSocket(acptr->socket, M_LIST);
+    port++;
+  }
+  if (n) {
+    char errstr[SHORT_STRING];
+
+    SocketError(n, errstr, sizeof(errstr));
+    dprint(2, "_listen_port: could not start listener [%s]: %s",
+	   NONULL(acptr->confline), errstr);
+    return NULL;
+  }
+  FREE(&acptr->host);
   /* create interface and deny cancellation of the thread */
   pthread_setcancelstate (PTHREAD_CANCEL_DISABLE, NULL);
+  pthread_cleanup_pop(0);
+  if (!acptr->confline) {
+    SocketDomain(acptr->socket, &port);
+    snprintf (buf, sizeof(buf), "%hu", port);
+  }
   iface = Add_Iface (I_LISTEN | I_CONNECT, acptr->confline ? acptr->confline : buf,
 		     &port_signal, NULL, acptr);
-  /* now it should be async-safe as it may be killed by shutdown */
+  /* let it be async-safe as much as possible: it may be killed by shutdown */
   while (acptr->socket >= 0)			/* ends by KillSocket() */
   {
     if ((new_idx = AnswerSocket (acptr->socket)) == E_AGAIN)
@@ -1426,111 +1431,56 @@ static void *_listen_port (void *input_data)
 }
 #undef acptr
 
-static int _direct_listener_callback(const struct sockaddr *sa, void *acptr)
-{
-  register int ec;
-
-  if (((accept_t *)acptr)->cb == NULL)
-    return (0);
-  ec = ((accept_t *)acptr)->cb(sa, ((accept_t *)acptr)->data);
-  if (ec != E_AGAIN)
-    ((accept_t *)acptr)->cb = NULL;
-  return (ec);
-}
-
-/*
- * Global function for listening port.
- * Returns: -1 if no listening or listen socket ID on success.
- */
-static idx_t
-Listen_Port_main (char *client, const char *host, unsigned short port,
-		  char *confline, void *data,
-		  int (**cb) (const struct sockaddr *, void *),
-		  void (*prehandler) (pthread_t, void **, idx_t),
-		  void (*handler) (char *, char *, const char *, void *))
-{
-  accept_t *acptr;
-  idx_t p;
-  int n = E_NOSOCKET;
-  accept_t tmp; /* FIXME: need only until SetupSocket is in thread */
-
-  if (!handler ||			/* stupidity check ;) */
-      (port && port < 1024))		/* don't try system ports! */
-    return -1;
-  p = GetSocket (M_LIST);
-  tmp.cb = *cb;
-  tmp.data = data;
-  /* check for two more sockets - accepted and ident check */
-  /* we can have delay here only on host (which is local) resolving */
-  /* FIXME: move SetupSocket() into _listen_port() */
-  if (p < 0 || p >= SOCKETMAX - 2 ||
-      (n = SetupSocket (p, (host && *host) ? host : NULL, port,
-			&_direct_listener_callback, &tmp)) < 0)
-  {
-    KillSocket (&p);
-    *cb = tmp.cb;
-    return (idx_t)n;
-  }
-  *cb = tmp.cb;
-  acptr = safe_malloc (sizeof(accept_t));
-  acptr->client = safe_strdup (client);
-  acptr->confline = safe_strdup (confline);
-  acptr->data = data;
-  acptr->prehandler = prehandler;
-  acptr->handler = handler;
-  acptr->socket = p;
-  SocketDomain (p, &port);
-  acptr->lport = port;
-  if (pthread_create (&acptr->th, NULL, &_listen_port, acptr))
-  {
-    KillSocket (&p);
-    FREE (&acptr->client);
-    FREE (&acptr->confline);
-    FREE (&acptr);
-    return E_NOTHREAD;
-  }
-  return p;
-}
-
 static void _assign_port_range (unsigned short *ps, unsigned short *pe)
 {
   *ps = *pe = 0;
   sscanf (dcc_port_range, "%hu - %hu", ps, pe);
+  /* FIXME: use system algorhytm if dcc_port_range is empty and 0 requested */
   if (*ps < 1024)
     *ps = 1024;
   if (*pe < *ps)
     *pe = *ps;
 }
 
-idx_t Listen_Port (char *client, const char *host, unsigned short *sport,
-		   char *confline, void *data,
-		   int (*cb) (const struct sockaddr *, void *),
-		   void (*prehandler) (pthread_t, void **, idx_t),
-		   void (*handler) (char *, char *, const char *, void *))
+int Listen_Port (char *client, const char *host, unsigned short sport,
+		 char *confline, void *data,
+		 int (*cb) (const struct sockaddr *, void *),
+		 void (*prehandler) (pthread_t, void **, idx_t),
+		 void (*handler) (char *, char *, const char *, void *))
 {
-  unsigned short port, pe;
+  accept_t *acptr;
   idx_t idx;
 
-  if (*sport)
-    port = pe = *sport;
-  else
-    _assign_port_range (&port, &pe);
-  while (port <= pe)
-  {
-    idx = Listen_Port_main (client, host, port, confline, data, &cb, prehandler,
-			    handler);
-    dprint (4, "Listen_Port: %s:%hu returned %d", NONULLP(host), port, (int)idx);
-    if (idx >= 0)
-    {
-      *sport = port;
-      return idx;
-    }
-    port++;
+  idx = GetSocket (M_LIST);
+  if (idx < 0)
+    return (int)idx;
+  /* check for two more sockets - accepted and ident check */
+  if (idx >= SOCKETMAX - 2) {
+    KillSocket(&idx);
+    return E_NOSOCKET;
   }
-  /* FIXME: move this into thread and support E_AGAIN! */
-  if (cb)
-    cb(NULL, data);
-  return -1;
+  acptr = safe_malloc (sizeof(accept_t));
+  acptr->client = safe_strdup (client);
+  acptr->confline = safe_strdup (confline);
+  acptr->data = data;
+  acptr->cb = cb;
+  acptr->prehandler = prehandler;
+  acptr->handler = handler;
+  acptr->host = safe_strdup (host);
+  if (sport)
+    acptr->lport = acptr->eport = sport;
+  else
+    _assign_port_range (&acptr->lport, &acptr->eport);
+  if (pthread_create (&acptr->th, NULL, &_listen_port, acptr))
+  {
+    KillSocket (&idx);
+    FREE (&acptr->client);
+    FREE (&acptr->confline);
+    FREE (&acptr->host);
+    FREE (&acptr);
+    return E_NOTHREAD;
+  }
+  return 0;
 }
 
 typedef struct
@@ -2121,18 +2071,18 @@ static int dc_help (peer_t *dcc, char *args)
 BINDING_TYPE_dcc (dc_motd);
 static int dc_motd (peer_t *dcc, char *args)
 {
-  char msg[HUGE_STRING];
-  char buff[HUGE_STRING];
-  register FILE *file;
   char *c, *end;
   ssize_t s = 0;
+  int fd;
+  char msg[HUGE_STRING];
+  char buff[HUGE_STRING];
 
   /* get motd file to buffer msg */
   msg[0] = 0;
-  if ((file = fopen (expand_path (buff, motd, sizeof(buff)), "r")))
-    s = fread (msg, 1, sizeof(msg) - 1, file);
-  if (file)
-    fclose (file);
+  if ((fd = open (expand_path (buff, motd, sizeof(buff)), O_RDONLY)) >= 0) {
+    s = read (fd, msg, sizeof(msg) - 1);
+    close (fd);
+  }
   if (s <= 0)
     return -1;	/* no log it */
   msg[s] = 0;
@@ -2592,94 +2542,170 @@ static int _dellistenport (char *pn)
   return 1;
 }
 
-static int _s_h_value[8] = {0,0,0,0,0,0,0,0};
-
-static void session_handler_0 (char *client, char *ident, const char *host, void *d) {
-  session_handler (ident, host, d, 0); }
-static void session_handler_1 (char *client, char *ident, const char *host, void *d) {
-  session_handler (ident, host, d, _s_h_value[0]); }
-static void session_handler_2 (char *client, char *ident, const char *host, void *d) {
-  session_handler (ident, host, d, _s_h_value[1]); }
-static void session_handler_3 (char *client, char *ident, const char *host, void *d) {
-  session_handler (ident, host, d, _s_h_value[2]); }
-static void session_handler_4 (char *client, char *ident, const char *host, void *d) {
-  session_handler (ident, host, d, _s_h_value[3]); }
-static void session_handler_5 (char *client, char *ident, const char *host, void *d) {
-  session_handler (ident, host, d, _s_h_value[4]); }
-static void session_handler_6 (char *client, char *ident, const char *host, void *d) {
-  session_handler (ident, host, d, _s_h_value[5]); }
-static void session_handler_7 (char *client, char *ident, const char *host, void *d) {
-  session_handler (ident, host, d, _s_h_value[6]); }
-static void session_handler_8 (char *client, char *ident, const char *host, void *d) {
-  session_handler (ident, host, d, _s_h_value[7]); }
-
-typedef void (*_s_h_proc_type)(char *,char *,const char *,void *);
-
-static _s_h_proc_type _s_h_proc[8] = {
-  &session_handler_1,
-  &session_handler_2,
-  &session_handler_3,
-  &session_handler_4,
-  &session_handler_5,
-  &session_handler_6,
-  &session_handler_7,
-  &session_handler_8
-};
+/*
+ * sequence to keep ->retrier valid:
+ * signal : +kill => (wait)+done
+ * fail   : +I_FINWAIT => +dead => +done
+ * success: +I_FINWAIT => +done
+ * retrier would not free data until ->done is set
+ */
+typedef struct
+{
+  INTERFACE *retrier;		/* listening thread data */
+  int ch;
+  int cnt;
+  unsigned short port;
+  bool kill, dead, done;
+//  tid_t tid;
+} _port_retrier;
 
 typedef struct
 {
-  unsigned short port;
-  int u;
-  int cnt;
-  tid_t tid;
-} _port_retrier;
+  int ch;			/* accepting thread data */
+  idx_t as;
+} _port_acceptor;
+
+static void _dport_prehandler (pthread_t th, void **id, idx_t as)
+{
+  register _port_retrier *r;
+  register _port_acceptor *a;
+
+  if (as == -1) /* fatal error */
+    return;
+  a = safe_malloc(sizeof(_port_acceptor));
+  r = *((_port_retrier **)id);
+  a->ch = r->ch;
+  a->as = as;
+}
+
+static void _dport_handler (char *cname, char *ident, const char *host, void *d)
+{
+  char buf[SHORT_STRING];
+  char client[LNAMELEN+1];
+  size_t sz;
+  peer_t *dcc;
+  register char *msg;
+  int flag = ((_port_acceptor *)d)->ch;
+
+  dcc = safe_malloc (sizeof(peer_t));
+  dcc->socket = ((_port_acceptor *)d)->as;
+  dcc->state = P_LOGIN;
+  dcc->dname = NULL;
+  dcc->parse = &Dcc_Parse;
+  dcc->connchain = NULL;
+  dcc->iface = NULL;
+  dcc->priv = NULL;
+  time (&dcc->last_input);
+  safe_free(&d);
+  Set_Iface (NULL);
+  client[0] = 0; /* terminate it for case of error */
+  snprintf (dcc->start, sizeof(dcc->start), "%s %s", DateString, TimeString);
+  /* dispatcher is locked, can do connchain */
+  if (!Connchain_Grow (dcc, (flag & 0xff))) /* adding mandatory filters now */
+    msg = "connection chain error";	/* ouch... it should die */
+  else
+    msg = NULL;
+  Connchain_Grow (dcc, 'y');		/* adding telnet filter */
+  Unset_Iface();
+  if (msg == NULL)
+    msg = session_handler_main (ident, host, dcc, (flag & 256), buf, client);
+  if (msg)				/* was error on connection */
+  {
+    unsigned short p;
+
+    LOG_CONN (_("Connection from %s terminated: %s"), host, msg);
+    snprintf (buf, sizeof(buf), "Access denied: %s", msg);
+    sz = strlen (buf);
+    if (Peer_Put (dcc, buf, &sz) > 0)	/* it should be OK */
+      while (!(Peer_Put (dcc, NULL, &sz))); /* wait it to die */
+    SocketDomain (dcc->socket, &p);
+    /* %L - Lname, %P - port, %@ - hostname, %* - reason */
+    Set_Iface (NULL);
+    printl (buf, sizeof(buf), format_dcc_closed, 0,
+	    NULL, host, client, NULL, 0, p, 0, msg);
+    Unset_Iface();
+    /* cannot create connection */
+    LOG_CONN ("%s", buf);
+    if(Connchain_Kill (dcc))p=p;
+    KillSocket (&dcc->socket);
+    FREE (&dcc);
+  }
+}
 
 static iftype_t _port_retrier_s (INTERFACE *iface, ifsig_t signal)
 {
-  _port_retrier *r;
-  idx_t socket;
+  _port_retrier *r = (_port_retrier *)iface->data;
 
   switch (signal)
   {
-    case S_SHUTDOWN:
-    case S_TERMINATE:
-      KillTimer (((_port_retrier *)iface->data)->tid);
-      return I_DIED;
-    case S_TIMEOUT:
-      r = (_port_retrier *)iface->data;
-      if (r->u < 0)
-	socket = Listen_Port (NULL, hostname, &r->port, iface->name, NULL, NULL, NULL, &session_handler_0);
-      else
-	socket = Listen_Port (NULL, hostname, &r->port, iface->name, NULL, NULL, NULL, _s_h_proc[r->u]);
-      if (socket >= 0)
-      {
-	LOG_CONN (_("Listening on port %hu%s."), r->port,
-		  (!(_s_h_value[r->u] & 256)) ? "" : _(" for bots"));
-	return I_DIED;			/* it done... */
-      }
-      else if (--r->cnt == 0)
-      {
-	LOG_CONN (_("Too many retries to listen port %hu%s, aborted."),
-		  r->port, (!(_s_h_value[r->u] & 256)) ? "" : _(" for bots"));
-	return I_DIED;			/* it done... */
-      }
-      r->tid = NewTimer (iface->ift, iface->name, S_TIMEOUT, 10, 0, 0, 0);
-      LOG_CONN (_("Could not open listening port %hu%s, retrying in 10 seconds."),
-		r->port, (!(_s_h_value[r->u] & 256)) ? "" : _(" for bots"));
+    case S_REPORT:
+      // TODO...
       break;
+    case S_SHUTDOWN:
+      r->kill = TRUE;
+      /* ...it will die itself */
+      return I_DIED;
+    case S_TERMINATE:
+      DBG("_port_retrier_s:%s: got termination signal, waiting for thread...",
+	  iface->name);
+      r->kill = TRUE;
+      while(!r->done);		/* waiting for thread */
+      if (!r->dead)
+	iface->data = NULL;	/* keep it for thread */
+      DBG("_port_retrier_s: terminated.");
+      return I_DIED;
     default: ;
   }
+  return 0;
+}
+
+static int _direct_port_callback(const struct sockaddr *sa, void *data)
+{
+  _port_retrier *rtr = data;
+
+  if (rtr->kill)		/* aborted */
+    goto aborted;
+  if (sa == NULL) {		/* failed */
+    if (rtr->cnt-- > 0)		/* still retry left */
+    {
+      struct timespec ts = { .tv_sec = 0, .tv_nsec = 10000000 };
+      int cnt = 1000;
+
+      LOG_CONN(_("Could not open listening port %hu%s, retrying in 10 seconds."),
+	       rtr->port, (rtr->ch & 256) ? "" : _(" for bots"));
+      do {
+	nanosleep(&ts, NULL);	/* check each 10 ms if killed */
+	if (rtr->kill)
+	  goto aborted;
+      } while (--cnt);
+      return E_AGAIN;
+    }
+    LOG_CONN(_("Cannot open listening port on %hu%s!"), rtr->port,
+	     (rtr->ch & 256) ? "" : _(" for bots"));
+
+aborted:
+    rtr->retrier->ift = (I_LISTEN | I_FINWAIT);
+    rtr->dead = TRUE;		/* to release data */
+    rtr->done = TRUE;
+    return E_NOSOCKET;		/* data is unusable anymore */
+  }
+  /* ipv4 and ipv6 both have port in the same place */
+  /* rtr->port = ntohc(((struct sockaddr_in *)sa)->sin_port); */
+  LOG_CONN(_("Listening on port %hu%s."), rtr->port,
+	   (rtr->ch & 256) ? "" : _(" for bots"));
+  rtr->retrier->ift = (I_LISTEN | I_FINWAIT);
+  rtr->done = TRUE;
   return 0;
 }
 
 ScriptFunction (FE_port)	/* to config - see thrdcc_signal() */
 {
   unsigned short port;
-  idx_t socket;
   INTERFACE *tmp;
+  _port_retrier *rtr;
   static char msg[SHORT_STRING];
   userflag u = U_ANY | U_SPECIAL;
-  int ii, ch = 0;
+  int ii = E_NOSOCKET, ch = 0;
 
   if (!args || !*args)
     return 0;
@@ -2718,51 +2744,32 @@ ScriptFunction (FE_port)	/* to config - see thrdcc_signal() */
   }
   if (!(u & U_ANY))
     ch |= 256;
-  if (ch == 0)
-  {
-    ii = -1;
-    socket = Listen_Port (NULL, hostname, &port, msg, NULL, NULL, NULL, &session_handler_0);
-  }
-  else
-  {
-    socket = -1;
-    for (ii = 0; ii < 8; ii++)
-    {
-      if (_s_h_value[ii] == 0)		/* vacant */
-	_s_h_value[ii] = ch;
-      if (_s_h_value[ii] == ch)
-      {
-	socket = Listen_Port (NULL, hostname, &port, msg, NULL, NULL, NULL, _s_h_proc[ii]);
-	break;
-      }
-    }
-  }
-  if (socket < 0)
-  {
-    /* check if we are called from init() */
-    if (ii < 8 && Set_Iface (NULL) == NULL)
-    {
-      INTERFACE *i;
-      register _port_retrier *x = safe_malloc (sizeof(_port_retrier));
-
-      x->port = port;
-      x->u = ii;
-      x->cnt = 0;
-      i = Add_Iface (I_TEMP, msg, _port_retrier_s, NULL, x);
-      x->tid = NewTimer (i->ift, i->name, S_TIMEOUT, 10, 0, 0, 0);
-      snprintf (msg, sizeof(msg),
-		_("Could not open listening port %hu%s, retrying in 10 seconds."),
-		port, (u & U_ANY) ? "" : _(" for bots"));
-    }
-    else snprintf (msg, sizeof(msg), _("Cannot open listening port on %hu%s!"),
-	      port, (u & U_ANY) ? "" : _(" for bots"));
+  rtr = safe_malloc(sizeof(_port_retrier));
+  rtr->port = port;
+  rtr->ch = ch;
+  /* check if we are called from init() */
+  if (Set_Iface (NULL) != NULL) {
+    rtr->cnt = 0;
     Unset_Iface();
-    BindResult = msg;
-    return 0;
-  }
-  LOG_CONN (_("Listening on port %hu%s."), port,
-	    (u & U_ANY) ? "" : _(" for bots"));
-  return port;
+  } else
+    rtr->cnt = 6;
+  rtr->kill = rtr->dead = rtr->done = FALSE;
+  /* create retrier interface to be able to cancel it */
+  rtr->retrier = Add_Iface(I_TEMP, msg, &_port_retrier_s, NULL, rtr);
+  if (rtr->retrier)
+    ii = Listen_Port(NULL, hostname, port, msg, rtr, &_direct_port_callback,
+		     &_dport_prehandler, &_dport_handler);
+  else
+    ERROR("Cannot create retrier interface for [%s]", msg);
+  if (ii == 0)
+    return port;
+  if (rtr->retrier)
+    rtr->retrier->ift = I_DIED;
+  FREE(&rtr);
+  snprintf (msg, sizeof(msg), _("Could not create listening thread for port on %hu%s!"),
+	    port, (u & U_ANY) ? "" : _(" for bots"));
+  BindResult = msg;
+  return 0;
 }
 
 char *IFInit_DCC (void)

@@ -1068,43 +1068,52 @@ Direct client's connections API:
     tip may break interface protocol otherwise. Returns nothing.
 	Reenterability: none
 
-  idx_t LLiisstteenn__PPoorrtt (char *_c_l_n, const char *_h_o_s_t, unsigned short *_p,
-		  char *_c_o_n_f_l_i_n_e, void *_i_d,
-		  int (*_l_c_b) (const struct sockaddr *_s_a, void *_i_d),
-		  void (*_p_r_e_h_a_n_d_l_e_r) (pthread_t _t_h, void **_i_d, idx_t _a_s),
-		  void (*_h_a_n_d_l_e_r) (char *_c_l_n, char *_i_d_e_n_t,
-				   const char *_h_o_s_t, void *_i_d));
-    Opens listener for client name _c_l_n on port _p. If _p contains 0 then
-    tries ports accordingly to variable "dcc-port-range". It opens a
-    socket and when connection is accepted then creates new thread where
-    gets ident (see RFC1413) for incoming connection and then passes
-    data of new connection (client name _c_l_n and value _i_d from caller, and
-    _i_d_e_n_t and _h_o_s_t from input connection) to function _h_a_n_d_l_e_r (in that
-    accepting thread). If _c_l_n is not NULL then closes listening socket
-    after connection was accepted, else continue to listen the port. If
-    _c_o_n_f_l_i_n_e is not NULL then this port will be reported to config as
-    _c_o_n_f_l_i_n_e. Opened listening socket is presented in dispatcher with
-    name _c_o_n_f_l_i_n_e (or with text line of opened port number if _c_o_n_f_l_i_n_e is
-    NULL) and with type I_LISTEN. If _p_r_e_h_a_n_d_l_e_r is not NULL then it will
-    be called from listening thread each time when connection is accepted
-    with new thread identifier _t_h, pointer to _i_d, and accepting socket ID
-    _a_s so caller may cancel that thread on emergency. Accepting thread
-    will wait for _p_r_e_h_a_n_d_l_e_r before calling _h_a_n_d_l_e_r. Socket of accepted
-    connection is owned by listening thread and inherited by accepting
-    thread (so by function _h_a_n_d_l_e_r at the end). _h_o_s_t is host name on
+  int LLiisstteenn__PPoorrtt (char *_c_l_n, const char *_l_h_o_s_t, unsigned short _p,
+		   char *_c_o_n_f_l_i_n_e, void *_i_d,
+		   int (*_l_c_b) (const struct sockaddr *_s_a, void *_i_d),
+		   void (*_p_r_e_h_a_n_d_l_e_r) (pthread_t _t_h, void **_i_d, idx_t _a_s),
+		   void (*_h_a_n_d_l_e_r) (char *_c_l_n, char *_i_d_e_n_t,
+				    const char *_r_h_o_s_t, void *_i_d));
+    Opens listener for client name _c_l_n on port _p. _l_h_o_s_t is host name on
     which listener will be opened (if it is NULL then listener will be
-    opened on all local IPs). Function _p_r_e_h_a_n_d_l_e_r should remember _a_s in
-    optional data _i_d and if pointer in _i_d is still NULL after call to
-    _p_r_e_h_a_n_d_l_e_r then _h_a_n_d_l_e_r will be called with _i_d that points to _a_s
-    instead so _h_a_n_d_l_e_r can know it in any case. Returns listening socket
-    ID and sets _p if port is opened succesfully or returns -1 otherwise.
-    Note: if some error happened in the listening thread then _p_r_e_h_a_n_d_l_e_r
-    is called with _a_s equal to -1 and undefined _t_h to notify caller about
-    that. Since that might be also as result of emergency shutdown,
-    _p_r_e_h_a_n_d_l_e_r should not call any but async-safe functions in that case.
-    If _l_c_b is not NULL then _l_c_b will be called from listening thread
-    after successful socket setup. In case of any errors _l_c_b will be
-    called with _s_a equal to NULL. Function _l_c_b should be thread-safe.
+    opened on all local IPs). If _p is 0 then tries ports accordingly to
+    variable "dcc-port-range". It creates thread where opens a listening
+    socket and when connection is accepted then creates new thread where
+    gets ident (see RFC1413) for incoming connection and then passes data
+    of new connection (client name _c_l_n and value _i_d from caller, and
+    _i_d_e_n_t and _r_h_o_s_t from input connection) to function _h_a_n_d_l_e_r (in that
+    accepting thread). Returns 0 if the listening thread was created
+    succesfully or returns error code otherwise. If _l_c_b is not NULL then
+    _l_c_b will be called from the listening thread after attempt of socket
+    setup. In case of any errors _l_c_b will be called with _s_a equal to
+    NULL. In case of success _l_c_b still can return an error code so raise
+    the error. In both cases _l_c_b should inform caller thread to take care
+    of data _i_d. Otherwise those data will be freed by listening thread on
+    termination (note: to prevent memory leak those data should not
+    contain any allocated data). Function _l_c_b should be thread-safe and
+    may return E_AGAIN to make a retry. If _c_o_n_f_l_i_n_e is not NULL then this
+    port will be reported to config as _c_o_n_f_l_i_n_e. The listening thread
+    interface is presented in dispatcher with name _c_o_n_f_l_i_n_e (or with name
+    consisting of opened port number if _c_o_n_f_l_i_n_e is NULL) and with type
+    I_LISTEN. If _c_l_n is not NULL then listening socket will be closed as
+    soon as connection was accepted. If _p_r_e_h_a_n_d_l_e_r is not NULL then it
+    will be called from the listening thread each time when connection is
+    accepted with new thread identifier _t_h, pointer to _i_d, and accepting
+    socket ID _a_s so caller may cancel that thread on emergency. Data in
+    _i_d are owned by the created interface on call of _p_r_e_h_a_n_d_l_e_r so that
+    function should make a local copy if accepting thread requires it or
+    replace it with NULL otherwise. Function _p_r_e_h_a_n_d_l_e_r should remember
+    _a_s in optionally created data _i_d and if pointer in _i_d is NULL after
+    call to _p_r_e_h_a_n_d_l_e_r then _h_a_n_d_l_e_r will be called with _i_d that points to
+    _a_s instead so _h_a_n_d_l_e_r can know it in any case. If any error happened
+    in the listening thread then _p_r_e_h_a_n_d_l_e_r will be called with _a_s equal
+    to -1 and undefined _t_h to notify caller about that. Since that might
+    be also as result of emergency shutdown, _p_r_e_h_a_n_d_l_e_r should not call
+    any but async-safe functions in that case. Accepting thread will wait
+    for _p_r_e_h_a_n_d_l_e_r before calling _h_a_n_d_l_e_r. Socket of accepted connection
+    is owned by listening thread and inherited by accepting thread (so by
+    function _h_a_n_d_l_e_r at the end). Note: if _p is 0 then _l_c_b is the only
+    way to let caller know which port is listening in real.
 	Reenterability: none
 
   int CCoonnnneecctt__HHoosstt (const char *_h_o_s_t, unsigned short _p_o_r_t, pthread_t *_t_h,

@@ -264,8 +264,8 @@ void ResetSocket(idx_t idx, unsigned short type)
 
   if (Pollfd[idx].fd >= 0)
     close(Pollfd[idx].fd);
-//  FREE (&Socket[i].ipname);
-//  FREE (&Socket[i].domain);
+  FREE (&Socket[idx].ipname);
+  FREE (&Socket[idx].domain);
   if (type == M_UNIX)
     Pollfd[idx].fd = sockfd = socket (AF_UNIX, SOCK_STREAM, 0);
   else
@@ -315,13 +315,17 @@ int SetupSocket(idx_t idx, const char *domain, unsigned short port,
 		int (*callback)(const struct sockaddr *, void *),
 		void *callback_data)
 {
-  int i, sockfd = Pollfd[idx].fd, type = (int)Socket[idx].port;
+  int i, sockfd, type;
   socklen_t len;
   inet_addr_t addr;
   struct linger ling;
   char hname[NI_MAXHOST+1];
 
   /* check for errors! */
+  if (idx < 0 || idx >= _Snum || Pollfd[idx].fd < 0)
+    return (E_NOSOCKET);
+  sockfd = Pollfd[idx].fd;
+  type = (int)Socket[idx].port;
   if (!domain && type != M_LIST && type != M_LINP)
     return (E_UNDEFDOMAIN);
   if (type == M_UNIX)
