@@ -1358,7 +1358,7 @@ static void *_listen_port (void *input_data)
     DBG("_listen_port:SetupSocket for port %hu returned %d", port, n);
     if (n == 0)
       break;
-    if (port == acptr->eport &&		/* final try */
+    if (port >= acptr->eport &&		/* final try */
 	(!acptr->cb || acptr->cb(NULL, acptr->data) != E_AGAIN))
 					/* give it a chance */
       break;
@@ -2545,7 +2545,7 @@ static int _dellistenport (char *pn)
 /*
  * sequence to keep ->retrier valid:
  * signal : +kill => (wait)+done
- * fail   : +I_FINWAIT => +dead => +done
+ * fail   : +I_FINWAIT => +done
  * success: +I_FINWAIT => +done
  * retrier would not free data until ->done is set
  */
@@ -2555,7 +2555,7 @@ typedef struct
   int ch;
   int cnt;
   unsigned short port;
-  bool kill, dead, done;
+  bool kill, done;
 //  tid_t tid;
 } _port_retrier;
 
@@ -2650,8 +2650,7 @@ static iftype_t _port_retrier_s (INTERFACE *iface, ifsig_t signal)
 	  iface->name);
       r->kill = TRUE;
       while(!r->done);		/* waiting for thread */
-      if (!r->dead)
-	iface->data = NULL;	/* keep it for thread */
+      iface->data = NULL;	/* keep it for thread */
       DBG("_port_retrier_s: terminated.");
       return I_DIED;
     default: ;
@@ -2685,7 +2684,6 @@ static int _direct_port_callback(const struct sockaddr *sa, void *data)
 
 aborted:
     rtr->retrier->ift = (I_LISTEN | I_FINWAIT);
-    rtr->dead = TRUE;		/* to release data */
     rtr->done = TRUE;
     return E_NOSOCKET;		/* data is unusable anymore */
   }
