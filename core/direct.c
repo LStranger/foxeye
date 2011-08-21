@@ -2576,6 +2576,7 @@ static void _dport_prehandler (pthread_t th, void **id, idx_t as)
   r = *((_port_retrier **)id);
   a->ch = r->ch;
   a->as = as;
+  *id = a;
 }
 
 static void _dport_handler (char *cname, char *ident, const char *host, void *d)
@@ -2679,7 +2680,7 @@ static int _direct_port_callback(const struct sockaddr *sa, void *data)
       int cnt = 1000;
 
       LOG_CONN(_("Could not open listening port %hu%s, retrying in 10 seconds."),
-	       rtr->port, (rtr->ch & 256) ? "" : _(" for bots"));
+	       rtr->port, (rtr->ch & 256) ? _(" for bots") : "");
       do {
 	nanosleep(&ts, NULL);	/* check each 10 ms if killed */
 	if (rtr->kill)
@@ -2688,7 +2689,7 @@ static int _direct_port_callback(const struct sockaddr *sa, void *data)
       return E_AGAIN;
     }
     LOG_CONN(_("Cannot open listening port on %hu%s!"), rtr->port,
-	     (rtr->ch & 256) ? "" : _(" for bots"));
+	     (rtr->ch & 256) ? _(" for bots") : "");
 
 aborted:
     rtr->retrier->ift = (I_LISTEN | I_FINWAIT);
@@ -2698,7 +2699,7 @@ aborted:
   /* ipv4 and ipv6 both have port in the same place */
   /* rtr->port = ntohc(((struct sockaddr_in *)sa)->sin_port); */
   LOG_CONN(_("Listening on port %hu%s."), rtr->port,
-	   (rtr->ch & 256) ? "" : _(" for bots"));
+	   (rtr->ch & 256) ? _(" for bots") : "");
   rtr->retrier->ift = (I_LISTEN | I_FINWAIT);
   rtr->done = TRUE;
   return 0;
@@ -2773,7 +2774,7 @@ ScriptFunction (FE_port)	/* to config - see thrdcc_signal() */
     rtr->retrier->ift = I_DIED;
   FREE(&rtr);
   snprintf (msg, sizeof(msg), _("Could not create listening thread for port on %hu%s!"),
-	    port, (u & U_ANY) ? "" : _(" for bots"));
+	    port, (u & U_ANY) ? _(" for bots") : "");
   BindResult = msg;
   return 0;
 }
