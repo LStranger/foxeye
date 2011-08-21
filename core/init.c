@@ -1485,20 +1485,20 @@ int Save_Formats (void)
   LEAF *leaf = NULL;
   struct stat st;
   const char *name;
-  int fd;
+  FILE *f;
 
   if (!*FormatsFile || lstat (FormatsFile, &st) || !(st.st_mode & S_IWUSR))
     return -1;
   if (!(S_ISREG (st.st_mode)))			/* only regular file! */
     return -1;
-  if ((fd = open (FormatsFile, O_WRONLY)))
+  if ((f = fopen (FormatsFile, "w")))
   {
     while ((leaf = Next_Leaf (FTree, leaf, &name)))
     {
-      dprintf (fd, "%s %s\n", name,
+      fprintf (f, "%s %s\n", name,
 	       _quote_expand (((VarData2 *)leaf->s.data)->f.mt));
     }
-    close (fd);
+    fclose (f);
     return 0;
   }
   return -1;
