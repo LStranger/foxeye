@@ -59,10 +59,7 @@ static ssize_t _connchain_send (struct connchain_i **chain, idx_t idx,
   else
     i = WriteSocket (idx, data, &ptr, sz, M_RAW);
   if (i < 0)
-  {
     DBG ("connchain: send: socket error %d", (int)i);
-    CloseSocket (idx);
-  }
   else if (i)
     dprint (5, "put to peer %d:[%-*.*s]", (int)idx, (int)i, (int)i, data);
   return i;
@@ -78,10 +75,7 @@ static ssize_t _connchain_recv (struct connchain_i **chain, idx_t idx,
   if (data != NULL)		/* if it's NULL then we have to stop */
     i = ReadSocket (data, idx, sz, M_RAW);
   if (i < 0)
-  {
     DBG ("connchain: recv: socket error %d", (int)i);
-    CloseSocket (idx);
-  }
   else if (i)
     dprint (5, "got from peer %d:[%-*.*s]", (int)idx, (int)i, (int)i, data);
   return i;

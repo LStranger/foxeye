@@ -97,7 +97,7 @@ void CloseSocket (idx_t idx)
 {
   if (Pollfd[idx].fd >= 0)
   {
-    DBG ("socket:CloseSocket: %hd", idx);
+    DBG ("socket:CloseSocket: %hd (fd=%d)", idx, Pollfd[idx].fd);
     shutdown (Pollfd[idx].fd, SHUT_RDWR);
     close (Pollfd[idx].fd);
     Pollfd[idx].fd = -1;
