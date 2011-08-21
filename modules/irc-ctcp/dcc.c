@@ -1591,6 +1591,7 @@ static iftype_t _isend_sig_w (INTERFACE *iface, ifsig_t signal)
 {
   dcc_priv_t *dcc = iface->data;
   unsigned long long size;
+  unsigned int token;
 
   if (!dcc)
     return I_DIED;
@@ -1600,13 +1601,16 @@ static iftype_t _isend_sig_w (INTERFACE *iface, ifsig_t signal)
       if (!safe_strncmp (BindResult, "RESUME ", 7) && dcc->startptr == 0)
       {
 	size = 0;
-	sscanf (NextWord_Unquoted (NULL, &BindResult[7], 0), "%*s %llu", &size);
+	token = 0;
+	sscanf (NextWord_Unquoted (NULL, &BindResult[7], 0), "%*s %llu %u",
+		&size, &token);
 	if (size >= dcc->size)		/* request is invalid */
 	  break;			/* so ignore it */
-	//TODO: check token!
+	if (token != dcc->token)	/* wrong token */
+	  break;
 	dcc->startptr = size;		/* else setting pointer */
-	Add_Request (I_CLIENT, dcc->uh, F_T_CTCP, "DCC ACCEPT file.ext 0 %llu %s",
-		     size, strchr (iface->name, '#') + 1);
+	Add_Request (I_CLIENT, dcc->uh, F_T_CTCP, "DCC ACCEPT file.ext 0 %llu %u",
+		     size, token);
       }
       break;
     case S_TIMEOUT:			/* time is out so terminate */
@@ -1696,6 +1700,7 @@ static int ssirc_send (struct peer_t *peer, INTERFACE *w, char *args)
     register uint32_t ip_local = 0x7f000001; /* 127.0.0.1 - it's irrelevant */
     if (_ircdcc_dccid == 0)		/* token 0 used as indicator */
       _ircdcc_dccid = 1;
+    dcc->token = _ircdcc_dccid;
     Add_Request (I_CLIENT, dcc->uh, F_T_CTCP, "DCC SEND \"%s\" %u 0 %u %u",
 		 net, ip_local, dcc->size, _ircdcc_dccid);
     snprintf (target, sizeof(target), "irc-ctcp#%u", _ircdcc_dccid++);
