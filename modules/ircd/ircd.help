@@ -1,0 +1,88 @@
+# first section is usage
+# second section is that config maker will put into config
+# third section is full help
+
+module ircd
+:%*
+:
+:This module provides RFC2810...RFC2813 compatible IRC daemon with\
+ multi-charset support extension (if it's enabled in config) and with\
+ cyclic network scheme possibility (if it's enabled in config).
+ 
+ Server name for the network is taken from %^nick%^ variable on the start.
+ 
+ Available flags for %_network%_ subrecords on clients:
+    k  - means this is a KILL record or quarantined server;
+    d  - means this is a restricted class;
+    o  - means this is an Operator;
+    h  - means this is a Local Operator;
+    a  - means this is a known server on that network;
+    *  - means this is a hub where we have an autoconnect.
+ 
+ Field "hub" on server record contains mask(s) for servers that server can\
+ introduce. Mask "!some.server" means wrong path (L:line analog).
+
+function ircd
+:ircd ["-"encoding] [host"/"]<port>["%"flags]
+:
+:
+
+set ircd-default-class
+:%* <string>
+:
+:
+ Default: "2 2 100 90 1000".
+
+set ircd-serverclass-pingf
+:%* <seconds>
+:
+:
+ Default: 30.
+
+set ircd-flags-first
+:%* <string>
+:
+:
+ Default: "Z".
+
+set ircd-flags-post
+:%* <string>
+:
+:
+ Default: "IPU".
+
+set ircd-description-string
+:%* <string>
+:
+:
+ Default: "".
+
+set ircd-admin-info
+:%* <string>
+:
+:
+ Default: "Not configured.".
+
+set ircd-admin-email
+:%* <string>
+:
+:
+ Default: "lame@lame.org".
+
+set ircd-hold-period
+:%* <seconds>
+:
+:
+ Default: 900.
+
+set ircd-motd-file
+:%* /path/to/file
+:
+:
+ Default: "ircd.motd".
+
+flood-type ircd-errors
+:
+:
+:If set then each corrected error on server link will be checked against this\
+ and if too many errors happened then link will be SQUITed in that reason.

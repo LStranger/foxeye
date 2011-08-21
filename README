@@ -103,6 +103,7 @@ Which modules are available?
    irc-ctcp	- implementation of some IRC commands including few DCC.
    modes	- implementation of commands +ban, -ban, and others
    tcl		- support for scripts in Tcl language
+   ircd		- standard (RFC1459) IRC server
     Were planned to implement some other modules but they are either pending
     or unrequested. Feel free to write them or ask someone to implement:
    botnet	- implementation of network of bots
@@ -114,7 +115,6 @@ Which modules are available?
    getops	- automatic getting privileges from other bots
    icq		- client for ICQ network
    irc-protection - antiflood, antispam and other
-   ircd		- standard (RFC1459) IRC server
    ircd-rusnet	- RusNet ircd IRC server extensions
    jabber	- client for Jabber network
    login	- "login", "logoff", and "cron" scripts for each chat user

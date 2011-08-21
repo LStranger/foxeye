@@ -13,6 +13,7 @@ Sun Aug 21 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/autolog/autolog.c: implemented creating path for log file.
 	* modules/irc-ctcp/dcc.c: added token checking on parsing DCC RESUME.
 	* core/direct.c, modules/irc-ctcp/dcc.c: added report messages.
+	* modules/ircd: added new module, fresh, untested, and full ot TODOs.
 
 Sat Aug 20 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.*, doc/modules.api, modules/irc-ctcp/dcc.c: changed

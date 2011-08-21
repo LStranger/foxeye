@@ -1,0 +1,228 @@
+
+ Module "ircd":
+ --------------
+
+  Interfaces: accepts messages for I_SERVICE with name <network> to run
+  them as if they came anywhere else from (_s_r_v below) but as exception
+  message can be some numeric and in that case it will be forwarded to
+  target user thru "ircd-do-numeric" bindtable.
+  accepts messages for I_CLIENT with name <name>@<network> to send them
+  to valid recipient in network (note: if <name> is "" then recipient is
+  every local user and if <name> is "*.*" then recipient is every local
+  server link); messages have to have prefix until they come from local
+  client (in latter case module "ircd" can compose prefix itself).
+
+  Note: Inspect_Client() function for this module is case-sensitive for
+  nicks or server names to be as fast as possible and avoid undesired
+  case conversions (but still case-insensitive for channel names).
+
+-     "iirrccdd--aauutthh"      MASK
+  int func(struct peer_t *_p_e_e_r, char *_u_s_e_r, char *_h_o_s_t, const char **_m_s_g);
+    Used when listening socked just accepted connection from someone _p_e_e_r
+    and binding gets their _u_s_e_r and _h_o_s_t for authentication check (for
+    example, check if host is in SPAM hosts database). Binding is called
+    within thread so should use only thread-safe functions. Dispatcher is
+    locked on start so at first you have to call Unset_Iface() and then
+    perform all your checks. Connection chain for peer is initialized so
+    you can send something there (but that is not advisable because it
+    may ruin IRC protocol). If bindings denying access for that client
+    then it should return 0 and leave reason message into _m_s_g.
+      Matching: host.  (userflags are ignored)
+
+-     "iirrccdd--rreeggiisstteerr--ccmmdd" UNIQ
+  int func(INTERFACE *_s_r_v, struct peer_t *_p_e_e_r, int _a_r_g_c, const char **_a_r_g_v);
+    Used when server got some message from client _p_e_e_r that have not
+    registered yet. Message is parsed and put into array _a_r_g_v so _a_r_g_c
+    contains number of parameters that was given to command. _p_e_e_r->dname
+    contains nick of _p_e_e_r. _s_r_v is IRCD interface which can be used to
+    send control messages (commands). This bindtable is designed mostly
+    for internal "ircd" module usage so may be not so useful.
+      Matching: command.  (userflags are ignored)
+
+-     "iirrccdd--cclliieenntt--ccmmdd" UNIQ
+  int func(INTERFACE *_s_r_v, struct peer_t *_p_e_e_r, char *_l_c_n_i_c_k, char *_u_s_e_r,
+	   char *_h_o_s_t, int _a_r_g_c, const char **_a_r_g_v);
+    Used when server got some message from local client _p_e_e_r. Message is
+    parsed and put into array _a_r_g_v so _a_r_g_c contains number of parameters
+    that was given to command. _p_e_e_r->dname contains nick of _p_e_e_r and _u_s_e_r
+    and _h_o_s_t are from client connection, converted to lower case nick of
+    client _l_c_n_i_c_k is provided for using with Inspect_Client() function.
+    _s_r_v is IRCD interface which can be used to send control messages
+    (commands). Value -1 returned by binding means this command should
+    not reset idle time calculation.
+      Matching: command.  (channel userflags are ignored)
+
+-     "iirrccdd--sseerrvveerr--ccmmdd" KEYWORD
+  int func(INTERFACE *_s_r_v, struct peer_t *_p_e_e_r, unsigned short _t_o_k_e_n,
+	   const char *_s_e_n_d_e_r, const char *_l_c_s_e_n_d_e_r, char *_c_m_d, int _a_r_g_c,
+	   const char **_a_r_g_v);
+    Used when server got some message from local server link _p_e_e_r (which
+    can be NULL if command invoked internally). Message is parsed and put
+    into array _a_r_g_v so _a_r_g_c contains number of parameters that was given
+    to command _c_m_d. _p_e_e_r->dname contains name of _p_e_e_r, _s_e_n_d_e_r is supplied
+    by _p_e_e_r and is name of _p_e_e_r (or server's own name in case of _p_e_e_r is
+    NULL) if it was not provided in command. Converted to lower case
+    version of _s_e_n_d_e_r is also provided as _l_c_s_e_n_d_e_r for Inspect_Client()
+    function call. The _t_o_k_e_n of server of the _s_e_n_d_e_r is also provided.
+    _s_r_v is IRCD interface which can be used to send control messages
+    (commands). Value -1 returned by binding means this command should
+    not reset idle time calculation.
+      Matching: command.  (userflags are ignored)
+
+-     "iirrccdd--ggoott--cclliieenntt" MASK
+  (int) void func (INTERFACE *_s_r_v, struct peer_t *_p_e_e_r);
+    Used when an user _p_e_e_r has been succesfully registered on the server
+    and propagated to others. _s_r_v is IRCD interface which can be used to
+    send control messages (commands).
+      Matching: user nick.  (channel userflags are ignored)
+
+-     "iirrccdd--lloosstt--cclliieenntt" MASK
+  (int) void func (INTERFACE *_s_r_v, const char *_f_r_o_m, const char *_l_c_n_i_c_k,
+		   const char *_n_i_c_k, const char *_u_s_e_r, const char *_h_o_s_t,
+		   const char *_f_n_a_m_e, modeflag _u_m, unsigned int _l_e_f_t);
+    Used when connection to user _n_i_c_k (who had connection parameters _u_s_e_r
+    and _h_o_s_t, full name _f_n_a_m_e, umode _u_m, and was connected to server _f_r_o_m
+    before connection was lost) was dropped for some reason. Binding is
+    used for services too, in that case parameters user and host will be
+    empty. Parameter _l_e_f_t is total number of clients known for the server
+    at this time, that number includes every server, service, user, and
+    also every incomplete connection and every nick, remembered due to
+    network splits or nick collision reasons. Converted to lower case
+    _n_i_c_k is also supplied for binding as _l_c_n_i_c_k. _s_r_v is IRCD interface
+    which can be used to send control messages (commands).
+      Macthing: user nick.  (userflags are ignored)
+
+-     "iirrccdd--ddoo--nnuummeerriicc" UNIQ
+  int func (INTERFACE *_s_r_v, int _n, const char *_n_i_c_k, modeflag _u_m,
+	    char *_m_s_g);
+    Used when module "ircd" is about to send some numeric message which
+    has number _n and text _m_s_g for user _n_i_c_k which has umode _u_m so binding
+    can cancel sending it or do that itself, in that case binding should
+    return a non-zero value. _s_r_v is IRCD interface which can be used to
+    send control messages (commands).
+      Matching: numeric.  (userflags are ignored)
+
+-     "iirrccdd--cchhaannnneell"   UNIQ
+  (int) modeflag func(INTERFACE *_u, modeflag _u_m_o_d_e, modeflag _c_h_m_o_d_e,
+		      int _c_o_u_n_t, const char *_c_h_n_a_m_e, NODE *_c_l,
+		      const char **_t_o_c_r_e_a_t_e);
+    Used when some user _u which has mode _u_m_o_d_e attempts to join channel
+    _c_h_n_a_m_e which has mode _c_h_m_o_d_e and _c_o_u_n_t users in it. If _c_h_m_o_d_e is equal
+    to 0 (i.e. channel does not exist) and user is allowed to create new
+    channel then puts new (which is in static array) channel name into
+    _t_o_c_r_e_a_t_e but be sure to check _c_h_m_o_d_e too since channel may not exist
+    but be on hold. Binding can perform channel type specific checking
+    on channels list _c_l. Returns modes which should be set on channel
+    for user if user is allowed to join or 0 if isn't. Used also when
+    user leaves channel, in that case _t_o_c_r_e_a_t_e pointer is NULL, binding
+    returns new channel's modeflag after that leave (so if it's 0 then
+    channel should be destroyed). Interface _u can be used to send channel
+    specific notes (numerics) to the local user, those numerics will
+    never go through bindtable "ircd-do-numeric". That _u pointer is NULL
+    if this is remote user.
+      Matching: channel name's first char.  (userflags are ignored)
+
+-     "iirrccdd--cchheecckk--mmeessssaaggee" MASK
+  int func(modeflag _u_m_o_d_e, modeflag _m_m_o_d_e, char *_m_s_g);
+    Used when someone with channel mode _u_m_o_d_e is trying to send a message
+    _m_s_g into some channel with modes _m_m_o_d_e. Returns 1 in case if sending
+    is allowed, -1 if it may be allowed (i.e. allowed until other binding
+    disallowed it), or 0 if it is disallowed. If no appropriate binding
+    was found then message will be allowed.
+      Matching: target.  (userflags are ignored)
+
+-     "iirrccdd--cchheecckk--mmooddeecchhaannggee" MASK
+  int func(modeflag _u_m_o_d_e, modeflag _m_m_o_d_e, int _a_d_d, modeflag _c_h_g,
+	   char *_t_g_t);
+    Used when someone with channel mode _u_m_o_d_e trying to make a modechange
+    _c_h_g for some target _t_g_t on the channel with modes _m_m_o_d_e (which is 0
+    if it is modechange on user themself). Binding gets modechange which
+    has all mode flags from all matching bindings of "ircd-modechange"
+    bindtable. _a_d_d indicates direction of the change and is 0 in case if
+    it is attempt to down mode and is 1 in case if it is attempt to raise
+    mode. Binding also may be called when user attempts to join channel
+    and in that case _u_m_o_d_e is user mode and _c_h_g is 0. Returns 0 in case
+    if modechange should be rejected or any other value otherwise.
+      Matching: channel name/user nick.  (userflags are ignored)
+
+-     "iirrccdd--mmooddeecchhaannggee" MATCHCASE
+  (int) modeflag func(INTERFACE *_s_r_v, const char *_r_q, modeflag _r_c_h_m_o_d_e,
+		      const char *_t_a_r_g_e_t, modeflag _t_m_o_d_e, int _a_d_d,
+		      char _c_h_t_y_p_e,
+		      int (**_m_a)(INTERFACE *_s_r_v, const char *_r_q,
+				 const char *_c_h, int _a_d_d,
+				 const char *_p_a_r_a_m));
+    Used when some client which has nick _r_q and channel mode _r_c_h_m_o_d_e sent
+    command for some mode change on channel of type _c_h_t_y_p_e in direction
+    _a_d_d (which is 0 if it's an attempt to down mode or 1 if it's attempt
+    to raise mode) for some _t_a_r_g_e_t on the channel which has channel mode
+    _t_m_o_d_e. In case if it's attempt of changing mode for whole channel
+    (channel itself) then _t_a_r_g_e_t is NULL, _t_m_o_d_e is channel mode, and in
+    case if that mode may require a parameter then _m_a on return should be
+    filled with pointer to function to set/clear/query the mode (which
+    may get _a_d_d equal to -1 for mode query and will get also channel name
+    _c_h and parameter _p_a_r_a_m for that modechange). The function _m_a should
+    return 1 on success or 0 on fail. Returns modeflag change for target
+    if it's approved combined with lowest bit set to 1 if that modechange
+    should consume a parameter (even if it isn't approved). Since it is
+    required to do backward conversion on server connection burst so to
+    make it possible each binding on mode which doesn't require parameter
+    or which is modechange on user in channel should return appropriate
+    mode flag when called with invalid value of parameter _r_c_h_m_o_d_e equal
+    to 0 and appropriate value of _t_a_r_g_e_t. Note: mask should be "X*" if
+    modechange for whole channel may require a parameter (see bindtable
+    "ircd-whochar" for modechanges on users in channel). Note2: you have
+    to send S_FLUSH signal to modules "ircd*" each time you adding or
+    removing a binding so those modules can build their list of supported
+    flags to reply to user on request.
+      Matching: modechar.  (userflags are ignored)
+
+-     "iirrccdd--uummooddeecchhaannggee" MATCHCASE
+  (int) modeflag func(INTERFACE *_s_r_v, const char *_r_q, modeflag _r_u_m_o_d_e,
+		      int _a_d_d);
+    Used when some client with nick _r_q and user mode _r_u_m_o_d_e sent command
+    for some mode change on themself in direction _a_d_d (which is 0 if it's
+    an attempt to down mode or 1 if it's attempt to raise mode). Returns
+    modeflag change if it approved.
+      Matching: modechar.  (userflags are ignored)
+
+-     "iirrccdd--wwhhoocchhaarr"   MASK
+  (int) char func(char _m_o_d_e_c_h_a_r);
+    Used on start or S_FLUSH signal to make translation from modechange
+    character _m_o_d_e_c_h_a_r into character for WHO reply. You have to send
+    S_FLUSH signal to module "ircd" each time you adding or removing a
+    binding. Returns appropriate char or 0 if there is no one.
+      Matching: network name.  (userflags are ignored)
+
+-     "iirrccdd--cclliieenntt--ffiilltteerr" KEYWORD
+  int func(INTERFACE *_s_r_v, struct peer_t *_p_e_e_r, modeflag _u_m_o_d_e, int _a_r_g_c,
+	   const char **_a_r_g_v);
+    Used before "ircd-client-cmd" bindtable so you can intercept and
+    cancel executing any bindings in it by returning non-zero. Binding
+    receives the same _s_r_v, _p_e_e_r, _a_r_g_c, and _a_r_g_v parameters that binding
+    for "ircd-client-cmd" will do and also user mode flags _u_m_o_d_e.
+      Matching: command.  (channel userflags are ignored)
+
+-     "iirrccdd--ssttaattss--rreeppllyy" KEYWORD
+  (int) void func(INTERFACE *_s_r_v, const char *_r_q, modeflag _m_f);
+    Used when server got request STATS from some user which has nick _r_q
+    and user mode _m_f. _s_r_v is IRCD interface which can be used to send
+    control messages (commands).
+      Matching: STAT request parameter.  (userflags are ignored)
+
+-     "iirrccdd--ccoolllliissiioonn" UNIQMASK
+  (int) char *func(char *_n_e_w, size_t _n_s_i_z_e, int _c_a_n);
+    Used when server got nick collision for some nick _n_e_w. Binding have
+    to propose some solution to resolve this issue. If binding proposes
+    to kill existing user then it should return NULL. If binding proposes
+    to keep it then it should return new nick for it (in static buffer).
+    If that returned nick is indentical to any existing one then existing
+    user will be not renamed but flag _c_a_n equal to 0 means keeping nick
+    isn't allowed so in latter case existing user will be killed instead.
+    If the binding proposes to kill the user which makes a collision then
+    it should make _n_e_w containing zero length string and if the binding
+    proposes to rename the user then it should put new nick for it into
+    buffer _n_e_w of size _n_s_i_z_e. Note: if any of proposed new nicks would
+    make another nick collision then that user will be killed instead so
+    be careful and do checks.
+      Matching: anything.  (userflags are ignored)

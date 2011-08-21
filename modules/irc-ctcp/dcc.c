@@ -222,7 +222,8 @@ static iftype_t _dcc_sig_2 (INTERFACE *iface, ifsig_t signal)
 	{
 	  pthread_mutex_unlock (&dcc->mutex);
 	  Add_Request (I_LOG, "*", F_WARN,
-		       _("DCC GET: got late ACCEPT, ignoring it."));
+		       _("DCC GET: got late ACCEPT for %s, ignoring it."),
+		       dcc->filename);
 	  break;
 	}
 	dcc->startptr = position;

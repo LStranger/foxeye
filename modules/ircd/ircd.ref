@@ -1,0 +1,185 @@
+	FoxEye IRCD reference manual.
+
+    Module "ircd" offers the RFC2810...2813 compliant IRC server. Note that
+user mode 's' which is marked as obsolete neither refused nor broadcasted
+to neighbour servers. Also it's remarcable that classes in FoxEye can have
+more descriptive names not just numbers.
+    Channel names are restricted a bit more than RFC2812 says. There is no
+unprintable characters available in the names for channel at all, not only
+^G (ASCII 7). Also there is a compilation option IRCD_STRICT_NAMES which
+does a further restriction (see below).
+
+    Two compilation options make new features: IRCD_USES_ICONV and
+IRCD_MULTICONNECT. See descriptions below.
+
+
+#define IRCD_USES_ICONV 1
+
+    If you defined IRCD_USES_ICONV to non-zero value then server will have
+ support for on-the-fly traffic conversion to different encodings. Traffic
+ between servers will be encoded with CHARSET_8BIT by default. This define
+ also enables IRCD_STRICT_NAMES which stricts nicks and channel names to be
+ compatible with CHARSET_8BIT encoding.
+    Encoding in which user connection is will be chosen in that order:
+ - default encoding for IRCD listening port where user is connected;
+ - default encoding for user's class (if set);
+ - default encoding for user if he/she has individual record;
+ - encoding given in "CHARSET" command.
+    The server should send RPL_CODEPAGE reply each time connection encoding
+ is set or changed.
+
+      Command: PASS
+   Parameters: see RFC2813
+
+   Server version of this command can have new option flag "U" which changes
+   encoding of traffic between servers to CHARSET_UNICODE which should be
+   capable of full unicode characters range and should be compatible with
+   CHARSET_8BIT encoding.
+
+      Command: WHOIS
+   Parameters: see RFC2812
+
+   This command has now one more numeric reply if requested for local client:
+   RPL_WHOISCHARSET which replies encoding which is used for communication
+   with client in request.
+
+      Command: CHARSET
+   Parameters: [ <charset name> ]
+
+   The CHARSET command can be used to query or change encoding of traffic
+   between client and server. If parameter <charset name> is given then
+   server will attempt to set enconding to that charset before returning
+   name of charset which is used for user's connection.
+
+   Numeric Replies:
+
+           ERR_NOCODEPAGE                  RPL_CODEPAGE
+
+   Example:
+
+           CHARSET utf-8           ; request to change connection encoding
+                                   to "utf-8"
+
+ Command responses (numeric replies):
+
+       222    RPL_CODEPAGE
+              "<charset> :is your charset now"
+
+         - The server sends this as reply to successful CHARSET command
+           and also upon successful registration.
+
+       320    RPL_WHOISCHARSET
+              "<nick> :charset is <charset>"
+
+         - Returned for local client in reply to WHOIS command.
+
+       468    ERR_NOCODEPAGE
+              "<charset> :Invalid charset"
+
+         - Returned to a client which is attempted to change connection
+           encoding to some undefined charset name.
+
+
+#define IRCD_MULTICONNECT 1
+
+    If you defined IRCD_MULTICONNECT to non-zero value then server will
+ have support for cyclic network scheme. When such scheme is allowed then
+ any message may be received more than one time. Messages for joining and
+ parting channels as well as the network as whole should not be considered
+ as error if we got JOIN for user who already joined that channel and so
+ on. Messages such as PRIVMSG cannot be resolved the same way so there is
+ new category introduced: message identifier. Message identifier is some
+ integer which is unique for a server (at least for sane period of time)
+ so messages with the same identifier would be skipped when received yet
+ again.
+    Another problem introduced by cyclic scheme network is network
+ delays. For example, see network scheme:
+
+    Server A ----------- Server B
+      |                    |
+      +----- Server C -----+
+
+ Let say, some client was on server A and disconnected so reconnected to
+ server B but immediately disconnected. What we see on server C?
+
+    Link to A             Link to B
+    ---------             ---------
+    QUIT Nick             (sending QUIT)
+    (delay)               QUIT Nick
+    (sending NICK)        NICK Nick
+                          JOIN ...
+    (sending QUIT)        QUIT Nick
+    NICK Nick (delayed)
+    JOIN ...
+    QUIT Nick (delayed)
+
+ In case non-cyclic network everything is OK, clients on server C will see
+ QUIT then JOIN then QUIT. In case of cyclic network and some network
+ delay long enough to get duplicates clients will see that JOIN + QUIT
+ sequence twice. To avoid that problem server MUST send acknowledge to
+ link partner for each message such as QUIT so another side would not do
+ reaction on any delayed NICK, etc. messages until get the acknowledge
+ back.
+
+      Command: PASS
+   Parameters: see RFC2813
+
+   Server version of this command can have an option flag "I" which will
+   inform link partner that this server can support cyclic network scheme
+   so can receive and work on new messages specific to such scheme.
+
+      Command: ISERVER
+   Parameters: <servername> <hopcount> <token> <info>
+
+   This message is identical to SERVER message (see RFC2813) but would
+   introduce server which is capable to work with cyclic network scheme.
+
+   The ISERVER message SHOULD NOT be sent to a server which is not
+   capable to work with cyclic network scheme.
+
+   This message SHOULD NOT be used to introduce new server by the server
+   itself, i.e. on registration phase.
+
+      Command: ITOPIC
+   Parameters: <msgid> <channel> <topic>
+
+   The ITOPIC message MAY come only from link to server which is capable
+   to work with cyclic network scheme and SHOULD NOT come neither from
+   server which is not capable to work with cyclic network scheme nor
+   originated from some server which is not capable to work with cyclic
+   network scheme nor from some service or user who is connected to such
+   kind of server.  The ITOPIC message SHOULD NOT be sent to a server
+   which is not capable to work with cyclic network scheme.
+
+   The ITOPIC command is used to change the topic of a channel.  If the
+   <topic> parameter is not an empty string, the topic for that channel
+   will be changed.  If the <topic> parameter is an empty string, the
+   topic for that channel will be removed.  Parameter <msgid> is unique
+   message identifier.
+
+   Examples:
+
+   :WiZ!jto@tolsun.oulu.fi ITOPIC 651238 #test :New topic ; User Wiz
+                                   setting the topic.
+
+      Command: IMODE
+   Parameters: <msgid> <nickname> *( ( "-" / "+" ) *<modes> )
+               <msgid> <channel> *( ( "-" / "+" ) *<modes> *<modeparams> )
+
+   The IMODE message SHOULD NOT come neither from server which is not
+   capable to work with cyclic network scheme nor originated from some
+   server which is not capable to work with cyclic network scheme nor
+   from some service or user who is connected to such kind of server.
+   The IMODE message SHOULD NOT be sent to a server which is not capable
+   to work with cyclic network scheme.
+
+   The IMODE message is a dual-purpose command in IRC similar to RFC2813
+   message MODE.  It allows both usernames and channels to have their
+   mode changed.  In difference with the MODE message the IMODE message
+   have one more parameter <msgid> which is unique message identifier.
+
+      Command: INUM
+      Command: ACK
+      Command: IPRIVMSG
+      Command: INOTICE
+      Command: ISQUERY
