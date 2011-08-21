@@ -2635,11 +2635,19 @@ static void _dport_handler (char *cname, char *ident, const char *host, void *d)
 static iftype_t _port_retrier_s (INTERFACE *iface, ifsig_t signal)
 {
   _port_retrier *r = (_port_retrier *)iface->data;
+  INTERFACE *tmp;
+  char buf[STRING];
 
   switch (signal)
   {
     case S_REPORT:
-      // TODO...
+      /* %L - name, %* - state */
+      printl (buf, sizeof(buf), ReportFormat, 0,
+	      NULL, NULL, iface->name, NULL, (uint32_t)0, 0, 0,
+	      "trying to open listening port");
+      tmp = Set_Iface (iface);
+      New_Request (tmp, F_REPORT, "%s", buf);
+      Unset_Iface();
       break;
     case S_SHUTDOWN:
       r->kill = TRUE;
@@ -2751,7 +2759,7 @@ ScriptFunction (FE_port)	/* to config - see thrdcc_signal() */
     Unset_Iface();
   } else
     rtr->cnt = 6;
-  rtr->kill = rtr->dead = rtr->done = FALSE;
+  rtr->kill = rtr->done = FALSE;
   /* create retrier interface to be able to cancel it */
   rtr->retrier = Add_Iface(I_TEMP, msg, &_port_retrier_s, NULL, rtr);
   if (rtr->retrier)

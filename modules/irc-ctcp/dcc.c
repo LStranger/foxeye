@@ -1752,6 +1752,9 @@ static void _irc_ctcp_register (void)
 static iftype_t irc_ctcp_mod_sig (INTERFACE *iface, ifsig_t sig)
 {
   INTERFACE *tmp;
+  dcc_priv_t *dcc;
+  char *state;
+  char *filename;
 
   switch (sig)
   {
@@ -1759,7 +1762,29 @@ static iftype_t irc_ctcp_mod_sig (INTERFACE *iface, ifsig_t sig)
       tmp = Set_Iface (iface);
       New_Request (tmp, F_REPORT, "Module irc-ctcp:%s",
 		   ActDCC ? "" : " no active connections.");
-      // TODO.......
+      for (dcc = ActDCC; dcc; dcc = dcc->next) {
+	if (dcc->state == P_LASTWAIT)
+	  continue;
+	switch (dcc->state) {
+	case P_TALK:
+	  state = "active";
+	  break;
+	case P_INITIAL:
+	case P_IDLE:
+	  state = "waiting";
+	  break;
+	default:
+	  state = "disconnected";
+	}
+	if (!dcc->filename)
+	  filename = "";
+	else if ((filename = strrchr(dcc->filename, '/')))
+	  filename++;
+	else
+	  filename = dcc->filename;
+	New_Request(tmp, F_REPORT, "    (%s) %s%s: %s", dcc->iface->name,
+		    dcc->filename ? "file " : "chat", filename, state);
+      }
       Unset_Iface();
       break;
     case S_REG:
