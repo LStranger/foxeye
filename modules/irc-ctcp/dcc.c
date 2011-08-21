@@ -188,14 +188,16 @@ static iftype_t _dcc_sig_2 (INTERFACE *iface, ifsig_t signal)
       if (dcc->filename && dcc->wait_accept &&
 	  !safe_strncmp (BindResult, "ACCEPT ", 7))
       {
-	unsigned short port, port2;
+	unsigned long port, position;
+	unsigned short port2;
 
-	port = atoi ((txt = NextWord_Unquoted (NULL, NextWord(BindResult), 0)));
+	txt = NextWord_Unquoted (NULL, NextWord(BindResult), 0);
+	port = strtoul(txt, (char **)NULL, 10);
 	if (dcc->state == P_INITIAL)
 	{
 	  if (dcc->ptr != port)	/* before we got .idx we have port in .ptr */
 	  {
-	    DBG ("irc-ctcp:_dcc_sig_2: ACCEPT for %hu != %u", port, dcc->ptr);
+	    DBG ("irc-ctcp:_dcc_sig_2: ACCEPT port %lu != %u", port, dcc->ptr);
 	    break;
 	  }
 	}
@@ -204,9 +206,15 @@ static iftype_t _dcc_sig_2 (INTERFACE *iface, ifsig_t signal)
 	  SocketDomain (dcc->socket, &port2);
 	  if (port != port2)	/* check for ports in ACCEPT message */
 	  {
-	    DBG ("irc-ctcp:_dcc_sig_2: ACCEPT for %hu != %hu", port, port2);
+	    DBG ("irc-ctcp:_dcc_sig_2: ACCEPT port %lu != %hu", port, port2);
 	    break;
 	  }
+	}
+	position = strtoul (NextWord (txt), NULL, 10);
+	port = strtoul(NextWord(txt), NULL, 10);
+	if (dcc->token != port) { /* for active SEND token is 0 obviously */
+	  DBG ("irc-ctcp:_dcc_sig_2: ACCEPT token %lu != %u", port, dcc->token);
+	  break;
 	}
 	BindResult = NULL;		/* we used it so drop it */
 	pthread_mutex_lock (&dcc->mutex);
@@ -214,13 +222,14 @@ static iftype_t _dcc_sig_2 (INTERFACE *iface, ifsig_t signal)
 	{
 	  pthread_mutex_unlock (&dcc->mutex);
 	  Add_Request (I_LOG, "*", F_WARN,
-		       _("DCC GET: got duplicate or late ACCEPT, ignoring it."));
+		       _("DCC GET: got late ACCEPT, ignoring it."));
 	  break;
 	}
-	dcc->startptr = strtoul (NextWord (txt), NULL, 10);
+	dcc->startptr = position;
 	dcc->wait_accept = FALSE;
 	pthread_mutex_unlock (&dcc->mutex);
-	LOG_CONN (_("DCC: got ACCEPT, transfer resumed at %u."), dcc->startptr);
+	LOG_CONN (_("DCC: got ACCEPT on %s, transfer resumed at %u."),
+		  dcc->filename, dcc->startptr);
       }
       break;
     case S_TIMEOUT:			/* connection timeout? */
@@ -1119,16 +1128,26 @@ static iftype_t _dcc_sig_1 (INTERFACE *iface, ifsig_t signal)
       break;
     case S_LOCAL:
       if (dcc->filename && dcc->wait_accept && /* are we waiting for ACCEPT? */
-	  !strncmp (BindResult, "ACCEPT ", 7) && dcc->state == P_IDLE &&
+	  dcc->state == P_IDLE && !strncmp (BindResult, "ACCEPT ", 7) &&
 	  ((txt = NextWord_Unquoted (NULL, NextWord(BindResult), 0)))[0])
       {
-	if (dcc->ptr && atoi (txt) != (int)dcc->ptr)
+	unsigned long int port, position;
+
+	port = strtoul(txt, (char **)NULL, 10);
+	if (dcc->ptr && port != dcc->ptr) {
+	  DBG ("irc-ctcp:_dcc_sig_1: ACCEPT port %lu != %u", port, dcc->ptr);
 	  break;			/* active mode and another port */
-	if (dcc->ptr == 0 && atol (NextWord (NextWord (txt))) != (long)dcc->ptr)
+	}
+	position = strtoul(txt, NULL, 10);
+	port = strtoul(NextWord(txt), NULL, 10);
+	if (dcc->ptr == 0 && port != dcc->token)
+	{
+	  DBG ("irc-ctcp:_dcc_sig_1: ACCEPT token %lu != %u", port, dcc->token);
 	  break;			/* passive mode and another token */
+	}
 	/* don't check filename, mIRC says it is "file.ext" anyway */
 	pthread_mutex_lock (&dcc->mutex);
-	dcc->startptr = strtoul (NextWord (txt), NULL, 10);
+	dcc->startptr = position;
 	dcc->wait_accept = FALSE;
 	pthread_mutex_unlock (&dcc->mutex);
 	LOG_CONN (_("DCC: got ACCEPT, transfer resumed at %u."), dcc->startptr);
@@ -1598,16 +1617,21 @@ static iftype_t _isend_sig_w (INTERFACE *iface, ifsig_t signal)
   switch (signal)
   {
     case S_LOCAL:			/* got DCC RESUME here? */
-      if (!safe_strncmp (BindResult, "RESUME ", 7) && dcc->startptr == 0)
+      if (dcc->startptr == 0 && !safe_strncmp (BindResult, "RESUME ", 7))
       {
 	size = 0;
 	token = 0;
 	sscanf (NextWord_Unquoted (NULL, &BindResult[7], 0), "%*s %llu %u",
 		&size, &token);
-	if (size >= dcc->size)		/* request is invalid */
+	if (size >= dcc->size) {	/* request is invalid */
+	  DBG ("irc-ctcp:_isend_sig_w: RESUME invalid position %llu > %u",
+	       size, dcc->size);
 	  break;			/* so ignore it */
-	if (token != dcc->token)	/* wrong token */
+	} else if (token != dcc->token) { /* wrong token */
+	  DBG ("irc-ctcp:_isend_sig_w: RESUME token %u != %u", token,
+	       dcc->token);
 	  break;
+	}
 	dcc->startptr = size;		/* else setting pointer */
 	Add_Request (I_CLIENT, dcc->uh, F_T_CTCP, "DCC ACCEPT file.ext 0 %llu %u",
 		     size, token);
