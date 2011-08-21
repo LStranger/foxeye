@@ -9,6 +9,9 @@ TODO:
 	* core/direct.c: to add support for charset and comments in motd file.
 
 --- [0.10.0]
+Sun Aug 21 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/autolog/autolog.c: implemented creating path for log file.
+
 Sat Aug 20 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.*, doc/modules.api, modules/irc-ctcp/dcc.c: changed
 	  functioning of Listen_Port() so it does most of work in background.

@@ -283,8 +283,32 @@ static int _autolog_makepath (char *buf, size_t sb, char *net, const char *tgt,
   return 0; /* all OK */
 }
 
-/* TODO: make subdirectories for path? */
-#define open_log_file(path) open (path, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP)
+static inline int open_log_file(char *path, int do_dir)
+{
+  char *p, *p2;
+  int rc;
+
+  rc = open (path, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP);
+  if (rc >= 0 || !do_dir || errno != ENOENT)
+    return rc;
+  p2 = NULL;
+  while ((p = strrchr(path, '/'))) {
+    if (p2)
+      *p2 = '/';
+    p2 = p;
+    *p = '\0';
+    rc = mkdir(path, S_IRWXU | S_IRGRP | S_IXGRP);
+    if (rc == 0)
+      break;
+    if (errno != ENOENT) {
+      *p = '/';
+      return rc;
+    }
+  }
+  if (p2)
+    *p2 = '/';
+  return open_log_file(path, do_dir); /* do it again */
+}
 
 /* accepts: S_TERMINATE, S_SHUTDOWN, S_FLUSH */
 static iftype_t _autolog_name_signal (INTERFACE *iface, ifsig_t sig)
@@ -302,7 +326,7 @@ static iftype_t _autolog_name_signal (INTERFACE *iface, ifsig_t sig)
       if (iface->qsize > 0) /* so there is queue... just reopen the log file */
       {
 	close (log->d->fd);
-	log->d->fd = open_log_file (log->d->path);
+	log->d->fd = open_log_file (log->d->path, 0);
 	return 0;
       }			/* else terminate it on flush to get right timestamps */
     case S_TERMINATE:
@@ -393,7 +417,7 @@ static int _autolog_name_request (INTERFACE *iface, REQUEST *req)
 	  ERROR ("autolog: could not make path for %s.", req->to);
 	  log->d->fd = -1;
 	}
-	else if ((log->d->fd = open_log_file (path)) < 0)
+	else if ((log->d->fd = open_log_file (path, 1)) < 0)
 	  ERROR ("autolog: could not open log file %s: %s", path, strerror (errno));
 	if (log->d->fd < 0)
 	{
@@ -559,7 +583,7 @@ static int _autolog_net_request (INTERFACE *iface, REQUEST *req)
       ERROR ("autolog: could not make path for %s", tpath);
       fd = -1;
     }
-    else if ((fd = open_log_file (path)) < 0)
+    else if ((fd = open_log_file (path, 1)) < 0)
       ERROR ("autolog: could not open log file %s: %s", path, strerror (errno));
     if (fd < 0)
     {
