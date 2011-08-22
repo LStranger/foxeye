@@ -11,6 +11,7 @@ TODO:
 --- [0.10.0]
 Mon Aug 22 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc/msgs.c: hotfixed wrong message cut.
+	* core/direct.c: fixed wrong parsing channel name in .console (bug#66).
 
 Sun Aug 21 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/autolog/autolog.c: implemented creating path for log file.
@@ -27,7 +28,7 @@ Sat Aug 20 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 
 Fri Aug 19 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c: rewritten PID file handling, should never write
-	  "./.pid" file anymore.
+	  "./.pid" file anymore (bug#68).
 	* core/main.c: fixed wrong config header generation.
 	* core/direct.c, core/help.c, core/init.c, core/list.c: changed some
 	  fopen() to open() and so on.
@@ -51,7 +52,8 @@ Wed Aug 17 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* configure, core/protos.h: removed obsolete checks.
 
 Tue Aug 16 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
-	* core/main.c: fixed error getting Nick from non-generated config.
+	* core/main.c: fixed error getting Nick from non-generated config
+	  (bug#67).
 	* core/direct.c: fixed possible SIGSEGV in Listen_Port().
 	* core/socket.c: got IPv6 support working.
 

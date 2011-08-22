@@ -15,7 +15,7 @@ Changes in version 0.10 since 0.9:
     IPv4 connections on every IPv4 interface if is called with NULL as
     domain name.  To listen for both IPv4 and IPv6 use "::" name.
 
-- The Solaris OS support revoked, works fine on 64-bit OpenSolaris 11
+- The Solaris OS support revived, works fine on 64-bit OpenSolaris 11
     (snv_105) but gmake should be used instead of make as modules can't
     be made with Solaris' make.
 

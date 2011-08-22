@@ -1856,24 +1856,17 @@ static int dc_console (peer_t *dcc, char *args)
   {
     if (*args == '#' || *args == '&')
     {
-      cc = args;
-      while (*cc && *cc != ' ') cc++;
+      cc = gettoken(args, &ch);
+      unistrlower (msg, args, sizeof(msg)); /* make it lowercase */
       if (*cc)
-      {
-	*cc = 0;
-	strfcpy (msg, args, sizeof(msg));
-	*cc = ' ';
-	cc = msg;
-      }
-      else
-	cc = args;
-      if (!Find_Iface (I_SERVICE, cc) || Unset_Iface())
+	*ch = ' ';
+      if (!Find_Iface (I_SERVICE, msg) || Unset_Iface())
       {
 	New_Request (dcc->iface, 0, _("No such active service found: %s"),
-		     cc);
+		     msg);
 	return -1;
       }
-      args = NextWord (args);
+      args = cc;
     }
     else if (*args == '*')		/* reset channel */
       args = NextWord (args);

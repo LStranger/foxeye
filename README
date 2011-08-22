@@ -103,7 +103,7 @@ Which modules are available?
    irc-ctcp	- implementation of some IRC commands including few DCC.
    modes	- implementation of commands +ban, -ban, and others
    tcl		- support for scripts in Tcl language
-   ircd		- standard (RFC1459) IRC server
+   ircd		- standard (RFC2813) IRC server
     Were planned to implement some other modules but they are either pending
     or unrequested. Feel free to write them or ask someone to implement:
    botnet	- implementation of network of bots
