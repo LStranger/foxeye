@@ -116,14 +116,17 @@ static void _pmsgout_send (char *to, char *msg, flag_t flag, char *dog)
       register size_t sm, sw;
 
       snprintf (buff, sizeof(buff), _pmsgout_send_format[i], to, c);
-      sw = unistrcut (buff, sizeof(buff), IRCMSGLEN - 1); /* calculate */
+      /* FIXME: count own prefix (IRCMSGLEN-5-prefixlen) in the message size! */
+      sw = unistrcut (buff, sizeof(buff), IRCMSGLEN - 45); /* calculate */
       sm = strlen (buff);
       c = &c[strlen(c)];		/* set it at EOL */
       if (sw < sm)			/* ouch, it exceed the size! */
       {
-	buff[sw] = '\0';		/* terminate partial message */
-	if (i >= 2)			/* has to be ended with '\001' */
-	  buff[--sw] = '\001';
+	if (i >= 2) {			/* has to be ended with '\001' */
+	  buff[sw] = '\001';
+	  buff[sw+1] = '\0';
+	} else
+	  buff[sw] = '\0';		/* terminate partial message */
 	c -= (sm - sw);			/* go back chars that don't fit */
       }
       Add_Request (I_SERVICE, &dog[1], 0, "%s", buff);

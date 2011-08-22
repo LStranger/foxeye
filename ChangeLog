@@ -9,6 +9,9 @@ TODO:
 	* core/direct.c: to add support for charset and comments in motd file.
 
 --- [0.10.0]
+Mon Aug 22 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/irc/msgs.c: hotfixed wrong message cut.
+
 Sun Aug 21 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/autolog/autolog.c: implemented creating path for log file.
 	* modules/irc-ctcp/dcc.c: added token checking on parsing DCC RESUME.
