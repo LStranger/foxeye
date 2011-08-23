@@ -9,6 +9,10 @@ TODO:
 	* core/direct.c: to add support for charset and comments in motd file.
 
 --- [0.10.0]
+Tue Aug 23 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* doc/modules.api: updated documentation a bit.
+	* core/direct.c: fixed broken direct chat (messages were dropped).
+
 Mon Aug 22 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc/msgs.c: hotfixed wrong message cut.
 	* core/direct.c: fixed wrong parsing channel name in .console (bug#66).

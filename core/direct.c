@@ -407,7 +407,7 @@ void Dcc_Parse (peer_t *dcc, char *name, char *cmd, userflag gf, userflag cf,
       else
 	bind->func (dcc, cmd);
     snprintf (to, sizeof(to), ":*:%d", botch);
-    Add_Request (I_DCCALIAS | I_LOG, to, F_T_MESSAGE | F_BOTNET, "%s", cmd);
+    Add_Request (I_DCCALIAS, to, F_T_MESSAGE | F_BOTNET, "%s", cmd);
   }
 }
 
@@ -1602,7 +1602,7 @@ static int dc_me (peer_t *dcc, char *args)
     }
   } while (bind);
   snprintf (ch, sizeof(ch), ":*:%d", dcc->priv->botnet);
-  Add_Request (I_DCCALIAS | I_LOG, ch, F_T_ACTION | F_BOTNET, "%s", args);
+  Add_Request (I_DCCALIAS, ch, F_T_ACTION | F_BOTNET, "%s", args);
   return -1;	/* no log it */
 }
 

@@ -107,6 +107,7 @@ Which modules are available?
     Were planned to implement some other modules but they are either pending
     or unrequested. Feel free to write them or ask someone to implement:
    botnet	- implementation of network of bots
+   db		- unified interface (bindtables) to database.
    dcc-new	- chat subsystem access for any unregistered user
    eggdropnet	- implementation of eggdrop's botnet protocol
    expirehosts	- deletes hosts and users not seen for too long time

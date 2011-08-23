@@ -12,7 +12,7 @@ Preamble.
     *.help - will be installed to help directory without last name part
     (i.e.".help"); accvs.m4, accvs.api, accvs.cfg and accvs.POTFILES -
     additions to main configure.in, doc/modules.api, core/foxeye.h and
-    po/POTFILES.in, for CVS only, are not distributable.
+    po/POTFILES.in, for Git only, are not distributable.
   Module have to have one or more of: interface, bind table, binding, or
     script interface. See descriptions below for ones.
   Each module is fully independent part with own functionality that may
@@ -66,12 +66,19 @@ What is a bind table.
   The bind table is check table contains one or more bindings what can
     be checked for matching input string. Each bind table can be checked
     with only bot interface and must contain bindings one type and one
-    purpose.
+    purpose. In other words, when some event happens then bind table
+    will be checked for matching to some key. Bind table there is a list
+    of bindings for exactly one type of events.
 
 What is a binding.
 ----------------
   The binding consist of string to match and bound function. When some
-    input is matched to string, bound function is called.
+    input is matched to string, bound function is called. In other words,
+    binding is key and function to react on some event (see description
+    of bind table above). Bindings can be of two types: binary (which
+    have interaction through C function call) and scripting (through some
+    interpreter module, see documentation). Each type of bindings have
+    own set of parameters and return values, see below.
 
 Client records in listfile. Names convention.
 ------------------------------------------

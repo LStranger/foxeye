@@ -17,6 +17,8 @@
  *
  * This file is a part of FoxEye IRCd module: connections and few bindings that
  *   require IrcdLock lock or (de)allocation of peer_priv, CLIENT, or LINK.
+ *
+ * TODO: make support for script bindings!
  */
 
 #include "foxeye.h"
