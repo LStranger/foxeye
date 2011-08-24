@@ -176,6 +176,7 @@ static bool _charset_is_utf = FALSE;
 
 void foxeye_setlocale (void)
 {
+  int changed = 1;
   char new_locale[SHORT_STRING];
 
   snprintf (new_locale, sizeof(new_locale), "%s.%s", locale, Charset);
@@ -195,20 +196,21 @@ void foxeye_setlocale (void)
       c = safe_strchr (deflocale, '.');
       if (c)
 	strfcpy (Charset, ++c, sizeof(Charset)); /* reset charset */
+      changed = 0;
     }
     else
     {
       ERROR ("init: failed to set locale to %s.%s, reverted to %s!", locale,
 	     Charset, new_locale);
       strfcpy (Charset, CHARSET_8BIT, sizeof(Charset)); /* reset charset */
-      setenv("LC_ALL", new_locale, 1); /* reset environment */
     }
-  } else
-    setenv("LC_ALL", new_locale, 1); /* reset environment */
+  }
   else if (!strncasecmp (Charset, "utf", 3))
     _charset_is_utf = TRUE;
   else
     _charset_is_utf = FALSE;
+  if (changed)
+    setenv("LC_ALL", new_locale, 1); /* reset environment */
 #ifdef ENABLE_NLS
   bindtextdomain (PACKAGE, LOCALEDIR);
   textdomain (PACKAGE);

@@ -31,6 +31,7 @@
 #include <sys/utsname.h>
 #include <errno.h>
 #include <signal.h>
+#include <locale.h>
 
 #include "init.h"
 #include "direct.h"
