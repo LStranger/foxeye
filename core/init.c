@@ -1766,7 +1766,7 @@ static int dc_binds (struct peer_t *dcc, char *args)
 	else
 	  New_Request (dcc->iface, 0, "%-23.23s %s", NONULLP(b->key), flags);
       }
-      if (bt->type == B_KEYWORD && bind->prev)
+      if (bt->type == B_KEYWORD && b->prev)
 	b = b->prev;
       else if (bt->type == B_UNIQ || bt->type == B_KEYWORD)
       {
@@ -1811,7 +1811,7 @@ static int dc_binds (struct peer_t *dcc, char *args)
 	else
 	  New_Request (dcc->iface, 0, "%-23.23s %s", NONULLP(b->key), flags);
       }
-      if (bt->type == B_KEYWORD && bind->prev)
+      if (bt->type == B_KEYWORD && b->prev)
 	b = b->prev;
       else if (bt->type == B_UNIQ || bt->type == B_KEYWORD)
       {
