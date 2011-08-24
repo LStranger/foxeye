@@ -399,14 +399,13 @@ int main (int argc, char *argv[])
   char buff[STRING];
   pthread_t sit;
 
-  if ((c = getenv ("LANG")))
+  if ((c = setlocale (LC_ALL, ""))) /* set locale according to environment now */
     strfcpy (locale, c, sizeof(locale));
   if ((c = strchr (locale, '.')))
   {
     *c++ = 0;
     strfcpy (Charset, c, sizeof(Charset));
   }
-  foxeye_setlocale();
   buff[0] = 0;
   /* parse command line parameters */
   while ((ch = getopt (argc, argv, "cdDg:hmn:qrtvw")) > 0)

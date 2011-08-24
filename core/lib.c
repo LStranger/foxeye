@@ -201,8 +201,10 @@ void foxeye_setlocale (void)
       ERROR ("init: failed to set locale to %s.%s, reverted to %s!", locale,
 	     Charset, new_locale);
       strfcpy (Charset, CHARSET_8BIT, sizeof(Charset)); /* reset charset */
+      setenv("LC_ALL", new_locale, 1); /* reset environment */
     }
-  }
+  } else
+    setenv("LC_ALL", new_locale, 1); /* reset environment */
   else if (!strncasecmp (Charset, "utf", 3))
     _charset_is_utf = TRUE;
   else

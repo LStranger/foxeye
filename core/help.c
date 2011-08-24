@@ -337,7 +337,7 @@ static int _help_all_topics (HELPGR *what, INTERFACE *iface, userflag gf,
 {
   const char *key;
   LEAF *leaf = NULL;
-  binding_t *b;
+  struct binding_t *b;
   char buf[HELP_LINE_SIZE+2];
   size_t s = 0, ns;
   int r = 0;

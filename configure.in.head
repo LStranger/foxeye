@@ -175,6 +175,12 @@ AC_SUBST(MAKEIFGNU)
 AC_SUBST(MAKEELSE)
 AC_SUBST(MAKEENDIF)
 
+dnl AM_ICONV uses strange variable ac_t in reports so reset it now
+ac_t=
+AC_CHECK_ICONV
+
+AC_CHECK_IPV6
+
 dnl Checks for multithreaded heap managers
 AC_SEARCH_LIBS(mallocctl, mtmalloc) dnl Sun's MTmalloc
 AC_HAVE_LIBRARY(hoard) dnl Not sure if it works that way
@@ -195,12 +201,6 @@ if test "$fe_cv_static" = no; then
 	fe_cv_static=yes
     ])
 fi
-
-dnl AM_ICONV uses strange variable ac_t in reports so reset it now
-ac_t=
-AC_CHECK_ICONV
-
-AC_CHECK_IPV6
 
 dnl Checks for threads.
 AC_CHECK_LDFLAG(fe_cv_add_pthread, -pthread, CFLAGS)

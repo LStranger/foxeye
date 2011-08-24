@@ -11,6 +11,7 @@ TODO:
 --- [0.10.0]
 Wed Aug 24 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/help.c: fixed help on all topics which printed extra topics.
+	* core/main.c, core/lib.c: added setting environment on locale change.
 
 Tue Aug 23 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* doc/modules.api: updated documentation a bit.
