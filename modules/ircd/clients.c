@@ -548,7 +548,7 @@ static int ircd_who_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 	    if ((m->mode & mmf) == mmf) /* use "o" parameter against chanmode */
 	      if (mc || !(m->who->umode & A_INVISIBLE))
 		_ircd_who_reply (cl, CLIENT_IS_LOCAL (m->who) ? me : m->who->cs,
-				 m->who, m);
+				 m->who, m); /* ME can be only in QUIET chan */
       }
     }
     else if ((tgt = ircd_find_client(mask, NULL)) && !tgt->hold_upto &&

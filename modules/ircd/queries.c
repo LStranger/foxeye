@@ -896,14 +896,14 @@ static void _ircd_do_whois (CLIENT *cl, CLIENT *tgt, CLIENT *me)
   char buf[IRCMSGLEN];
 
   ircd_do_unumeric (cl, RPL_WHOISUSER, tgt, 0, tgt->fname);
-  if (CLIENT_IS_LOCAL (tgt))
+  if (CLIENT_IS_ME(tgt) || CLIENT_IS_LOCAL (tgt))
     ircd_do_unumeric (cl, RPL_WHOISSERVER, me, 0, tgt->nick);
   else
     ircd_do_unumeric (cl, RPL_WHOISSERVER, tgt->cs, 0, tgt->nick);
   if (tgt->umode & (A_OP | A_HALFOP))
     //TODO: notify target about whois on them
     ircd_do_unumeric (cl, RPL_WHOISOPERATOR, tgt, 0, NULL);
-  if (CLIENT_IS_LOCAL (tgt))
+  if (!CLIENT_IS_ME(tgt) && CLIENT_IS_LOCAL (tgt))
   {
     snprintf (buf, sizeof(buf), "%u", (unsigned int)(Time - tgt->via->noidle));
     ircd_do_unumeric (cl, RPL_WHOISIDLE, tgt, 0, buf);
@@ -939,7 +939,7 @@ static void _ircd_do_whois (CLIENT *cl, CLIENT *tgt, CLIENT *me)
   if (ptr)
     ircd_do_unumeric (cl, RPL_WHOISCHANNELS, tgt, 0, buf);
 #if IRCD_USES_ICONV
-  if (CLIENT_IS_LOCAL (tgt))
+  if (!CLIENT_IS_ME(tgt) && CLIENT_IS_LOCAL (tgt))
     ircd_do_unumeric (cl, RPL_WHOISCHARSET, tgt, 0,
 		      Conversion_Charset (tgt->via->p.iface->conv));
 #endif
@@ -982,7 +982,7 @@ static inline int _ircd_query_whois (IRCD *ircd, CLIENT *cl, struct peer_priv *v
     }
     else if (strpbrk (c, "*?"))
     {
-      if (CLIENT_IS_LOCAL (cl))
+      if (CLIENT_IS_LOCAL (cl))		/* cl cannot be ME */
       {
 	NODE *t = ircd->clients;
 	LEAF *l = NULL;

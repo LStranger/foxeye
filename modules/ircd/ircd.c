@@ -4145,7 +4145,7 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
 SigFunction ModuleInit (char *args)
 {
   CheckVersion;
-  return NULL;
+  //return NULL;
   /* create main bindtables */
 //  BTIrcdLinked = Add_Bindtable ("ircd-got-server", B_MASK);
 //  BTIrcdUnlinked = Add_Bindtable ("ircd-lost-server", B_MASK);
@@ -4188,11 +4188,11 @@ SigFunction ModuleInit (char *args)
 #endif
   Add_Binding ("ircd-stats-reply", "l", 0, 0, (Function)&_istats_l, NULL);
 //  Add_Binding ("ircd-stats-reply", "m", 0, 0, (Function)&_istats_m, NULL);
+  Ircd = safe_calloc (1, sizeof(IRCD));
   ircd_channel_proto_start (Ircd);
   ircd_client_proto_start();
   ircd_server_proto_start();
   ircd_queries_proto_start();
-  Ircd = safe_calloc (1, sizeof(IRCD));
   /* need to add interface into Ircd->iface ASAP! */
   _ircd_corrections = FloodType ("ircd-errors"); /* sets corrections */
   NewTimer (I_MODULE, "ircd", S_TIMEOUT, 1, 0, 0, 0);
