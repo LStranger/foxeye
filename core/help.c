@@ -337,15 +337,18 @@ static int _help_all_topics (HELPGR *what, INTERFACE *iface, userflag gf,
 {
   const char *key;
   LEAF *leaf = NULL;
+  binding_t *b;
   char buf[HELP_LINE_SIZE+2];
   size_t s = 0, ns;
   int r = 0;
 
   while ((leaf = Next_Leaf (what->tree, leaf, &key)))
   {
-    if (Check_Bindtable (table, key, gf, cf, NULL) != NULL)
+    if ((b = Check_Bindtable (table, key, gf, cf, NULL)) != NULL)
     {
-      /* this is first? */
+      if (strcmp(key, b->key))		/* it's matched but just similar */
+	continue;
+      /* is this first? */
       if (!r)
       {
 	/* mode dependent message? */

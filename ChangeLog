@@ -9,6 +9,9 @@ TODO:
 	* core/direct.c: to add support for charset and comments in motd file.
 
 --- [0.10.0]
+Wed Aug 24 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/help.c: fixed help on all topics which printed extra topics.
+
 Tue Aug 23 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* doc/modules.api: updated documentation a bit.
 	* core/direct.c: fixed broken direct chat (messages were dropped).
