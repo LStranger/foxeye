@@ -14,6 +14,7 @@ Wed Aug 24 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/main.c, core/lib.c: added setting environment on locale change.
 	* modules/ircd/channels.c: fixed undefined state of mbrtowc.
 	* modules/ircd/*.c: fixed first init bugs.
+	* core/init.c: fixed incomplete implementation of B_KEYWORD type.
 
 Tue Aug 23 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* doc/modules.api: updated documentation a bit.

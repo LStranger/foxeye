@@ -70,7 +70,7 @@ static void _bt_convert2uniqtype (struct bindtable_t *bt, bttype_t type)
       b = b->next;
     }
   bt->type = type;				/* bindtable is uniqued now */
-  if (type != B_UNIQ)
+  if (type != B_UNIQ && type != B_KEYWORD)
     return;
   b = bt->list.bind;
   bt->list.tree = NULL;
@@ -130,6 +130,7 @@ struct bindtable_t *Add_Bindtable (const char *name, bttype_t type)
     ERROR ("binds: illegal redefinition of type of bindtable!");
   else if (bt->type == B_UNDEF && type != B_UNDEF) switch (type)
   {				/* convert from B_UNDEF to new table type */
+    case B_KEYWORD:
     case B_UNIQ:
     case B_UCOMPL:
     case B_UNIQMASK:
@@ -1739,7 +1740,7 @@ static int dc_binds (struct peer_t *dcc, char *args)
     if (!bt)
       return 0;
     New_Request (dcc->iface, 0, "Key                     Flags   Interpreter     Command");
-    if (bt->type == B_UNIQ)
+    if (bt->type == B_UNIQ || bt->type == B_KEYWORD)
     {
       if ((l = Next_Leaf (bt->list.tree, NULL, NULL)))
 	b = l->s.data;
@@ -1765,7 +1766,9 @@ static int dc_binds (struct peer_t *dcc, char *args)
 	else
 	  New_Request (dcc->iface, 0, "%-23.23s %s", NONULLP(b->key), flags);
       }
-      if (bt->type == B_UNIQ)
+      if (bt->type == B_KEYWORD && bind->prev)
+	b = b->prev;
+      else if (bt->type == B_UNIQ || bt->type == B_KEYWORD)
       {
 	if ((l = Next_Leaf (bt->list.tree, l, NULL)))
 	  b = l->s.data;
@@ -1782,7 +1785,7 @@ static int dc_binds (struct peer_t *dcc, char *args)
       continue;
     New_Request (dcc->iface, 0, _("  Bindtable %s:"), NONULLP(bt->name));
     New_Request (dcc->iface, 0, "Key                     Flags   Interpreter     Command");
-    if (bt->type == B_UNIQ)
+    if (bt->type == B_UNIQ || bt->type == B_KEYWORD)
     {
       if ((l = Next_Leaf (bt->list.tree, NULL, NULL)))
 	b = l->s.data;
@@ -1808,7 +1811,9 @@ static int dc_binds (struct peer_t *dcc, char *args)
 	else
 	  New_Request (dcc->iface, 0, "%-23.23s %s", NONULLP(b->key), flags);
       }
-      if (bt->type == B_UNIQ)
+      if (bt->type == B_KEYWORD && bind->prev)
+	b = b->prev;
+      else if (bt->type == B_UNIQ || bt->type == B_KEYWORD)
       {
 	if ((l = Next_Leaf (bt->list.tree, l, NULL)))
 	  b = l->s.data;
@@ -2025,7 +2030,7 @@ void init (void)
   /* empty all bindtables */
   for (bt = Tables; bt; bt = bt->next)
   {
-    if (bt->type == B_UNIQ)
+    if (bt->type == B_UNIQ || bt->type == B_KEYWORD)
       Destroy_Tree (&bt->list.tree, &_bind_destroy);
     else while (bt->list.bind)
     {
