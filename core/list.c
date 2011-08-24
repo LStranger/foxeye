@@ -2962,6 +2962,7 @@ static int dc_chnick (struct peer_t *dcc, char *args)
 
   if (!(oldname = args) || !(newname = gettoken (args, &args)))
     return 0;
+  /* TODO: check permissions - only owner can change masters' Lnames */
   i = Change_Lname (newname, oldname);
   *args = ' ';
   if (i && !(Get_Clientflags (newname, NULL) & (U_SPECIAL | U_UNSHARED)))

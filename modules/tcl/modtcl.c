@@ -88,6 +88,10 @@ static tcl_bindtable tcl_bindtables[] = {
 
 static Tcl_Interp *Interp = NULL;
 
+#ifdef HAVE_TCL_SETSYSTEMENCODING
+struct conversion_t *_Tcl_Conversion = NULL;
+#endif
+
 static char tcl_default_network[NAMEMAX+1] = "irc";
 static long int tcl_max_timer = 2 * 24 * 3600;
 
@@ -612,6 +616,10 @@ static char *_trace_str (ClientData data, Tcl_Interp *tcl,
 {
   int i;
   char *s;
+#ifdef HAVE_TCL_SETSYSTEMENCODING
+  char buf[LONG_STRING];
+  char *ptr;
+#endif
 
   if (flags & TCL_TRACE_UNSETS)	/* deleting it */
   {
@@ -627,6 +635,13 @@ static char *_trace_str (ClientData data, Tcl_Interp *tcl,
     if (!(s = Tcl_GetStringFromObj (Tcl_ObjGetVar2 (tcl,
 	vardata->name, NULL, TCL_GLOBAL_ONLY), &i)))
       return Tcl_GetStringResult (tcl);
+# ifdef HAVE_TCL_SETSYSTEMENCODING
+    ptr = buf;
+    i = Do_Conversion(_Tcl_Conversion, &ptr, sizeof(buf), s, i);
+    if (ptr == buf)
+      buf[i] = '\0';
+    s = ptr;
+# endif
 #else
     if (!(s = Tcl_GetVar2 (tcl, name1, name2, TCL_GLOBAL_ONLY)))
       return tcl->result;
@@ -642,9 +657,18 @@ static char *_trace_str (ClientData data, Tcl_Interp *tcl,
   {
     dprint (4, "tcl:_trace_str: read %s.%s", name1, NONULL(name2));
 #ifdef HAVE_TCL8X
+# ifdef HAVE_TCL_SETSYSTEMENCODING
+    ptr = buf;
+    i = Undo_Conversion(_Tcl_Conversion, &ptr, sizeof(buf), vardata->data,
+			safe_strlen (vardata->data));
+    if (ptr == buf)
+      buf[i] = '\0';
+# else
+    ptr = vardata->data;
+    i = safe_strlen (vardata->data);
+# endif
     Tcl_ObjSetVar2 (tcl, vardata->name, NULL,
-		Tcl_NewStringObj (vardata->data, safe_strlen (vardata->data)),
-		TCL_GLOBAL_ONLY);
+		    Tcl_NewStringObj (ptr, i), TCL_GLOBAL_ONLY);
 #else
     Tcl_SetVar2 (tcl, name1, name2, vardata->data, TCL_GLOBAL_ONLY);
 #endif
@@ -669,6 +693,7 @@ static char *_trace_stat (ClientData data, Tcl_Interp *tcl,
   {
     dprint (4, "tcl:_trace_stat: tried to change %s.%s", name1, NONULL(name2));
 #ifdef HAVE_TCL8X
+    /* TODO: use Undo_Conversion here? */
     Tcl_ObjSetVar2 (tcl, vardata->name, NULL,
 		Tcl_NewStringObj (vardata->data, safe_strlen (vardata->data)),
 		TCL_GLOBAL_ONLY);
@@ -755,6 +780,7 @@ static int tcl_register_var (const char *name, void *ptr, size_t s)
       break;
     default:	/* string */
 #ifdef HAVE_TCL8X
+      /* TODO: use Undo_Conversion here? */
       Tcl_ObjSetVar2 (Interp, data->name, NULL,
 		      Tcl_NewStringObj (ptr, safe_strlen (ptr)),
 		      TCL_GLOBAL_ONLY);
@@ -862,6 +888,7 @@ static int dc_tcl (struct peer_t *from, char *args)
 #else
     if ((c = Interp->result))
 #endif
+      /* TODO: do charset conversion here too */
       New_Request (from->iface, 0, _("TCL: result was: %s"), c);
   }
   else
@@ -884,6 +911,11 @@ static int _tcl_interface (char *fname, int argc, const char *argv[])
   char cmd[40];				/* the same */
   char vn[8];
 #endif
+#ifdef HAVE_TCL_SETSYSTEMENCODING
+  char buf[LONG_STRING];
+#endif
+  char *ptr;
+  size_t psize;
 
   if (!fname || !*fname)		/* nothing to do */
     return 0;
@@ -901,9 +933,19 @@ static int _tcl_interface (char *fname, int argc, const char *argv[])
   if (argc > 8)
     argc = 8;
 #ifdef HAVE_TCLEVALOBJV
-  objv[0] = Tcl_NewStringObj (fname, safe_strlen (fname));
-  for (i = 0; i < argc; i++)
-    objv[i + 1] = Tcl_NewStringObj (argv[i], safe_strlen (argv[i]));
+  objv[0] = Tcl_NewStringObj (fname, safe_strlen (fname)); /* assume it's ascii */
+  for (i = 0; i < argc; i++) {
+    psize = safe_strlen (argv[i]);
+#ifdef HAVE_TCL_SETSYSTEMENCODING
+    ptr = buf;
+    psize = Undo_Conversion(_Tcl_Conversion, &ptr, sizeof(buf), argv[i], psize);
+    if (ptr == buf)
+      buf[psize] = '\0';
+#else
+    ptr = argv[i];
+#endif
+    objv[i + 1] = Tcl_NewStringObj (ptr, psize);
+  }
   i = Tcl_EvalObjv (Interp, argc + 1, objv, TCL_GLOBAL_ONLY);
 #else
   cmd[0] = 0;
@@ -911,7 +953,16 @@ static int _tcl_interface (char *fname, int argc, const char *argv[])
   {
     snprintf (vn, sizeof(vn), " $_a%d", i);
     /* casting (char *) below due to wrong prototypes in old tcl */
-    Tcl_SetVar (Interp, &vn[2], (char *)argv[i], TCL_GLOBAL_ONLY); /* _aX */
+#ifdef HAVE_TCL_SETSYSTEMENCODING
+    ptr = buf;
+    psize = Undo_Conversion(_Tcl_Conversion, &ptr, sizeof(buf), argv[i],
+			    safe_strlen(argv[i]));
+    if (ptr == buf)
+      buf[psize] = '\0';
+#else
+    ptr = argv[i];
+#endif
+    Tcl_SetVar (Interp, &vn[2], (char *)ptr, TCL_GLOBAL_ONLY);	/* _aX */
     strfcat (cmd, vn, sizeof(cmd));				/* " $_aX" */
   }
   i = Tcl_VarEval (Interp, fname, cmd, NULL);
@@ -919,7 +970,17 @@ static int _tcl_interface (char *fname, int argc, const char *argv[])
   if (i == TCL_OK)			/* setting BindResult if all went OK */
   {
 #ifdef HAVE_TCL8X
+# ifdef HAVE_TCL_SETSYSTEMENCODING
+    char buf[LONG_STRING];
+    char *ptr = buf;
+    size_t s;
+# endif
     BindResult = Tcl_GetStringResult (Interp);
+# ifdef HAVE_TCL_SETSYSTEMENCODING
+    s = Do_Conversion(_Tcl_Conversion, &ptr, sizeof(buf), BindResult,
+		      safe_strlen(BindResult));
+    BindResult = Tcl_GetString(Tcl_NewStringObj(ptr, s));
+# endif
 #else
     BindResult = Interp->result;
 #endif
@@ -970,6 +1031,10 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
       }
       Tcl_DeleteInterp (Interp);	/* stop interpreter */
       Interp = NULL;
+#ifdef HAVE_TCL_SETSYSTEMENCODING
+      Free_Conversion(_Tcl_Conversion);
+      _Tcl_Conversion = NULL;
+#endif
       UnregisterVariable ("tcl-default-network");
       UnregisterVariable ("tcl-max-timer");
       Delete_Help ("tcl");
@@ -1035,8 +1100,9 @@ SigFunction ModuleInit (char *args)
   Interp = Tcl_CreateInterp();
 #ifdef HAVE_TCL_SETSYSTEMENCODING
   if (*Charset && Tcl_SetSystemEncoding (Interp, Charset) != TCL_OK)
-    Add_Request (I_LOG, "*", F_BOOT, "Warning: charset %s unknown for Tcl",
-		 Charset);
+    Add_Request (I_LOG, "*", F_BOOT, "Warning: charset %s unknown for Tcl: %s",
+		 Charset, Tcl_GetStringResult (Interp));
+  _Tcl_Conversion = Get_Conversion("UTF-8");
 #endif
   /* add interface from TCL to core */
   _tcl_add_own_procs();

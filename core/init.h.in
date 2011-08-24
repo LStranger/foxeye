@@ -45,7 +45,7 @@ WHERE modeflag ReportMask	INITVAL(0);
 
 WHERE time_t StartTime;
 
-WHERE char TimeString[20]	INITVAL("");	/* "%H:%M" "%e %b" */
+WHERE char TimeString[24]	INITVAL("");	/* "%H:%M" "%e %b" */
 #define DateString (TimeString+6)
 WHERE time_t Time;
 
