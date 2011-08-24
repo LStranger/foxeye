@@ -55,6 +55,7 @@ idx_t AnswerSocket (idx_t);
 const char *SocketDomain (idx_t, unsigned short *); /* returns nonull value! */
 const char *SocketIP (idx_t);			/* the same but text IP */
 char *SocketError (int, char *, size_t);
+void PollSockets (int);				/* sleep for dispatcher */
 
 int _fe_init_sockets (void);
 

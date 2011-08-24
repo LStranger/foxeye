@@ -15,6 +15,11 @@ Wed Aug 24 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed undefined state of mbrtowc.
 	* modules/ircd/*.c: fixed first init bugs.
 	* core/init.c: fixed incomplete implementation of B_KEYWORD type.
+	* core/dispatcher.c: renamed queue_t into queue_i (queue item).
+	* core/dispatcher.c: fixed deadlock on SIGTERM.
+	* core/dispatcher.c, core/socket.*: lowered CPU consuming by replacing
+	  nanosleep timeout with poll timeout.
+	* core/direct.c: fixed CPU eating on password waiting.
 
 Tue Aug 23 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* doc/modules.api: updated documentation a bit.

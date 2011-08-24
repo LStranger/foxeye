@@ -978,6 +978,7 @@ static void get_chat (char *name, char *ident, char *host, peer_t *dcc,
   time_t t;
   int telnet = 0;
   struct clrec_t *user;
+  struct timespec ts;
 
   /* turn off echo if telnet and check password */
   t = time(NULL) + dcc_timeout;
@@ -1005,10 +1006,14 @@ static void get_chat (char *name, char *ident, char *host, peer_t *dcc,
   while (sz && time(NULL) < t && (pp = Peer_Put (dcc, &buf[sp], &sz)) >= 0)
     sp += pp;
   /* wait password and check it */
+  ts.tv_sec = 0;
+  ts.tv_nsec = 100000000; /* check each 0.1 sec for input */
   while (time(NULL) < t)
     if ((sp = Peer_Put (dcc, "", &sz)) < 0 ||	/* push connchain buffers */
 	(sp = Peer_Get (dcc, buf, SHORT_STRING)))
       break;				/* in both cases on error or success */
+    else
+      nanosleep(&ts, NULL);
   if (sp == 0)
   {
     *msg = "login timeout";
@@ -1248,7 +1253,7 @@ static void *_accept_port (void *input_data)
   acptr->id = -1;
   pthread_cleanup_push (&_accept_port_cleanup, input_data);
   ts1.tv_sec = 0;
-  ts1.tv_nsec = 4000000; /* sleep 4 ms */
+  ts1.tv_nsec = 50000000; /* sleep 50 ms */
   while (acptr->tst == 0)
     nanosleep (&ts1, &ts2);		/* wait for prehandler */
   domain = SocketDomain (acptr->socket, &p);

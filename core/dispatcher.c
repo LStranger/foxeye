@@ -30,6 +30,7 @@
 #include "wtmp.h"
 #include "tree.h"
 #include "conversion.h"
+#include "socket.h"
 
 #ifndef STATIC		/* it's simpler to have dlcose() here */
 # ifdef HAVE_DLFCN_H
@@ -54,18 +55,18 @@ typedef struct request_t
   REQUEST a;
 } request_t;
 
-typedef struct queue_t
+typedef struct queue_i
 {
   request_t *request;
-  struct queue_t *next;
-} queue_t;
+  struct queue_i *next;
+} queue_i;
 
 typedef struct ifi_t
 {
   INTERFACE a;					/* must be first member! */
-  queue_t *head;
-  queue_t *tail;
-  queue_t *pq;
+  queue_i *head;
+  queue_i *tail;
+  queue_i *pq;
 } ifi_t;
 
 typedef struct ifst_t
@@ -113,8 +114,8 @@ static int is_in_shutdown = 0;
 void bot_shutdown (char *message, int e)
 {
   unsigned int i = 0;
-  ifi_t *con = NULL;
-  queue_t *q;
+  ifi_t *con = NULL, *cur;
+  queue_i *q;
   ifsig_t sig;
 
   if (message && *message)
@@ -131,13 +132,18 @@ void bot_shutdown (char *message, int e)
   /* shutdown all connections */
   for (; i < _Inum; i++)
   {
-    if (Interface[i]->a.ift & I_CONSOLE)
-      con = Interface[i];
-    else if ((Interface[i]->a.ift & I_CONNECT) &&
-	     !(Interface[i]->a.ift & I_DIED) && Interface[i]->a.IFSignal)
+    cur = Interface[i];
+    if (cur->a.ift & I_CONSOLE)
+      con = cur;
+    else if ((cur->a.ift & I_CONNECT) &&
+	     !(cur->a.ift & I_DIED) && cur->a.IFSignal)
     {
 //      DBG ("shutdown %d: 0x%x, name %s", i, Interface[i]->a.ift, Interface[i]->a.name);
-      Interface[i]->a.IFSignal (&Interface[i]->a, sig);
+      if (!e)
+	pthread_mutex_unlock (&LockInum);
+      cur->a.IFSignal (&cur->a, sig);
+      if (!e)
+	pthread_mutex_lock (&LockInum);
     }
   }
   /* shutdown/terminate all modules */
@@ -200,12 +206,12 @@ void bot_shutdown (char *message, int e)
 
 static pthread_mutex_t LockIface;
 
-ALLOCATABLE_TYPE (queue_t, _Q, next) /* alloc_queue_t(), free_queue_t() */
+ALLOCATABLE_TYPE (queue_i, _Q, next) /* alloc_queue_i(), free_queue_i() */
 
 /* locks on input: LockIface */
 static int add2queue (ifi_t *to, request_t *req)
 {
-  queue_t *newq;
+  queue_i *newq;
 
   if (!req->a.mask_if || (to->a.ift & (I_LOCKED | I_DIED)))
     return 0;			/* request to nobody? */
@@ -213,7 +219,7 @@ static int add2queue (ifi_t *to, request_t *req)
     if (!(to = (ifi_t *)to->a.prev)) /* get from clone to parent */
       return 0;			/* it has no parent with request receiver! */
   /* we get our valid target so get free queue element and setup it */
-  newq = alloc_queue_t();	/* newq->next is undefined now */
+  newq = alloc_queue_i();	/* newq->next is undefined now */
   newq->request = req;
   req->x.used++;
   to->pq = newq;
@@ -233,7 +239,7 @@ static int add2queue (ifi_t *to, request_t *req)
       to->head = newq;
     else				/* insert somewhere */
     {
-      queue_t *tmpq = to->head;
+      queue_i *tmpq = to->head;
 
       while (tmpq && tmpq->next != newq->next) tmpq = tmpq->next;
       if (tmpq)
@@ -512,9 +518,9 @@ static void vsadd_request (ifi_t *to, iftype_t ift, const char *mask,
 }
 
 /* locks on input: LockIface */
-static int delete_request (ifi_t *i, queue_t *q)
+static int delete_request (ifi_t *i, queue_i *q)
 {
-  queue_t *last;
+  queue_i *last;
   request_t *req;
 
   if (!q)
@@ -538,7 +544,7 @@ static int delete_request (ifi_t *i, queue_t *q)
       i->tail = last;
   }
   req = q->request;
-  free_queue_t (q);
+  free_queue_i (q);
   /* if this request is last, free it */
   if (req->x.used == 1)
     free_request_t (req);
@@ -576,7 +582,7 @@ static int relay_request (request_t *req)
 static int _get_current (void)
 {
   int out;
-  queue_t *curq = Current->head;
+  queue_i *curq = Current->head;
 
   /* interface may be unused so lock semaphore */
   if (!Current->a.ift || (Current->a.ift & I_DIED))
@@ -1053,7 +1059,7 @@ INTERFACE *Find_Iface (iftype_t ift, const char *name)
 
 int Rename_Iface (INTERFACE *iface, const char *newname)
 {
-  queue_t *q;
+  queue_i *q;
 
   pthread_mutex_lock (&LockIface);
   if (unknown_iface (iface))
@@ -1289,7 +1295,7 @@ int dispatcher (INTERFACE *start_if)
   pid_t pid;
   pthread_mutexattr_t attr;
   char *oldpid;
-  struct timespec tp;
+  //struct timespec tp;
 
   /* check if bot already runs */
   pidfd = set_pid_path();
@@ -1410,8 +1416,8 @@ int dispatcher (INTERFACE *start_if)
   srand48((long)pid);
   /* booted OK, send all messages :) */
   end_boot();
-  tp.tv_sec = 0;
-  tp.tv_nsec = 10000000L;		/* 10ms timeout per full cycle */
+  //tp.tv_sec = 0;
+  //tp.tv_nsec = 10000000L;		/* 10ms timeout per full cycle */
   FOREVER
   {
     if (_got_signal)
@@ -1449,10 +1455,13 @@ int dispatcher (INTERFACE *start_if)
     pthread_mutex_unlock (&LockIface);
     if (i >= max)
     {
+      for (i = 0; i < _Inum; i++)
+	if (Interface[i]->a.qsize > 0)
+	  break;
+      PollSockets((i < _Inum) ? 1 : 0); /* sleep up to 200 ms */
       /* some cleanup stuff */
       i = 0;
       count = 0;
-      nanosleep (&tp, NULL);
     }
     if (!i)
     {

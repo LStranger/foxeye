@@ -1855,6 +1855,7 @@ static void _ircd_log_channel (IRCD *ircd, const char *name, flag_t fl)
   register __ircd_logger *log;
 
   /* create channel and add ME to it */
+  DBG("adding system channel %s", name);
   memb = ircd_new_to_channel (ircd, NULL, name, &ME,
 			      A_INVISIBLE | A_MODERATED | A_TOPICLOCK |
 			      A_QUIET | A_ANONYMOUS | A_NOOUTSIDE);

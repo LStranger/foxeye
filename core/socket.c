@@ -120,7 +120,7 @@ static idx_t allocate_socket ()
   if (idx == _Salloc)
     return -1; /* no free sockets! */
   Pollfd[idx].fd = -1;
-  Pollfd[idx].events = POLLIN | POLLPRI | POLLOUT;
+  Pollfd[idx].events = POLLIN | POLLPRI;
   Pollfd[idx].revents = 0;
   Socket[idx].domain = NULL;
   Socket[idx].ipname = NULL;
@@ -157,6 +157,7 @@ ssize_t ReadSocket (char *buf, idx_t idx, size_t sr, int mode)
   {
     if (!rev)
       return (E_AGAIN);		/* still waiting for connection */
+    Pollfd[idx].events = POLLIN | POLLPRI; /* reset it now */
     sock->ready = TRUE;		/* connection established or failed */
   }
   if (!rev && mode == M_POLL)
@@ -205,6 +206,10 @@ ssize_t WriteSocket (idx_t idx, const char *buf, size_t *ptr, size_t *sw, int mo
   DBG ("trying write socket %hd: %p +%zu", idx, &buf[*ptr], *sw);
   sg = write (Pollfd[idx].fd, &buf[*ptr], *sw);
 //  Pollfd[idx].revents = 0;		/* we wrote socket, reset state */
+  if (sg == (ssize_t)*sw)		/* now waiting for data only */
+    Pollfd[idx].events = POLLIN | POLLPRI;
+  else					/* or else waiting for out too */
+    Pollfd[idx].events = POLLIN | POLLPRI | POLLOUT;
   if (sg < 0)
     return (errno == EAGAIN) ? 0 : (E_ERRNO - errno);
   else if (sg == 0)			/* remote end closed connection */
@@ -411,6 +416,7 @@ int SetupSocket(idx_t idx, const char *domain, unsigned short port,
     if ((i = connect (sockfd, &addr.sa, len)) < 0)
       return (E_ERRNO - errno);
     Socket[idx].port = port;
+    Pollfd[idx].events = POLLIN | POLLPRI | POLLOUT; /* POLLOUT set when connected */
   }
 #ifdef HAVE_SYS_FILIO_H		/* non-BSDish systems have not O_ASYNC flag */
   i = 1;
@@ -585,6 +591,23 @@ char *SocketError (int er, char *buf, size_t s)
       strfcpy (buf, "unknown socket error", s);
   }
   return buf;
+}
+
+/* this function is called from dispatcher instead of nanosleep */
+void PollSockets(int check_out)
+{
+  register short i;
+
+  if (check_out) {		/* we have something in queue */
+    pthread_mutex_lock (&LockPoll);
+    for (i = 0; i < _Snum; i++) /* check if there is data to out */
+      if (Pollfd[i].fd >= 0 && (Pollfd[i].events & POLLOUT))
+	break;
+    if (i < _Snum)		/* ok, we know about the queue */
+      check_out = 0;		/* so allow the timeout */
+    pthread_mutex_unlock (&LockPoll);
+  }
+  poll(Pollfd, _Snum, check_out ? 10 : POLL_TIMEOUT);
 }
 
 int _fe_init_sockets (void)
