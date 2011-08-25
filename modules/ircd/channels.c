@@ -1875,7 +1875,7 @@ static void _ircd_log_channel (IRCD *ircd, const char *name, flag_t fl)
   {
     _ircd_internal_logger_list_a += _IRCD_LOGGER_STEP;
     safe_realloc ((void **)&_ircd_internal_logger_list,
-	_ircd_internal_logger_list_a * sizeof(&_ircd_internal_logger_list[0]));
+		  _ircd_internal_logger_list_a * sizeof(__ircd_logger));
   }
   log = &_ircd_internal_logger_list[_ircd_internal_logger_list_n++];
   log->m = memb->chan;
