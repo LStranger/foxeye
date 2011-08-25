@@ -1476,6 +1476,7 @@ int Listen_Port (char *client, const char *host, unsigned short sport,
     acptr->lport = acptr->eport = sport;
   else
     _assign_port_range (&acptr->lport, &acptr->eport);
+  acptr->socket = idx;
   if (pthread_create (&acptr->th, NULL, &_listen_port, acptr))
   {
     KillSocket (&idx);
