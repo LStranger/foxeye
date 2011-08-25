@@ -2549,10 +2549,10 @@ void ircd_channel_proto_end (void)
   Delete_Binding ("ircd-umodechange", (Function)&iumch_O, NULL);
   Delete_Binding ("ircd-umodechange", (Function)&iumch_s, NULL);
   Delete_Binding ("ircd-check-modechange", &ichmch_r, NULL);
+  _ircd_internal_logger_sig (_ircd_internal_logger, S_TERMINATE); /* stop &* */
   _forget_(CHANNEL);
   _forget_(MEMBER);
   _forget_(MASK);
-  _ircd_internal_logger_sig (_ircd_internal_logger, S_TERMINATE); /* stop &* */
 }
 
 void ircd_channel_proto_start (IRCD *ircd)
