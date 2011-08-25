@@ -374,7 +374,7 @@ static int _autolog_name_request (INTERFACE *iface, REQUEST *req)
   if (!req || !(req->flag & (AUTOLOG_LEVELS | AUTOLOG_LEVELS2)))
   {
     if (Time - log->d->timestamp >= autolog_autoclose)	/* timeout: close log */
-      iface->ift |= _autolog_name_signal (iface, S_TERMINATE);
+      _autolog_name_signal (iface, S_TERMINATE);
     return REQ_OK;
   }
   localtime_r (&Time, &tm);
@@ -441,7 +441,7 @@ static int _autolog_name_request (INTERFACE *iface, REQUEST *req)
     if (*autolog_daychange &&
 	autolog_add (log, autolog_daychange, NULL, 0, &tm, 0) <= 0)
     {
-      iface->ift |= _autolog_name_signal (iface, S_TERMINATE);
+      _autolog_name_signal (iface, S_TERMINATE);
       WARNING ("autolog:_autolog_name_request: %s terminated.", iface->name);
       return REQ_REJECTED;				/* could not add it */
     }
@@ -457,13 +457,13 @@ static int _autolog_name_request (INTERFACE *iface, REQUEST *req)
   if (x <= 0)
   {
     if (x < 0)
-      iface->ift |= _autolog_name_signal (iface, S_TERMINATE);
+      _autolog_name_signal (iface, S_TERMINATE);
     WARNING ("autolog:_autolog_name_request: %s terminated", iface->name);
     return REQ_REJECTED;
   }
   if (req->flag & F_END && iface->qsize == 0)		/* session ended */
   {
-    iface->ift |= _autolog_name_signal (iface, S_TERMINATE);
+    _autolog_name_signal (iface, S_TERMINATE);
     dprint (3, "autolog:_autolog_name_request: %s terminated", iface->name);
     return REQ_OK;
   }
@@ -503,6 +503,7 @@ static autolog_t *_find_autolog_t (autolog_t *tail, char *name)
 static iftype_t _autolog_net_signal (INTERFACE *iface, ifsig_t sig)
 {
   autolog_t *log;
+  register iftype_t rc;
 
   switch (sig)
   {
@@ -510,8 +511,8 @@ static iftype_t _autolog_net_signal (INTERFACE *iface, ifsig_t sig)
     case S_SHUTDOWN:
       while ((log = ((autolognet_t *)iface->data)->log))
       {
-	if (log->iface)
-	  log->iface->ift |= log->iface->IFSignal (log->iface, sig);
+	if (log->iface && (rc = log->iface->IFSignal (log->iface, sig)))
+	  log->iface->ift |= rc;
 	((autolognet_t *)iface->data)->log = log->prev;
 	if (sig != S_SHUTDOWN)
 	  FREE (&log);
@@ -646,6 +647,7 @@ static INTERFACE *_autolog_mass = NULL;
 static iftype_t _autolog_mass_signal (INTERFACE *iface, ifsig_t sig)
 {
   autolognet_t *net;
+  register iftype_t rc;
 
   switch (sig)
   {
@@ -653,13 +655,14 @@ static iftype_t _autolog_mass_signal (INTERFACE *iface, ifsig_t sig)
     case S_SHUTDOWN:
       while ((net = (autolognet_t *)iface->data))
       {
-	if (net->net)
-	  net->net->ift |= net->net->IFSignal (net->net, sig);
+	if (net->net && (rc = net->net->IFSignal (net->net, sig)))
+	  net->net->ift |= rc;
 	iface->data = net->prev;
 	if (sig != S_SHUTDOWN)
 	  FREE (&net);
       }
       _autolog_mass = NULL;
+      iface->ift |= I_DIED;
       return I_DIED;
     default: ;
   }
@@ -726,7 +729,7 @@ static iftype_t module_autolog_signal (INTERFACE *iface, ifsig_t sig)
     case S_TERMINATE:
       Delete_Help ("autolog");
       if (_autolog_mass)
-	_autolog_mass->ift |= _autolog_mass_signal (_autolog_mass, sig);
+	_autolog_mass_signal (_autolog_mass, sig);
       UnregisterVariable ("autolog-ctl-prefix");
       UnregisterVariable ("autolog-path");
       UnregisterVariable ("autolog-serv-path");

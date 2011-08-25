@@ -1620,6 +1620,7 @@ static int dc_boot (peer_t *dcc, char *args)
   userflag uf = 0;
   peer_t *udcc;
   char *msg;
+  register iftype_t rc;
 
   if (args && (uif = Find_Iface (I_DIRECT, args)))
   {
@@ -1647,7 +1648,8 @@ static int dc_boot (peer_t *dcc, char *args)
   }
   Add_Request (I_LOG, "*", F_T_NOTICE | F_CONN, _("%s booted by %s."),
 	       args, dcc->iface->name);
-  uif->ift |= uif->IFSignal (uif, S_TERMINATE);
+  rc = uif->IFSignal (uif, S_TERMINATE);
+  uif->ift |= rc;
   return 1;
 }
 
@@ -2182,8 +2184,10 @@ BINDING_TYPE_dcc (dc_quit);
 static int dc_quit (peer_t *dcc, char *args)
 {
   ShutdownR = args;
-  if (dcc->iface->IFSignal)
-    dcc->iface->ift |= dcc->iface->IFSignal (dcc->iface, S_TERMINATE);
+  if (dcc->iface->IFSignal) {
+    register iftype_t rc = dcc->iface->IFSignal (dcc->iface, S_TERMINATE);
+    dcc->iface->ift |= rc;
+  }
   ShutdownR = NULL;
   return 1;
 }
@@ -2234,6 +2238,7 @@ static int dc_disconnect (peer_t *dcc, char *args)
 {
   INTERFACE *cif;
   char netname[IFNAMEMAX+1];
+  register iftype_t rc;
 
   /* find the link by name */
   if (!args)
@@ -2250,7 +2255,8 @@ static int dc_disconnect (peer_t *dcc, char *args)
   }
   if (*args)
     ShutdownR = args;
-  cif->ift |= cif->IFSignal (cif, S_TERMINATE);
+  rc = cif->IFSignal (cif, S_TERMINATE);
+  cif->ift |= rc;
   ShutdownR = NULL;
   return 1;
 }
@@ -2527,17 +2533,16 @@ static void ConvertColors (peer_t *dcc, char *msg, size_t msglen)
 static int _dellistenport (char *pn)
 {
   INTERFACE *pi;
+  iftype_t rc = I_DIED;
 
   if (!(pi = Find_Iface (I_LISTEN, pn)))
     return 0;
   Unset_Iface();
   if (pi->IFSignal)
-    pi->ift |= pi->IFSignal (pi, S_TERMINATE);
+    rc = pi->IFSignal (pi, S_TERMINATE);
   else
-  {
     ERROR ("_dellistenport: no signal function for \"%s\"", pn);
-    pi->ift |= I_DIED;
-  }
+  pi->ift |= rc;
   return 1;
 }
 

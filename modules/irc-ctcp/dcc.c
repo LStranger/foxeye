@@ -1850,7 +1850,8 @@ static iftype_t irc_ctcp_mod_sig (INTERFACE *iface, ifsig_t sig)
 	else if (ActDCC->iface && ActDCC->iface->IFSignal)
 	{
 	  INTERFACE *ifa = ActDCC->iface;
-	  ifa->ift |= ifa->IFSignal (ifa, sig);
+	  register iftype_t rc = ifa->IFSignal (ifa, sig);
+	  ifa->ift |= rc;
 	}
       Delete_Help ("irc-ctcp");
       _forget_(dcc_priv_t);

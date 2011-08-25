@@ -737,6 +737,7 @@ static int _delete_iface (unsigned int r)
   register reqbl_t *rbl;
   ifi_t *curifi = Interface[r];
   register INTERFACE *todel = &curifi->a, *ti;
+  register iftype_t rc;
 
   while (delete_request (curifi, curifi->head)); /* no queue for dead! */
   if (!todel->IFSignal)			/* noone can be resumed from clone */
@@ -744,8 +745,8 @@ static int _delete_iface (unsigned int r)
   else for (ti = todel->prev; ti; ti = ti->prev)
     if (ti->IFSignal)			/* is that a clone? */
       break;
-  if (ti)				/* try to resume if nested */
-    ti->ift |= ti->IFSignal (ti, S_CONTINUE);
+  if (ti && (rc = ti->IFSignal (ti, S_CONTINUE))) /* try to resume if nested */
+    ti->ift |= rc;
   for (rbl = _Rbl; rbl; rbl = rbl->prev)
     for (i = 0; i < REQBLSIZE; i++)	/* well, IFSignal could sent anything */
       if (rbl->req[i].a.from == todel && rbl->req[i].a.mask_if)
@@ -769,8 +770,9 @@ static int _delete_iface (unsigned int r)
       else				/* it's child of deleted one! */
       {
 	Interface[r]->a.prev = NULL;	/* it has no parent anymore */
-	Interface[r]->a.ift |=		/* and it should be terminated */
-		Interface[r]->a.IFSignal (&Interface[r]->a, S_TERMINATE);
+	rc = Interface[r]->a.IFSignal (&Interface[r]->a, S_TERMINATE);
+	Interface[r]->a.ift |= rc;	/* and it should be terminated */
+
       }
     }
   if (todel->name)
@@ -847,6 +849,8 @@ static INTERFACE *unstack_iface (void)
 /* locks on input: none */
 static void iface_run (unsigned int i)
 {
+  register iftype_t rc;
+
   pthread_mutex_lock (&LockIface);
   /* we are died? OOPS... */
   while ((Interface[i]->a.ift & I_DIED))
@@ -867,8 +871,8 @@ static void iface_run (unsigned int i)
     if (Interface[i]->a.IFSignal)
     {
       stack_iface (&Interface[i]->a, 1);
-      Interface[i]->a.ift |= Interface[i]->a.IFSignal (&Interface[i]->a,
-						       S_TERMINATE);
+      rc = Interface[i]->a.IFSignal (&Interface[i]->a, S_TERMINATE);
+      Interface[i]->a.ift |= rc;
       if (unstack_iface())
 	bot_shutdown ("OOPS! extra locks of interface, exiting...", 7);
     }
@@ -891,6 +895,7 @@ void Add_Request (iftype_t ift, const char *mask, flag_t fl, const char *text, .
   va_list ap;
   register unsigned int i;
   unsigned int inum;
+  register iftype_t rc;
 
   /* request to nobody? */
   if (!ift)
@@ -914,8 +919,9 @@ void Add_Request (iftype_t ift, const char *mask, flag_t fl, const char *text, .
 	li = l->s.data;
 	while (!li->IFSignal && li->prev)	/* it's a clone, get parent */
 	  li = li->prev;
-	if (li->IFSignal && !(li->ift & ~if_or & (I_DIED | I_LOCKED)))
-	  li->ift |= li->IFSignal (li, (ifsig_t)text);
+	if (li->IFSignal && !(li->ift & ~if_or & (I_DIED | I_LOCKED)) &&
+	    (rc = li->IFSignal (li, (ifsig_t)text)))
+	  li->ift |= rc;
 	if (l->s.data != li)			/* oops, something inserted? */
 	{
 	  l = NULL;
@@ -934,8 +940,8 @@ void Add_Request (iftype_t ift, const char *mask, flag_t fl, const char *text, .
 	/* request is a signal - skip clone to parent and apply */
 	for (li = &Interface[i]->a; !li->IFSignal && li->prev; )
 	  li = li->prev;
-	if (li->IFSignal)
-	  li->ift |= li->IFSignal (li, (ifsig_t)text);
+	if (li->IFSignal && (rc = li->IFSignal (li, (ifsig_t)text)))
+	  li->ift |= rc;
       }
     }
     O_GENERATECONF = savestate;			/* restoring status quo */
@@ -953,6 +959,7 @@ void Add_Request (iftype_t ift, const char *mask, flag_t fl, const char *text, .
 void New_Request (INTERFACE *cur, flag_t fl, const char *text, ...)
 {
   va_list ap;
+  register iftype_t rc;
 
   pthread_mutex_lock (&LockIface);
   /* request to nobody? */
@@ -962,8 +969,9 @@ void New_Request (INTERFACE *cur, flag_t fl, const char *text, ...)
   {
     while (!cur->IFSignal && cur->prev)		/* for clone - get to parent */
       cur = cur->prev;
-    if (cur->IFSignal && !(cur->ift & (I_DIED | I_LOCKED)))
-	cur->ift |= cur->IFSignal (cur, (ifsig_t)text);
+    if (cur->IFSignal && !(cur->ift & (I_DIED | I_LOCKED)) &&
+	(rc = cur->IFSignal (cur, (ifsig_t)text)))
+	cur->ift |= rc;
   }
   else
   {
@@ -1060,6 +1068,7 @@ INTERFACE *Find_Iface (iftype_t ift, const char *name)
 int Rename_Iface (INTERFACE *iface, const char *newname)
 {
   queue_i *q;
+  register iftype_t rc;
 
   pthread_mutex_lock (&LockIface);
   if (unknown_iface (iface))
@@ -1085,8 +1094,8 @@ int Rename_Iface (INTERFACE *iface, const char *newname)
     _Inamessize += strlen (iface->name) + 1;
   if (iface->name && Insert_Key (&ITree, iface->name, iface, 0))
     ERROR ("interface add: dispatcher tree error");
-  if (iface->IFSignal)
-    iface->ift |= iface->IFSignal (iface, S_FLUSH);
+  if (iface->IFSignal && (rc = iface->IFSignal (iface, S_FLUSH)))
+    iface->ift |= rc;
   pthread_mutex_unlock (&LockIface);
   return 1;
 }
