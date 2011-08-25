@@ -4006,6 +4006,7 @@ const char *ircd_mark_wallops(void)
 /* -- common module interface --------------------------------------------- */
 static void _ircd_register_all (void)
 {
+  Add_Request (I_INIT, "*", F_REPORT, "module ircd");
   /* register variables */
   RegisterString ("ircd-flags-first", _ircd_flags_first,
 		  sizeof(_ircd_flags_first), 0);
@@ -4036,6 +4037,10 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
   peer_priv *pp;
   register char *z; /* unused */
 
+  if (Ircd == NULL) {
+    ERROR("ircd: got signal but module already dead");
+    return I_DIED;
+  }
   switch (sig)
   {
     case S_TERMINATE:
@@ -4087,6 +4092,7 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
       _forget_(CLIENT);
       _forget_(LINK);
       iface->ift = I_DIED;
+      dprint(2, "module ircd terminated succesfully");
       break;
     case S_SHUTDOWN:
       for (pp = IrcdPeers; pp; pp = pp->p.priv) /* just notify everyone */
@@ -4112,8 +4118,8 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
       {
 	tmp->ift = I_DIED;
 	ERROR ("ircd: no network found! aborting now...");
-	Send_Signal (I_MODULE, "ircd", S_TERMINATE);
-	break;				/* it should be died already anyway */
+	iface->ift |= I_FINWAIT;	/* schedule suicide */
+	break;				/* it will be died anyway */
       }
       Set_Iface (tmp);
       Get_Request();

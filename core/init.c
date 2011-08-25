@@ -591,7 +591,7 @@ int RunBinding (struct binding_t *bind, const uchar *uh, const char *fst,
     return 0;
   dprint (4, "init:RunBinding: %s\t%s\t%s\t%s\t%s\t%d\t%s", bind->name,
 	  NONULL((char *)uh), NONULL(fst), NONULL(sec), NONULL(third), num,
-	  last ? last : "(null)");
+	  last ? last : "(nil)");
   BindResult = NULL;				/* clear result */
   if (uh)
   {

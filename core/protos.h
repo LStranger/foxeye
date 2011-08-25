@@ -141,7 +141,7 @@ void StrTrim (char *);
 
 #define FOREVER while (1)
 #define NONULL(x) x?x:""
-#define NONULLP(x) x?x:"(null)"
+#define NONULLP(x) x?x:"(nil)"
 #define FREE(x) safe_free((void **)x)
 
 #define ISSPACE(c) isspace((uchar)c)

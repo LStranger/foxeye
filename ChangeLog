@@ -15,6 +15,9 @@ Thu Aug 25 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/init.c: fixed wrong deleting binding in uniqued bindtables.
 	* modules/ircd/channels.c: fixed wrong channel shutdown sequence.
 	* core/dispatcher.c: fixed wrong allocation of block of requests.
+	* core/init.c, core/protos.h, modules/ircd/servers.c: replaced "(null)"
+	  with "(nil)" in diagnostic messages.
+	* modules/ircd/channels.c, modules/ircd/ircd.c: fixed signaling.
 
 Wed Aug 24 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/help.c: fixed help on all topics which printed extra topics.

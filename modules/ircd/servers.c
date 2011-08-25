@@ -803,7 +803,7 @@ static int ircd_error_sb(INTERFACE *srv, struct peer_t *peer, unsigned short tok
 			 int argc, const char **argv)
 { /* args: <error message> */
   /* just broadcasting it to channel and log */
-  ERROR("ircd: ERROR from %s: %s", peer->dname, argc ? argv[0] : "(null)");
+  ERROR("ircd: ERROR from %s: %s", peer->dname, argc ? argv[0] : "(nil)");
   return (1);
 }
 
