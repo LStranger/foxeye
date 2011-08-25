@@ -23,7 +23,7 @@ Thu Aug 25 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/conversion.c: fixed memory leak on CHARSET_8BIT.
 	* core/wtmp.c: fixed memory leak in idle RotateWtmp().
 	* core/main.c: removed unneeded memory allocation.
-	* core/direct.c, core/dispatcher.c, modules/autolog/autolog.c, modules/irc-ctcp/dcc.c:
+	* core/direct.c, core/dispatcher.c, modules/autolog/autolog.c, modules/irc-ctcp/dcc.c, modules/ircd/ircd.c:
 	  fixed wrong modifications of flags on call of signal handlers.
 
 Wed Aug 24 2011 Andriy Gritsenko <andrej@rep.kiev.ua>

@@ -3541,9 +3541,11 @@ static iftype_t _ircd_signal (INTERFACE *iface, ifsig_t sig)
       while (IrcdPeers) 		/* kill every peer */
       { /* no lock because no new peer can be added after all listeners died */
 	INTERFACE *ifcl = IrcdPeers->p.iface;
+	register iftype_t rc;
 
 	dprint (4, "ircd: killing peer %s.", IrcdPeers->link->cl->lcnick);
-	ifcl->ift |= _ircd_client_signal (ifcl, S_TERMINATE);
+	rc = _ircd_client_signal (ifcl, S_TERMINATE);
+	ifcl->ift |= rc;
 	Set_Iface (ifcl);
 	while (!(ifcl->ift & I_DIED))
 	  Get_Request();		/* wait it to die */
@@ -4096,7 +4098,7 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
       break;
     case S_SHUTDOWN:
       for (pp = IrcdPeers; pp; pp = pp->p.priv) /* just notify everyone */
-	pp->p.iface->ift |= _ircd_client_signal (pp->p.iface, S_SHUTDOWN);
+	_ircd_client_signal (pp->p.iface, S_SHUTDOWN);
       break;
     case S_REPORT:
       // TODO......
