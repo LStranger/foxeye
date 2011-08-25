@@ -307,7 +307,7 @@ static request_t *alloc_request_t (void)
     register int i = REQBLSIZE;
     register reqbl_t *rbl;
 
-    rbl = safe_malloc (sizeof(reqbl_t));
+    rbl = safe_calloc (1, sizeof(reqbl_t));
     rbl->prev = _Rbl;
     _Rbl = rbl;
     _Ralloc++;

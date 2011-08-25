@@ -14,6 +14,7 @@ Thu Aug 25 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed wrong allocation for internal logger.
 	* core/init.c: fixed wrong deleting binding in uniqued bindtables.
 	* modules/ircd/channels.c: fixed wrong channel shutdown sequence.
+	* core/dispatcher.c: fixed wrong allocation of block of requests.
 
 Wed Aug 24 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/help.c: fixed help on all topics which printed extra topics.
