@@ -367,7 +367,6 @@ void RotateWtmp (void)
   wfps = wtmps;
   t = Time;
   Unset_Iface();			/* it's thread-safe process now */
-  GoneBitmap = safe_calloc (1, sizeof(uint32_t) * LID_MAX);
   i = 0;
   /* check if we need to rotate - check the first event of $Wtmp */
   if ((fd = open (wfp, O_RDONLY)) >= 0)
@@ -387,6 +386,7 @@ void RotateWtmp (void)
   }
   if (i == 0)
     return;				/* nothing to do yet */
+  GoneBitmap = safe_calloc (1, sizeof(uint32_t) * LID_MAX);
   snprintf (path2, sizeof(path2), "%s." WTMP_GONE_EXT, wfp);
   /* mark deletable events for wtmp.gone (from $Wtmp.max...$Wtmp.$wtmps) */
   for (i = WTMPS_MAX; i >= wfps; i--)
