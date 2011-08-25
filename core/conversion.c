@@ -94,14 +94,15 @@ struct conversion_t *Get_Conversion (const char *charset)
     }
     else
       conv = _get_conversion (CHARSET_8BIT);	/* Charset doesn't exist */
+    DBG("Get_Conversion: set default conv=%p", conv);
   }
   conv = _get_conversion (charset);
   inuse = conv->inuse++;
   pthread_mutex_unlock (&ConvLock);
-  DBG ("Get_Conversion: %s", conv->charset);
+  DBG ("Get_Conversion: %s (conv=%p)", conv->charset, conv);
   if (conv == Conversions)
     return NULL;
-  else if (inuse)
+  else if (inuse || conv->cdin != (iconv_t)(-1)) /* it's already filled */
     return conv;
   /* inuse == 0 so it's newly created */
   inuse = *text_replace_char;
@@ -119,6 +120,7 @@ struct conversion_t *Get_Conversion (const char *charset)
   else					/* do ignore unknown */
     snprintf (name, sizeof(name), "%s" TRANSLIT_IGNORE, charset);
   conv->cdout = iconv_open (name, Conversions->charset);
+  DBG ("Get_Conversion: created new conv=%p", conv);
   return conv;
 }
 
@@ -143,6 +145,7 @@ void Free_Conversion (struct conversion_t *conv)
   if (conv->inuse == 0 && conv != Conversions &&
       strcasecmp (conv->charset, CHARSET_8BIT))
   {
+    DBG("Free_Conversion: freeing conv=%p cdin=%p cdout=%p", conv, conv->cdin, conv->cdout);
     FREE (&conv->charset);
     if (conv->cdin != (iconv_t)(-1))
       iconv_close (conv->cdin);
