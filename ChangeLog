@@ -22,6 +22,7 @@ Thu Aug 25 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  fixed possible bugs with 64bit architecture.
 	* core/conversion.c: fixed memory leak on CHARSET_8BIT.
 	* core/wtmp.c: fixed memory leak in idle RotateWtmp().
+	* core/main.c: removed unneeded memory allocation.
 
 Wed Aug 24 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/help.c: fixed help on all topics which printed extra topics.

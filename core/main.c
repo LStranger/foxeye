@@ -561,7 +561,7 @@ int main (int argc, char *argv[])
     if_console.ift = I_CONSOLE | I_LOG | I_DIRECT;
   else
     if_console.ift = I_LOCKED | I_DIED;
-  if_console.name = safe_strdup ("::0");
+  if_console.name = "::0";
   if_console.IFSignal = &_signal;
   if_console.IFRequest = &_request;
   if_console.prev = NULL;
