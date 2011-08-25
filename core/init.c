@@ -93,7 +93,8 @@ static void _bt_convert2uniqtype (struct bindtable_t *bt, bttype_t type)
 	  b2 = b3;
 	}
 	continue;
-      }
+      } else
+	DBG ("init.c:rebind:%p key %s/tree", b, b->key);
     }
     else
     {
@@ -285,6 +286,7 @@ void Delete_Binding (const char *table, Function func, const char *name)
 
     while ((l = Next_Leaf (bt->list.tree, l, NULL)))
     {
+      last = NULL;
       for (b = l->s.data; b; )
       {
 	if (b->func == func && (!name || !safe_strcmp (b->name, name)))
@@ -317,6 +319,7 @@ void Delete_Binding (const char *table, Function func, const char *name)
 	}
 	else
 	{
+	  DBG ("init.c:-bind:skipping %p => %p/tree", b, b->prev);
 	  last = b;
 	  b = b->prev;
 	}
@@ -367,6 +370,7 @@ void Delete_Binding (const char *table, Function func, const char *name)
       }
       else /* bind->func != func */
       {
+	DBG ("init.c:-bind:skipping %p => %p/tree", bind, bind->prev);
 	next = bind;
 	bind = next->prev;
       }
