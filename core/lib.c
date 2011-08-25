@@ -139,7 +139,7 @@ size_t unistrlower (char *dst, const char *src, size_t ds)
 	    sout++;
 	    ds--;
 	  }
-	  if (len == (ssize_t)-2) /* premature end of string */
+	  if (len == -(ssize_t)2) /* premature end of string */
 	    break;
 	  ss--;
 	  ch++; /* and skip bad char */
@@ -557,12 +557,12 @@ int Have_Wildcard (const char *str)
 
 /* bs is max space available if text doesn't fit in linelen s
  * bs >= s or bs == 0 if wrapping enabled */
-static size_t _try_subst (char *buf, size_t bs, const char *text, size_t s)
+static ssize_t _try_subst (char *buf, size_t bs, const char *text, size_t s)
 {
   size_t n = safe_strlen (text);
 
   if (!n || s == 0)			/* don't print, don't wrap */
-    return -1;
+    return -(ssize_t)1;
   if (n > s && bs == 0)			/* wrap to next line */
     return 0;
   else if (n > s && n > bs)		/* no so much space available */
@@ -775,7 +775,7 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
 	  break;
 	case 'P':			/* port number, zero is "" */
 	  snprintf (tbuf, sizeof(tbuf), "%.0hu", p->port);
-	  n = -1;			/* in case of zero mark as empty */
+	  n = -(ssize_t)1;		/* in case of zero mark as empty */
 	  break;
 	case 't':			/* current time */
 	  n = _try_subst (c, nmax, TimeString, nn);

@@ -2148,7 +2148,7 @@ static int dc_who (peer_t *dcc, char *args)
     ReportFormat = format_who;
   }
   New_Request (dcc->iface, 0, "%s", b);
-  ReportMask = (modeflag)-1;
+  ReportMask = -(modeflag)1;
   if (args)
     _report_req (I_SERVICE, args);
   else

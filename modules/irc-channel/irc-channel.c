@@ -354,7 +354,7 @@ static CHANNEL *_ircch_get_channel0 (IRC *net, const char *ch, const char *real)
     chan->id = Get_LID (u);
     Unlock_Clientrecord (u);
   }
-  chan->tid = (tid_t)-1;
+  chan->tid = -(tid_t)1;
   NewShedule (I_SERVICE, ch, S_TIMEOUT, "*", "*", "*", "*", "*");
   if (Insert_Key (&net->channels, chan->chi->name, chan, 1))
     ERROR ("_ircch_get_channel: tree error!");
@@ -1499,7 +1499,7 @@ static iftype_t _ircch_sig (INTERFACE *iface, ifsig_t sig)
       if (!net)				/* it's impossible, I think */
 	break;
       ircch_enforcer (net, (CHANNEL *)iface->data);
-      ((CHANNEL *)iface->data)->tid = (tid_t)-1;
+      ((CHANNEL *)iface->data)->tid = -(tid_t)1;
       break;
     case S_TIMEOUT:
       net = _ircch_get_network2 (strrchr (iface->name, '@'));

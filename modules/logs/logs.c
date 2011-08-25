@@ -200,7 +200,7 @@ static ssize_t textlog_add_buf (logfile_t *log, char *text, size_t sz,
 	if (ts >= 0)
 	  ERROR ("Logfile %s is locked but queue grew to %d, abort logging to it",
 		 log->path, log->iface->qsize);
-	return -1;
+	return -(ssize_t)1;
       }
       return 0;
     }
@@ -212,7 +212,7 @@ static ssize_t textlog_add_buf (logfile_t *log, char *text, size_t sz,
 	ERROR ("Couldn't sync logfile %s (%s), abort logging to it.",
 	       log->path, log->buf);
       }
-      return -1;
+      return -(ssize_t)1;
     }
     if (ts && tsw < tsz)
     {

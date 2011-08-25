@@ -902,7 +902,7 @@ void Add_Request (iftype_t ift, const char *mask, flag_t fl, const char *text, .
     int savestate = O_GENERATECONF;
     register INTERFACE *li;
 
-    if (ift != (iftype_t)-1)	/* we assume only init will call it with -1 */
+    if (ift != -(iftype_t)1)	/* we assume only init will call it with -1 */
       O_GENERATECONF = FALSE;			/* don't make config now */
     inum = _Inum;				/* don't sent to created now! */
     if (Have_Wildcard (mask) < 0)
@@ -1324,7 +1324,7 @@ int dispatcher (INTERFACE *start_if)
   if (pid)
   {
     /* fork error */
-    if (pid == (pid_t)-1)
+    if (pid == -(pid_t)1)
     {
       perror _("fork dispatcher");
       return 5;

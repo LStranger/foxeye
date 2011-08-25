@@ -137,7 +137,7 @@ static idx_t allocate_socket ()
 ssize_t ReadSocket (char *buf, idx_t idx, size_t sr, int mode)
 {
   socket_t *sock;
-  ssize_t sg = (ssize_t)-1;
+  ssize_t sg = -(ssize_t)1;
   short rev;
 
   pthread_testcancel();			/* for non-POSIX systems */

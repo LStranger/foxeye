@@ -18,6 +18,8 @@ Thu Aug 25 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/init.c, core/protos.h, modules/ircd/servers.c: replaced "(null)"
 	  with "(nil)" in diagnostic messages.
 	* modules/ircd/channels.c, modules/ircd/ircd.c: fixed signaling.
+	* core/connchain.c, core/dispatcher.c, core/direct.c, core/dispatcher.c, core/lib.c, core/main.c, core/socket.h, core/socket.c, modules/irc-channel/chmanagement.c, modules/irc-channel/irc-channel.c, modules/irc-ctcp/dcc.c, modules/irc/irc.c, modules/logs/logs.c:
+	  fixed possible bugs with 64bit architecture.
 
 Wed Aug 24 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/help.c: fixed help on all topics which printed extra topics.
