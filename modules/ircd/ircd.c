@@ -3378,7 +3378,7 @@ static void _istats_l (INTERFACE *srv, const char *rq, modeflag umode)
   pthread_mutex_lock (&IrcdLock);
   for (peer = IrcdPeers; peer; peer = peer->p.priv)
   {
-    snprintf (buf, sizeof(buf), "%s[%s@%s] %d %d %d %d %d %ld",
+    snprintf (buf, sizeof(buf), "%s[%s@%s] %d %zu %zu %zu %zu %ld",
 	      peer->link->cl->nick, peer->link->cl->user, peer->link->cl->host,
 	      peer->p.iface->qsize, peer->ms, peer->bs/1000, peer->mr,
 	      peer->br/1000, (long int)(Time - peer->started));
@@ -4093,9 +4093,9 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
       _forget_(CLASS);
       _forget_(CLIENT);
       _forget_(LINK);
-      iface->ift = I_DIED;
+      iface->ift |= I_DIED;
       dprint(2, "module ircd terminated succesfully");
-      break;
+      return I_DIED;
     case S_SHUTDOWN:
       for (pp = IrcdPeers; pp; pp = pp->p.priv) /* just notify everyone */
 	_ircd_client_signal (pp->p.iface, S_SHUTDOWN);

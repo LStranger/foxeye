@@ -1176,6 +1176,7 @@ typedef struct
   void (*prehandler) (pthread_t, void **, idx_t);
   void (*handler) (char *, char *, const char *, void *);
   char *host;			/* host to listen */
+  INTERFACE *iface;		/* interface of listener */
   unsigned short lport, eport;	/* listener port range */
   idx_t socket, id;
   int tst:1;
@@ -1206,8 +1207,7 @@ static iftype_t port_signal (INTERFACE *iface, ifsig_t signal)
 	Add_Request (I_INIT, "*", F_REPORT, "%s", acptr->confline);
       break;
     case S_TERMINATE:
-      Add_Request (I_LOG, "*", F_CONN,
-		   _("Listening socket on port %hu terminated."), acptr->lport);
+      DBG("Terminating listener %s...", iface->name);
       Unset_Iface();			/* unlock dispatcher */
       CloseSocket (acptr->socket);	/* just kill it... */
       pthread_join (acptr->th, NULL);	/* ...and wait until it die */
@@ -1216,6 +1216,9 @@ static iftype_t port_signal (INTERFACE *iface, ifsig_t signal)
       FREE (&acptr->client);
       FREE (&acptr->confline);
       FREE (&acptr->data);
+      FREE (&acptr->host);
+      Add_Request (I_LOG, "*", F_CONN,
+		   _("Listening socket on port %hu terminated."), acptr->lport);
       /* we don't need to free acptr since dispatcher will do it for us */
       iface->ift |= I_DIED;
       break;
@@ -1336,12 +1339,16 @@ static int _direct_listener_callback(const struct sockaddr *sa, void *input_data
 
 static void _listen_port_cleanup (void *input_data)
 {
-  KillSocket (&acptr->socket);
-  FREE (&acptr->client);
-  FREE (&acptr->confline);
-  FREE (&acptr->host);
-  FREE (&acptr->data);
-  safe_free (&input_data); /* FREE (&acptr) */
+  /* job's ended so let dispatcher know that we must be finished
+     don't do locking and I hope it's still atomic so should be OK */
+  acptr->iface->ift = I_LISTEN | I_FINWAIT;
+  /* everything will be done by dispatcher */
+  //KillSocket (&acptr->socket);
+  //FREE (&acptr->client);
+  //FREE (&acptr->confline);
+  //FREE (&acptr->host);
+  //FREE (&acptr->data);
+  //safe_free (&input_data); /* FREE (&acptr) */
 }
 
 static void *_listen_port (void *input_data)
@@ -1349,14 +1356,12 @@ static void *_listen_port (void *input_data)
   idx_t new_idx;
   accept_t *child;
   char buf[8];
-  INTERFACE *iface;
   char *host = acptr->host;
   int n;
   unsigned short port = acptr->lport;
 
   /* set cleanup for the thread before any cancellation point */
   pthread_cleanup_push (&_listen_port_cleanup, input_data);
-  /* listener is standalone yet and can be cancelled only from callback */
   FOREVER {
     n = SetupSocket(acptr->socket, (host && *host) ? host : NULL, port,
 		    &_direct_listener_callback, input_data);
@@ -1378,16 +1383,14 @@ static void *_listen_port (void *input_data)
 	   NONULL(acptr->confline), errstr);
     return NULL;
   }
-  FREE(&acptr->host);
-  /* create interface and deny cancellation of the thread */
+  /* rename interface if need and deny cancellation of the thread */
   pthread_setcancelstate (PTHREAD_CANCEL_DISABLE, NULL);
-  pthread_cleanup_pop(0);
   if (!acptr->confline) {
     SocketDomain(acptr->socket, &port);
     snprintf (buf, sizeof(buf), "%hu", port);
+    if (strcmp(acptr->iface->name, buf))
+      Rename_Iface(acptr->iface, buf);
   }
-  iface = Add_Iface (I_LISTEN | I_CONNECT, acptr->confline ? acptr->confline : buf,
-		     &port_signal, NULL, acptr);
   /* let it be async-safe as much as possible: it may be killed by shutdown */
   while (acptr->socket >= 0)			/* ends by KillSocket() */
   {
@@ -1429,9 +1432,7 @@ static void *_listen_port (void *input_data)
       }
     }
   }
-  /* job's ended so let dispatcher know that we must be finished
-     don't do locking and I hope it's still atomic so should be OK */
-  iface->ift = I_LISTEN | I_FINWAIT;
+  pthread_cleanup_pop(1);
   return NULL;
 }
 #undef acptr
@@ -1455,6 +1456,7 @@ int Listen_Port (char *client, const char *host, unsigned short sport,
 {
   accept_t *acptr;
   idx_t idx;
+  char buf[8];
 
   idx = GetSocket (M_LIST);
   if (idx < 0)
@@ -1477,13 +1479,20 @@ int Listen_Port (char *client, const char *host, unsigned short sport,
   else
     _assign_port_range (&acptr->lport, &acptr->eport);
   acptr->socket = idx;
+  /* create interface now */
+  if (!acptr->confline)
+    snprintf (buf, sizeof(buf), "%hu", sport);
+  acptr->iface = Add_Iface (I_LISTEN | I_CONNECT,
+			    acptr->confline ? acptr->confline : buf,
+			    &port_signal, NULL, acptr);
   if (pthread_create (&acptr->th, NULL, &_listen_port, acptr))
   {
-    KillSocket (&idx);
-    FREE (&acptr->client);
-    FREE (&acptr->confline);
-    FREE (&acptr->host);
-    FREE (&acptr);
+    //KillSocket (&idx);
+    //FREE (&acptr->client);
+    //FREE (&acptr->confline);
+    //FREE (&acptr->host);
+    //FREE (&acptr);
+    acptr->iface->ift = (I_LISTEN | I_FINWAIT);
     return E_NOTHREAD;
   }
   return 0;

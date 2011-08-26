@@ -2324,7 +2324,8 @@ void ircd_channels_flush (IRCD *ircd, char *modestring, size_t s)
       if (t + k + l + s > IRCMSGLEN - 4 || /* reserving mode char and space */\
 	  l >= MAXMODES) \
       { \
-	New_Request (to, 0, "%.*s%s", t + l, buff, &buff[t + MAXMODES + 1]); \
+	New_Request (to, 0, "%.*s%s", (int)(t + l), buff, \
+		     &buff[t + MAXMODES + 1]); \
 	l = s = 0; \
       } \
       buff[t + l] = Char; \
@@ -2380,7 +2381,7 @@ void ircd_burst_channels (INTERFACE *to, NODE *channels)
     FILL_BUFFER(exempts,'e')
     FILL_BUFFER(invites,'I')
     if (l)
-      New_Request (to, 0, "%.*s%s", t + l, buff, &buff[t + MAXMODES + 1]);
+      New_Request (to, 0, "%.*s%s", (int)(t + l), buff, &buff[t + MAXMODES + 1]);
   }
 }
 

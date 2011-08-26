@@ -7,8 +7,18 @@ TODO:
 	* core/wtmp.c: to handle errors somehow?
 	* core/help.c: to add support for '##$charset utf-8' at helpfile start.
 	* core/direct.c: to add support for charset and comments in motd file.
+	* modules/irc-ctcp/dcc.c: to revise listener handling.
 
 --- [0.10.0]
+Fri Aug 26 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/channels.c, modules/ircd/clients.c, modules/ircd/ircd.c:
+	  fixed printf parameters.
+	* modules/ircd/messages.c: eliminated unused variables.
+	* modules/ircd/ircd.c: fixed wrong flag setting on module death.
+	* core/direct.c, modules/irc-ctcp/dcc.c: changed creating of interface
+	  on listening port to be done before thread started and renaming it
+	  (in case of port is 0 and no name given) later.
+
 Thu Aug 25 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.c: fixed uninitialized socket id in Listen_Port().
 	* modules/ircd/channels.c: fixed wrong allocation for internal logger.

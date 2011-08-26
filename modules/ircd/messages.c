@@ -666,7 +666,7 @@ static int ircd_squery_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
 			  const char *sender, const char *lcsender, char *cmd,
 			  int argc, const char **argv)
 { /* args: <servicename> <text to be sent> */
-  CLIENT *cl, *tcl;
+  CLIENT *tcl;
   struct peer_priv *pp = peer->iface->data; /* it's really peer */
 
   /* check number of parameters */
@@ -675,7 +675,7 @@ static int ircd_squery_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
 	  argc);
     return ircd_recover_done(pp, "Invalid number of parameters");
   }
-  cl = _ircd_find_client_lc((IRCD *)srv->data, lcsender);
+  //cl = _ircd_find_client_lc((IRCD *)srv->data, lcsender);
   if (!(tcl = _ircd_find_msg_target((IRCD *)srv->data, argv[0], pp)) ||
       !CLIENT_IS_SERVICE(tcl)) {
     ERROR("ircd:invalid SQUERY target %s via %s", argv[0], peer->dname);
@@ -856,7 +856,7 @@ static int ircd_isquery(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 			const char *sender, const char *lcsender, char *cmd,
 			int argc, const char **argv)
 { /* args: <id> <servicename> <text to be sent> */
-  CLIENT *cl, *tcl;
+  CLIENT *tcl;
   struct peer_priv *pp = peer->iface->data; /* it's really peer */
   int id;
 
@@ -870,7 +870,7 @@ static int ircd_isquery(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   if (!ircd_test_id(((IRCD *)srv->data)->token[token], id))
     //TODO: log duplicate?
     return (1);
-  cl = _ircd_find_client_lc((IRCD *)srv->data, lcsender);
+  //cl = _ircd_find_client_lc((IRCD *)srv->data, lcsender);
   if (!(tcl = _ircd_find_msg_target((IRCD *)srv->data, argv[1], pp)) ||
       !CLIENT_IS_SERVICE(tcl)) {
     ERROR("ircd:invalid ISQUERY target %s via %s", argv[1], peer->dname);

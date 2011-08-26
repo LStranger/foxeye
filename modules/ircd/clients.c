@@ -183,7 +183,7 @@ static int ircd_quit_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
   else
   {
     size_t sz = unistrcut (argv[0], sizeof(msg)-3, 256); /* cut it */
-    snprintf (msg, sizeof(msg), "\"%.*s\"", sz, argv[0]); /* quote it */
+    snprintf (msg, sizeof(msg), "\"%.*s\"", (int)sz, argv[0]); /* quote it */
   }
 #ifdef USE_SERVICES
   //TODO: do with services
