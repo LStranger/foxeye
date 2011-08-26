@@ -1118,11 +1118,11 @@ Direct client's connections API:
     with _a_s equal to -1 and undefined _t_h to notify caller about that.
     Since that might be also as result of emergency shutdown, _p_r_e_h_a_n_d_l_e_r
     should not call any but async-safe functions in that case. Accepting
-    thread will wait for _p_r_e_h_a_n_d_l_e_r before calling _h_a_n_d_l_e_r. Socket of
-    accepted connection is owned by listening thread and inherited by the
-    accepting thread (so by function _h_a_n_d_l_e_r at the end). Note: if _p is 0
-    then _l_c_b is the only way to let caller know which port is listening
-    in real.
+    thread will wait for data returned by _p_r_e_h_a_n_d_l_e_r before calling the
+    _h_a_n_d_l_e_r and pass that data to it. Socket of accepted connection is
+    owned by listening thread and inherited by the accepting thread (so
+    by function _h_a_n_d_l_e_r at the end). Note: if _p is 0 then _l_c_b is the only
+    way to let caller know which port is listening in real.
 	Reenterability: none
 
   int CCoonnnneecctt__HHoosstt (const char *_h_o_s_t, unsigned short _p_o_r_t, pthread_t *_t_h,

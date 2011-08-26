@@ -18,6 +18,8 @@ Fri Aug 26 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.c, modules/irc-ctcp/dcc.c: changed creating of interface
 	  on listening port to be done before thread started and renaming it
 	  (in case of port is 0 and no name given) later.
+	* doc/modules.api: updated documentation a bit.
+	* core/init.c: forsed unsharp of parameter 'charset' in config.
 
 Thu Aug 25 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.c: fixed uninitialized socket id in Listen_Port().

@@ -970,6 +970,15 @@ static void _lock_var (const char *name)
       bind->func (name, data->data, 2);		/* call bindings */
 }
 
+static inline void _unsharp_var (const char *name)
+{
+  register VarData *data;
+
+  if (!(data = Find_Key (VTree, name)))
+    return;
+  data->changed = TRUE;
+}
+
 static int _add_var (const char *name, void *var, size_t *s)
 {
   VarData *data;
@@ -2123,6 +2132,7 @@ void init (void)
     ConfigFileIface = Add_Iface (I_TEMP, NULL, NULL, &_cfile_req, NULL);
     ConfigFileIface->ift = I_TEMP;		/* force flags */
     Set_Iface (ConfigFileIface);		/* it's current again */
+    _unsharp_var("charset");
     /* it's time to write to config so signal to register again */
     Send_Signal (-1, "*", S_REG);
     Set_Iface (Init);				/* flush everything now */
