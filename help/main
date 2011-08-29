@@ -246,6 +246,7 @@ function module
    irc          - common support of connection to IRC network.
    irc-channel  - base support for channels of IRC network.
    irc-ctcp     - support for basic CTCP DCC commands.
+   ircd         - basic IRC server (RFC2810...RFC2813).
    modes        - implementation of commands +ban, -ban, and few more.
    tcl          - support for scripts in Tcl language.
  See also %yhelp module%n.

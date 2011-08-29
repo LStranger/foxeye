@@ -1203,7 +1203,7 @@ static iftype_t port_signal (INTERFACE *iface, ifsig_t signal)
       Unset_Iface();
       break;
     case S_REG:
-      if (acptr->confline)
+      if (acptr->confline && acptr->confline[0] && acptr->confline[0] != '#')
 	Add_Request (I_INIT, "*", F_REPORT, "%s", acptr->confline);
       break;
     case S_TERMINATE:

@@ -106,7 +106,7 @@ static dcc_priv_t *new_dcc (void)
     *p = dcc = alloc_dcc_priv_t();
     dcc->next = NULL;
     pthread_mutex_init (&dcc->mutex, NULL);
-  } else
+  } else			/* it was terminated from P_DISCONNECTED */
     FREE(&dcc->l.iname);
   dcc->state = P_DISCONNECTED;
   dcc->socket = -1;
@@ -133,7 +133,7 @@ static void free_dcc (dcc_priv_t *dcc)
 
 #define LOG_CONN(...) Add_Request (I_LOG, "*", F_CONN, __VA_ARGS__)
 
-/* sequence (m - dispathcer's thread, 1...3 - new threads):
+/* sequence (m - dispathcer's thread, 1...2 - new threads):
     m	got DCC CHAT or DCC SEND or CTCP CHAT (last one skips thread 1 part)
     1	check for UI confirmation
     1	got confirmation
@@ -144,7 +144,18 @@ static void free_dcc (dcc_priv_t *dcc)
     m	kill thread 1 and if state!=P_QUIT then start connection
     2	got connected, start main interface (_dcc_X_handler())
     2	terminate thread and socket when done
-    m	join thread 2 and finish all */
+    m	join thread 2 and finish all
+
+interfaces (L means listener; 1 - thread 1; 2a - pre-connect; 2b - connected):
+    DCC CHAT    CTCP CHAT   DCC SEND    DCC SEND(p) sending     sending(p)
+1:  nick@net    -           nick@net    nick@net    -           -
+2a: nick@net    L:#nick@net nick@net    L:#nick@net L:#nick@net irc-ctcp#token
+2b: -           nick!u@h                nick@net    nick@net    nick@net
+
+interface signal functions (requests disabled):
+1:  _dcc_sig_1
+2a: listener or _dcc_sig_2 or _isend_sig_w (for passive sending)
+2b: _dcc_sig_2 */
 
 /* ----------------------------------------------------------------------------
    thread 2 non-thread part (signal handler)
@@ -853,7 +864,7 @@ static void _dcc_send_handler (int res, void *input_data)
 }
 
 /* the same but for passive mode - incoming connect to our socket.
-   lname contains nick@net and dcc->iface is invalid */
+   lname contains nick@net and dcc->iface is set */
 static void _dcc_send_phandler (char *lname, char *ident, const char *host,
 				void *input_data)
 {
@@ -863,7 +874,6 @@ static void _dcc_send_phandler (char *lname, char *ident, const char *host,
   if (!input_data)
     /* error! is it possible? */
     return;
-  dcc->l.iface = Add_Iface (I_CONNECT, lname, &_dcc_sig_2, NULL, input_data);
   _dcc_send_handler (0, dcc);
 }
 #undef dcc
@@ -872,7 +882,8 @@ static void _dcc_send_phandler (char *lname, char *ident, const char *host,
 static void _dcc_pasv_pre (pthread_t th, void **data, idx_t as)
 {
   register struct dcc_listener_data *dld = *data;
-  register dcc_priv_t *dcc = dld->dcc;
+  dcc_priv_t *dcc = dld->dcc;
+  INTERFACE *iface;
 
   *data = dcc;				/* pass it to handler */
   if (as == -1)				/* listener terminated */
@@ -888,10 +899,11 @@ static void _dcc_pasv_pre (pthread_t th, void **data, idx_t as)
     dcc->socket = as;
     Set_Iface(NULL);
     dcc->state = P_INITIAL;		/* and now listener can die free */
+    /* we have dcc->l.name as "#nick@net" now */
+    iface = Add_Iface (I_CONNECT, &dcc->l.iname[1], &_dcc_sig_2, NULL, dcc);
     FREE(&dcc->l.iname);
+    dcc->l.iface = iface;
     Unset_Iface();
-    /* we cannot create interface at this point unfortunately so cannot cancel
-       this thread until we get ident and come to _dcc_send_phandler() */
   }
   else					/* is answered to unknown socket? */
   {
@@ -964,14 +976,13 @@ failed:
 static int _dcc_connect (dcc_priv_t *dcc)
 {
   INTERFACE *iface;
-  char addr[16];
+  char addr[IFNAMEMAX+1];
   unsigned short port;
   uint32_t ip;
 
   port = dcc->ptr;
   dprint (4, "dcc:_dcc_connect to port %hu.", port);
   dcc->socket = -1;
-  dcc->state = P_INITIAL;		/* reset it after _dcc_stage_1() */
   dcc->ahead = ircdcc_ahead_size;	/* we have full access now */
   if (dcc->ahead < 0)			/* correct it if need */
     dcc->ahead = 0;
@@ -979,11 +990,22 @@ static int _dcc_connect (dcc_priv_t *dcc)
     dcc->ahead = 16;
   if (port == 0)			/* it's passive mode! */
   {
-    struct dcc_listener_data *dld = safe_malloc(sizeof(struct dcc_listener_data));
+    struct dcc_listener_data *dld;
+
+    snprintf(addr, sizeof(addr), "#%s", dcc->l.iface->name);
+    iface = Find_Iface(I_LISTEN, addr);
+    if (iface) {			/* interface already exists */
+      ERROR ("request for CTCP SEND from %s (passive): there is a listener for such client already.",
+	     iface->name);
+      Unset_Iface();
+      return 0;
+    } /* FIXME: shouldn't that check be right when we got DCC SEND request? */
+    dld = safe_malloc(sizeof(struct dcc_listener_data));
     dld->dcc = dcc;
+    dcc->state = P_DISCONNECTED;	/* reset it after _dcc_stage_1() */
     iface = dcc->l.iface;
-    dcc->l.iface = NULL;		/* in case of fail of listener */
-    if (Listen_Port(iface->name, hostname, port, NULL, dld,
+    dcc->l.iname = safe_strdup(addr);
+    if (Listen_Port(iface->name, hostname, port, addr, dld,
 		    &_dcc_callback, &_dcc_pasv_pre, &_dcc_send_phandler))
     {
       ERROR ("request for CTCP SEND from %s (passive): could not open listen port!",
@@ -993,6 +1015,7 @@ static int _dcc_connect (dcc_priv_t *dcc)
     }
     return 1;
   }
+  dcc->state = P_INITIAL;		/* reset it after _dcc_stage_1() */
   dcc->l.iface = Add_Iface (I_CONNECT, dcc->l.iface->name, &_dcc_sig_2, NULL,
 			    dcc);
   ip = htonl (dcc->rate);
@@ -1324,7 +1347,7 @@ static int dcc_send (INTERFACE *w, uchar *who, char *lname, char *cw)
       dcc = target->data;
       if (dcc == NULL)
 	return 0;			/* TODO: log it? */
-      if (dcc->state != P_DISCONNECTED || dcc->lname[0] || !dcc->filename)
+      if (dcc->state != P_INITIAL || dcc->lname[0] || !dcc->filename)
 	return 0;			/* it's wrong! */
       if ((cc = strchr (who, '!')))
 	*cc = 0;			/* get only nick there */
@@ -1336,7 +1359,7 @@ static int dcc_send (INTERFACE *w, uchar *who, char *lname, char *cw)
       ad = htonl (ip);
       inet_ntop (AF_INET, &ad, path, sizeof(path));
       dcc->l.iface = Add_Iface (I_CONNECT, dcc->uh, &_dcc_sig_2, NULL, dcc);
-      dcc->state = P_INITIAL;		/* prepare for _isent_phandler */
+      //dcc->state = P_INITIAL;		/* prepare for _isent_phandler */
       strfcpy (dcc->uh, who, sizeof(dcc->uh));
       if (lname)
 	strfcpy (dcc->lname, lname, sizeof(dcc->lname));
@@ -1544,26 +1567,38 @@ BINDING_TYPE_irc_priv_msg_ctcp (ctcp_chat);
 static int ctcp_chat (INTERFACE *client, unsigned char *who, char *lname,
 		      char *unick, char *msg)
 {
-  dcc_priv_t *dcc = new_dcc();
+  dcc_priv_t *dcc;
   struct dcc_listener_data *dld;
+  register INTERFACE *tst;
+  char shname[IFNAMEMAX+1];
 
   if (ircdcc_allow_dcc_chat != TRUE)
   {
 //    New_Request (client, F_T_CTCR, _("CHAT Unknown command."));
     return 1;					/* although logging :) */
   }
+  snprintf(shname, sizeof(shname), "#%s", client->name);
+  tst = Find_Iface(I_LISTEN, shname);
+  if (tst) {				/* interface already exists */
+    New_Request(client, F_T_CTCR,
+		_("DCC ERRMSG No duplicate connections allowed."));
+    Unset_Iface();
+    return 1;
+  }
+  dcc = new_dcc();
   /* dcc->state == P_DISCONNECTED */
   dcc->filename = NULL;
+  dcc->l.iname = safe_strdup(shname);
   strfcpy (dcc->uh, client->name, sizeof(dcc->uh));
   strfcpy (dcc->lname, lname, sizeof(dcc->lname)); /* report may want it */
   dld = safe_malloc(sizeof(struct dcc_listener_data));
   dld->dcc = dcc;
-  /* FIXME: create interface to watch listener */
-  if (Listen_Port(lname, hostname, 0, NULL, dld, &_dcc_callback,
+  if (Listen_Port(lname, hostname, 0, shname, dld, &_dcc_callback,
 		  &_dcc_inc_pre, &chat_handler))
   {
     ERROR ("CTCP CHAT from %s: could not open listen port!", client->name);
     FREE(&dld);
+    FREE(&dcc->l.iname);
     free_dcc (dcc);
   }
   return 1;
@@ -1740,6 +1775,7 @@ static int ssirc_send (struct peer_t *peer, INTERFACE *w, char *args)
     if (_ircdcc_dccid == 0)		/* token 0 used as indicator */
       _ircdcc_dccid = 1;
     dcc->token = _ircdcc_dccid;
+    dcc->state = P_INITIAL;		/* as we have interface */
     Add_Request (I_CLIENT, dcc->uh, F_T_CTCP, "DCC SEND \"%s\" %u 0 %u %u",
 		 net, ip_local, dcc->size, _ircdcc_dccid);
     snprintf (target, sizeof(target), "irc-ctcp#%u", _ircdcc_dccid++);
@@ -1747,14 +1783,29 @@ static int ssirc_send (struct peer_t *peer, INTERFACE *w, char *args)
     dcc->tid = NewTimer (I_TEMP, target, S_TIMEOUT, ircdcc_conn_timeout, 0, 0, 0);
     /* done... we should wait for responce now so we can connect there */
   } else {
-    struct dcc_listener_data *dld = safe_malloc(sizeof(struct dcc_listener_data));
+    struct dcc_listener_data *dld;
+    register INTERFACE *tst;
+
+    snprintf(target, sizeof(target), "#%s", dcc->uh);
+    tst = Find_Iface(I_LISTEN, target);
+    if (tst) {
+      New_Request(peer->iface, 0,
+		  _("Cannot send file: there is a listener to %s already."),
+		  dcc->uh);
+      Unset_Iface();
+      goto failed;
+    }
+    dld = safe_malloc(sizeof(struct dcc_listener_data));
     dld->dcc = dcc;
     dcc->token = 0;
-    if (Listen_Port(c, hostname, port, NULL, dld, &_dcc_callback,
+    dcc->l.iname = safe_strdup(target);
+    if (Listen_Port(c, hostname, port, target, dld, &_dcc_callback,
 		    &_dcc_inc_pre, &isend_handler))
     {
       ERROR ("sending to %s: could not open listening port!", args);
       FREE(&dld);
+      FREE(&dcc->l.iname);
+failed:
       FREE(&dcc->filename);
       free_dcc (dcc);
     }
@@ -1857,9 +1908,10 @@ static iftype_t irc_ctcp_mod_sig (INTERFACE *iface, ifsig_t sig)
       while (ActDCC)
 	if (ActDCC->state == P_DISCONNECTED)	/* it's just listener */
 	{
-	  //FIXME: wait listener interface if it's still active!
-	  CloseSocket (ActDCC->socket);
 	  KillTimer (ActDCC->tid);
+	  /* kill and wait listener interface if it's still active */
+	  Send_Signal(I_LISTEN, ActDCC->l.iname, S_TERMINATE);
+	  FREE(&ActDCC->l.iname);
 	  free_dcc (ActDCC);
 	}
 	else if (ActDCC->l.iface && ActDCC->l.iface->IFSignal)

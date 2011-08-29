@@ -23,9 +23,14 @@ module ircd
  introduce. Mask "!some.server" means wrong path (L:line analog).
 
 function ircd
-:ircd ["-"encoding] [host"/"]<port>["%"flags]
+:ircd ["-"encoding] [host"/"]<1024-65535>["%%"flags]
 :
-:
+:Opens listening port for IRC protocol connections. Optional %_encoding%_\
+ is starting charset for client connections. Optional %_host%_ is hostname\
+ on which port is listening and if omitted then listening is opened on\
+ every IPv4 local address. Optional %_flags%_ are chars for mandatory\
+ connection chain first links (see technical documentation for more details\
+ about connection chain).
 
 set ircd-default-class
 :%* <string>

@@ -183,3 +183,135 @@ IRCD_MULTICONNECT. See descriptions below.
       Command: IPRIVMSG
       Command: INOTICE
       Command: ISQUERY
+
+
+Transition from ircd.conf to foxeye configuration.
+
+      A:line
+   In the FoxEye all static configuration such as information from A:line
+   lies in boot config.  So fields will be in config statements:
+   2: set ircd-description-string XXXXX
+   3: set ircd-admin-email XXXXX
+   4: set ircd-admin-info XXXXX
+
+      B:line
+   The B:line isn't supported yet.
+
+      c:line
+   c:line is version of C:line which includes try to establish connection
+   using Zlib compression.  This can be done in the FoxEye by defining
+   char 'Z' in field 'flags' of hostmask - see 'C:line' description.  Note
+   that you have to have 'ziplinks' module loaded to make this work.
+
+      C:line
+   To setup autoconnect to remote server you have to setup the individual
+   client record for the server and set hostmask for it.  Hostmask format
+   follows common hostmask rules:
+   [ <ident> ] ":" <password> "@" <host> "/" <port> [ "%" <flags> ]
+   i.e. it contains every field from C:line but also may contain extra
+   field 'flags' which can be used to extent handshake (with Zlib for
+   example).
+
+      D:line
+   There is no plain solution for that crossing yet.
+
+      H:line
+   To define servers which some server can introduce you have to set the
+   'hub' subfield for individual client record for that server.  The 'hub'
+   subfield may contain list of space separated server masks (wilcards are
+   supported), any of which may be prepended with "!" to deny that mask
+   from being introduced (see L:line).
+
+      i:line
+   i:line which is restricted version of I:line in the FoxEye should be
+   configured the same way as it goes for I:line but such client record
+   should have network subrecord with flag 'd' (DEOP, see documentation).
+
+      I:line
+   Host lines for classes are host records for the FoxEye's client records
+   so for class '22' you can add hostmask for each desired I:line into your
+   class' client record.  Formats follows common hostmask rules:
+   <ident|"*"> [ ":" <password>] "@" hostmask
+   Note that you can define either domain masks and IP masks.  If both IP
+   and domain are defined then IP check follows domain check and IP check
+   will be skipped if domain check found any matched class.  See also
+   'Y:line' description.
+
+      K:line
+   K:line is special line to describe hostmask which are not allowed to
+   connect.  In the FoxEye that can be done creating either named or
+   unnamed client records with subrecord which have flag 'k' (DENY).
+   Note that unnamed client record can have only one hostmask on it.  And
+   also note that total number of either named or unnamed client records
+   is limited approximately by 32 thousands each so probably the best way
+   is to group hosts together if you have too much K:lines on your server.
+
+      L:line
+   To use L:line in the FoxEye you should use 'deny' notation for the hub
+   subrecord, see 'H:line' description.
+
+      M:line
+   In the FoxEye all static configuration such as information from M:line
+   lies in boot config.  So fields will be in config statements:
+   2: set nick XXXXX
+   3: set my-hostname XXXXX
+   4: set ircd-description-string XXXXX
+   5: [unused]
+
+      N:line
+   N:line is alike C:line but defines remote connection.  In the FoxEye
+   password of remote server is stored in special subfield 'passwd' and
+   can be changed by standard means.  For all other info see 'C:line'
+   description.
+
+      o:line
+   In the FoxEye permissions are granted to users by setting flags to their
+   personal client records' network subrecord appropriate way.  For Local
+   IRC Operator you have to set flag 'h' (HALFOP) to them.
+
+      O:line
+   In the FoxEye permissions are granted to users by setting flags to their
+   personal client records' network subrecord appropriate way.  For IRC
+   Operator you have to set flag 'o' (OP) to them.
+
+      P:line
+   In the FoxEye each listening port should be configured in boot config
+   using command 'ircd'.  See documentation for more info.  Example:
+    ircd localhost/9995%S
+
+      Q:line
+   In the FoxEye's ircd module servers can be marked quarantined the same
+   way as it is done for K:line'd users, i.e. by setting 'k' (DENY) flag
+   on network subrecord for such server.
+
+      S:line
+   The S:line which allows services to connect can be done the same way
+   as it is done for any other connect, i.e. setting the hostmask and
+   the special subfield 'passwd' for such client.  No special definitions
+   are supported.
+
+      U:line
+   The U:line isn't supported as it is obsoleted these days.
+
+      V:line
+   The V:line isn't supported.
+
+      Y:line
+   Classes in the FoxEye ircd module are parameter lines for client records
+   bound to network record.  If you have a record for network with name
+   'ircnet' and want to define class '22' then you have to create client
+   record '22' and define subrecord 'ircnet' in it.  Subrecord line will
+   contain then five space separated numbers:
+   - maximum number of links from this [user@]host on the server
+   - maximum number of links from this [user@]host on the net
+   - maximum number of links in this class (per I line)
+   - ping frequency (in seconds)
+   - sendQ for each client
+   i.e. respectively 6th, 7th, 4th, 2nd,and 5th fields from Y:line.  Note
+   that class name may be not just number but some more descriptive name.
+   Also note that always there is some default class, parameters of which
+   are defined in variable 'ircd-default-class'.
+   Servers are not yet distinguished by classes (but network subrecord
+   can be used for that purpose the same way in the future), servers have
+   unlimited maximum number of links and sendQ, and ping frequency is
+   defined in config variable 'ircd-serverclass-pingf'.

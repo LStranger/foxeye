@@ -7,9 +7,13 @@ TODO:
 	* core/wtmp.c: to handle errors somehow?
 	* core/help.c: to add support for '##$charset utf-8' at helpfile start.
 	* core/direct.c: to add support for charset and comments in motd file.
-	* modules/irc-ctcp/dcc.c: to revise listener handling.
 
 --- [0.10.0]
+Mon Aug 29 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/direct.c, modules/irc-ctcp/dcc.c: revised thread handling in
+	  DCC requests support; hope it should be terminated correctly now
+	  on module termination.
+
 Fri Aug 26 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c, modules/ircd/clients.c, modules/ircd/ircd.c:
 	  fixed printf parameters.
