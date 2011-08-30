@@ -12,6 +12,7 @@ TODO:
 Tue Aug 30 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc/irc.c: replaced getpwuid as it provoked memory leak.
 	* modules/modes/modes.c: fixed wrong return code on module termination.
+	* modules/ircd/channels.c, modules/ircd/ircd.c: fixed SIGSEGV on rehash.
 
 Mon Aug 29 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.c, modules/irc-ctcp/dcc.c: revised thread handling in
@@ -25,7 +26,7 @@ Fri Aug 26 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed wrong flag setting on module death.
 	* core/direct.c, modules/irc-ctcp/dcc.c: changed creating of interface
 	  on listening port to be done before thread started and renaming it
-	  (in case of port is 0 and no name given) later.
+	  (in case of port is 0 and no name given) later (bug#69).
 	* doc/modules.api: updated documentation a bit.
 	* core/init.c: forsed unsharp of parameter 'charset' in config.
 

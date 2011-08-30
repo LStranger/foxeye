@@ -4136,7 +4136,7 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
       Ircd->s = TOKEN_ALLOC_SIZE;
       Ircd->token[0] = &ME;		/* set token 0 to ME */
       Insert_Key (&Ircd->clients, MY_NAME, &ME, 1); /* nothing to check? */
-      break;
+      /* continue with S_FLUSH too */
     case S_FLUSH:
       ircd_channels_flush (Ircd, _ircd_modesstring, sizeof(_ircd_modesstring));
       break;

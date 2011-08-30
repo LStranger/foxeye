@@ -42,8 +42,8 @@ ALLOCATABLE_TYPE (MEMBER, IrcdMemb_, prevnick)
 ALLOCATABLE_TYPE (MASK, IrcdMask_, next)
 
 /* list of translations MODE char into WHO char - has to be equal lenghts! */
-static char *Ircd_modechar_list = "ohvaqO!"; /* list of known '+? nick' modes */
-static char *Ircd_whochar_list  = "       "; /* appropriate WHO chars */
+static char Ircd_modechar_list[]  = "ohvaqO!"; /* list of known '+? nick' modes */
+static char Ircd_whochar_list[16] = "       "; /* appropriate WHO chars */
 
 static modeflag Ircd_modechar_mask = 0; /* filled with matching to above */
 
@@ -2275,8 +2275,11 @@ void ircd_channels_flush (IRCD *ircd, char *modestring, size_t s)
 
   for (i = 0; Ircd_modechar_list[i]; i++)
     Ircd_whochar_list[i] = ' ';		/* clear list of channel whochars */
-  while ((b = Check_Bindtable (BTIrcdWhochar, ircd->iface->name, U_ALL,
-			       U_ANYCH, b)))
+  if (ircd->iface)
+    c = ircd->iface->name;
+  else
+    c = "*";
+  while ((b = Check_Bindtable (BTIrcdWhochar, c, U_ALL, U_ANYCH, b)))
     if (!b->name) /* do internal only */
       for (i = 0; Ircd_modechar_list[i]; i++)
 	if ((ch = (f = (void *)b->func) (Ircd_modechar_list[i])))
@@ -2608,7 +2611,6 @@ void ircd_channel_proto_start (IRCD *ircd)
   Add_Binding ("ircd-umodechange", "O", 0, 0, (Function)&iumch_O, NULL);
   Add_Binding ("ircd-umodechange", "s", 0, 0, (Function)&iumch_s, NULL);
   Add_Binding ("ircd-check-modechange", "*", 0, 0, &ichmch_r, NULL);
-  Send_Signal (I_MODULE, "ircd*", S_FLUSH); /* apply bindings to modes list */
   /* create common local channels */
   _ircd_log_channel (ircd, "&KILLS", F_MODES);
   _ircd_log_channel (ircd, "&NOTICES", F_WARN);
