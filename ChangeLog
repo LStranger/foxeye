@@ -11,6 +11,7 @@ TODO:
 --- [0.10.0]
 Tue Aug 30 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc/irc.c: replaced getpwuid as it provoked memory leak.
+	* modules/modes/modes.c: fixed wrong return code on module termination.
 
 Mon Aug 29 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.c, modules/irc-ctcp/dcc.c: revised thread handling in

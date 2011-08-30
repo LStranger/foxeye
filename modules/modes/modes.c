@@ -671,6 +671,7 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
     Delete_Binding ("dcc", &dc_chban, NULL);
     Delete_Binding ("dcc", &dc_comment, NULL);
     UnregisterVariable ("default-ban-time");
+    return (I_DIED);
   }
   return 0;
 }
