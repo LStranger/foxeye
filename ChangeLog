@@ -9,6 +9,9 @@ TODO:
 	* core/direct.c: to add support for charset and comments in motd file.
 
 --- [0.10.0]
+Tue Aug 30 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/irc/irc.c: replaced getpwuid as it provoked memory leak.
+
 Mon Aug 29 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.c, modules/irc-ctcp/dcc.c: revised thread handling in
 	  DCC requests support; hope it should be terminated correctly now

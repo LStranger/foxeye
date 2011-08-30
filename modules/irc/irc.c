@@ -1855,8 +1855,20 @@ SigFunction ModuleInit (char *args)
   struct passwd *pwd;
   register char *c;
   register int i;
+  struct passwd pwdbuf;
+  char buf[LONG_STRING];
 
   CheckVersion;
+  /* set up variables and get login and full name */
+  if (getpwuid_r(getuid(), &pwdbuf, buf, sizeof(buf), &pwd) || pwd == NULL) {
+    ERROR("Cannot retrieve user info, not loading module \"irc\".");
+    return (NULL);
+  }
+  strfcpy (irc_default_nick, Nick, sizeof(irc_default_nick));
+  strfcpy (irc_default_ident, pwd->pw_name, sizeof(irc_default_ident));
+  strfcpy (irc_default_realname, pwd->pw_gecos, sizeof(irc_default_realname));
+  if ((c = strchr (irc_default_realname, ',')))		/* strip other info */
+    *c = 0;
   /* init all stuff */
   BT_Irc = Add_Bindtable ("irc-raw", B_MATCHCASE);
   _irc_init_bindings();
@@ -1882,13 +1894,6 @@ SigFunction ModuleInit (char *args)
     else
       irc_ascii_lowertable[i] = irc_rfc1459_lowertable[i] = i;
   }
-  /* set up variables and get login and full name */
-  pwd = getpwuid (getuid());
-  strfcpy (irc_default_nick, Nick, sizeof(irc_default_nick));
-  strfcpy (irc_default_ident, pwd->pw_name, sizeof(irc_default_ident));
-  strfcpy (irc_default_realname, pwd->pw_gecos, sizeof(irc_default_realname));
-  if ((c = strchr (irc_default_realname, ',')))		/* strip other info */
-    *c = 0;
   module_irc_regall();
   /* shedule check for autoconnects since listfile may be not loaded yet */
   NewTimer (I_MODULE, "irc", S_FLUSH, 1, 0, 0, 0);

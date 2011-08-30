@@ -1030,6 +1030,8 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
 	free_tcl_timer (tt);
       }
       Tcl_DeleteInterp (Interp);	/* stop interpreter */
+      if (!Tcl_InterpDeleted(Interp))
+	WARNING("Tcl_InterpDeleted returned 0 after Tcl_DeleteInterp!");
       Interp = NULL;
 #ifdef HAVE_TCL_SETSYSTEMENCODING
       Free_Conversion(_Tcl_Conversion);

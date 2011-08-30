@@ -75,6 +75,7 @@ static HELPGR *_get_helpgr (char *name)
     h->next = gr;
   else
     Help = gr;
+  dprint(4, "added set \"%s\" to help", name);
   return gr;
 }
 

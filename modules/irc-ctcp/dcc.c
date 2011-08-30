@@ -253,12 +253,9 @@ static iftype_t _dcc_sig_2 (INTERFACE *iface, ifsig_t signal)
       if (dcc->socket >= 0)		/* check if it's forced to die */
 	LOG_CONN (_("DCC connection to %s terminated."), iface->name);
       CloseSocket (dcc->socket);	/* just kill its socket... */
-      if (dcc->th)
-      {
-	Unset_Iface();			/* unlock dispatcher */
-	pthread_join (dcc->th, NULL);	/* ...it die itself, waiting for it */
-	Set_Iface (NULL);		/* restore status quo */
-      }
+      Unset_Iface();			/* unlock dispatcher */
+      pthread_join (dcc->th, NULL);	/* ...it die itself, waiting for it */
+      Set_Iface (NULL);			/* restore status quo */
       FREE (&dcc->filename);
       KillTimer (dcc->tid);		/* if it's still on timeout */
       free_dcc (dcc);
@@ -1196,13 +1193,10 @@ static iftype_t _dcc_sig_1 (INTERFACE *iface, ifsig_t signal)
 	break;
     case S_TERMINATE:
       KillTimer (dcc->tid);		/* in any case we done with timer */
-      if (dcc->th)
-      {
-	Unset_Iface();			/* unlock dispatcher */
-	pthread_cancel (dcc->th);	/* cancel the thread */
-	pthread_join (dcc->th, NULL);
-	Set_Iface (NULL);		/* restore status quo */
-      }
+      Unset_Iface();			/* unlock dispatcher */
+      pthread_cancel (dcc->th);		/* cancel the thread */
+      pthread_join (dcc->th, NULL);	/* and wait for it */
+      Set_Iface (NULL);			/* restore status quo */
       if (dcc->state != P_TALK ||	/* if we aren't ready to connect */
 	  !_dcc_connect (dcc))		/* or failed to create thread 2 */
       {
