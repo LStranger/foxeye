@@ -9,6 +9,10 @@ TODO:
 	* core/direct.c: to add support for charset and comments in motd file.
 
 --- [0.10.0]
+Wed Aug 31 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* configure, modules/Makefile: eliminated requirement to run gmake
+	  to compile; modules still require presence of gmake in OS.
+
 Tue Aug 30 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc/irc.c: replaced getpwuid as it provoked memory leak.
 	* modules/modes/modes.c: fixed wrong return code on module termination.

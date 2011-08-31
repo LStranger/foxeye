@@ -4,8 +4,6 @@
 # This file is part of FoxEye distribution.
 # Copiright (C) 1999-2010 Andrej Gritsenko <andrej@rep.kiev.ua>
 
-SHELL = @BASH@
-
 LD_MODS = @LD_MODS@
 
 srcdir = @srcdir@
@@ -16,10 +14,14 @@ DISTFILES = Makefile.in Makefile.mods.in
 
 AUTOMAKE = @AUTOMAKE@
 
+@FORCE_GMAKE@
+
 all: static
 
 clean:
-	@for x in */; do $(MAKE) -C $$x -f ../Makefile.mods clean ;done
+	@for x in *; do \
+	    test -d $$x && $(MAKE) -C $$x -f ../Makefile.mods clean; \
+	done
 	rm -f *.o core *~ ${top_srcdir}/core/static.h install-sh
 
 distclean: clean
@@ -29,8 +31,9 @@ modules install install-strip uninstall:
 	@test -f install-sh || @LN_S@ ../install-sh .
 	@if test "x$(LD_MODS)" = "x"; then \
 	set fnord $(MAKEFLAGS); amf=$$2; \
-	for subdir in */; do \
-	    test "$$subdir" = "CVS/" && continue; \
+	for subdir in *; do \
+	    test -d $$subdir || continue; \
+	    test "$$subdir" = "CVS" && continue; \
 	    target='$@'; \
 	    echo "Making $$target in $$subdir"; \
 	    $(MAKE) -C $$subdir -f ../Makefile.mods $$target \
@@ -39,8 +42,9 @@ modules install install-strip uninstall:
 
 static: @EXTRA_HDR@
 	@set fnord $(MAKEFLAGS); amf=$$2; \
-	for subdir in */; do \
-	    test "$$subdir" = "CVS/" && continue; \
+	for subdir in *; do \
+	    test -d $$subdir || continue; \
+	    test "$$subdir" = "CVS" && continue; \
 	    echo "Making all in $$subdir"; \
 	    $(MAKE) -C $$subdir -f ../Makefile.mods all \
 		|| case "$$amf" in *=*) exit 1;; *k*) fail=yes;; *) exit 1;; esac; \
@@ -57,8 +61,9 @@ Makefile.mods: $(srcdir)/Makefile.mods.in  $(top_builddir)/config.status $(BUILT
 subdir = modules
 
 dist distdir: Makefile Makefile.mods
-	@for subdir in */; do \
-	    test "$$subdir" = "CVS/" \
+	@for subdir in *; do \
+	    test -d $$subdir || continue; \
+	    test "$$subdir" = "CVS" \
 	    || $(MAKE) -C $$subdir -f ../Makefile.mods distdir; \
 	done
 	@dists="$(DISTFILES)"; \
@@ -81,13 +86,12 @@ ${top_srcdir}/core/static.h:
 	    echo "};"; \
 	    echo "struct modtable ModulesTable[] = {"; \
 	    echo "#endif") >$@
-	@for subdir in */; do \
-	    test "$$subdir" = "CVS/" \
-	    || echo "ModuleInitFunc (`echo $$subdir | sed 's/\///' | sed 's/-/_/'`)" >>$@; \
+	@for subdir in *; do \
+	    test -d $$subdir || continue; \
+	    test "$$subdir" = "CVS" \
+	    || echo "ModuleInitFunc (`echo $$subdir | sed 's/-/_/'`)" >>$@; \
 	done
 	@(echo "#ifdef _MODULES_C"; \
 	    echo "{ NULL, NULL }"; \
 	    echo "};"; \
 	    echo "#endif") >>$@
-
-.SHELL: name="sh" path="@BASH@"
