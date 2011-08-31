@@ -379,14 +379,6 @@ static int _tcl_send_request (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS 
 
   if (argc != 5)
     return _tcl_errret (tcl, "bad number of parameters.");
-  to = ArgString (argv[1], &s);		/* target of message */
-#ifdef HAVE_TCL_SETSYSTEMENCODING
-  ptr = target;
-  s = Do_Conversion(_Tcl_Conversion, &ptr, sizeof(target)-1, to, s);
-  if (ptr == target)
-    target[s] = '\0';
-  to = ptr;
-#endif
   c = ArgString (argv[2], &s);
   for (ift = 0; s; s--)			/* get type from chars */
     if ((t = strchr (typec, *c++)))
@@ -396,14 +388,21 @@ static int _tcl_send_request (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS 
     if ((t = strchr (flagc, *c++)))
       fl |= flagv[t - flagc];
   t = ArgString (argv[4], &s);		/* text of message */
-#if 0 /* tcl does not transcode sources */
 #ifdef HAVE_TCL_SETSYSTEMENCODING
   ptr = message;
   s = Do_Conversion(_Tcl_Conversion, &ptr, sizeof(message)-1, t, s);
-  if (ptr == target)
-    target[s] = '\0';
+  if (ptr == message)
+    message[s] = '\0';
   t = ptr;
 #endif
+  to = ArgString (argv[1], &s);		/* target of message */
+  DBG("_tcl_send_request:to=%s mode=%s msg=%s", to, c, t);
+#ifdef HAVE_TCL_SETSYSTEMENCODING
+  ptr = target;
+  s = Do_Conversion(_Tcl_Conversion, &ptr, sizeof(target)-1, to, s);
+  if (ptr == target)
+    target[s] = '\0';
+  to = ptr;
 #endif
   Add_Request (ift, to, fl, "%s", t);	/* send message! */
   return TCL_OK;
@@ -929,11 +928,26 @@ static int dc_tcl (struct peer_t *from, char *args)
   if (Tcl_Eval (Interp, c) == TCL_OK)	/* success! */
   {
 #ifdef HAVE_TCL8X
-    if ((c = Tcl_GetStringResult (Interp)))
+# ifdef HAVE_TCL_SETSYSTEMENCODING
+    char *ptr;
+    register size_t s;
+    char buf[MESSAGEMAX+1];
+
+# endif
+    c = Tcl_GetStringResult (Interp);
+# ifdef HAVE_TCL_SETSYSTEMENCODING
+    if (c) {
+      ptr = buf;
+      s = Do_Conversion(_Tcl_Conversion, &ptr, sizeof(buf), c, strlen(c));
+      if (ptr == buf)
+	buf[s] = '\0';
+      c = ptr;
+    }
+# endif
+    if (c)
 #else
     if ((c = Interp->result))
 #endif
-      /* TODO: do charset conversion here too */
       New_Request (from->iface, 0, _("TCL: result was: %s"), c);
   }
   else
@@ -1021,6 +1035,7 @@ static int _tcl_interface (char *fname, int argc, const char *argv[])
     size_t s;
 # endif
     BindResult = Tcl_GetStringResult (Interp);
+    DBG("_tcl_interface:fname=%s result=%s", fname, NONULLP(BindResult));
 # ifdef HAVE_TCL_SETSYSTEMENCODING
     s = Do_Conversion(_Tcl_Conversion, &ptr, sizeof(buf), BindResult,
 		      safe_strlen(BindResult));
@@ -1028,6 +1043,7 @@ static int _tcl_interface (char *fname, int argc, const char *argv[])
 # endif
 #else
     BindResult = Interp->result;
+    DBG("_tcl_interface:fname=%s result=%s", fname, NONULLP(BindResult));
 #endif
     if (BindResult && ((i = atoi (BindResult)) == 1 || i == -1))
       return i;				/* 1 and -1 are valid values */
@@ -1077,6 +1093,7 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
       Tcl_DeleteInterp (Interp);	/* stop interpreter */
       if (!Tcl_InterpDeleted(Interp))
 	WARNING("Tcl_InterpDeleted returned 0 after Tcl_DeleteInterp!");
+      Tcl_Release((ClientData)Interp);
       Interp = NULL;
 #ifdef HAVE_TCL_SETSYSTEMENCODING
       Free_Conversion(_Tcl_Conversion);
@@ -1145,10 +1162,20 @@ SigFunction ModuleInit (char *args)
     Tcl_DeleteInterp (Interp);
   /* init Tcl interpreter */
   Interp = Tcl_CreateInterp();
+  Tcl_Preserve((ClientData)Interp);
+  Tcl_FindExecutable(RunPath);
+  Tcl_SourceRCFile(Interp);
 #ifdef HAVE_TCL_SETSYSTEMENCODING
-  if (*Charset && Tcl_SetSystemEncoding (Interp, Charset) != TCL_OK)
-    Add_Request (I_LOG, "*", F_BOOT, "Warning: charset %s unknown for Tcl: %s",
-		 Charset, Tcl_GetStringResult (Interp));
+  if (*Charset && strcasecmp(Charset, "UTF-8")) {
+    char enc[SHORT_STRING];
+
+    unistrlower(enc, Charset, sizeof(enc));
+    if (!memcmp(enc, "mac", 3))
+      enc[3] |= 0x20;		/* macXxxx are non-all-lowercase names for Tcl */
+    if (Tcl_SetSystemEncoding(Interp, enc) != TCL_OK)
+      Add_Request(I_LOG, "*", F_BOOT, "Warning: charset %s unknown for Tcl: %s",
+		  enc, Tcl_GetStringResult (Interp));
+  }
   _Tcl_Conversion = Get_Conversion("UTF-8");
 #endif
   /* add interface from TCL to core */
