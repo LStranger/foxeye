@@ -109,15 +109,23 @@ static inline void ResultInteger (Tcl_Interp *tcl, int res)
 
 static inline void ResultString (Tcl_Interp *tcl, const char *res, size_t sz)
 {
-#ifndef HAVE_TCL8X
   char var[TCL_RESULT_SIZE];
+#ifndef HAVE_TCL8X
 
   if (sz > sizeof(var))
     sz = sizeof(var);
   strfcpy (var, res, sz);
   Tcl_SetResult (tcl, var, TCL_VOLATILE);
 #else
-  Tcl_SetObjResult (tcl, Tcl_NewStringObj ((char *)res, sz));
+  char *ptr;
+
+  ptr = var;
+#ifdef HAVE_TCL_SETSYSTEMENCODING
+  sz = Undo_Conversion(_Tcl_Conversion, &ptr, sizeof(var)-1, res, sz);
+  if (ptr == var)
+    var[sz] = '\0';
+#endif
+  Tcl_SetObjResult (tcl, Tcl_NewStringObj (ptr, sz));
 #endif
 }
 
@@ -165,7 +173,8 @@ static int _tcl_interface (char *, int, const char **);
 static int _tcl_call_function (ClientData func, Tcl_Interp *tcl, int argc, TCLARGS argv[])
 {
   char string[LONG_STRING];
-  char *c, *cs = string;
+  char buf[LONG_STRING];
+  char *c, *cs = string, *ptr;
   size_t s, ss = sizeof(string) - 1;
   int i = 1;				/* skip function name */
   int (*f)(const char *) = func;
@@ -182,16 +191,28 @@ static int _tcl_call_function (ClientData func, Tcl_Interp *tcl, int argc, TCLAR
     {
       *cs++ = '"';
       ss -= 2;
+# ifdef HAVE_TCL_SETSYSTEMENCODING
+      ptr = buf;
+      s = Do_Conversion(_Tcl_Conversion, &ptr, ss, c, s);
+# else
+      ptr = c;
       if (s > ss)
 	s = ss;
-      memcpy (cs, c, s);
+# endif
+      memcpy (ptr, c, s);
       cs[s] = '"';
       cs++;
     }
     else
     {
+# ifdef HAVE_TCL_SETSYSTEMENCODING
+      ptr = buf;
+      s = Do_Conversion(_Tcl_Conversion, &ptr, ss, c, s);
+# else
+      ptr = c;
       if (s > ss)
 	s = ss;
+# endif
       memcpy (cs, c, s);
     }
     cs += s;
@@ -292,6 +313,7 @@ static int _tcl_bind (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS argv[])
   _tcl_tocflag (c, s, cf);
   if (!(cf & ~(U_NEGATE | U_AND)))	/* nothing to negate or and */
     cf = 0;
+  /* FIXME: do conversion on key/mask */
   c = ArgString (argv[3], &s);		/* it's key/mask now */
   if (argc == 3) /* if no command name then find and return binding name */
   {
@@ -343,6 +365,11 @@ static int _tcl_send_request (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS 
   char *to, *c, *t;
   iftype_t ift;
   flag_t fl;
+#ifdef HAVE_TCL_SETSYSTEMENCODING
+  char *ptr;
+  char target[NAMEMAX+1];
+//  char message[MESSAGEMAX+1];
+#endif
   static char *typec = "dncl";
   static iftype_t typev[] = {I_DCCALIAS,I_SERVICE,I_CLIENT,I_LOG};
   static char *flagc = "0124pmtcbsodjkw-";
@@ -353,6 +380,13 @@ static int _tcl_send_request (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS 
   if (argc != 5)
     return _tcl_errret (tcl, "bad number of parameters.");
   to = ArgString (argv[1], &s);		/* target of message */
+#ifdef HAVE_TCL_SETSYSTEMENCODING
+  ptr = target;
+  s = Do_Conversion(_Tcl_Conversion, &ptr, sizeof(target)-1, to, s);
+  if (ptr == target)
+    target[s] = '\0';
+  to = ptr;
+#endif
   c = ArgString (argv[2], &s);
   for (ift = 0; s; s--)			/* get type from chars */
     if ((t = strchr (typec, *c++)))
@@ -362,6 +396,15 @@ static int _tcl_send_request (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS 
     if ((t = strchr (flagc, *c++)))
       fl |= flagv[t - flagc];
   t = ArgString (argv[4], &s);		/* text of message */
+#if 0 /* tcl does not transcode sources */
+#ifdef HAVE_TCL_SETSYSTEMENCODING
+  ptr = message;
+  s = Do_Conversion(_Tcl_Conversion, &ptr, sizeof(message)-1, t, s);
+  if (ptr == target)
+    target[s] = '\0';
+  t = ptr;
+#endif
+#endif
   Add_Request (ift, to, fl, "%s", t);	/* send message! */
   return TCL_OK;
 }
@@ -375,6 +418,7 @@ static int _tcl_ison (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS argv[])
   if (argc < 2 || argc > 3)		/* check for number of params */
     return _tcl_errret (tcl, "bad number of parameters.");
   service = ArgString (argv[1], &s);	/* service name */
+  /* FIXME: do conversion on service and Lname */
   if (argc == 2)			/* no lname provided */
     lname = NULL;
   else
@@ -395,6 +439,7 @@ static int _tcl_check_flags (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS a
   if (argc < 3 || argc > 4)		/* check for number of params */
     return _tcl_errret (tcl, "bad number of parameters.");
   lname = ArgString (argv[1], &s);
+  /* FIXME: do conversion on service and Lname */
   c = ArgString (argv[2], &s);		/* calculate attr(s) */
   cf = 0;
   if (argc == 3)			/* global, i.e. network flags asked */
