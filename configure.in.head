@@ -25,8 +25,12 @@ if test "x$CC" = x; then
 	    ;;
 	solaris*)
 	    CC="c99"
-	    MAKE=gmake
-	    FORCE_GMAKE="MAKE=gmake"
+	    AC_PATH_PROG(GMAKE, gmake)
+	    if test -z "$ac_cv_path_GMAKE"; then
+		AC_MSG_ERROR([gmake required for compilation of FoxEye.])
+	    fi
+	    MAKE="$ac_cv_path_GMAKE"
+	    FORCE_GMAKE="MAKE = $ac_cv_path_GMAKE"
 	    AC_SUBST(FORCE_GMAKE)
 	    ;;
 	*)
@@ -208,7 +212,7 @@ fi
 dnl Checks for threads.
 AC_CHECK_LDFLAG(fe_cv_add_pthread, -pthread, CFLAGS)
 AC_SEARCH_LIBS(pthread_cancel, [c_r pthread], [fe_cv_have_pthreads=yes],
-    [AC_MSG_ERROR([      You cannot compile without threads support.
+    [AC_MSG_ERROR([you cannot compile without threads support.
       Install pthreads library and then run configure again.])
 ])
 
@@ -256,7 +260,7 @@ AC_CACHE_CHECK([whether you need libcrypt], ac_cv_need_libcrypt,
     ])
 ])
 if test "$ac_cv_have_crypt" = no; then
-    AC_MSG_ERROR([	You have no encryption library but need it for password save.])
+    AC_MSG_ERROR([you have no encryption library but need it for password save.])
 fi
 if test "$ac_cv_need_libcrypt" = yes; then
     LIBS="-lcrypt ${LIBS}"

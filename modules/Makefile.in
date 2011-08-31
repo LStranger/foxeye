@@ -4,6 +4,9 @@
 # This file is part of FoxEye distribution.
 # Copiright (C) 1999-2010 Andrej Gritsenko <andrej@rep.kiev.ua>
 
+SHELL = @SHELL@
+@FORCE_GMAKE@
+
 LD_MODS = @LD_MODS@
 
 srcdir = @srcdir@
@@ -13,8 +16,6 @@ top_builddir = ..
 DISTFILES = Makefile.in Makefile.mods.in
 
 AUTOMAKE = @AUTOMAKE@
-
-@FORCE_GMAKE@
 
 all: static
 
