@@ -1834,7 +1834,7 @@ static LINK *_ctcp_find_target(INTERFACE *client, char *lname, char *unick,
   return link;				/* no channel where I can op them */
 }
 
-static int _ctcp_opping(INTERFACE *client, unsigned char *who, char *lname,
+static void _ctcp_opping(INTERFACE *client, unsigned char *who, char *lname,
 			char *unick, char *msg, modeflag checkmf, modeflag set,
 			userflag checkuf, userflag checknocuf)
 {
@@ -1848,7 +1848,7 @@ static int _ctcp_opping(INTERFACE *client, unsigned char *who, char *lname,
 
   /* check args */
   if (!client || !lname)	/* not identified */
-    return 0;
+    return;
   msg = NextWord_Unquoted(pass, msg, sizeof(pass));
   /* check passwd */
   u = Lock_Clientrecord(lname);
@@ -1858,26 +1858,30 @@ static int _ctcp_opping(INTERFACE *client, unsigned char *who, char *lname,
     fail = 1;
   else
     fail = Check_Passwd(pass, crp);
-  if (!fail && (Get_Flags(u, strchr(client->name, '@')) & checkuf))
+  crp = strchr(client->name, '@');
+  if (crp)
+    crp++;
+  if (!fail && (Get_Flags(u, crp) & checkuf))
     checkuf = 0;		/* global access granted */
   else
     checknocuf = 0;		/* check only channel access */
   if (u)
     Unlock_Clientrecord(u);
+  DBG("** _ctcp_opping:client=%s fail=%d checkuf=%#x checknocuf=%#x",
+      client->name, fail, checkuf, checknocuf);
   if (fail)
-    return 0;			/* FIXME: inform client somehow? */
+    return;			/* FIXME: inform client somehow? */
   /* find specified or next channel */
   tgt = _ctcp_find_target(client, lname, unick, msg, &net, pass, sizeof(pass),
 			  checkmf, &me, checkuf, checknocuf);
   if (!tgt)
-    return 0;			/* cannot flag requestor there */
+    return;			/* cannot flag requestor there */
   /* do flagging */
   _make_modechars (mbuf.modechars, net);
   mbuf.changes = mbuf.pos = mbuf.apos = 0;
   mbuf.cmd = NULL;
   _push_mode (net, tgt, &mbuf, set, 1, NULL);
   _flush_mode (net, tgt->chan, &mbuf);
-  return 1;
 }
 
 		/* OP passwd [channel] */
@@ -1885,8 +1889,13 @@ BINDING_TYPE_irc_priv_msg_ctcp(ctcp_op);
 static int ctcp_op(INTERFACE *client, unsigned char *who, char *lname,
 		   char *unick, char *msg)
 {
-  return _ctcp_opping(client, who, lname, unick, msg, (A_ADMIN | A_OP), A_OP,
-		      U_OP, U_DEOP);
+  _ctcp_opping(client, who, lname, unick, msg, (A_ADMIN | A_OP), A_OP, U_OP,
+	       U_DEOP);
+  msg = NextWord(msg);
+  Add_Request(I_LOG, "*", F_PRIV | F_T_CTCP,
+	      "%s requested CTCP OP%s%s from me", who, (*msg) ? " on " : "",
+	      msg);
+  return (-1);			/* don't log the password! */
 }
 
 		/* HOP passwd [channel] */
@@ -1894,9 +1903,13 @@ BINDING_TYPE_irc_priv_msg_ctcp(ctcp_hop);
 static int ctcp_hop(INTERFACE *client, unsigned char *who, char *lname,
 		    char *unick, char *msg)
 {
-  return _ctcp_opping(client, who, lname, unick, msg,
-		      (A_ADMIN | A_OP | A_HALFOP), A_HALFOP, (U_OP | U_HALFOP),
-		      U_DEOP);
+  _ctcp_opping(client, who, lname, unick, msg, (A_ADMIN | A_OP | A_HALFOP),
+	       A_HALFOP, (U_OP | U_HALFOP), U_DEOP);
+  msg = NextWord(msg);
+  Add_Request(I_LOG, "*", F_PRIV | F_T_CTCP,
+	      "%s requested CTCP HOP%s%s from me", who, (*msg) ? " on " : "",
+	      msg);
+  return (-1);
 }
 
 		/* VOICE passwd [channel] */
@@ -1904,16 +1917,17 @@ BINDING_TYPE_irc_priv_msg_ctcp(ctcp_voice);
 static int ctcp_voice(INTERFACE *client, unsigned char *who, char *lname,
 		      char *unick, char *msg)
 {
-  return _ctcp_opping(client, who, lname, unick, msg,
-		      (A_ADMIN | A_OP | A_HALFOP), A_VOICE,
-		      (U_OP | U_HALFOP | U_VOICE),
-		      U_QUIET);
+  _ctcp_opping(client, who, lname, unick, msg, (A_ADMIN | A_OP | A_HALFOP),
+	       A_VOICE, (U_OP | U_HALFOP | U_VOICE), U_QUIET);
+  msg = NextWord(msg);
+  Add_Request(I_LOG, "*", F_PRIV | F_T_CTCP,
+	      "%s requested CTCP VOICE%s%s from me", who, (*msg) ? " on " : "",
+	      msg);
+  return (-1);
 }
 
-		/* INVITE passwd channel */
-BINDING_TYPE_irc_priv_msg_ctcp(ctcp_invite);
-static int ctcp_invite(INTERFACE *client, unsigned char *who, char *lname,
-		       char *unick, char *msg)
+static void _ctcp_inviting(INTERFACE *client, unsigned char *who, char *lname,
+			   char *unick, char *msg)
 {
   struct clrec_t *u;
   char *c;
@@ -1927,7 +1941,7 @@ static int ctcp_invite(INTERFACE *client, unsigned char *who, char *lname,
 
   /* check args */
   if (!client || !lname)	/* not identified */
-    return 0;
+    return;
   msg = NextWord_Unquoted(pass, msg, sizeof(pass));
   StrTrim(msg);
   /* check passwd */
@@ -1956,20 +1970,30 @@ static int ctcp_invite(INTERFACE *client, unsigned char *who, char *lname,
   if (u)
     Unlock_Clientrecord(u);
   if (fail)
-    return 0;			/* FIXME: inform client somehow? */
+    return;			/* FIXME: inform client somehow? */
   /* check if we can operate on channel */
   if (!(me = _find_me_op(net, ch))) /* cannot op them */
-    return 0;
+    return;
   if (ircch_find_link(net, unick, ch)) /* already on chan */
-    return 0;
+    return;
   if (!(cf & (U_OP | U_HALFOP | U_INVITE)) && /* not welcomed to channel */
       (!(gf & (U_OP | U_HALFOP | U_INVITE)) || (cf & U_DENY)))
-    return 0;
+    return;
   /* do invite */
   for (c = who; *c && *c != '!' && *c != '@'; c++); /* get just nick from it */
   s = c - (char *)who;
   New_Request(net->neti, 0, "INVITE %.*s %s", (int)s, who, ch->real);
-  return 1;
+}
+
+		/* INVITE passwd channel */
+BINDING_TYPE_irc_priv_msg_ctcp(ctcp_invite);
+static int ctcp_invite(INTERFACE *client, unsigned char *who, char *lname,
+		       char *unick, char *msg)
+{
+  _ctcp_inviting(client, who, lname, unick, msg);
+  Add_Request(I_LOG, "*", F_PRIV | F_T_CTCP,
+	      "%s requested CTCP INVITE on \"%s\" from me", who, NextWord(msg));
+  return (-1);
 }
 
 void ircch_set_ss (void)

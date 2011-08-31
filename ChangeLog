@@ -12,6 +12,8 @@ TODO:
 Wed Aug 31 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* configure, modules/Makefile: eliminated requirement to run gmake
 	  to compile; modules still require presence of gmake in OS.
+	* modules/irc-channel/chmanagement.c: fixed implementation of ctcp
+	  commands: password should not be showed up in logs.
 
 Tue Aug 30 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc/irc.c: replaced getpwuid as it provoked memory leak.
