@@ -678,7 +678,6 @@ static void confirm_cleanup (void *newif)
 {
   register confirm_t *ct = ((INTERFACE *)newif)->data;
 
-  ((INTERFACE *)newif)->data = NULL;		/* it's not allocated! */
   ((INTERFACE *)newif)->ift = I_DIED;
   pthread_mutex_unlock (&ConfirmLock);
   pthread_mutex_destroy (&ct->mutex);
@@ -688,23 +687,24 @@ bool Confirm (char *message, bool defl)
 {
   INTERFACE *newif;
   INTERFACE *ui;
-  confirm_t ct;
+  confirm_t *ct;
   char n[8];
   struct timespec tp;
 
   if (!(defl & ASK))
     return defl;
-  ct.res = defl;
   pthread_mutex_lock (&ConfirmLock);		/* don't mix all confirmations */
   if ((ui = Find_Iface (I_MODULE, "ui")) == NULL)
   {
     pthread_mutex_unlock (&ConfirmLock);
     return (defl & 1);				/* reset to FALSE/TRUE */
   }
-  pthread_mutex_init (&ct.mutex, NULL);
+  ct = safe_malloc(sizeof(confirm_t));
+  ct->res = defl;
+  pthread_mutex_init (&ct->mutex, NULL);
   snprintf (n, sizeof(n), "=%hu", _confirm_num);
   _confirm_num++;
-  newif = Add_Iface (I_TEMP, n, &confirm_sig, &confirm_req, &ct);
+  newif = Add_Iface (I_TEMP, n, &confirm_sig, &confirm_req, ct);
   Set_Iface (newif);
   New_Request (ui, F_ASK | F_ASK_BOOL, _("%s (y/n)?[%s] "), message,
 	      (defl & 1) == TRUE ? _("y") : _("n"));
@@ -715,18 +715,18 @@ bool Confirm (char *message, bool defl)
   pthread_cleanup_push (&confirm_cleanup, newif);
   FOREVER
   {
-    pthread_mutex_lock (&ct.mutex);
-    if (!(ct.res & ASK))
-    {
-      pthread_mutex_unlock (&ct.mutex);
+    register bool res;
+
+    pthread_mutex_lock (&ct->mutex);
+    res = ct->res;
+    pthread_mutex_unlock (&ct->mutex);
+    if (!(res & ASK))
       break;
-    }
-    pthread_mutex_unlock (&ct.mutex);
     nanosleep (&tp, NULL);			/* it may be cancelled here */
     pthread_testcancel();			/* or here - on non-POSIX */
   }
   pthread_cleanup_pop (1);
-  return ct.res;
+  return ct->res;
 }
 
 /* ----------------------------------------------------------------------------

@@ -956,7 +956,7 @@ static iftype_t _ircd_client_signal (INTERFACE *cli, ifsig_t sig)
 		     NONULL(ShutdownR));
       if (Peer_Put ((&peer->p), buff, &sw) > 0)
 	while (!Peer_Put ((&peer->p), NULL, &sw));
-      CloseSocket (peer->p.socket);
+      //CloseSocket (peer->p.socket);
       cli->ift = I_DIED;
       break;
     default: ;
@@ -1284,15 +1284,15 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 
 /* -- ircd listener interface ---------------------------------------------
    called right after socket was answered or listener died */
-static void _ircd_prehandler (pthread_t th, void **data, idx_t as)
+static void _ircd_prehandler (pthread_t th, void **data, idx_t *as)
 {
-  register peer_priv *peer;
+  peer_priv *peer;
   char *pn;		/* [host/]port[%flags] */
 #if IRCD_USES_ICONV
   char charset[64];	/* I hope it's enough */
 #endif
 
-  if (as < 0)
+  if (*as < 0)
     return; /* listener died but it can be SIGSEGV so no diagnostics */
   /* listener data is its confline :) */
 #if IRCD_USES_ICONV
@@ -1308,7 +1308,7 @@ static void _ircd_prehandler (pthread_t th, void **data, idx_t as)
   peer->p.priv = IrcdPeers;
   IrcdPeers = peer;
   pthread_mutex_unlock (&IrcdLock);
-  peer->p.socket = as;
+  peer->p.socket = *as;
   peer->p.connchain = NULL;
   peer->p.start[0] = 0;
   peer->bs = peer->br = peer->ms = peer->mr = 0;
@@ -1318,7 +1318,7 @@ static void _ircd_prehandler (pthread_t th, void **data, idx_t as)
   if ((pn = strchr (pn, '%')))		/* do custom connchains for SSL etc. */
     while (*++pn)
       if (*pn != 'x' && !Connchain_Grow (&peer->p, *pn))
-	CloseSocket (as);		/* filter failed */
+	KillSocket (&peer->p.socket);	/* filter failed and we own the socket */
   Connchain_Grow (&peer->p, 'x');	/* text parser is mandatory */
   peer->p.last_input = peer->started = Time;
   /* create interface */
@@ -1531,7 +1531,7 @@ static iftype_t _ircd_uplink_sig (INTERFACE *uli, ifsig_t sig)
       uli->ift = I_DIED;
       break;
     case S_SHUTDOWN:
-      CloseSocket (uplink->p.socket);
+      //CloseSocket (uplink->p.socket);
       uli->ift = I_DIED;
     default: ;
   }

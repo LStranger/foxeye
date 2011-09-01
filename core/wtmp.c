@@ -294,8 +294,6 @@ void NewEvent (short event, lid_t from, lid_t lid, short count)
     Set_Iface (NULL);			/* in order to access Wtpm variable */
   fd = open (expand_path (wp, Wtmp, sizeof(wp)), O_WRONLY | O_CREAT | O_APPEND,
 	     S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-  if (event != W_DOWN)			/* don't deadlock on shutdown */
-    Unset_Iface();
   if (fd >= 0)
   {
     wtmp.fuid = from;
@@ -307,6 +305,8 @@ void NewEvent (short event, lid_t from, lid_t lid, short count)
       DBG ("wtmp:error on saving new event");
     close (fd);
   }
+  if (event != W_DOWN)			/* don't deadlock on shutdown */
+    Unset_Iface();
 }
 
 void NewEvents (short event, lid_t from, size_t n, lid_t ids[], short counts[])
@@ -321,8 +321,6 @@ void NewEvents (short event, lid_t from, size_t n, lid_t ids[], short counts[])
     Set_Iface (NULL);			/* in order to access Wtpm variable */
   fd = open (expand_path (wp, Wtmp, sizeof(wp)), O_WRONLY | O_CREAT | O_APPEND,
 	     S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-  if (event != W_DOWN)			/* don't deadlock on shutdown */
-    Unset_Iface();
   wtmp.fuid = from;
   wtmp.event = event;
   wtmp.time = time (NULL);
@@ -339,6 +337,8 @@ void NewEvents (short event, lid_t from, size_t n, lid_t ids[], short counts[])
     }
     close (fd);
   }
+  if (event != W_DOWN)			/* don't deadlock on shutdown */
+    Unset_Iface();
 }
 
 void RotateWtmp (void)

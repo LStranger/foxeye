@@ -226,7 +226,7 @@ tid_t NewTimer (iftype_t ift, const char *name, ifsig_t sig, unsigned int sec,
   unsigned int j;
 
   if (ift == 0 || name == NULL)
-    return -(tid_t)1;
+    return -1;
   pthread_mutex_lock (&LockShed);
   j = (sec + 60*min + 3600*hr + 86400*ds);
   for (i = 0; i < _STnum; i++)
@@ -240,7 +240,7 @@ tid_t NewTimer (iftype_t ift, const char *name, ifsig_t sig, unsigned int sec,
   {
     pthread_mutex_unlock (&LockShed);
     WARNING ("NewTimer: failed for %s +%u sec (entry %u)", name, j, i);
-    return -(tid_t)1;
+    return -1;
   }
   if (_STnum >= _STalloc)
   {

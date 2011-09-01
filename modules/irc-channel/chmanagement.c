@@ -889,7 +889,7 @@ int ircch_parse_modeline (IRC *net, CHANNEL *chan, LINK *origin, char *prefix,
 	else
 	  ircch_add_mask (list, "", 0, schr);
 	/* start enforcer if enforcing is on and ban is raised */
-	if ((gcf & U_AUTO) && chan->tid == -(tid_t)1 && mc == 'b' && mf == '+')
+	if ((gcf & U_AUTO) && chan->tid == -1 && mc == 'b' && mf == '+')
 	  chan->tid = NewTimer (chan->chi->ift, chan->chi->name, S_LOCAL,
 				ircch_enforcer_time, 0, 0, 0);
 	/* set matched exceptions while ban is set */

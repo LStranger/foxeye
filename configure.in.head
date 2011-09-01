@@ -200,6 +200,7 @@ AC_SEARCH_LIBS(socket, socket)
 AC_SEARCH_LIBS(connect, nsl)
 AC_SEARCH_LIBS(getaddrinfo, [dns nsl])
 AC_SEARCH_LIBS(inet_ntop, nsl)
+AC_SEARCH_LIBS(clock_gettime, rt)
 
 if test "$fe_cv_static" = no; then
     AC_SEARCH_LIBS(dlopen, dl,

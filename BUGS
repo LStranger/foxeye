@@ -66,3 +66,4 @@
 #00067	16.08.2011  16.08.2011	it opens "./.pid" even if nick is in config
 #00068	16.08.2011  19.08.2011	it should open random file not static .pid
 #00069	25.08.2011  26.08.2011	'port X' isn't saved in config on regeneration.
+#00070	31.08.2011		poll() restores fd on Solaris!

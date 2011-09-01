@@ -593,7 +593,7 @@ static iftype_t _irc_signal (INTERFACE *iface, ifsig_t sig)
       inbuf = strlen (report);
       bufpos = 0;
       WriteSocket (serv->p.socket, report, &bufpos, &inbuf, M_RAW);
-      CloseSocket (serv->p.socket);
+      //CloseSocket (serv->p.socket);
       iface->ift |= I_DIED;
       serv->p.iface = NULL;
       break;
@@ -1399,7 +1399,7 @@ static int irc_nick (INTERFACE *net, char *sv, char *me, unsigned char *src,
     if (lname)
       *lname = '!';
     lname = NULL;
-    uf = -(userflag)1;
+    uf = -1;
   }
   /* call all internal bindings */
   bind = NULL;

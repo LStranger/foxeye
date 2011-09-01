@@ -78,8 +78,11 @@ static idx_t _Salloc = 0;
 static idx_t _Snum = 0;
 static struct pollfd *Pollfd = NULL;
 
-/* lock for socket allocation; deallocation will be done without lock */
+/* lock any access to whole Pollfd or write access to any element of it */
 static pthread_mutex_t LockPoll = PTHREAD_MUTEX_INITIALIZER;
+
+/* every thread will wait on this one */
+static pthread_cond_t PollCond = PTHREAD_COND_INITIALIZER;
 
 //static volatile sig_atomic_t _got_sigio = 0;
 
@@ -93,22 +96,24 @@ static void sigio_handler (int signo)
 /* use this as mark of unused socket, -1 is just freed one */
 #define UNUSED_FD -2
 
-void CloseSocket (idx_t idx)
-{
-  if (Pollfd[idx].fd >= 0)
-  {
-    DBG ("socket:CloseSocket: %hd (fd=%d)", idx, Pollfd[idx].fd);
-    shutdown (Pollfd[idx].fd, SHUT_RDWR);
-    close (Pollfd[idx].fd);
-    Pollfd[idx].fd = -1;
-  }
-}
+/* this should be called only:
+ - from dispatcher (i.e. poll() isn't running)
+ - from awaken thread (i.e. internally here)
+ - from emergency shutdown sequence (i.e. Pollfd is irrelevant) */
+//void CloseSocket (idx_t idx)
+//{
+//  if (Pollfd[idx].fd >= 0)
+//  {
+//    DBG ("socket:CloseSocket: %hd (fd=%d)", idx, Pollfd[idx].fd);
+//    shutdown (Pollfd[idx].fd, SHUT_RDWR);
+//    close (Pollfd[idx].fd);
+//    Pollfd[idx].fd = -1;
+//  }
+//}
 
 /*
  * returns -1 if too many opened sockets or idx
- * note: there may be a problem with Socket[idx].fd since it is never locked
- * but in reality that change is atomic operation so it must work anyway
- * while we lock _Snum with mutex
+ * mutex should be locked so we don't have a conflict
 */
 static idx_t allocate_socket ()
 {
@@ -131,13 +136,34 @@ static idx_t allocate_socket ()
   return idx;
 }
 
+static void _socket_timedwait_cleanup(void *ptr)
+{
+  pthread_mutex_unlock(ptr);
+}
+
+static void _socket_timedwait(void)
+{
+  struct timespec abstime;
+
+  clock_gettime(CLOCK_REALTIME, &abstime);
+  abstime.tv_nsec += POLL_TIMEOUT * 1000000;
+  if (abstime.tv_nsec >= 1000000000) {
+    abstime.tv_nsec -= 1000000000;
+    abstime.tv_sec++;
+  }
+  pthread_mutex_lock(&LockPoll); /* locks mutex */
+  pthread_cleanup_push(&_socket_timedwait_cleanup, &LockPoll);
+  pthread_cond_timedwait(&PollCond, &LockPoll, &abstime);
+  pthread_cleanup_pop(1);	/* unlocks mutex */
+}
+
 /*
  * returns E_NOSOCKET on error and E_AGAIN on wait to connection
  */
 ssize_t ReadSocket (char *buf, idx_t idx, size_t sr, int mode)
 {
   socket_t *sock;
-  ssize_t sg = -(ssize_t)1;
+  ssize_t sg = -1;
   short rev;
 
   pthread_testcancel();			/* for non-POSIX systems */
@@ -157,19 +183,22 @@ ssize_t ReadSocket (char *buf, idx_t idx, size_t sr, int mode)
   {
     if (!rev)
       return (E_AGAIN);		/* still waiting for connection */
+    pthread_mutex_lock (&LockPoll);
     Pollfd[idx].events = POLLIN | POLLPRI; /* reset it now */
+    pthread_mutex_unlock (&LockPoll);
     sock->ready = TRUE;		/* connection established or failed */
   }
+  /* if mode isn't M_POLL then it's dispatcher or else we should wait */
   if (!rev && mode == M_POLL)
   {
-    poll (&Pollfd[idx], 1, POLL_TIMEOUT);
+    _socket_timedwait();
     rev = Pollfd[idx].revents;
   }
   if (rev & (POLLNVAL | POLLERR | POLLHUP)) {
-    CloseSocket (idx);
+//    CloseSocket (idx);
 //    if (rev & POLLERR)
 //      return (E_ERRNO - errno);		/* asynchronous error occurred */
-    return (E_NOSOCKET);		/* cannot test errno variable ATM */
+    sg = E_NOSOCKET;			/* cannot test errno variable ATM */
   }
   else if (rev & (POLLIN | POLLPRI))
   {
@@ -178,16 +207,17 @@ ssize_t ReadSocket (char *buf, idx_t idx, size_t sr, int mode)
     if ((sg = read (Pollfd[idx].fd, buf, sr)) > 0 && mode != M_RAW)
       DBG ("got from socket %hd:[%-*.*s]", idx, (int)sg, (int)sg, buf);
     if (sg == 0) {
-      CloseSocket (idx);		/* remote end closed connection */
-      return (E_NOSOCKET);
+//      CloseSocket (idx);		/* remote end closed connection */
+      sg = E_EOF;
     } else if (sg < 0) {
       if (errno == EAGAIN)
-	return (0);
-      sg = E_ERRNO - errno;		/* remember error for return */
+	sg = 0;
+      else
+	sg = E_ERRNO - errno;		/* remember error for return */
     }
   }
   else
-    return 0;
+    sg = 0;
   return (sg);
 }
 
@@ -197,21 +227,30 @@ ssize_t ReadSocket (char *buf, idx_t idx, size_t sr, int mode)
 ssize_t WriteSocket (idx_t idx, const char *buf, size_t *ptr, size_t *sw, int mode)
 {
   ssize_t sg;
+  int errnosave;
+  register short rev;
 
   pthread_testcancel();			/* for non-POSIX systems */
   if (idx < 0 || idx >= _Snum || Pollfd[idx].fd < 0)
     return E_NOSOCKET;
   if (!buf || !sw)
     return 0;
+  rev = Pollfd[idx].revents & (POLLNVAL | POLLERR | POLLHUP | POLLOUT);
+  /* if mode isn't M_POLL then it's dispatcher or else we should wait */
+  if (!rev && mode == M_POLL)
+    _socket_timedwait();
   DBG ("trying write socket %hd: %p +%zu", idx, &buf[*ptr], *sw);
   sg = write (Pollfd[idx].fd, &buf[*ptr], *sw);
-//  Pollfd[idx].revents = 0;		/* we wrote socket, reset state */
+  errnosave = errno;			/* save it as unlock can change it */
+  pthread_mutex_lock (&LockPoll);
+  Pollfd[idx].revents = 0;		/* we wrote socket, reset state */
   if (sg == (ssize_t)*sw)		/* now waiting for data only */
     Pollfd[idx].events = POLLIN | POLLPRI;
   else					/* or else waiting for out too */
     Pollfd[idx].events = POLLIN | POLLPRI | POLLOUT;
+  pthread_mutex_unlock (&LockPoll);
   if (sg < 0)
-    return (errno == EAGAIN) ? 0 : (E_ERRNO - errno);
+    return (errnosave == EAGAIN) ? 0 : (E_ERRNO - errnosave);
   else if (sg == 0)			/* remote end closed connection */
     return E_EOF;
   *ptr += sg;
@@ -222,20 +261,27 @@ ssize_t WriteSocket (idx_t idx, const char *buf, size_t *ptr, size_t *sw, int mo
 
 int KillSocket (idx_t *idx)
 {
+  int fd;
   idx_t i = *idx;
 
   DBG ("socket:KillSocket %d", (int)i);
   if (i < 0)
     return -1;
   *idx = -1;			/* no more access to that socket */
-  if (i >= _Snum)
+  if (i >= _Snum)		/* it should be atomic ATM */
     return -1;			/* no such socket */
   dprint (4, "socket:KillSocket: fd=%d", Pollfd[i].fd);
-  CloseSocket (i);		/* must be first for reentrance */
+  pthread_mutex_lock (&LockPoll);
   Socket[i].port = 0;
   FREE (&Socket[i].ipname);
   FREE (&Socket[i].domain);
+  fd = Pollfd[i].fd;
   Pollfd[i].fd = UNUSED_FD;	/* indicator of free socket */
+  pthread_mutex_unlock (&LockPoll);
+  if (fd >= 0) {		/* CloseSocket(i) */
+    shutdown (fd, SHUT_RDWR);
+    close (fd);
+  }
   return 0;
 }
 
@@ -245,16 +291,20 @@ idx_t GetSocket (unsigned short type)
   int sockfd;
 
   pthread_mutex_lock (&LockPoll);
-  if ((idx = allocate_socket()) < 0)
+  idx = allocate_socket();
+  pthread_mutex_unlock (&LockPoll);
+  if (idx < 0)
     sockfd = -1; /* too many sockets */
   else if (type == M_UNIX)
-    Pollfd[idx].fd = sockfd = socket (AF_UNIX, SOCK_STREAM, 0);
+    sockfd = socket (AF_UNIX, SOCK_STREAM, 0);
   else
-    Pollfd[idx].fd = sockfd = socket (AF_INET, SOCK_STREAM, 0);
+    sockfd = socket (AF_INET, SOCK_STREAM, 0);
+  pthread_mutex_lock (&LockPoll);
+  if (sockfd < 0)
+    Pollfd[idx].fd = UNUSED_FD;
+  else
+    Pollfd[idx].fd = sockfd;
   pthread_mutex_unlock (&LockPoll);
-  /* note: there is a small chance we get it closed right away if there was
-     two of CloseSocket() in the same time and we managed to get it between
-     close() and resetting Pollfd[idx].fd */
   if (sockfd < 0)
     return (E_NOSOCKET);
   Socket[idx].port = type;
@@ -265,18 +315,25 @@ idx_t GetSocket (unsigned short type)
 /* recover after failed SetupSocket */
 void ResetSocket(idx_t idx, unsigned short type)
 {
-  register int sockfd;
+  int sockfd;
 
-  if (Pollfd[idx].fd >= 0)
-    close(Pollfd[idx].fd);
+  pthread_mutex_lock (&LockPoll);
+  sockfd = Pollfd[idx].fd;
+  Pollfd[idx].fd = -1;
   FREE (&Socket[idx].ipname);
   FREE (&Socket[idx].domain);
+  pthread_mutex_unlock (&LockPoll);
+  if (sockfd >= 0)
+    close(sockfd);
   if (type == M_UNIX)
-    Pollfd[idx].fd = sockfd = socket (AF_UNIX, SOCK_STREAM, 0);
+    sockfd = socket (AF_UNIX, SOCK_STREAM, 0);
   else
-    Pollfd[idx].fd = sockfd = socket (AF_INET, SOCK_STREAM, 0);
+    sockfd = socket (AF_INET, SOCK_STREAM, 0);
   if (sockfd < 0)
     return;
+  pthread_mutex_lock (&LockPoll);
+  Pollfd[idx].fd = sockfd;
+  pthread_mutex_unlock (&LockPoll);
   Socket[idx].port = type;
   DBG ("socket:ResetSocket: %d (fd=%d)", (int)idx, sockfd);
 }
@@ -320,7 +377,7 @@ int SetupSocket(idx_t idx, const char *domain, unsigned short port,
 		int (*callback)(const struct sockaddr *, void *),
 		void *callback_data)
 {
-  int i, sockfd, type;
+  int i, sockfd, type, cancelstate;
   socklen_t len;
   inet_addr_t addr;
   struct linger ling;
@@ -329,7 +386,7 @@ int SetupSocket(idx_t idx, const char *domain, unsigned short port,
   /* check for errors! */
   if (idx < 0 || idx >= _Snum || Pollfd[idx].fd < 0)
     return (E_NOSOCKET);
-  sockfd = Pollfd[idx].fd;
+  sockfd = Pollfd[idx].fd;		/* idx is owned by caller */
   type = (int)Socket[idx].port;
   if (!domain && type != M_LIST && type != M_LINP)
     return (E_UNDEFDOMAIN);
@@ -372,11 +429,15 @@ int SetupSocket(idx_t idx, const char *domain, unsigned short port,
 #ifdef ENABLE_IPV6
 	if (addr.sa.sa_family != AF_INET) {
 	  /* close IPv4 socket and open IPv6 one instead */
+	  pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancelstate);
+	  pthread_mutex_lock (&LockPoll);
 	  close(sockfd);
 	  sockfd = socket(addr.sa.sa_family, SOCK_STREAM, 0);
 	  DBG("closed IPv4 socket (fd=%d) and opened IPv6 one (fd=%d)",
 	      Pollfd[idx].fd, sockfd);
 	  Pollfd[idx].fd = sockfd;
+	  pthread_mutex_unlock (&LockPoll);
+	  pthread_setcancelstate(cancelstate, NULL);
 	  if (sockfd < 0)
 	    return (E_NOSOCKET);
 	}
@@ -416,7 +477,9 @@ int SetupSocket(idx_t idx, const char *domain, unsigned short port,
     if ((i = connect (sockfd, &addr.sa, len)) < 0)
       return (E_ERRNO - errno);
     Socket[idx].port = port;
+    pthread_mutex_lock (&LockPoll);
     Pollfd[idx].events = POLLIN | POLLPRI | POLLOUT; /* POLLOUT set when connected */
+    pthread_mutex_unlock (&LockPoll);
   }
 #ifdef HAVE_SYS_FILIO_H		/* non-BSDish systems have not O_ASYNC flag */
   i = 1;
@@ -441,10 +504,17 @@ int SetupSocket(idx_t idx, const char *domain, unsigned short port,
   return 0;
 }
 
+static void _answer_cleanup(void *data)
+{
+  idx_t idx = (idx_t)(int)data;
+
+  KillSocket(&idx);
+}
+
 idx_t AnswerSocket (idx_t listen)
 {
   idx_t idx;
-  int sockfd, i;
+  int sockfd, i, cancelstate;
   short rev;
   socklen_t len;
   inet_addr_t addr;
@@ -455,27 +525,30 @@ idx_t AnswerSocket (idx_t listen)
     return (E_NOSOCKET);
   rev = Pollfd[listen].revents;
   if (!rev)
-//  {
+  {
 //    if (_got_sigio)
 //    {
 //      _got_sigio = 0;
 //      poll (Pollfd, _Snum, 0);
 //    }
 //    else
-      poll (&Pollfd[listen], 1, POLL_TIMEOUT);
-//    rev = Pollfd[listen].revents;
-//  }
+//      poll (&Pollfd[listen], 1, POLL_TIMEOUT);
+    _socket_timedwait();
+    rev = Pollfd[listen].revents;
+  }
   if (!(rev & (POLLIN | POLLPRI | POLLNVAL | POLLERR)) || /* no events */
       (rev & (POLLHUP | POLLOUT)))	/* or we are in CloseSocket() now */
     return (E_AGAIN);
   else if (rev & POLLNVAL)
   {
-    CloseSocket (listen);
+//    CloseSocket (listen);
     return (E_NOSOCKET);
   }
   else if (rev & POLLERR)
     return (E_ERRNO);
   DBG ("AnswerSocket: got 0x%hx for %hd", rev, listen);
+  /* deny cancelling the thread while allocated socket is unset */
+  pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancelstate);
   pthread_mutex_lock (&LockPoll);
   if ((idx = allocate_socket()) < 0)
     sockfd = -1;
@@ -506,10 +579,16 @@ idx_t AnswerSocket (idx_t listen)
     }
 #endif
   }
-  pthread_mutex_unlock (&LockPoll);
   Pollfd[listen].revents = 0;		/* we accepted socket, reset state */
   if (sockfd < 0)
+    Pollfd[idx].fd = UNUSED_FD;
+  pthread_mutex_unlock (&LockPoll);
+  /* we done with socket so restore previous cancellstate now */
+  pthread_setcancelstate(cancelstate, NULL);
+  if (sockfd < 0)
     return (E_AGAIN);
+  /* add thread cleanup here in case if thread is cancelled */
+  pthread_cleanup_push(&_answer_cleanup, (void *)(int)idx);
   fcntl (sockfd, F_SETOWN, _mypid);
 #ifdef HAVE_SYS_FILIO_H		/* non-BSDish systems have not O_ASYNC flag */
   {
@@ -522,13 +601,16 @@ idx_t AnswerSocket (idx_t listen)
 #endif
   DBG ("socket:AnswerSocket: %hd (fd=%d)", idx, sockfd);
   if (Socket[listen].port == 0)
-    return (idx);		/* no domains for Unix sockets */
+    goto done;			/* no domains for Unix sockets */
   Socket[idx].ipname = _make_socket_ipname(&addr, hname, sizeof(hname));
   i = getnameinfo (&addr.sa, len, hname, sizeof(hname), NULL, 0, 0);
   if (i == 0)			/* subst canonical name */
     Socket[idx].domain = safe_strdup (hname);
   else				/* error of getnameinfo() */
     Socket[idx].domain = safe_strdup(Socket[idx].ipname);
+done:
+  /* done so remove thread cleanup leaving socket intact */
+  pthread_cleanup_pop(0);
   return (idx);
 }
 
@@ -598,16 +680,17 @@ void PollSockets(int check_out)
 {
   register short i;
 
+  pthread_mutex_lock (&LockPoll);
   if (check_out) {		/* we have something in queue */
-    pthread_mutex_lock (&LockPoll);
     for (i = 0; i < _Snum; i++) /* check if there is data to out */
       if (Pollfd[i].fd >= 0 && (Pollfd[i].events & POLLOUT))
 	break;
     if (i < _Snum)		/* ok, we know about the queue */
       check_out = 0;		/* so allow the timeout */
-    pthread_mutex_unlock (&LockPoll);
   }
-  poll(Pollfd, _Snum, check_out ? 10 : POLL_TIMEOUT);
+  if (poll(Pollfd, _Snum, check_out ? 10 : POLL_TIMEOUT))
+    pthread_cond_broadcast(&PollCond);
+  pthread_mutex_unlock (&LockPoll);
 }
 
 int _fe_init_sockets (void)

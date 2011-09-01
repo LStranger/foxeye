@@ -314,7 +314,7 @@ static void _died_iface (INTERFACE *iface, char *buf, size_t s)
   iface = dcc->iface;				/* to the right one! */
   iface->ift |= I_DIED;
   dcc->state = P_LASTWAIT;
-  CloseSocket (dcc->socket);			/* kill the socket */
+  //CloseSocket (dcc->socket);			/* kill the socket */
   if (s == 0)					/* is this shutdown call? */
     return;
   dprint (4, "dcc:_died_iface: %s", iface->name);
@@ -1173,7 +1173,7 @@ typedef struct
   char *confline;		/* the same */
   void *data;			/* from caller */
   int (*cb) (const struct sockaddr *, void *);
-  void (*prehandler) (pthread_t, void **, idx_t);
+  void (*prehandler) (pthread_t, void **, idx_t *);
   void (*handler) (char *, char *, const char *, void *);
   char *host;			/* host to listen */
   INTERFACE *iface;		/* interface of listener */
@@ -1209,7 +1209,8 @@ static iftype_t port_signal (INTERFACE *iface, ifsig_t signal)
     case S_TERMINATE:
       DBG("Terminating listener %s...", iface->name);
       Unset_Iface();			/* unlock dispatcher */
-      CloseSocket (acptr->socket);	/* just kill it... */
+      //CloseSocket (acptr->socket);
+      pthread_cancel (acptr->th);	/* just kill it... */
       pthread_join (acptr->th, NULL);	/* ...and wait until it die */
       Set_Iface (NULL);			/* restore status quo */
       KillSocket (&acptr->socket);	/* free everything now */
@@ -1224,7 +1225,7 @@ static iftype_t port_signal (INTERFACE *iface, ifsig_t signal)
       break;
     case S_SHUTDOWN:
       /* just kill it... */
-      CloseSocket (acptr->socket);
+      //CloseSocket (acptr->socket);
       /* ...it die itself */
     default: ;
   }
@@ -1357,7 +1358,7 @@ static void *_listen_port (void *input_data)
   accept_t *child;
   char buf[8];
   char *host = acptr->host;
-  int n;
+  int n, cancelstate;
   unsigned short port = acptr->lport;
 
   /* set cleanup for the thread before any cancellation point */
@@ -1383,8 +1384,7 @@ static void *_listen_port (void *input_data)
 	   NONULL(acptr->confline), errstr);
     return NULL;
   }
-  /* rename interface if need and deny cancellation of the thread */
-  pthread_setcancelstate (PTHREAD_CANCEL_DISABLE, NULL);
+  /* rename interface if need */
   if (!acptr->confline) {
     SocketDomain(acptr->socket, &port);
     snprintf (buf, sizeof(buf), "%hu", port);
@@ -1398,10 +1398,13 @@ static void *_listen_port (void *input_data)
       continue;
     else if (new_idx < 0) /* listening socket died */
     {
+      new_idx = -1;
       if (acptr->prehandler)			/* notify caller */
-	acptr->prehandler ((pthread_t)0, &acptr->data, -1);
+	acptr->prehandler ((pthread_t)0, &acptr->data, &new_idx);
       break;
     }
+    /* deny cancellation of the thread while we have extra data */
+    pthread_setcancelstate (PTHREAD_CANCEL_DISABLE, &cancelstate);
     child = safe_malloc (sizeof(accept_t));
     child->client = acptr->client;
     child->lport = acptr->lport;
@@ -1421,7 +1424,7 @@ static void *_listen_port (void *input_data)
     else
     {
       if (acptr->prehandler)
-	acptr->prehandler (child->th, &child->data, child->socket);
+	acptr->prehandler (child->th, &child->data, &child->socket);
       else
 	pthread_detach (child->th);	/* since it's not joinable */
       child->tst = 1;			/* let new thread continue */
@@ -1431,6 +1434,7 @@ static void *_listen_port (void *input_data)
 	break;
       }
     }
+    pthread_setcancelstate (cancelstate, NULL);
   }
   pthread_cleanup_pop(1);
   return NULL;
@@ -1451,7 +1455,7 @@ static void _assign_port_range (unsigned short *ps, unsigned short *pe)
 int Listen_Port (char *client, const char *host, unsigned short sport,
 		 char *confline, void *data,
 		 int (*cb) (const struct sockaddr *, void *),
-		 void (*prehandler) (pthread_t, void **, idx_t),
+		 void (*prehandler) (pthread_t, void **, idx_t *),
 		 void (*handler) (char *, char *, const char *, void *))
 {
   accept_t *acptr;
@@ -2159,7 +2163,7 @@ static int dc_who (peer_t *dcc, char *args)
     ReportFormat = format_who;
   }
   New_Request (dcc->iface, 0, "%s", b);
-  ReportMask = -(modeflag)1;
+  ReportMask = -1;
   if (args)
     _report_req (I_SERVICE, args);
   else
@@ -2578,18 +2582,27 @@ typedef struct
   idx_t as;
 } _port_acceptor;
 
-static void _dport_prehandler (pthread_t th, void **id, idx_t as)
+static void _dport_prehandler (pthread_t th, void **id, idx_t *as)
 {
   register _port_retrier *r;
   register _port_acceptor *a;
 
-  if (as == -1) /* fatal error */
+  if (*as == -1) /* fatal error */
     return;
   a = safe_malloc(sizeof(_port_acceptor));
   r = *((_port_retrier **)id);
   a->ch = r->ch;
-  a->as = as;
+  a->as = *as;
   *id = a;
+  /* as we don't have any interface to control th ATM we cannot cancel it */
+}
+
+static void _dport_handler_cleanup(void *data)
+{
+  register int i = 0;
+  if(Connchain_Kill(((peer_t *)data)))i=i;
+  KillSocket(&((peer_t *)data)->socket);
+  FREE(&data);
 }
 
 static void _dport_handler (char *cname, char *ident, const char *host, void *d)
@@ -2613,6 +2626,7 @@ static void _dport_handler (char *cname, char *ident, const char *host, void *d)
   safe_free(&d);
   Set_Iface (NULL);
   client[0] = 0; /* terminate it for case of error */
+  pthread_cleanup_push(&_dport_handler_cleanup, dcc);
   snprintf (dcc->start, sizeof(dcc->start), "%s %s", DateString, TimeString);
   /* dispatcher is locked, can do connchain */
   if (!Connchain_Grow (dcc, (flag & 0xff))) /* adding mandatory filters now */
@@ -2640,10 +2654,9 @@ static void _dport_handler (char *cname, char *ident, const char *host, void *d)
     Unset_Iface();
     /* cannot create connection */
     LOG_CONN ("%s", buf);
-    if(Connchain_Kill (dcc))p=p;
-    KillSocket (&dcc->socket);
-    FREE (&dcc);
+    _dport_handler_cleanup(dcc); /* pthread_cleanup_pop(1) generates error */
   }
+  pthread_cleanup_pop(0);
 }
 
 static iftype_t _port_retrier_s (INTERFACE *iface, ifsig_t signal)

@@ -368,7 +368,7 @@ static int _tcl_send_request (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS 
 #ifdef HAVE_TCL_SETSYSTEMENCODING
   char *ptr;
   char target[NAMEMAX+1];
-//  char message[MESSAGEMAX+1];
+  char message[MESSAGEMAX+1];
 #endif
   static char *typec = "dncl";
   static iftype_t typev[] = {I_DCCALIAS,I_SERVICE,I_CLIENT,I_LOG};

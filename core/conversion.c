@@ -80,30 +80,35 @@ struct conversion_t *Get_Conversion (const char *charset)
 {
   struct conversion_t *conv;
   iconv_t cd;
-  int inuse;
+  int inuse, cancelstate;
   char name[64]; /* assume charset's name is at most 45 char long */
 
-  pthread_mutex_lock (&ConvLock);
+  pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancelstate);
   if (!Conversions)
   {
+    register char *dcset;
+
     /* test if charset name is ok */
     if (*Charset && (cd = iconv_open (Charset, "ascii")) != (iconv_t)(-1))
     {
       iconv_close (cd);
-      conv = _get_conversion (Charset);
+      dcset = Charset;
     }
     else
-      conv = _get_conversion (CHARSET_8BIT);	/* Charset doesn't exist */
+      dcset = CHARSET_8BIT;		/* Charset doesn't exist */
+    pthread_mutex_lock (&ConvLock);
+    conv = _get_conversion (dcset);
     DBG("Get_Conversion: set default conv=%p", conv);
-  }
+  } else
+    pthread_mutex_lock (&ConvLock);
   conv = _get_conversion (charset);
   inuse = conv->inuse++;
   pthread_mutex_unlock (&ConvLock);
   DBG ("Get_Conversion: %s (conv=%p)", conv->charset, conv);
   if (conv == Conversions)
-    return NULL;
+    goto nullout;
   else if (inuse || conv->cdin != (iconv_t)(-1)) /* it's already filled */
-    return conv;
+    goto done;
   /* inuse == 0 so it's newly created */
   inuse = *text_replace_char;
   if (inuse)				/* do text replace */
@@ -113,6 +118,8 @@ struct conversion_t *Get_Conversion (const char *charset)
   if ((conv->cdin = iconv_open (name, charset)) == (iconv_t)(-1))
   {
     Free_Conversion (conv);		/* charset doesn't exist */
+nullout:
+    pthread_setcancelstate(cancelstate, NULL);
     return NULL;
   }
   if (inuse)				/* do text replace */
@@ -121,6 +128,8 @@ struct conversion_t *Get_Conversion (const char *charset)
     snprintf (name, sizeof(name), "%s" TRANSLIT_IGNORE, charset);
   conv->cdout = iconv_open (name, Conversions->charset);
   DBG ("Get_Conversion: created new conv=%p", conv);
+done:
+  pthread_setcancelstate(cancelstate, NULL);
   return conv;
 }
 
@@ -145,12 +154,16 @@ void Free_Conversion (struct conversion_t *conv)
   if (conv->inuse == 0 && conv != Conversions &&
       strcasecmp (conv->charset, CHARSET_8BIT))
   {
+    int cancelstate;
+
     DBG("Free_Conversion: freeing conv=%p cdin=%p cdout=%p", conv, conv->cdin, conv->cdout);
     FREE (&conv->charset);
+    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancelstate);
     if (conv->cdin != (iconv_t)(-1))
       iconv_close (conv->cdin);
     if (conv->cdout != (iconv_t)(-1))
       iconv_close (conv->cdout);
+    pthread_setcancelstate(cancelstate, NULL);
     if (conv->prev)
       conv->prev->next = conv->next;
     if (conv->next)

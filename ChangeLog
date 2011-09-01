@@ -7,8 +7,21 @@ TODO:
 	* core/wtmp.c: to handle errors somehow?
 	* core/help.c: to add support for '##$charset utf-8' at helpfile start.
 	* core/direct.c: to add support for charset and comments in motd file.
+	* *: to revise all threads cancellation, i.e. thread-safe functions.
 
 --- [0.10.0]
+Thu Sep  1 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/socket.*, core/direct.c, doc/modules.api, modules/irc-ctcp/dcc.c, modules/irc/irc.c, modules/ircd/ircd.c:
+	  removed CloseSocket() function as it cannot be made thread-safe,
+	  use pthread_cancel() to terminate threads now.
+	* core/direct.*, doc/modules.api, modules/irc-ctcp/dcc.c, modules/ircd/ircd.c:
+	  changed socket index to pointer in call of prehandler to make it
+	  possible to kill accepted socket in case of internal errors and
+	  abort calling handler respectively.
+	* doc/modules.api, core/conversion.c, core/direct.c, core/dispatcher.c, core/init.c, core/list.c, core/socket.c, core/wtmp.c:
+	  corrected behavior on threads cancellation.
+	* core/socket.c: implemented broadcast to threads after succesful poll.
+
 Wed Aug 31 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* configure, modules/Makefile: eliminated requirement to run gmake
 	  to compile; modules still require presence of gmake in OS.

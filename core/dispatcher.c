@@ -74,6 +74,7 @@ typedef struct ifst_t
   INTERFACE *ci;
   struct ifst_t *prev;
   struct ifst_t *next;
+  int cancelstate;
 } ifst_t;
 
 /* since Nick is undeclared for "dispatcher.c"... */
@@ -628,9 +629,11 @@ int Relay_Request (iftype_t ift, char *name, REQUEST *req)
   char *ch;
   LEAF *l;
   unsigned int i, n;
+  int cancelstate;
 
   if (!ift || !name || !req)	/* request to nobody? */
     return REQ_OK;
+  pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancelstate);
   pthread_mutex_lock (&LockIface);
   cur = alloc_request_t();
   strfcpy (cur->a.to, name, sizeof(cur->a.to));
@@ -660,6 +663,7 @@ int Relay_Request (iftype_t ift, char *name, REQUEST *req)
   if (!cur->x.used)
     free_request_t (cur);
   pthread_mutex_unlock (&LockIface);
+  pthread_setcancelstate(cancelstate, NULL);
   return REQ_OK;
 }
 
@@ -679,11 +683,13 @@ static int unknown_iface (INTERFACE *cur)
 /* locks on input: (LockIface) */
 int Get_Request (void)
 {
-  int i = 0;
+  int i = 0, cancelstate;
 
+  pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancelstate);
   pthread_mutex_lock (&LockIface);
   i = _get_current();
   pthread_mutex_unlock (&LockIface);
+  pthread_setcancelstate(cancelstate, NULL);
   return i;
 }
 
@@ -812,6 +818,8 @@ static INTERFACE *stack_iface (INTERFACE *newif, int set_current)
       StCur->ci = newif;		/* or else try to "remember" last */
     if (set_current)
       Current = (ifi_t *)StCur->ci;
+    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &StCur->cancelstate);
+    DBG("dispatcher: cancel state set disabled");
     return NULL;
   }
   if (!(newst = StCur->next))
@@ -828,6 +836,8 @@ static INTERFACE *stack_iface (INTERFACE *newif, int set_current)
   else
     newst->ci = newst->prev->ci;	/* inherit last */
   StCur = newst;
+  pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &StCur->cancelstate);
+  DBG("dispatcher: cancel state set disabled");
   if (set_current)
     Current = (ifi_t *)StCur->ci;
   return newst->prev->ci;
@@ -842,6 +852,8 @@ static INTERFACE *unstack_iface (void)
     bot_shutdown ("OOPS! interface stack exhausted! Extra Unset_Iface() called?", 7);
     return NULL;
   }
+  DBG("dispatcher: cancel state restoring to previous");
+  pthread_setcancelstate(StCur->cancelstate, NULL);
   StCur = StCur->prev;
   return StCur ? StCur->ci : NULL;
 }
@@ -896,10 +908,12 @@ void Add_Request (iftype_t ift, const char *mask, flag_t fl, const char *text, .
   register unsigned int i;
   unsigned int inum;
   register iftype_t rc;
+  int cancelstate;
 
   /* request to nobody? */
   if (!ift)
     return;
+  pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancelstate);
   pthread_mutex_lock (&LockIface);
   /* if F_SIGNAL then text is binary! */
   if (fl & F_SIGNAL)
@@ -953,6 +967,7 @@ void Add_Request (iftype_t ift, const char *mask, flag_t fl, const char *text, .
     va_end (ap);
   }
   pthread_mutex_unlock (&LockIface);
+  pthread_setcancelstate(cancelstate, NULL);
 }
 
 /* locks on input: (LockIface) */
@@ -960,7 +975,9 @@ void New_Request (INTERFACE *cur, flag_t fl, const char *text, ...)
 {
   va_list ap;
   register iftype_t rc;
+  int cancelstate;
 
+  pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancelstate);
   pthread_mutex_lock (&LockIface);
   /* request to nobody? */
   if (unknown_iface (cur) || (cur->ift & I_DIED));
@@ -980,14 +997,17 @@ void New_Request (INTERFACE *cur, flag_t fl, const char *text, ...)
     va_end (ap);
   }
   pthread_mutex_unlock (&LockIface);
+  pthread_setcancelstate(cancelstate, NULL);
 }
 
 /* locks on input: (LockIface) */
 void dprint (int level, const char *text, ...)
 {
   va_list ap, cp;
+  int cancelstate;
 
   va_start (ap, text);
+  pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancelstate);
   if (lastdebuglog)
   {
     va_copy (cp, ap);
@@ -1007,6 +1027,7 @@ void dprint (int level, const char *text, ...)
 		   text, ap);
     pthread_mutex_unlock (&LockIface);
   }
+  pthread_setcancelstate(cancelstate, NULL);
   va_end (ap);
 }
 
@@ -1069,6 +1090,7 @@ int Rename_Iface (INTERFACE *iface, const char *newname)
 {
   queue_i *q;
   register iftype_t rc;
+  int cancelstate;
 
   pthread_mutex_lock (&LockIface);
   if (unknown_iface (iface))
@@ -1094,8 +1116,10 @@ int Rename_Iface (INTERFACE *iface, const char *newname)
     _Inamessize += strlen (iface->name) + 1;
   if (iface->name && Insert_Key (&ITree, iface->name, iface, 0))
     ERROR ("interface add: dispatcher tree error");
+  pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancelstate);
   if (iface->IFSignal && (rc = iface->IFSignal (iface, S_FLUSH)))
     iface->ift |= rc;
+  pthread_setcancelstate(cancelstate, NULL);
   pthread_mutex_unlock (&LockIface);
   return 1;
 }
@@ -1333,7 +1357,7 @@ int dispatcher (INTERFACE *start_if)
   if (pid)
   {
     /* fork error */
-    if (pid == -(pid_t)1)
+    if (pid == -1)
     {
       perror _("fork dispatcher");
       return 5;

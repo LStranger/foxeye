@@ -238,7 +238,7 @@ static ssize_t _ccfilter_x_send (connchain_i **ch, idx_t id, const char *str,
     i = Connchain_Put (ch, id, &bb->buf[bb->bufpos], &bb->inbuf);
     if (i < 0)				/* some error, end us */
     {
-      bb->inbuf = -(ssize_t)1;		/* forget the buffer */
+      bb->inbuf = -1;			/* forget the buffer */
       return i;				/* return error */
     }
     if (bb->inbuf != 0)			/* trying to send line by line */
@@ -249,7 +249,7 @@ static ssize_t _ccfilter_x_send (connchain_i **ch, idx_t id, const char *str,
   }
   if (str == NULL)			/* got termination */
   {
-    bb->inbuf = -(ssize_t)1;		/* forget buffer */
+    bb->inbuf = -1;			/* forget buffer */
     return E_NOSOCKET;			/* return error */
   }
   i = *sz;
@@ -278,7 +278,7 @@ static ssize_t _ccfx_find_line (connchain_b *bb)
       return (c - &bb->buf[bb->bufpos]);	/* found it */
     else if (bb->inbuf >= (ssize_t)sizeof(bb->buf) - 1)	/* buffer is full */
       return (sizeof(bb->buf) - 1);
-    return -(ssize_t)1;				/* try it later */
+    return -1;					/* try it later */
   }
   if ((c = memchr (&bb->buf[bb->bufpos], '\n', sizeof(bb->buf) - bb->bufpos)))
     return (c - &bb->buf[bb->bufpos]);		/* found in end of buf */
@@ -286,7 +286,7 @@ static ssize_t _ccfx_find_line (connchain_b *bb)
     return (c - bb->buf);			/* found at start of buf */
   else if (bb->inbuf >= (ssize_t)sizeof(bb->buf) - 1) /* all buffer is filled */
     return (sizeof(bb->buf) - 1);
-  return -(ssize_t)1;				/* try it later */
+  return -1;					/* try it later */
 }
 
 /* copies found line and reset pointers */

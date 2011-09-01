@@ -1030,10 +1030,12 @@ struct clrec_t *Find_Clientrecord (const uchar *mask, char **lname,
 				   userflag *uf, char *net)
 {
   struct clrec_t *user = NULL;
+  int cancelstate;
 
   if (!mask || !*mask)
     return NULL;
   /* find the userrecord */
+  pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancelstate);
   rw_rdlock (&UFLock);
   user = _findthebest (mask, NULL);
   if (user)
@@ -1059,6 +1061,7 @@ struct clrec_t *Find_Clientrecord (const uchar *mask, char **lname,
   }
   else
     rw_unlock (&UFLock);
+  pthread_setcancelstate(cancelstate, NULL);
   return user;
 }
 
@@ -1404,6 +1407,7 @@ userflag Match_Client (const char *domain, const char *ident, const char *lname)
   userflag uf = 0;
   struct clrec_t *ur = NULL;
   user_hr *hr;
+  int cancelstate;
   char uhost[STRING];
   char c = '@';
   register size_t ptr = 0;
@@ -1418,6 +1422,7 @@ userflag Match_Client (const char *domain, const char *ident, const char *lname)
   }
   uhost[ptr++] = '@';
   unistrlower (&uhost[ptr], domain, sizeof(uhost) - ptr);
+  pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancelstate);
   rw_rdlock (&UFLock);
   rw_rdlock (&HLock);
   if (lname)				/* check only this user */
@@ -1453,6 +1458,7 @@ userflag Match_Client (const char *domain, const char *ident, const char *lname)
   }
   rw_unlock (&HLock);
   rw_unlock (&UFLock);
+  pthread_setcancelstate(cancelstate, NULL);
   dprint (3, "users:Match_User: %s!%s@%s%s, found flags %#x", NONULL(lname),
 	  NONULL(ident), domain, ur ? " (records found)" : "", uf);
   return uf;

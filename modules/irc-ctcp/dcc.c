@@ -110,7 +110,7 @@ static dcc_priv_t *new_dcc (void)
     FREE(&dcc->l.iname);
   dcc->state = P_DISCONNECTED;
   dcc->socket = -1;
-  dcc->tid = -(tid_t)1;
+  dcc->tid = -1;
   dprint (4, "dcc:new_dcc: %p", dcc);
   return dcc;
 }
@@ -252,7 +252,8 @@ static iftype_t _dcc_sig_2 (INTERFACE *iface, ifsig_t signal)
     case S_TERMINATE:
       if (dcc->socket >= 0)		/* check if it's forced to die */
 	LOG_CONN (_("DCC connection to %s terminated."), iface->name);
-      CloseSocket (dcc->socket);	/* just kill its socket... */
+      //CloseSocket (dcc->socket);	/* just kill its socket... */
+      pthread_cancel(dcc->th);
       Unset_Iface();			/* unlock dispatcher */
       pthread_join (dcc->th, NULL);	/* ...it die itself, waiting for it */
       Set_Iface (NULL);			/* restore status quo */
@@ -267,7 +268,7 @@ static iftype_t _dcc_sig_2 (INTERFACE *iface, ifsig_t signal)
       break;
     case S_SHUTDOWN:
       /* just kill it... */
-      CloseSocket (dcc->socket);
+      //CloseSocket (dcc->socket);
       /* ...it die itself */
       return I_DIED;
     default:;
@@ -363,35 +364,33 @@ struct dcc_listener_data {
     .state	P_DISCONNECTED
     .socket	listening socket id
     .uh		nick!user@host / nick@net */
-static void _dcc_inc_pre (pthread_t th, void **data, idx_t as)
+static void _dcc_inc_pre (pthread_t th, void **data, idx_t *as)
 {
   register struct dcc_listener_data *dld = *data;
-  register dcc_priv_t *dcc = dld->dcc;
+  dcc_priv_t *dcc;
 
+  if (!dld)				/* is answered to unknown socket? */
+  {
+    ERROR ("DCC CHAT: socket not found, shutdown thread.");
+    KillSocket (as);			/* module may be already terminated */
+    pthread_detach (th);
+  }
+  dcc = dld->dcc;
   *data = dcc;				/* pass it to handler */
-  if (as == -1)				/* listener terminated */
+  if (*as == -1)			/* listener terminated */
   {
     if (dcc)
       dcc->state = P_LASTWAIT;		/* mark it to be freed */
     /* it would be nice to write some debug but aren't we in SIGSEGV? */
     return;
   }
-  if (dcc)
-  {
-    dcc->th = th;
-    dcc->socket = as;
-    Set_Iface(NULL);			/* lock it */
-    FREE(&dcc->l.iname);
-    dcc->l.iface = Add_Iface (I_CONNECT, dcc->uh, &_dcc_sig_2, NULL, dcc);
-    dcc->state = P_INITIAL;		/* and now listener can die free */
-    Unset_Iface();
-  }
-  else					/* is answered to unknown socket? */
-  {
-    ERROR ("DCC CHAT: socket not found, shutdown thread.");
-    CloseSocket (as);			/* module may be already terminated */
-    pthread_detach (th);
-  }
+  dcc->th = th;
+  dcc->socket = *as;
+  Set_Iface(NULL);			/* lock it */
+  FREE(&dcc->l.iname);
+  dcc->l.iface = Add_Iface (I_CONNECT, dcc->uh, &_dcc_sig_2, NULL, dcc);
+  dcc->state = P_INITIAL;		/* and now listener can die free */
+  Unset_Iface();
 }
 
 /* connected for sending file, fields are now:
@@ -876,38 +875,36 @@ static void _dcc_send_phandler (char *lname, char *ident, const char *host,
 #undef dcc
 
 /* prehandler for passive DCC SEND */
-static void _dcc_pasv_pre (pthread_t th, void **data, idx_t as)
+static void _dcc_pasv_pre (pthread_t th, void **data, idx_t *as)
 {
   register struct dcc_listener_data *dld = *data;
-  dcc_priv_t *dcc = dld->dcc;
+  dcc_priv_t *dcc;
   INTERFACE *iface;
 
+  if (!dld)				/* is answered to unknown socket? */
+  {
+    ERROR ("DCC CHAT: socket not found, shutdown thread.");
+    KillSocket (as);			/* module may be already terminated */
+    pthread_detach (th);
+  }
+  dcc = dld->dcc;
   *data = dcc;				/* pass it to handler */
-  if (as == -1)				/* listener terminated */
+  if (*as == -1)			/* listener terminated */
   {
     if (dcc)
       dcc->state = P_LASTWAIT;		/* mark it to be freed */
     /* it would be nice to write some debug but aren't we in SIGSEGV? */
     return;
   }
-  if (dcc)
-  {
-    dcc->th = th;
-    dcc->socket = as;
-    Set_Iface(NULL);
-    dcc->state = P_INITIAL;		/* and now listener can die free */
-    /* we have dcc->l.name as "#nick@net" now */
-    iface = Add_Iface (I_CONNECT, &dcc->l.iname[1], &_dcc_sig_2, NULL, dcc);
-    FREE(&dcc->l.iname);
-    dcc->l.iface = iface;
-    Unset_Iface();
-  }
-  else					/* is answered to unknown socket? */
-  {
-    ERROR ("DCC CHAT: socket not found, shutdown thread.");
-    CloseSocket (as);			/* module may be already terminated */
-    pthread_detach (th);
-  }
+  dcc->th = th;
+  dcc->socket = *as;
+  Set_Iface(NULL);
+  /* we have dcc->l.name as "#nick@net" now */
+  iface = Add_Iface (I_CONNECT, &dcc->l.iname[1], &_dcc_sig_2, NULL, dcc);
+  FREE(&dcc->l.iname);
+  dcc->l.iface = iface;
+  dcc->state = P_INITIAL;		/* and now listener can die free */
+  Unset_Iface();
 }
 
 
