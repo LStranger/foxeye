@@ -303,6 +303,8 @@ static void chat_handler (char *lname, char *ident, const char *host, void *data
   char *msg;
   dcc_priv_t *dcc = data;
   struct peer_t *peer;
+  unsigned short p;
+  register ssize_t got;
 
   dprint (4, "dcc:chat_handler for %s", lname);
   /* check for allowance */
@@ -341,30 +343,27 @@ static void chat_handler (char *lname, char *ident, const char *host, void *data
     Unset_Iface();
     msg = "no access";
   }
-  if (msg)					/* was error on connection */
+  if (msg == NULL)		/* no errors on connection */
   {
-    unsigned short p;
-    register ssize_t got;
-
-    snprintf (buf, sizeof(buf), "Access denied: %s", msg);
-    sz = strlen (buf);
-    sp = 0;
-    while (sz && (got = Peer_Put (peer, &buf[sp], &sz)) >= 0)
-      sp += got;
-    SocketDomain (dcc->socket, &p);
-    /* %L - Lname, %P - port, %@ - hostname, %* - reason */
-    Set_Iface (NULL);
-    printl (buf, sizeof(buf), format_dcc_closed, 0,
-	    NULL, host, lname, NULL, 0, p, 0, msg);
+    dcc->socket = -1;		/* socket might be inherited by login */
+    Set_Iface (NULL);		/* ask dispatcher to kill thread 2 */
+    dcc->l.iface->ift |= I_FINWAIT; /* all rest will be done by _dcc_sig_2() */
     Unset_Iface();
-    LOG_CONN ("%s", buf);
-    _chat_handler_cleanup(peer); /* cannot put pthread_cleanup_pop(1) here */
+    return;
   }
-  pthread_cleanup_pop(0);	/* leave our socket intact now */
-  dcc->socket = -1;		/* socket might be inherited by login */
-  Set_Iface (NULL);		/* ask dispatcher to kill thread 2 */
-  dcc->l.iface->ift |= I_FINWAIT; /* all rest will be done by _dcc_sig_2() */
+  snprintf (buf, sizeof(buf), "Access denied: %s", msg);
+  sz = strlen (buf);
+  sp = 0;
+  while (sz && (got = Peer_Put (peer, &buf[sp], &sz)) >= 0)
+    sp += got;
+  SocketDomain (dcc->socket, &p);
+  /* %L - Lname, %P - port, %@ - hostname, %* - reason */
+  Set_Iface (NULL);
+  printl (buf, sizeof(buf), format_dcc_closed, 0,
+	  NULL, host, lname, NULL, 0, p, 0, msg);
   Unset_Iface();
+  LOG_CONN ("%s", buf);
+  pthread_cleanup_pop(1);
 }
 
 /* thread 2 (incoming connection) */

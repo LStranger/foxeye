@@ -2608,6 +2608,7 @@ static void _dport_handler (char *cname, char *ident, const char *host, void *d)
   peer_t *dcc;
   register char *msg;
   int flag = ((_port_acceptor *)d)->ch;
+  unsigned short p;
 
   dcc = safe_malloc (sizeof(peer_t));
   dcc->socket = ((_port_acceptor *)d)->as;
@@ -2632,26 +2633,21 @@ static void _dport_handler (char *cname, char *ident, const char *host, void *d)
   Unset_Iface();
   if (msg == NULL)
     msg = session_handler_main (ident, host, dcc, (flag & 256), buf, client);
-  if (msg)				/* was error on connection */
-  {
-    unsigned short p;
-
-    LOG_CONN (_("Connection from %s terminated: %s"), host, msg);
-    snprintf (buf, sizeof(buf), "Access denied: %s", msg);
-    sz = strlen (buf);
-    if (Peer_Put (dcc, buf, &sz) > 0)	/* it should be OK */
-      while (!(Peer_Put (dcc, NULL, &sz))); /* wait it to die */
-    SocketDomain (dcc->socket, &p);
-    /* %L - Lname, %P - port, %@ - hostname, %* - reason */
-    Set_Iface (NULL);
-    printl (buf, sizeof(buf), format_dcc_closed, 0,
-	    NULL, host, client, NULL, 0, p, 0, msg);
-    Unset_Iface();
-    /* cannot create connection */
-    LOG_CONN ("%s", buf);
-    _dport_handler_cleanup(dcc); /* pthread_cleanup_pop(1) generates error */
-  }
-  pthread_cleanup_pop(0);
+  if (msg == NULL)			/* no errors on connection */
+    return;
+  LOG_CONN (_("Connection from %s terminated: %s"), host, msg);
+  snprintf (buf, sizeof(buf), "Access denied: %s", msg);
+  sz = strlen (buf);
+  if (Peer_Put (dcc, buf, &sz) > 0)	/* it should be OK */
+    while (!(Peer_Put (dcc, NULL, &sz))); /* wait it to die */
+  SocketDomain (dcc->socket, &p);
+  /* %L - Lname, %P - port, %@ - hostname, %* - reason */
+  Set_Iface (NULL);
+  printl (buf, sizeof(buf), format_dcc_closed, 0,
+	  NULL, host, client, NULL, 0, p, 0, msg);
+  Unset_Iface();
+  LOG_CONN ("%s", buf);
+  pthread_cleanup_pop(1);
 }
 
 static iftype_t _port_retrier_s (INTERFACE *iface, ifsig_t signal)
