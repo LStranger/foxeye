@@ -318,8 +318,8 @@ static void _died_iface (INTERFACE *iface, char *buf, size_t s)
   if (s == 0)					/* is this shutdown call? */
     return;
   dprint (4, "dcc:_died_iface: %s", iface->name);
-  if(Connchain_Kill (dcc))cf=cf;		/* condition to avoid warn */
-  KillSocket (&dcc->socket);
+  if (Connchain_Kill (dcc))			/* always true */
+    KillSocket (&dcc->socket);
   /* %L - login nick, %@ - hostname */
   printl (buf, s, format_dcc_lost, 0, NULL,
 	  SocketDomain (dcc->socket, NULL), iface->name, NULL, 0, 0, 0, NULL);
@@ -2594,8 +2594,7 @@ static void _dport_prehandler (pthread_t th, void **id, idx_t *as)
 
 static void _dport_handler_cleanup(void *data)
 {
-  register int i = 0;
-  if(Connchain_Kill(((peer_t *)data)))i=i;
+  if (Connchain_Kill(((peer_t *)data))) /* condition to awoid warn */
   KillSocket(&((peer_t *)data)->socket);
   FREE(&data);
 }

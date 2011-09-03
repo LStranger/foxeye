@@ -282,12 +282,11 @@ static iftype_t _dcc_sig_2 (INTERFACE *iface, ifsig_t signal)
 
 static void _chat_handler_cleanup(void *ptr)
 {
-  register int a = 0;
   struct peer_t *peer = ptr;
 
   Set_Iface (NULL);
-  if(Connchain_Kill(peer))a=a;
-  KillSocket (&peer->socket);	/* it's really dead now */
+  if (Connchain_Kill(peer))	/* always true */
+    KillSocket (&peer->socket);	/* it's really dead now */
   FREE (&peer);
   /* would not set I_FINWAIT on interface but
      as we were cancelled then we cancelled from dying interface */
