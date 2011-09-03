@@ -930,7 +930,11 @@ static iftype_t _ircd_client_signal (INTERFACE *cli, ifsig_t sig)
     case S_TERMINATE:
       switch (peer->p.state)
       {
-	case P_DISCONNECTED:
+	case P_DISCONNECTED:		/* there is a thread still */
+	  pthread_cancel (peer->th);
+	  Unset_Iface();		/* let it to finish bindings */
+	  pthread_join (peer->th, NULL);
+	  Set_Iface(cli);
 	case P_INITIAL:			/* isn't registered yet */
 	case P_IDLE:
 	case P_LOGIN:

@@ -1171,7 +1171,7 @@ SigFunction ModuleInit (char *args)
 
     unistrlower(enc, Charset, sizeof(enc));
     if (!memcmp(enc, "mac", 3))
-      enc[3] |= 0x20;		/* macXxxx are non-all-lowercase names for Tcl */
+      enc[3] ^= 0x20;		/* macXxxx are non-all-lowercase names for Tcl */
     if (Tcl_SetSystemEncoding(Interp, enc) != TCL_OK)
       Add_Request(I_LOG, "*", F_BOOT, "Warning: charset %s unknown for Tcl: %s",
 		  enc, Tcl_GetStringResult (Interp));

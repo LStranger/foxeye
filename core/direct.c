@@ -978,7 +978,6 @@ static void get_chat (char *name, char *ident, char *host, peer_t *dcc,
   time_t t;
   int telnet = 0;
   struct clrec_t *user;
-  struct timespec ts;
 
   /* turn off echo if telnet and check password */
   t = time(NULL) + dcc_timeout;
@@ -1006,14 +1005,10 @@ static void get_chat (char *name, char *ident, char *host, peer_t *dcc,
   while (sz && time(NULL) < t && (pp = Peer_Put (dcc, &buf[sp], &sz)) >= 0)
     sp += pp;
   /* wait password and check it */
-  ts.tv_sec = 0;
-  ts.tv_nsec = 100000000; /* check each 0.1 sec for input */
   while (time(NULL) < t)
     if ((sp = Peer_Put (dcc, "", &sz)) < 0 ||	/* push connchain buffers */
 	(sp = Peer_Get (dcc, buf, SHORT_STRING)))
       break;				/* in both cases on error or success */
-    else
-      nanosleep(&ts, NULL);
   if (sp == 0)
   {
     *msg = "login timeout";
@@ -1340,6 +1335,8 @@ static int _direct_listener_callback(const struct sockaddr *sa, void *input_data
 
 static void _listen_port_cleanup (void *input_data)
 {
+  if (acptr->prehandler && acptr->id < 0)	/* notify caller */
+    acptr->prehandler ((pthread_t)0, &acptr->data, &acptr->id);
   /* job's ended so let dispatcher know that we must be finished
      don't do locking and I hope it's still atomic so should be OK */
   acptr->iface->ift = I_LISTEN | I_FINWAIT;
@@ -1363,6 +1360,7 @@ static void *_listen_port (void *input_data)
 
   /* set cleanup for the thread before any cancellation point */
   pthread_cleanup_push (&_listen_port_cleanup, input_data);
+  acptr->id = 0;
   FOREVER {
     n = SetupSocket(acptr->socket, (host && *host) ? host : NULL, port,
 		    &_direct_listener_callback, input_data);
@@ -1392,17 +1390,13 @@ static void *_listen_port (void *input_data)
       Rename_Iface(acptr->iface, buf);
   }
   /* let it be async-safe as much as possible: it may be killed by shutdown */
-  while (acptr->socket >= 0)			/* ends by KillSocket() */
+  acptr->id = -1;
+  while (acptr->socket >= 0)		/* ends by cancellation */
   {
     if ((new_idx = AnswerSocket (acptr->socket)) == E_AGAIN)
       continue;
     else if (new_idx < 0) /* listening socket died */
-    {
-      new_idx = -1;
-      if (acptr->prehandler)			/* notify caller */
-	acptr->prehandler ((pthread_t)0, &acptr->data, &new_idx);
       break;
-    }
     /* deny cancellation of the thread while we have extra data */
     pthread_setcancelstate (PTHREAD_CANCEL_DISABLE, &cancelstate);
     child = safe_malloc (sizeof(accept_t));
@@ -1430,6 +1424,7 @@ static void *_listen_port (void *input_data)
       child->tst = 1;			/* let new thread continue */
       if (acptr->client)		/* it's client connection so die now */
       {
+	acptr->id = 0;			/* do not call prehandler again */
 	acptr->client = NULL;		/* it's inherited by child */
 	break;
       }
@@ -1509,24 +1504,25 @@ typedef struct
   idx_t *idx;
   void (*handler) (int, void *);
   void *id;
+  int rc;
 } connect_t;
 
 #define cptr ((connect_t *)input_data)
 static void _connect_host_cleanup (void *input_data)
 {
+  cptr->handler (cptr->rc, cptr->id);
   FREE (&cptr->host);
   safe_free (&input_data);	/* FREE (&cptr) */
 }
 
 static void *_connect_host (void *input_data)
 {
-  int i = E_NOSOCKET;
-
   /* set cleanup for the thread before any cancellation point */
   pthread_cleanup_push (&_connect_host_cleanup, input_data);
+  cptr->rc = E_NOSOCKET;
   if ((*cptr->idx = GetSocket (M_RAW)) >= 0)
-    i = SetupSocket (*cptr->idx, cptr->host, cptr->port, NULL, NULL);
-  if (i == 0)
+    cptr->rc = SetupSocket (*cptr->idx, cptr->host, cptr->port, NULL, NULL);
+  if (cptr->rc == 0)
     dprint (4, "direct:_connect_host: connected to %s at port %hu: new socket %d",
 	    cptr->host, cptr->port, (int)*cptr->idx);
   else
@@ -1535,10 +1531,9 @@ static void *_connect_host (void *input_data)
 
     LOG_CONN ("Could not make connection to %s at port %hu (socket %d): %s",
 	      cptr->host, cptr->port, (int)*cptr->idx,
-	      SocketError (i, buf, sizeof(buf)));
+	      SocketError (cptr->rc, buf, sizeof(buf)));
     KillSocket (cptr->idx);
   }
-  cptr->handler (i, cptr->id);
   pthread_cleanup_pop (1);
   return NULL;
 }

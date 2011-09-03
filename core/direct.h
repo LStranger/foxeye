@@ -44,7 +44,7 @@ struct peer_t
 		 struct bindtable_t *, char *); /* function to parse/broadcast line */
   struct connchain_i *connchain;	/* connchain instance */
   const char *network_type;		/* for connchain identification */
-  struct peer_priv *priv;		/* session-specific data */
+  struct peer_priv *priv;		/* session-specific data, NULL in thread */
   time_t last_input;
   _peer_state state;
   userflag uf;				/* global+direct flags */

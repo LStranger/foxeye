@@ -10,6 +10,14 @@ TODO:
 	* *: to revise all threads cancellation, i.e. thread-safe functions.
 
 --- [0.10.0]
+Sat Sep  3 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/direct.c, modules/irc-ctcp/dcc.c, modules/ircd/ircd.c: made
+	  more cleanup for behavior on threads cancellation.
+	* core/connchain.c, core/direct.*, doc/modules.api, modules/irc-ctcp/dcc.c:
+	  changed connchain transfers to be M_PULL while in threads; it's
+	  imperative now to have member 'priv' of struct peer_t be equal to
+	  NULL while in threads.
+
 Thu Sep  1 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/socket.*, core/direct.c, doc/modules.api, modules/irc-ctcp/dcc.c, modules/irc/irc.c, modules/ircd/ircd.c:
 	  removed CloseSocket() function as it cannot be made thread-safe,

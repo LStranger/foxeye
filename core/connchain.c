@@ -56,6 +56,8 @@ static ssize_t _connchain_send (struct connchain_i **chain, idx_t idx,
     i = E_NOSOCKET;
   else if (*sz == 0)		/* if it's a test then answer we are ready */
     return CONNCHAIN_READY;
+  else if ((*(struct peer_t **)b)->priv == NULL) /* it's in thread yet */
+    i = WriteSocket (idx, data, &ptr, sz, M_POLL);
   else
     i = WriteSocket (idx, data, &ptr, sz, M_RAW);
   if (i < 0)
@@ -70,9 +72,13 @@ static ssize_t _connchain_recv (struct connchain_i **chain, idx_t idx,
 				char *data, size_t sz,
 				struct connchain_buffer **b)
 {
-  ssize_t i = E_NOSOCKET;
+  ssize_t i;
 
-  if (data != NULL)		/* if it's NULL then we have to stop */
+  if (data == NULL)		/* if it's NULL then we have to stop */
+    i = E_NOSOCKET;
+  else if ((*(struct peer_t **)b)->priv == NULL) /* it's in thread yet */
+    i = ReadSocket (data, idx, sz, M_POLL);
+  else
     i = ReadSocket (data, idx, sz, M_RAW);
   if (i < 0)
     DBG ("connchain: recv: socket error %d", (int)i);
@@ -90,6 +96,7 @@ static void _connchain_create (struct peer_t *peer)
   /* ignoring ->buf since we don't need it for _this_ link */
   peer->connchain->next = NULL;
   peer->connchain->tc = 0;
+  peer->connchain->buf = (struct connchain_buffer *)peer;
   dprint (2, "connchain.c: created initial link %p", peer->connchain);
 }
 

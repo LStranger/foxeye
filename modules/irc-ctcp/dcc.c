@@ -36,7 +36,7 @@
 
 typedef struct dcc_priv_t
 {
-  pthread_mutex_t mutex;		/* for ->ptr ... ->rate */
+  pthread_mutex_t mutex;		/* for ->ptr ... ->wait_accept */
   uint32_t ptr, startptr;		/* size got, start pointers */
   uint32_t rate;			/* average (16s) filetransfer speed */
   bool wait_accept;			/* we still waiting for DCC ACCEPT */
@@ -233,7 +233,7 @@ static iftype_t _dcc_sig_2 (INTERFACE *iface, ifsig_t signal)
 	}
 	BindResult = NULL;		/* we used it so drop it */
 	pthread_mutex_lock (&dcc->mutex);
-	if (dcc->startptr)
+	if (dcc->startptr || !dcc->wait_accept)
 	{
 	  pthread_mutex_unlock (&dcc->mutex);
 	  Add_Request (I_LOG, "*", F_WARN,
@@ -280,6 +280,20 @@ static iftype_t _dcc_sig_2 (INTERFACE *iface, ifsig_t signal)
 /* ----------------------------------------------------------------------------
    thread 2 (both CTCP CHAT and CTCP DCC CHAT connection handler) */
 
+static void _chat_handler_cleanup(void *ptr)
+{
+  register int a = 0;
+  struct peer_t *peer = ptr;
+
+  Set_Iface (NULL);
+  if(Connchain_Kill(peer))a=a;
+  KillSocket (&peer->socket);	/* it's really dead now */
+  FREE (&peer);
+  /* would not set I_FINWAIT on interface but
+     as we were cancelled then we cancelled from dying interface */
+  Unset_Iface();		/* all rest will be done by _dcc_sig_2() */
+}
+
 static void chat_handler (char *lname, char *ident, const char *host, void *data)
 {
   char buf[SHORT_STRING];
@@ -315,6 +329,7 @@ static void chat_handler (char *lname, char *ident, const char *host, void *data
   snprintf (peer->start, sizeof(peer->start), "%s %s", DateString, TimeString);
   /* dispatcher is locked, can initialize connchain: only RAW->TXT for now */
   Connchain_Grow (peer, 'x');
+  pthread_cleanup_push(&_chat_handler_cleanup, peer);
   if (bind && !bind->name) /* allowed to logon */
   {
     buf[0] = 'x';
@@ -343,10 +358,9 @@ static void chat_handler (char *lname, char *ident, const char *host, void *data
 	    NULL, host, lname, NULL, 0, p, 0, msg);
     Unset_Iface();
     LOG_CONN ("%s", buf);
-    if(Connchain_Kill (peer))got=got;
-    KillSocket (&peer->socket);	/* it's really dead now */
-    FREE (&peer);
+    _chat_handler_cleanup(peer); /* cannot put pthread_cleanup_pop(1) here */
   }
+  pthread_cleanup_pop(0);	/* leave our socket intact now */
   dcc->socket = -1;		/* socket might be inherited by login */
   Set_Iface (NULL);		/* ask dispatcher to kill thread 2 */
   dcc->l.iface->ift |= I_FINWAIT; /* all rest will be done by _dcc_sig_2() */
@@ -393,6 +407,22 @@ static void _dcc_inc_pre (pthread_t th, void **data, idx_t *as)
   Unset_Iface();
 }
 
+struct send_cleanup {
+  idx_t socket;
+  char *buff;
+  FILE *f;
+};
+
+static void _send_handler_cleanup(void *ptr)
+{
+  struct send_cleanup *scd = ptr;
+
+  KillSocket (&scd->socket);
+  FREE (&scd->buff);
+  if (scd->f)
+    fclose (scd->f);
+}
+
 /* connected for sending file, fields are now:
     .size	file size on start
     .ahead	ircdcc_ahead_size
@@ -411,6 +441,7 @@ static void isend_handler (char *lname, char *ident, const char *host, void *dat
   char *buff;
   dcc_priv_t *dcc = data;
   FILE *f;
+  struct send_cleanup *scd;
   uint32_t ptr, aptr, nptr;		/* ptr, ack ptr, net-ordered */
   uint32_t sr;
   time_t t, t2;
@@ -419,7 +450,10 @@ static void isend_handler (char *lname, char *ident, const char *host, void *dat
   size_t statistics[16];		/* to calculate average speed */
 
   dprint (4, "dcc:isend_handler for %s to \"%s\".", lname, dcc->lname);
-  buff = safe_malloc (MAXBLOCKSIZE);
+  scd = safe_calloc(1, sizeof(struct send_cleanup));
+  scd->socket = dcc->socket;
+  scd->buff = buff = safe_malloc (MAXBLOCKSIZE);
+  pthread_cleanup_push(&_send_handler_cleanup, scd);
   Set_Iface (dcc->l.iface);
   if (host)				/* if it's from passive then it's NULL */
   {
@@ -432,16 +466,16 @@ static void isend_handler (char *lname, char *ident, const char *host, void *dat
   if (dcc->startptr == 1)		/* it was '-flush' flag */
     dcc->startptr = 0;
   dcc->state = P_TALK;			/* now we can use mutex, ok */
-  f = fopen (dcc->filename, "rb");	/* try to open file */
+  scd->f = f = fopen (dcc->filename, "rb"); /* try to open file */
   if (f == NULL)
   {
     strerror_r (errno, buff, sizeof(buff));
     ERROR ("DCC SEND: cannot open file %s: %s.", dcc->filename, buff);
-    KillSocket (&dcc->socket);
-    FREE (&buff);
-    dcc->l.iface->ift |= I_FINWAIT; /* all rest will be done by _dcc_sig_2() */
-    Unset_Iface();
-    return;
+    //KillSocket (&dcc->socket);
+    //FREE (&buff);
+    //dcc->l.iface->ift |= I_FINWAIT; /* all rest will be done by _dcc_sig_2() */
+    //Unset_Iface();
+    goto done;
   }
   bs = ircdcc_blocksize;
   if (bs > MAXBLOCKSIZE)
@@ -505,6 +539,7 @@ static void isend_handler (char *lname, char *ident, const char *host, void *dat
     struct binding_t *b;
 
     c = strchr (dcc->l.iface->name, '@') + 1; /* network name */
+    Set_Iface (NULL);				/* it will disable cancellation */
     if (dcc->lname[0])			/* we know Lname already */
     {
       lname = NULL;
@@ -523,7 +558,6 @@ static void isend_handler (char *lname, char *ident, const char *host, void *dat
       c = "";
       uf = 0;
     }
-    Set_Iface (NULL);
     b = NULL;
     while ((b = Check_Bindtable (BT_Upload, c, uf, U_ANYCH, b)))
       if (b->name)
@@ -541,12 +575,15 @@ static void isend_handler (char *lname, char *ident, const char *host, void *dat
   else
     ERROR ("DCC SEND %s failed: sent %lu out from %lu bytes.", dcc->filename,
 	   (unsigned long int)ptr, (unsigned long int)dcc->size);
-  fclose (f);
-  KillSocket (&dcc->socket);
-  FREE (&buff);
+  //fclose (f);
+  //KillSocket (&dcc->socket);
+  //FREE (&buff);
   Set_Iface (NULL);
+done:
+  dcc->socket = -1;			/* it will be closed by cleanup */
   dcc->l.iface->ift |= I_FINWAIT; /* all rest will be done by _dcc_sig_2() */
   Unset_Iface();
+  pthread_cleanup_pop(1);
 }
 
 #define dcc ((dcc_priv_t *) input_data)
@@ -573,8 +610,8 @@ static void _isend_phandler (int res, void *input_data)
 
     LOG_CONN (_("DCC SEND connection to %s failed: %s."), dcc->l.iface->name,
 	      SocketError (res, buf, sizeof(buf)));
-    KillSocket (&dcc->socket);
     Set_Iface (NULL);
+    KillSocket (&dcc->socket);
     dcc->l.iface->ift |= I_FINWAIT; /* all rest will be done by _dcc_sig_2() */
     Unset_Iface();
   }
@@ -610,8 +647,8 @@ static void _dcc_chat_handler (int res, void *input_data)
 
     LOG_CONN (_("DCC CHAT connection to %s failed: %s."), dcc->l.iface->name,
 	      SocketError (res, buf, sizeof(buf)));
-    KillSocket (&dcc->socket);
     Set_Iface (NULL);
+    KillSocket (&dcc->socket);
     dcc->l.iface->ift |= I_FINWAIT; /* all rest will be done by _dcc_sig_2() */
     Unset_Iface();
   }
@@ -645,15 +682,16 @@ static void _dcc_chat_handler (int res, void *input_data)
 	/* on send we will ignore RESUME after first packet already sent */
 static void _dcc_send_handler (int res, void *input_data)
 {
+  int ahead;			/* current ahead size */
   uint32_t ptr, nptr, ip;	/* current ptr in chunk, network-ordered, IP */
   uint32_t aptr, toget;		/* ahead ptr, toget */
   ssize_t bs, sbs, sw, sw2;	/* gotten block size, temp var */
-  int ahead;			/* current ahead size */
   time_t t, t2;
   size_t statistics[16];	/* to calculate average speed */
   FILE *f, *rf;			/* opened file */
   void *buff;
   char *uh, *sfn;
+  struct send_cleanup *scd;
   bool wait_accept;
 
   dprint (4, "dcc:_dcc_send_handler: %d", res);
@@ -673,29 +711,32 @@ static void _dcc_send_handler (int res, void *input_data)
   dcc->state = P_TALK;
   Send_Signal (I_MODULE, "ui", S_FLUSH); /* notify the UI on transfer */
   Unset_Iface();
-  ptr = 0;
+  aptr = ptr = 0;
   bs = sbs = sw2 = 0;
   ahead = 0;
   time (&t);
+  scd = safe_calloc(1, sizeof(struct send_cleanup));
+  scd->socket = dcc->socket;
+  pthread_cleanup_push(&_send_handler_cleanup, scd);
   memset (statistics, 0, sizeof(statistics));
   if (wait_accept)		/* if waiting for ACCEPT then open temp file */
-    f = tmpfile();
+    scd->f = f = tmpfile();
   else if ((f = fopen (dcc->filename, "wb")))	/* else open real file */
   {
-    pthread_mutex_lock (&dcc->mutex);
+    scd->f = f;
     fseek (f, dcc->startptr, SEEK_SET);
-    pthread_mutex_unlock (&dcc->mutex);
   }
   if (f == NULL)
   {
     ERROR ("DCC GET: cannot open local file to download there.");
-    KillSocket (&dcc->socket);
-    Set_Iface (NULL);
-    dcc->l.iface->ift |= I_FINWAIT; /* all rest will be done by _dcc_sig_2() */
-    Unset_Iface();
-    return;
+    //KillSocket (&dcc->socket);
+    //Set_Iface (NULL);
+    //dcc->l.iface->ift |= I_FINWAIT; /* all rest will be done by _dcc_sig_2() */
+    //Unset_Iface();
+    //return;
+    goto done;
   }
-  buff = safe_malloc (MAXBLOCKSIZE);
+  scd->buff = buff = safe_malloc (MAXBLOCKSIZE);
   uh = safe_strchr (dcc->uh, '!');	/* split nick and user@host in buf */
   if (uh)
     uh++;
@@ -710,7 +751,6 @@ static void _dcc_send_handler (int res, void *input_data)
 	  dcc->lname, NULL, ip, 0, 0, sfn);
   Unset_Iface();
   LOG_CONN ("%s", (char *)buff);		/* do logging */
-  aptr = ptr;
   FOREVER					/* cycle to get file */
   {
     toget = 0;
@@ -728,7 +768,7 @@ static void _dcc_send_handler (int res, void *input_data)
     if (dcc->size > dcc->startptr)
       toget = dcc->size - dcc->startptr;	/* to get: for use below */
     pthread_mutex_unlock (&dcc->mutex);
-    sw = ReadSocket (buff, dcc->socket, MAXBLOCKSIZE, M_RAW); /* next block */
+    sw = ReadSocket (buff, dcc->socket, MAXBLOCKSIZE, M_POLL); /* next block */
     if (!sbs && sw == sw2)		/* two cons. blocks of the same size */
       sbs = sw;					/* assume it's block size */
     if (sw > 0)
@@ -782,7 +822,8 @@ static void _dcc_send_handler (int res, void *input_data)
   {
     /* if want_resume and got startptr then move file chunk to real file */
     aptr = dcc->startptr;
-    dcc->startptr = 1;			/* it's too late to get ACCEPT now */
+    dcc->wait_accept = FALSE;		/* it's too late to get ACCEPT now */
+    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &ahead);
     pthread_mutex_unlock (&dcc->mutex);
     if (!(rf = fopen (dcc->filename, "wb")))
       ERROR ("DCC GET: cannot append to local file after resume.");
@@ -797,6 +838,7 @@ static void _dcc_send_handler (int res, void *input_data)
 	ERROR ("DCC GET: error on saving file %s.", dcc->filename);
     }
     pthread_mutex_lock (&dcc->mutex);
+    pthread_setcancelstate(ahead, NULL);
   }
   if (dcc->size == 0 || ptr == dcc->size)	/* getting is complete */
   {
@@ -815,25 +857,25 @@ static void _dcc_send_handler (int res, void *input_data)
 	      _("Got incomplete file \"%s\" from %s: %lu/%lu bytes."), sfn,
 	      dcc->l.iface->name, (unsigned long)ptr, (unsigned long)dcc->size);
   LOG_CONN ("%s", (char *)buff);		/* do logging */
-  KillSocket (&dcc->socket);			/* close/unallocate all */
-  fclose (f);
+  //KillSocket (&dcc->socket);			/* close/unallocate all */
+  //fclose (f);
   if (ptr == dcc->size)				/* successfully downloaded */
   {
     struct binding_t *bind = NULL;
-    userflag uf = Get_Clientflags (dcc->lname, NULL);
+    userflag uf;
     const char *path;
 
+    Set_Iface (NULL);				/* to get access to bindtable */
+    uf = Get_Clientflags (dcc->lname, NULL);
     if (sfn == dcc->filename)			/* no path was given at all */
       path = ".";
     else					/* calculate relative path */
     {
-      Set_Iface (NULL);				/* to get access to path */
       path = expand_path (buff, ircdcc_dnload_dir, MAXBLOCKSIZE);
       if (!strncmp (dcc->filename, path, strlen(path)))
 	path = &dcc->filename[strlen(path)+1];	/* it contains defpath */
       else
 	path = dcc->filename;			/* sorry but only fullpath */
-      Unset_Iface();
       if (path == sfn)				/* file is on defpath */
 	path = ".";
       sfn--;					/* put it back to '/' */
@@ -852,8 +894,12 @@ static void _dcc_send_handler (int res, void *input_data)
 	  bind->func (dcc->uh, dcc->filename);
       }
     } while (bind);
+    Unset_Iface();
   }
-  safe_free (&buff);
+done:
+  dcc->socket = -1;				/* it will be closed by cleanup */
+  //safe_free (&buff);
+  pthread_cleanup_pop(1);
   Set_Iface (NULL);
   dcc->l.iface->ift |= I_FINWAIT; /* all rest will be done by _dcc_sig_2() */
   Unset_Iface();
