@@ -10,6 +10,11 @@ TODO:
 	* *: to revise all threads cancellation, i.e. thread-safe functions.
 
 --- [0.10.0]
+Sun Sep  4 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/dispatcher.c: added missed lock.
+	* core/socket.c: debugged broadcasts from polling sockets.
+	* core/dispatcher.c: fixed missing messages from threads (bug#71).
+
 Sat Sep  3 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.c, modules/irc-ctcp/dcc.c, modules/ircd/ircd.c: made
 	  more cleanup for behavior on threads cancellation.

@@ -1045,7 +1045,10 @@ INTERFACE *Set_Iface (INTERFACE *newif)
 /* locks on return: (LockIface) */
 int Unset_Iface (void)
 {
-  Current = (ifi_t *)unstack_iface();
+  register ifi_t *last = (ifi_t *)unstack_iface();
+
+  if (last != NULL)
+    Current = (ifi_t *)unstack_iface();
   pthread_mutex_unlock (&LockIface);
   return 0;
 }
@@ -1166,6 +1169,7 @@ static void start_boot (void)
 {
   _Boot = (ifi_t *)Add_Iface (~(I_CONSOLE | I_LISTEN | I_MODULE | I_INIT |
 				I_DIED | I_LOCKED), "*", NULL, &_b_stub, NULL);
+  pthread_mutex_lock (&LockIface);
   stack_iface ((INTERFACE *)_Boot, 1);
   if_or = I_LOCKED;
 }
