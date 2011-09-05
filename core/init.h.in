@@ -65,7 +65,7 @@ int Config_Exec (const char *, const char *);
 bool Confirm (char *, bool);
 
 	/* core internal part */
-void init (void);				/* [re]init functions */
+INTERFACE *init (void);				/* [re]init functions */
 char *IFInit_DCC (void);
 char *IFInit_Users (void);
 char *IFInit_Sheduler (void);

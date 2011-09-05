@@ -110,6 +110,8 @@ static char PID_path[LONG_STRING];
 
 static int is_in_shutdown = 0;
 
+static ifi_t *__Init;		/* interface of init */
+
 /* locks on input: (LockIface) */
 /* e: -1 if SIGTERM, 0 on normal termination, >0 if error condition */
 void bot_shutdown (char *message, int e)
@@ -819,7 +821,7 @@ static INTERFACE *stack_iface (INTERFACE *newif, int set_current)
     if (set_current)
       Current = (ifi_t *)StCur->ci;
     pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &StCur->cancelstate);
-    DBG("dispatcher: cancel state set disabled");
+//    DBG("dispatcher: cancel state set disabled");
     return NULL;
   }
   if (!(newst = StCur->next))
@@ -837,7 +839,7 @@ static INTERFACE *stack_iface (INTERFACE *newif, int set_current)
     newst->ci = newst->prev->ci;	/* inherit last */
   StCur = newst;
   pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &StCur->cancelstate);
-  DBG("dispatcher: cancel state set disabled");
+//  DBG("dispatcher: cancel state set disabled");
   if (set_current)
     Current = (ifi_t *)StCur->ci;
   return newst->prev->ci;
@@ -852,7 +854,7 @@ static INTERFACE *unstack_iface (void)
     bot_shutdown ("OOPS! interface stack exhausted! Extra Unset_Iface() called?", 7);
     return NULL;
   }
-  DBG("dispatcher: cancel state restoring to previous");
+//  DBG("dispatcher: cancel state restoring to previous");
   pthread_setcancelstate(StCur->cancelstate, NULL);
   StCur = StCur->prev;
   return StCur ? StCur->ci : NULL;
@@ -1048,7 +1050,9 @@ int Unset_Iface (void)
   register ifi_t *last = (ifi_t *)unstack_iface();
 
   if (last != NULL)
-    Current = (ifi_t *)unstack_iface();
+    Current = last;
+  else
+    Current = __Init;
   pthread_mutex_unlock (&LockIface);
   return 0;
 }
@@ -1169,8 +1173,8 @@ static void start_boot (void)
 {
   _Boot = (ifi_t *)Add_Iface (~(I_CONSOLE | I_LISTEN | I_MODULE | I_INIT |
 				I_DIED | I_LOCKED), "*", NULL, &_b_stub, NULL);
-  pthread_mutex_lock (&LockIface);
-  stack_iface ((INTERFACE *)_Boot, 1);
+//  pthread_mutex_lock (&LockIface);
+//  stack_iface ((INTERFACE *)_Boot, 1);
   if_or = I_LOCKED;
 }
 
@@ -1181,12 +1185,15 @@ static void end_boot (void)
   unsigned int i;
 
   if_or = 0;
+  if (con)
+    con->ift |= I_LOCKED;
+  else
+    Set_Iface(NULL);
+  Current = _Boot;
   dprint (4, "end_boot: unlock %u interfaces (but console and init)", _Inum);
   for (i = 0; i < _Inum; i++)
     if (!(Interface[i]->a.ift & (I_CONSOLE | I_INIT)))
       Interface[i]->a.ift &= ~I_LOCKED;
-  if (con)
-    con->ift |= I_LOCKED;
   while (_Boot->head)
   {
     relay_request (_Boot->head->request);
@@ -1421,7 +1428,7 @@ int dispatcher (INTERFACE *start_if)
   time (&StartTime);
   /* now we must register all common interfaces
    * which have not own interface functions */
-  init();
+  __Init = (ifi_t *)init();
   NewEvent (W_START, ID_ME, ID_ME, 0);	/* started ok */
   if (Console)
   {

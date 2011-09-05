@@ -342,6 +342,25 @@ static void _irc_run_conn_bind (irc_server *serv, struct bindtable_t *bt)
   }
 }
 
+static iftype_t _irc_privmsgout_sig (INTERFACE *iface, ifsig_t sig)
+{
+  irc_server *serv;
+
+  if (sig != S_TERMINATE || iface->data == NULL)
+    return 0;
+  for (serv = IrcServers; serv; serv = serv->next)
+    if (serv->pmsgout == iface)
+      break;
+  if (serv == NULL)
+    ERROR("irc: privmsgout interface %s dying but not found in servers list",
+	  iface->name);
+  else
+    serv->pmsgout = NULL;
+  irc_privmsgout_cancel (iface, NULL);
+  iface->ift = I_DIED;
+  return I_DIED;
+}
+
 #define _irc_connected(serv) _irc_run_conn_bind (serv, BT_IrcConn)
 #define _irc_disconnected(serv) _irc_run_conn_bind (serv, BT_IrcDisc)
 
@@ -374,7 +393,7 @@ static int _irc_try_server (irc_server *serv, const char *tohost, int banned,
 
     lname[0] = '@';
     strfcpy (&lname[1], serv->p.iface->name, sizeof(lname) - 1);
-    serv->pmsgout = Add_Iface (I_CLIENT, lname, NULL,
+    serv->pmsgout = Add_Iface (I_CLIENT, lname, &_irc_privmsgout_sig,
 			       &irc_privmsgout_default, NULL);
   }
   /* some cleanup... */
@@ -1741,7 +1760,6 @@ static iftype_t module_irc_signal (INTERFACE *iface, ifsig_t sig)
       Delete_Binding ("irc-connected", (Function)&ic_default, NULL);
       Delete_Binding ("connect", &connect_irc, NULL);
       Delete_Binding ("time-shift", (Function)&ts_irc, NULL);
-      irc_privmsgunreg();
       Delete_Help ("irc");
       /* kill all awaiting connections if there were any */
       while ((awh = IrcAwaits))
@@ -1774,6 +1792,7 @@ static iftype_t module_irc_signal (INTERFACE *iface, ifsig_t sig)
 	    Unset_Iface();
 	  }
       }
+      irc_privmsgunreg();	/* do it after all privmsg ifaces gone */
       iface->ift |= I_DIED;
       break;
     case S_REG:

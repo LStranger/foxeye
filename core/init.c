@@ -2000,7 +2000,7 @@ static void _bind_destroy (void *bind)
   }
 }
 
-void init (void)
+INTERFACE *init (void)
 {
   int g = O_GENERATECONF;
   char new_path[PATH_MAX+FILENAME_LENGTH+2];
@@ -2189,4 +2189,5 @@ void init (void)
   Add_Binding ("dcc", "chelp", U_OWNER, U_NONE, &dc_chelp, NULL);
   Unset_Iface();				/* out of stub */
   stub->ift = I_DIED;
+  return (Init);
 }

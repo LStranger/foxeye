@@ -270,7 +270,7 @@ ssize_t WriteSocket (idx_t idx, const char *buf, size_t *ptr, size_t *sw, int mo
 
 int KillSocket (idx_t *idx)
 {
-  int fd, cancelstate;
+  int fd;
   idx_t i = *idx;
 
   DBG ("socket:KillSocket %d", (int)i);
@@ -698,6 +698,7 @@ char *SocketError (int er, char *buf, size_t s)
 void PollSockets(int check_out)
 {
   register short i;
+  struct timespec abstime;
 
   pthread_mutex_lock (&LockPoll);
   if (check_out) {		/* we have something in queue */

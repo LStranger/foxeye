@@ -173,6 +173,15 @@ static void _pmsgout_send (char *to, char *msg, flag_t flag, char *dog)
 #pragma GCC diagnostic error "-Wformat-nonliteral"
 #endif
 
+static iftype_t _pmsgout_sig (INTERFACE *iface, ifsig_t sig)
+{
+  if (sig != S_TERMINATE || iface->data == NULL)
+    return 0;
+  ((pmsgout_stack *)iface->data)->client = NULL;
+  iface->data = NULL;
+  return I_DIED;
+}
+
 static int _pmsgout_run (INTERFACE *client, REQUEST *req)
 {
   if (!req)
@@ -195,7 +204,7 @@ static INTERFACE *_pmsgout_stack_insert (pmsgout_stack **stack, char *to)
   pmsgout_stack *cur = alloc_pmsgout_stack();
 
   dprint (4, "_pmsgout_stack_insert: adding %s", to);
-  client = Add_Iface (I_CLIENT, to, NULL, &_pmsgout_run, NULL);
+  client = Add_Iface (I_CLIENT, to, &_pmsgout_sig, &_pmsgout_run, NULL);
   if (*stack)
   {
     cur->next = *stack;
@@ -214,7 +223,10 @@ static INTERFACE *_pmsgout_stack_insert (pmsgout_stack **stack, char *to)
 
 static void _pmsgout_stack_remove (pmsgout_stack **stack, pmsgout_stack *cur)
 {
-  dprint (4, "_pmsgout_stack_remove: removing %s", cur->client->name);
+  if (cur->client != NULL)
+    dprint (4, "_pmsgout_stack_remove: removing %s", cur->client->name);
+  else
+    dprint (4, "_pmsgout_stack_remove: cleaning died one");
   if (cur->prev == cur)
     *stack = NULL;
   else if (*stack == cur)
@@ -224,6 +236,8 @@ static void _pmsgout_stack_remove (pmsgout_stack **stack, pmsgout_stack *cur)
   NoCheckFlood (&cur->msg_flood);
   NoCheckFlood (&cur->ctcp_flood);
   free_pmsgout_stack (cur);
+  if (!cur->client)
+    return;
   cur->client->ift |= I_DIED;		/* it will free cur too so preserve it */
   cur->client->data = NULL;
 }
@@ -248,8 +262,12 @@ void irc_privmsgout (INTERFACE *pmsgout, int pmsg_keep)
   if (!stack)
     return;
   cur = stack->next;
-  while (cur != stack && cur->client->qsize == 0)
+  while (cur != stack)
   {
+    if (cur->client == NULL)		/* killed already */
+      continue;
+    if (cur->client->qsize != 0)	/* has something to out */
+      break;
     if (Time > cur->last)
     {
       if (Find_Iface (I_QUERY, cur->client->name)) /* keep it while query exists */
@@ -258,11 +276,15 @@ void irc_privmsgout (INTERFACE *pmsgout, int pmsg_keep)
       {
 	cur = cur->prev;
 	_pmsgout_stack_remove ((pmsgout_stack **)&pmsgout->data, cur->next);
+	/* if it was last then stack is NULL; if it IS last then stack = it */
+	stack = pmsgout->data;
+	if (stack == NULL)		/* emptied */
+	  return;
       }
     }
     cur = cur->next;
   }
-  if (cur->client->qsize == 0)
+  if (cur->client == NULL || cur->client->qsize == 0)
     return;
   pmsgout->data = cur;
   cur->last = Time + pmsg_keep;
@@ -296,6 +318,8 @@ void irc_privmsgout_cancel (INTERFACE *pmsgout, char *to)
 {
   INTERFACE *iface;
 
+  if (!pmsgout)
+    return;
   dprint (4, "_privmsgout_cancel: cancel %s%s", to ? to : "*", pmsgout->name);
   if (pmsgout->data && !to)
   {
@@ -313,7 +337,10 @@ void irc_privmsgout_cancel (INTERFACE *pmsgout, char *to)
 int irc_privmsgout_count (INTERFACE *pmsgout)
 {
   register int i;
-  register pmsgout_stack *stack = pmsgout->data;
+  register pmsgout_stack *stack;
+  if (!pmsgout)
+    return 0;
+  stack = pmsgout->data;
   if (!stack)
     return 0;
   for (i = 1; stack->next != pmsgout->data; stack = stack->next)
