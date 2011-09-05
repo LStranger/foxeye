@@ -2632,8 +2632,10 @@ static void _dport_handler (char *cname, char *ident, const char *host, void *d)
   Unset_Iface();
   if (msg == NULL)
     msg = session_handler_main (ident, host, dcc, (flag & 256), buf, client);
-  if (msg == NULL)			/* no errors on connection */
+  if (msg == NULL) {			/* no errors on connection */
+    pthread_cleanup_pop(0);
     return;
+  }
   LOG_CONN (_("Connection from %s terminated: %s"), host, msg);
   snprintf (buf, sizeof(buf), "Access denied: %s", msg);
   sz = strlen (buf);
@@ -2646,7 +2648,7 @@ static void _dport_handler (char *cname, char *ident, const char *host, void *d)
 	  NULL, host, client, NULL, 0, p, 0, msg);
   Unset_Iface();
   LOG_CONN ("%s", buf);
-  pthread_cleanup_pop(1);
+  //pthread_cleanup_pop(1);
 }
 
 static iftype_t _port_retrier_s (INTERFACE *iface, ifsig_t signal)

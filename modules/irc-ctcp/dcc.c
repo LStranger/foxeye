@@ -348,6 +348,7 @@ static void chat_handler (char *lname, char *ident, const char *host, void *data
     Set_Iface (NULL);		/* ask dispatcher to kill thread 2 */
     dcc->l.iface->ift |= I_FINWAIT; /* all rest will be done by _dcc_sig_2() */
     Unset_Iface();
+    pthread_cleanup_pop(0);
     return;
   }
   snprintf (buf, sizeof(buf), "Access denied: %s", msg);
@@ -362,7 +363,7 @@ static void chat_handler (char *lname, char *ident, const char *host, void *data
 	  NULL, host, lname, NULL, 0, p, 0, msg);
   Unset_Iface();
   LOG_CONN ("%s", buf);
-  pthread_cleanup_pop(1);
+  //pthread_cleanup_pop(1);
 }
 
 /* thread 2 (incoming connection) */
