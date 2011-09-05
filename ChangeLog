@@ -13,6 +13,7 @@ TODO:
 Mon Sep  5 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c, core/init.*: fixed wrong boot ending.
 	* modules/irc/irc.c, modules/irc/msgs.c: fixed SIGSEGV on termination.
+	* modules/irc/irc.c: fixed locking on mutex due to absent 'priv'.
 
 Sun Sep  4 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c: added missed lock.

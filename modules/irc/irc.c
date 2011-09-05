@@ -57,6 +57,8 @@ typedef struct irc_server {
 //  userflag uf;
 //  void (*parse) (struct peer_t *, char *, char *, userflag, userflag, int, int,
 //	 struct bindtable_t *, char *);/* function to parse/broadcast line */
+//  const char *network_type;
+//  struct peer_priv *priv;
 } irc_server;
 
 typedef struct irc_await {
@@ -1647,6 +1649,7 @@ static int connect_irc (const char *link, char *args)
     serv = serv->next;
   }
   serv->p.socket = -1;
+  serv->p.priv = (void *)1; /* it's unused but we should not wait on socket */
   serv->lc = &unistrlower;
   serv->p.iface = Add_Iface (I_SERVICE | I_CONNECT, link, &_irc_signal,
 			     &_irc_request, serv);

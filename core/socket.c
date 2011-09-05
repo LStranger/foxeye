@@ -698,7 +698,7 @@ char *SocketError (int er, char *buf, size_t s)
 void PollSockets(int check_out)
 {
   register short i;
-  struct timespec abstime;
+//  struct timespec abstime;
 
   pthread_mutex_lock (&LockPoll);
   if (check_out) {		/* we have something in queue */
@@ -711,9 +711,9 @@ void PollSockets(int check_out)
   if (poll(Pollfd, _Snum, check_out ? 10 : POLL_TIMEOUT))
     pthread_cond_broadcast(&PollCond);
   pthread_mutex_unlock (&LockPoll);
-  abstime.tv_sec = 0L;
-  abstime.tv_nsec = 1000000L;	/* 1 ms */
-  nanosleep(&abstime, NULL);	/* let threads acquire lock */
+//  abstime.tv_sec = 0L;
+//  abstime.tv_nsec = 1000000L;	/* 1 ms */
+//  nanosleep(&abstime, NULL);	/* let threads acquire lock */
 }
 
 int _fe_init_sockets (void)
