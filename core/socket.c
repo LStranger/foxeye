@@ -48,11 +48,11 @@
 
 /*
  * Sequence:		socket.domain:	pollfd.fd:
- * unallocated		NULL		-1
+ * unallocated		NULL		-2
  * allocated		NULL		>= 0
  * domain resolved	domain		>= 0
  * shutdown		domain		-1
- * unallocated		NULL		-1
+ * unallocated		NULL		-2
  */
 typedef struct
 {
@@ -236,7 +236,7 @@ ssize_t WriteSocket (idx_t idx, const char *buf, size_t *ptr, size_t *sw, int mo
   pthread_testcancel();			/* for non-POSIX systems */
   if (idx < 0 || idx >= _Snum || Pollfd[idx].fd < 0)
     return E_NOSOCKET;
-  if (!buf || !sw)
+  if (!buf || !sw || !ptr)
     return 0;
   rev = Pollfd[idx].revents & (POLLNVAL | POLLERR | POLLHUP | POLLOUT);
   /* if mode isn't M_POLL then it's dispatcher or else we should wait */
