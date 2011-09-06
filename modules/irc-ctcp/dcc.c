@@ -226,7 +226,8 @@ static iftype_t _dcc_sig_2 (INTERFACE *iface, ifsig_t signal)
 	    break;
 	  }
 	}
-	position = strtoul (NextWord (txt), NULL, 10);
+	txt = NextWord (txt);
+	position = strtoul(txt, NULL, 10);
 	port = strtoul(NextWord(txt), NULL, 10);
 	if (dcc->token != port) { /* for active SEND token is 0 obviously */
 	  DBG ("irc-ctcp:_dcc_sig_2: ACCEPT token %lu != %u", port, dcc->token);
@@ -722,10 +723,10 @@ static void _dcc_send_handler (int res, void *input_data)
   memset (statistics, 0, sizeof(statistics));
   if (wait_accept)		/* if waiting for ACCEPT then open temp file */
     scd->f = f = tmpfile();
-  else if ((f = fopen (dcc->filename, "wb")))	/* else open real file */
+  else if ((f = fopen (dcc->filename, "a")))	/* else open real file */
   {
     scd->f = f;
-    fseek (f, dcc->startptr, SEEK_SET);
+    fseek (f, (off_t)dcc->startptr, SEEK_SET);
   }
   if (f == NULL)
   {
@@ -769,6 +770,8 @@ static void _dcc_send_handler (int res, void *input_data)
     if (dcc->size > dcc->startptr)
       toget = dcc->size - dcc->startptr;	/* to get: for use below */
     pthread_mutex_unlock (&dcc->mutex);
+    if (ptr >= toget)
+      break;					/* and we got it all */
     sw = ReadSocket (buff, dcc->socket, MAXBLOCKSIZE, M_POLL); /* next block */
     if (!sbs && sw == sw2)		/* two cons. blocks of the same size */
       sbs = sw;					/* assume it's block size */
@@ -826,7 +829,7 @@ static void _dcc_send_handler (int res, void *input_data)
     dcc->wait_accept = FALSE;		/* it's too late to get ACCEPT now */
     pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &ahead);
     pthread_mutex_unlock (&dcc->mutex);
-    if (!(rf = fopen (dcc->filename, "wb")))
+    if (!(rf = fopen (dcc->filename, "a")))
       ERROR ("DCC GET: cannot append to local file after resume.");
     else
     {
@@ -838,9 +841,9 @@ static void _dcc_send_handler (int res, void *input_data)
       if (sw < 0 || sw2 != sw)			/* got an error on save */
 	ERROR ("DCC GET: error on saving file %s.", dcc->filename);
     }
-    pthread_mutex_lock (&dcc->mutex);
     pthread_setcancelstate(ahead, NULL);
-  }
+  } else
+    pthread_mutex_unlock (&dcc->mutex);
   if (dcc->size == 0 || ptr == dcc->size)	/* getting is complete */
   {
     /* %L - lname, %@ - uh, %N - nick@net, %I - IP, %* - filename(unquoted) */
@@ -1218,6 +1221,7 @@ static iftype_t _dcc_sig_1 (INTERFACE *iface, ifsig_t signal)
 	  DBG ("irc-ctcp:_dcc_sig_1: ACCEPT port %lu != %u", port, dcc->ptr);
 	  break;			/* active mode and another port */
 	}
+	txt = NextWord(txt);
 	position = strtoul(txt, NULL, 10);
 	port = strtoul(NextWord(txt), NULL, 10);
 	if (dcc->ptr == 0 && port != dcc->token)

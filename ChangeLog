@@ -19,6 +19,7 @@ Tue Sep  6 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  receiving file.
 	* core/direct.c: added socket killing on failed Connect_Host().
 	* modules/ircd/ircd.c: fixed SIGSEGV on autoconnect fail.
+	* modules/irc-ctcp/dcc.c: fixed resuming of file get.
 
 Mon Sep  5 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c, core/init.*: fixed wrong boot ending.
