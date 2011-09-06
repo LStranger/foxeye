@@ -10,6 +10,9 @@ TODO:
 	* *: to revise all threads cancellation, i.e. thread-safe functions.
 
 --- [0.10.0]
+Tue Sep  6 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/irc-ctcp/dcc.c: added missed debug info.
+
 Mon Sep  5 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c, core/init.*: fixed wrong boot ending.
 	* modules/irc/irc.c, modules/irc/msgs.c: fixed SIGSEGV on termination.

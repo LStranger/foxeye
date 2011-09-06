@@ -780,7 +780,6 @@ static int _delete_iface (unsigned int r)
 	Interface[r]->a.prev = NULL;	/* it has no parent anymore */
 	rc = Interface[r]->a.IFSignal (&Interface[r]->a, S_TERMINATE);
 	Interface[r]->a.ift |= rc;	/* and it should be terminated */
-
       }
     }
   if (todel->name)

@@ -172,6 +172,7 @@ static iftype_t _dcc_sig_2 (INTERFACE *iface, ifsig_t signal)
   char buf[SHORT_STRING];
   char *txt;
 
+  dprint(4, "irc-ctcp:dcc.c:_dcc_sig_2: got %u on %p(%p)", signal, iface, dcc);
   if (!dcc)				/* already killed? */
     return I_DIED;
   switch (signal)
@@ -1169,6 +1170,7 @@ static iftype_t _dcc_sig_1 (INTERFACE *iface, ifsig_t signal)
   char buf[SHORT_STRING];
   char *txt;
 
+  dprint(4, "irc-ctcp:dcc.c:_dcc_sig_1: got %u on %p(%p)", signal, iface, dcc);
   if (!dcc)				/* already killed? */
     return I_DIED;
   switch (signal)
@@ -1539,6 +1541,7 @@ static int dcc_resume (INTERFACE *w, uchar *who, char *lname, char *cw)
   if (sscanf (NextWord_Unquoted (NULL, NextWord (cw), 0), "%hu %llu %u",
       &port, &ptr, &token) < 2)		/* skipping RESUME <file> */
     return 0;				/* bad parameters! */
+  dprint(4, "irc-ctcp:dcc.c:dcc_resume: request OK: lname=%s", NONULLP(lname));
   if (port == 0) /* it's passive */
   {
     snprintf (target, sizeof (target), "irc-ctcp#%u", token);
@@ -1698,6 +1701,7 @@ static iftype_t _isend_sig_w (INTERFACE *iface, ifsig_t signal)
   unsigned long long size;
   unsigned int token;
 
+  dprint(4, "irc-ctcp:dcc.c:_isend_sig_w: got %u on %p(%p)", signal, iface, dcc);
   if (!dcc)
     return I_DIED;
   switch (signal)
