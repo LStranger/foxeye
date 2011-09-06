@@ -186,7 +186,10 @@ static ssize_t textlog_add_buf (logfile_t *log, char *text, size_t sz,
     {
       psw = sp;
       memcpy (&log->buf[log->inbuf+tsw], log_prefix, psw);
-      sw = sizeof(log->buf) - log->inbuf - sp - tsw;
+      if ((log->inbuf + tsz + sp + sz) > sizeof(log->buf)) /* sz > sw */
+	sw = sizeof(log->buf) - log->inbuf - sp - tsz;
+      else
+	sw = sz;
       memcpy (&log->buf[log->inbuf+tsw+psw], text, sw);
     }
     log->inbuf += (tsw + psw + sw);
@@ -215,12 +218,8 @@ static ssize_t textlog_add_buf (logfile_t *log, char *text, size_t sz,
       return -1;
     }
     if (ts && tsw < tsz)
-    {
       memcpy (log->buf, &tss[tsw], tsz - tsw);
-      tsw = tsz - tsw;
-    }
-    else
-      tsw = 0;
+    tsw = tsz - tsw;
     sp -= psw;
     sz -= sw;
   }
