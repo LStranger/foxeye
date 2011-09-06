@@ -279,13 +279,13 @@ Common API:
     interface signal number if _f_l is F_SIGNAL. Request is recoded into
     target interface charset when added to queue. See simple_match() for
     mask details. Returns nothing.
-	Reenterability: reenterable
+	Reenterability: none if _f_l is F_SIGNAL, else reenterable
 	Cancellation point: no
 
   void SSeenndd__SSiiggnnaall (iftype_t _t_y_p_e, const char *_t_o, ifsig_t _s_i_g);
     Macro, defined as Add_Request(_t_y_p_e, _t_o, F_SIGNAL, (char *)_s_i_g)
     Used for sending signals instead of text messages.
-	Reenterability: reenterable
+	Reenterability: none
 	Cancellation point: no
 
   void NNeeww__RReeqquueesstt (INTERFACE *_i_f_a_c_e, flag_t _f_l, const char *_t_e_x_t, _._._.);

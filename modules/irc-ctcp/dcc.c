@@ -700,6 +700,7 @@ static void _dcc_send_handler (int res, void *input_data)
     Set_Iface (NULL);
     dcc->l.iface->ift |= I_FINWAIT; /* all rest will be done by _dcc_sig_2() */
     Unset_Iface();
+    return;
   }
   pthread_mutex_lock (&dcc->mutex);		/* prepare to work */
   wait_accept = dcc->wait_accept;
@@ -1499,7 +1500,7 @@ static int dcc_send (INTERFACE *w, uchar *who, char *lname, char *cw)
   else if (st.st_size < ircdcc_resume_min) /* small file, redownload */
     dcc->startptr = 0;
   else
-    dcc->startptr = size;
+    dcc->startptr = st.st_size;
   dcc->filename = safe_strdup (path);
   c = safe_strchr (who, '!');
   if (c)

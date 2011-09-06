@@ -13,6 +13,12 @@ TODO:
 Tue Sep  6 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc-ctcp/dcc.c: added missed debug info.
 	* scripts/eggcompat.tcl: added minimal multinet support.
+	* core/dispatcher.c, doc/modules.api: removed dispatcher lock from
+	  handling F_SIGNAL requests.
+	* modules/irc-ctcp/dcc.c: fixed deadlock after failed connect on
+	  receiving file.
+	* core/direct.c: added socket killing on failed Connect_Host().
+	* modules/ircd/ircd.c: fixed SIGSEGV on autoconnect fail.
 
 Mon Sep  5 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c, core/init.*: fixed wrong boot ending.

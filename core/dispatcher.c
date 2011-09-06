@@ -915,7 +915,6 @@ void Add_Request (iftype_t ift, const char *mask, flag_t fl, const char *text, .
   if (!ift)
     return;
   pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancelstate);
-  pthread_mutex_lock (&LockIface);
   /* if F_SIGNAL then text is binary! */
   if (fl & F_SIGNAL)
   {
@@ -964,10 +963,11 @@ void Add_Request (iftype_t ift, const char *mask, flag_t fl, const char *text, .
   else
   {
     va_start (ap, text);
+    pthread_mutex_lock (&LockIface);
     vsadd_request (NULL, ift, mask, fl, text, ap);
+    pthread_mutex_unlock (&LockIface);
     va_end (ap);
   }
-  pthread_mutex_unlock (&LockIface);
   pthread_setcancelstate(cancelstate, NULL);
 }
 

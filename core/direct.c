@@ -1510,6 +1510,8 @@ typedef struct
 #define cptr ((connect_t *)input_data)
 static void _connect_host_cleanup (void *input_data)
 {
+  if (cptr->rc != 0)
+    KillSocket(cptr->idx);
   cptr->handler (cptr->rc, cptr->id);
   FREE (&cptr->host);
   safe_free (&input_data);	/* FREE (&cptr) */

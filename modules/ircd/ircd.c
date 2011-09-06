@@ -1650,6 +1650,7 @@ static inline void _ircd_start_uplink2 (const char *name, char *host,
     strfcpy (uplink->fname, pass, sizeof(uplink->fname)); /* remember it */
   strfcpy (uplink->away, port, sizeof(uplink->away)); /* remember port string */
   strfcpy (uplink->host, host, sizeof(uplink->host)); /* remember host name */
+  Connchain_Grow (&uplink->via->p, 0); /* init empty connchain */
   uplink->via->p.iface = Add_Iface (I_CONNECT, uplink->lcnick,
 				    &_ircd_uplink_sig, &_ircd_uplink_req,
 				    uplink->via);

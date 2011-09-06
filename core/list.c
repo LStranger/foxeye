@@ -1058,6 +1058,7 @@ struct clrec_t *Find_Clientrecord (const uchar *mask, char **lname,
       else
 	*uf = user->flag;
     }
+    DBG("list.c:Find_Clientrecord: locked %s", user->lname);
   }
   else
     rw_unlock (&UFLock);
