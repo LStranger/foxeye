@@ -12,6 +12,7 @@ TODO:
 --- [0.10.0]
 Tue Sep  6 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc-ctcp/dcc.c: added missed debug info.
+	* scripts/eggcompat.tcl: added minimal multinet support.
 
 Mon Sep  5 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c, core/init.*: fixed wrong boot ending.

@@ -1,12 +1,18 @@
 # eggcompat.tcl: Eggdrop commands implementation via FoxEye commands.
 #
 # assuming tcl gets everything as eggdrop does, i.e. one-network target
-# 
-# Copyright (C) 2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+#
+# Copyright (C) 2010-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
 
 # that's too rough, don't use $botnick but [botnick] instead
 #global irc_default_nick botnick
 #set botnick $irc_default_nick
+
+#
+# a minimal multinetwork support
+#
+global tcl_last_network
+set tcl_last_network $tcl_default_network
 
 #
 # some mostly standard functions
@@ -17,17 +23,20 @@ proc rand {max} {
 
 # base procedure nick@net => nick, channel@net => channel
 proc client2name {client} {
+  global tcl_last_network
   set atdog [string last @ [string range $client 1 end]]
   if {$atdog < 0} {
     return $client
   }
+  # set it here assuming it is first conversion in the proc
+  set tcl_last_network [string range $client [expr $atdog + 2] end]
   return [string range $client 0 $atdog]
 }
 
 # base procedure nick => nick@net, channel => channel@net
 proc name2client {name} {
-  global tcl_default_network
-  return "[client2name $name]@$tcl_default_network"
+  global tcl_last_network
+  return "[client2name $name]@$tcl_last_network"
 }
 
 #
@@ -36,11 +45,11 @@ proc name2client {name} {
 
 # putserv <text> [options]
 proc putserv {text {opt ""}} {
-  global tcl_default_network
+  global tcl_last_network
   if {$opt == "-next"} {
-    send_request $tcl_default_network - 0 "$text"
+    send_request $tcl_last_network - 0 "$text"
   } {
-    send_request $tcl_default_network n 0 "$text"
+    send_request $tcl_last_network n 0 "$text"
   }
 }
 # puthelp <text> [options]
@@ -111,21 +120,21 @@ proc handonchan {lname channel} {
 }
 # hand2nick <handle> [channel]
 proc hand2nick {lname {channel ""}} {
-  global tcl_default_network
+  global tcl_last_network
   if {"$channel" == ""} {
-    return [ison $tcl_default_network $lname]
+    return [ison $tcl_last_network $lname]
   } {
     return [ison [name2client $channel] $lname]
   }
 }
 # botnick - use [botnick] instead of $botnick
 proc botnick {} {
-  global tcl_default_network
-  return [ison $tcl_default_network]
+  global tcl_last_network
+  return [ison $tcl_last_network]
 }
 # isbotnick <nick>
 proc isbotnick {nick} {
-  global tcl_default_network
+  global tcl_last_network
   if {$nick == [botnick]} {
     return 1
   } {
