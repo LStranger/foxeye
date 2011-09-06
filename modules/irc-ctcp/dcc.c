@@ -449,6 +449,7 @@ static void isend_handler (char *lname, char *ident, const char *host, void *dat
   size_t bs, bptr, ahead;
   ssize_t sw;
   size_t statistics[16];		/* to calculate average speed */
+  int rsm;				/* read socket mode */
 
   dprint (4, "dcc:isend_handler for %s to \"%s\".", lname, dcc->lname);
   scd = safe_calloc(1, sizeof(struct send_cleanup));
@@ -490,6 +491,7 @@ static void isend_handler (char *lname, char *ident, const char *host, void *dat
   ahead = dcc->ahead * bs;
   time (&t);
   memset (statistics, 0, sizeof(statistics));
+  rsm = M_RAW;
   FOREVER					/* cycle to get file */
   {
     pthread_mutex_lock (&dcc->mutex);
@@ -504,20 +506,21 @@ static void isend_handler (char *lname, char *ident, const char *host, void *dat
 	statistics[t%16] = 0;
     }
     pthread_mutex_unlock (&dcc->mutex);
-    sw = ReadSocket ((char *)&nptr, dcc->socket, 4, M_RAW); /* next block ack */
-    if (sw < 0)
+    sw = ReadSocket ((char *)&nptr, dcc->socket, 4, rsm); /* next block ack */
+    if (sw < 0 && sw != E_AGAIN)
       break;					/* connection error */
-    else if (sw)
+    else if (sw > 0)
     {
       DBG ("DCC SEND %s:got ack %#x.", dcc->filename, (int)sw);
       sr = ntohl (nptr);
     }
-    else
+    else					/* try again */
       sr = aptr;
     if (sr < aptr || sr > ptr)			/* wrong ack */
       break;
     if (sr >= dcc->size)			/* all done! */
       break;
+    rsm = M_POLL;				/* don't cycle in M_RAW */
     aptr = sr;					/* updating aptr */
     if (aptr + ahead < ptr)
       continue;					/* not ready to send anything */
@@ -528,6 +531,7 @@ static void isend_handler (char *lname, char *ident, const char *host, void *dat
 	break;					/* if socket died */
     if (sw)
       break;
+    rsm = M_RAW;				/* we polled already */
     ptr += sr;					/* updating ptr */
     statistics[t%16] += sr;
     DBG ("DCC SEND %s:sent %u bytes.", dcc->filename, (unsigned int)sr);
@@ -949,6 +953,8 @@ static void _dcc_pasv_pre (pthread_t th, void **data, idx_t *as)
   dcc->th = th;
   dcc->socket = *as;
   Set_Iface(NULL);
+  KillTimer(dcc->tid);
+  dcc->tid = -1;
   /* we have dcc->l.name as "#nick@net" now */
   iface = Add_Iface (I_CONNECT, &dcc->l.iname[1], &_dcc_sig_2, NULL, dcc);
   FREE(&dcc->l.iname);
@@ -972,9 +978,10 @@ static int _dcc_callback(const struct sockaddr *sa, void *data)
 {
   register struct dcc_listener_data *dld = data;
   dcc_priv_t *dcc = NULL;
+  char *filename;
   uint32_t ip_local;			/* my IP in host byte order */
   unsigned short port;
-  char t[8];
+  //char t[8];
 
   if (dld)
     dcc = dld->dcc;
@@ -988,20 +995,33 @@ failed:
     goto failed;
   dcc->ptr = port = ntohs(((struct sockaddr_in *)sa)->sin_port);
   ip_local = ntohl(((struct sockaddr_in *)sa)->sin_addr.s_addr);
-  if (dcc->filename == NULL)
+  if (dcc->filename != NULL) {
+    register char *q;
+
+    filename = strrchr(dcc->filename, '/');
+    if (filename)
+      filename++;
+    else
+      filename = dcc->filename;
+    if (strchr(filename, ' '))
+      q = " ";
+    else
+      q = "";
+    if (dcc->token)
+      Add_Request(I_CLIENT, dcc->uh, F_T_CTCP, "DCC SEND %s%s%s %u %hu %u %u",
+		  q, filename, q, (unsigned int)ip_local, port,
+		  (unsigned int)dcc->size, dcc->token);
+    else
+      Add_Request(I_CLIENT, dcc->uh, F_T_CTCP, "DCC SEND %s%s%s %u %hu %u",
+		  q, filename, q, (unsigned int)ip_local, port, dcc->size);
+  } else
     Add_Request(I_CLIENT, dcc->uh, F_T_CTCP, "DCC CHAT chat %u %hu", ip_local,
 		port);
-  else if (dcc->token)
-    Add_Request(I_CLIENT, dcc->uh, F_T_CTCP, "DCC SEND \"%s\" %u %hu %u %u",
-		dcc->filename, (unsigned int)ip_local, port,
-		(unsigned int)dcc->size, dcc->token);
-  else
-    Add_Request(I_CLIENT, dcc->uh, F_T_CTCP, "DCC SEND \"%s\" %u %hu %u",
-		dcc->filename, (unsigned int)ip_local, port, dcc->size);
-  snprintf (t, sizeof(t), "%hu", port); /* setup timeout timer */
+  //snprintf (t, sizeof(t), "%hu", port); /* setup timeout timer */
   Set_Iface (NULL);
   if (ircdcc_conn_timeout > 0)
-    dcc->tid = NewTimer (I_LISTEN, t, S_TIMEOUT, ircdcc_conn_timeout, 0, 0, 0);
+    dcc->tid = NewTimer(I_LISTEN, dcc->l.iname, S_TERMINATE,
+			ircdcc_conn_timeout, 0, 0, 0);
   Unset_Iface();
   return (0);
 }
@@ -1787,7 +1807,7 @@ static int ssirc_send (struct peer_t *peer, INTERFACE *w, char *args)
     *cc = ' ';
     return 1;
   }
-  else if (sb.st_size > (off_t)ULONG_MAX)
+  else if (sb.st_size > UINT_MAX)
   {
     New_Request (peer->iface, 0, _("File %s is too big."), c);
     *cc = ' ';
@@ -1958,7 +1978,8 @@ static iftype_t irc_ctcp_mod_sig (INTERFACE *iface, ifsig_t sig)
 	  Send_Signal(I_LISTEN, ActDCC->l.iname, S_TERMINATE);
 	  FREE(&ActDCC->l.iname);
 	  free_dcc (ActDCC);
-	}
+	} else if (ActDCC->state == P_LASTWAIT) /* dead one */
+	  free_dcc (ActDCC);
 	else if (ActDCC->l.iface && ActDCC->l.iface->IFSignal)
 	{
 	  INTERFACE *ifa = ActDCC->l.iface;

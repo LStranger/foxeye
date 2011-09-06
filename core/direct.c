@@ -1335,8 +1335,10 @@ static int _direct_listener_callback(const struct sockaddr *sa, void *input_data
 
 static void _listen_port_cleanup (void *input_data)
 {
+  void *data = acptr->data;
+
   if (acptr->prehandler && acptr->id < 0)	/* notify caller */
-    acptr->prehandler ((pthread_t)0, &acptr->data, &acptr->id);
+    acptr->prehandler ((pthread_t)0, &data, &acptr->id);
   /* job's ended so let dispatcher know that we must be finished
      don't do locking and I hope it's still atomic so should be OK */
   acptr->iface->ift = I_LISTEN | I_FINWAIT;
