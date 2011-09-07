@@ -17,6 +17,7 @@ Wed Sep  7 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc-ctcp/dcc.c: changed getting file to send file ptr on
 	  resume (was: chunk ptr).
 	* modules/irc-ctcp/dcc.c: fixed garbage in logs.
+	* core/socket.c: fixed wrong ready state of answered socket.
 
 Tue Sep  6 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc-ctcp/dcc.c: added missed debug info.

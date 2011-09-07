@@ -628,6 +628,7 @@ idx_t AnswerSocket (idx_t listen)
   else				/* error of getnameinfo() */
     Socket[idx].domain = safe_strdup(Socket[idx].ipname);
 done:
+  Socket[idx].ready = TRUE;
   /* done so remove thread cleanup leaving socket intact */
   pthread_cleanup_pop(0);
   return (idx);
