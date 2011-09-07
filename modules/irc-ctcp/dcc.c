@@ -1569,9 +1569,10 @@ static int dcc_resume (INTERFACE *w, uchar *who, char *lname, char *cw)
   dprint(4, "irc-ctcp:dcc.c:dcc_resume: request OK: lname=%s", NONULLP(lname));
   if (port == 0) /* it's passive */
   {
+    BindResult = cw;
     snprintf (target, sizeof (target), "irc-ctcp#%u", token);
     Send_Signal (I_TEMP, target, S_LOCAL); /* send S_LOCAL to irc-ctcp#<token> */
-    return 0;
+    return 1;
   }
   /* find dcc by <port> and who and check if <ptr> is valid and no dublicate */
   if ((c = strchr (who, '!')))
@@ -1759,6 +1760,7 @@ static iftype_t _isend_sig_w (INTERFACE *iface, ifsig_t signal)
       KillTimer (dcc->tid);
       free_dcc (dcc);
     case S_SHUTDOWN:
+      iface->data = NULL;
       iface->ift = I_DIED;
     default: ;
   }
