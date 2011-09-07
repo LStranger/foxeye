@@ -691,7 +691,8 @@ static void _dcc_send_handler (int res, void *input_data)
 {
   int ahead;			/* current ahead size */
   uint32_t ptr, nptr, ip;	/* current ptr in chunk, network-ordered, IP */
-  uint32_t aptr, toget;		/* ahead ptr, toget */
+  //uint32_t aptr, toget;		/* ahead ptr, toget */
+  uint32_t aptr;		/* ahead ptr */
   ssize_t bs, sbs, sw, sw2;	/* gotten block size, temp var */
   time_t t, t2, start;
   size_t statistics[16];	/* to calculate average speed */
@@ -761,7 +762,7 @@ static void _dcc_send_handler (int res, void *input_data)
   LOG_CONN ("%s", (char *)buff);		/* do logging */
   FOREVER					/* cycle to get file */
   {
-    toget = 0;
+    //toget = 0;
     time (&t2);
     pthread_mutex_lock (&dcc->mutex);
     dcc->ptr = ptr;
@@ -776,14 +777,13 @@ static void _dcc_send_handler (int res, void *input_data)
       while (t < t2)
 	statistics[(++t)%16] = 0;
     }
-    if (dcc->size > dcc->startptr)
-      toget = dcc->size - dcc->startptr;	/* to get: for use below */
+//    if (dcc->size > dcc->startptr)
+//      toget = dcc->size - dcc->startptr;	/* to get: for use below */
     pthread_mutex_unlock (&dcc->mutex);
-    if (ptr >= toget)
+//    if (ptr >= toget)
+    if (ptr >= dcc->size)
       break;					/* and we got it all */
     sw = ReadSocket (buff, dcc->socket, MAXBLOCKSIZE, M_POLL); /* next block */
-    if (!sbs && sw == sw2)		/* two cons. blocks of the same size */
-      sbs = sw;					/* assume it's block size */
     if (sw > 0)
       bs = fwrite (buff, 1, sw, f);
     else if (!sw || sw == E_AGAIN)		/* try again */
@@ -791,7 +791,8 @@ static void _dcc_send_handler (int res, void *input_data)
       if (sbs && ahead < dcc->ahead)		/* sending request */
       {
 	nptr = aptr + sbs;
-	if (nptr >= toget)			/* nowhere to ahead */
+//	if (nptr >= toget)			/* nowhere to ahead */
+	if (nptr >= dcc->size)
 	  continue;
 	ahead++;
 	aptr = nptr;
@@ -811,6 +812,14 @@ static void _dcc_send_handler (int res, void *input_data)
       break;
     if (sw != bs)				/* file writing error */
       break;
+    if (!sbs && sw == sw2)		/* two cons. blocks of the same size */
+      sbs = sw;					/* assume it's block size */
+    if (ptr == 0) {				/* transfer started */
+      pthread_mutex_lock (&dcc->mutex);
+      dcc->wait_accept = FALSE;		/* it's too late to get ACCEPT now */
+      aptr = ptr = dcc->startptr; /* FIXME: irssi sends file ptr, is it right? */
+      pthread_mutex_unlock (&dcc->mutex);
+    }
     ptr += bs;
     statistics[t%16] += bs;
     sw2 = sw;					/* keep it for next cycle */
@@ -821,7 +830,6 @@ static void _dcc_send_handler (int res, void *input_data)
       continue;
     ahead = 0;					/* we are at ptr! */
     aptr = ptr;
-    //FIXME: should we count dcc->startptr here too?
     DBG ("DCC GET %s:ack ptr %#x.", dcc->filename, (int)aptr);
     nptr = htonl (aptr);
     bs = 0;
@@ -837,7 +845,7 @@ static void _dcc_send_handler (int res, void *input_data)
   {
     /* if want_resume and got startptr then move file chunk to real file */
     aptr = dcc->startptr;
-    dcc->wait_accept = FALSE;		/* it's too late to get ACCEPT now */
+//    dcc->wait_accept = FALSE;		/* it's too late to get ACCEPT now */
     pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &ahead);
     pthread_mutex_unlock (&dcc->mutex);
     if (!(rf = fopen (dcc->filename, "a")))
