@@ -444,7 +444,7 @@ static void isend_handler (char *lname, char *ident, const char *host, void *dat
   struct send_cleanup *scd;
   uint32_t ptr, aptr, nptr;		/* ptr, ack ptr, net-ordered */
   uint32_t sr;
-  time_t t, t2;
+  time_t t, t2, start;
   size_t bs, bptr, ahead;
   ssize_t sw;
   size_t statistics[16];		/* to calculate average speed */
@@ -488,7 +488,7 @@ static void isend_handler (char *lname, char *ident, const char *host, void *dat
   fseek (f, dcc->startptr, SEEK_SET);
   aptr = ptr = dcc->startptr;
   ahead = dcc->ahead * bs;
-  time (&t);
+  start = time (&t);
   memset (statistics, 0, sizeof(statistics));
   rsm = M_RAW;
   FOREVER					/* cycle to get file */
@@ -500,9 +500,12 @@ static void isend_handler (char *lname, char *ident, const char *host, void *dat
     {
       for (sw = 0, sr = 0; sr < 16; sr++)	/* use sr as temp */
 	sw += statistics[sr];
-      dcc->rate = sw/16;
-      while (t++ < t2)
-	statistics[t%16] = 0;
+      sr = t2 - start;
+      if (sr > 16)
+	sr = 16;
+      dcc->rate = sw/sr;
+      while (t < t2)
+	statistics[(++t)%16] = 0;
     }
     pthread_mutex_unlock (&dcc->mutex);
     sw = ReadSocket ((char *)&nptr, dcc->socket, 4, rsm); /* next block ack */
@@ -690,7 +693,7 @@ static void _dcc_send_handler (int res, void *input_data)
   uint32_t ptr, nptr, ip;	/* current ptr in chunk, network-ordered, IP */
   uint32_t aptr, toget;		/* ahead ptr, toget */
   ssize_t bs, sbs, sw, sw2;	/* gotten block size, temp var */
-  time_t t, t2;
+  time_t t, t2, start;
   size_t statistics[16];	/* to calculate average speed */
   FILE *f, *rf;			/* opened file */
   void *buff;
@@ -719,7 +722,7 @@ static void _dcc_send_handler (int res, void *input_data)
   aptr = ptr = 0;
   bs = sbs = sw2 = 0;
   ahead = 0;
-  time (&t);
+  start = time (&t);
   scd = safe_calloc(1, sizeof(struct send_cleanup));
   scd->socket = dcc->socket;
   pthread_cleanup_push(&_send_handler_cleanup, scd);
@@ -766,9 +769,12 @@ static void _dcc_send_handler (int res, void *input_data)
     {
       for (sw = 0, nptr = 0; nptr < 16; nptr++)	/* use nptr as temp */
 	sw += statistics[nptr];
-      dcc->rate = sw/16;
-      while (t++ < t2)
-	statistics[t%16] = 0;
+      nptr = t2 - start;
+      if (nptr > 16)
+	nptr = 16;
+      dcc->rate = sw/nptr;
+      while (t < t2)
+	statistics[(++t)%16] = 0;
     }
     if (dcc->size > dcc->startptr)
       toget = dcc->size - dcc->startptr;	/* to get: for use below */
@@ -814,8 +820,10 @@ static void _dcc_send_handler (int res, void *input_data)
     if (ptr < aptr)				/* we sent ptr ahead */
       continue;
     ahead = 0;					/* we are at ptr! */
-    DBG ("DCC GET %s:ack ptr %#x.", dcc->filename, (int)ptr);
-    nptr = htonl ((aptr = ptr));
+    aptr = ptr;
+    //FIXME: should we count dcc->startptr here too?
+    DBG ("DCC GET %s:ack ptr %#x.", dcc->filename, (int)aptr);
+    nptr = htonl (aptr);
     bs = 0;
     sw = sizeof(nptr);
     while (sw)					/* send network-ordered ptr */
