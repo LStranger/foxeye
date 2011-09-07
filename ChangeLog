@@ -7,7 +7,6 @@ TODO:
 	* core/wtmp.c: to handle errors somehow?
 	* core/help.c: to add support for '##$charset utf-8' at helpfile start.
 	* core/direct.c: to add support for charset and comments in motd file.
-	* *: to revise all threads cancellation, i.e. thread-safe functions.
 
 --- [0.10.0]
 Wed Sep  7 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
@@ -17,6 +16,7 @@ Wed Sep  7 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc-ctcp/dcc.c: fixed statistics calculation.
 	* modules/irc-ctcp/dcc.c: changed getting file to send file ptr on
 	  resume (was: chunk ptr).
+	* modules/irc-ctcp/dcc.c: fixed garbage in logs.
 
 Tue Sep  6 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc-ctcp/dcc.c: added missed debug info.

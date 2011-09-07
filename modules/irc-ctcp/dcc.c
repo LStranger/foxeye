@@ -538,7 +538,7 @@ static void isend_handler (char *lname, char *ident, const char *host, void *dat
     statistics[t%16] += sr;
     DBG ("DCC SEND %s:sent %u bytes.", dcc->filename, (unsigned int)sr);
   }
-  if (ptr == dcc->size)
+  if (ptr >= dcc->size)
   {
     char *c;
     userflag uf;
@@ -577,10 +577,15 @@ static void isend_handler (char *lname, char *ident, const char *host, void *dat
 	    &dcc->uh[sr+1], lname, NULL, dcc->socket + 1, 0, 0, dcc->filename);
     Unset_Iface();
     FREE (&lname);
-    LOG_CONN ("%s", &buff[MAXBLOCKSIZE/2]);
+    LOG_CONN ("%s", buff);
+    if (ptr > dcc->size)
+      Add_Request(I_LOG, "*", F_CONN | F_WARN,
+		  "File %s has grown from %lu to %lu bytes while sent.",
+		  dcc->filename,(unsigned long int)dcc->size,
+		  (unsigned long int)ptr);
   }
   else
-    ERROR ("DCC SEND %s failed: sent %lu out from %lu bytes.", dcc->filename,
+    ERROR ("DCC SEND %s failed: sent %lu out of %lu bytes.", dcc->filename,
 	   (unsigned long int)ptr, (unsigned long int)dcc->size);
   //fclose (f);
   //KillSocket (&dcc->socket);
