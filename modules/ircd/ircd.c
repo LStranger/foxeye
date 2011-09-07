@@ -978,7 +978,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
   peer_priv *peer = cli->data;
   register peer_priv **pp;
   char *c;
-  CLIENT *cl = peer->link->cl;
+  CLIENT *cl;
   struct binding_t *b;
   const char *argv[IRCDMAXARGS+3];	/* sender, command, args, NULL */
   size_t sw;
@@ -990,6 +990,9 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 #endif
   register LINK **ll;
 
+  if (peer->p.state == P_DISCONNECTED)
+    return REQ_REJECTED;
+  cl = peer->link->cl;
   switch (peer->p.state)
   {
     case P_QUIT:	/* at this point it should be isolated already */
@@ -1084,8 +1087,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	free_CLIENT (cl);	/* free structures */
       pthread_mutex_unlock (&IrcdLock);
       return REQ_OK;		/* interface will now die */
-    case P_DISCONNECTED:
-      return REQ_REJECTED;
+    case P_DISCONNECTED:	/* unused here, handled above */
     case P_INITIAL:
     case P_LOGIN:
     case P_TALK:
@@ -1376,6 +1378,7 @@ static void _ircd_handler (char *cln, char *ident, const char *host, void *data)
   /* find class, validate user... "ircd-auth" bindtable */
   Set_Iface (peer->p.iface);		/* lock bindtable access */
   b = NULL;
+  msg = NULL;
   while ((b = Check_Bindtable (BTIrcdAuth, host, U_ALL, U_ANYCH, b)))
     if (b->name == NULL)		/* only internal allowed */
     {
@@ -2230,6 +2233,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
     /* check if host matches */
     lid = Get_LID (u);
     Unlock_Clientrecord (u);
+    _ircd_sublist_buffer = buff;
     tmp = Add_Iface (I_TEMP, NULL, NULL, &_ircd_sublist_receiver, NULL);
     if (Get_Hostlist (tmp, lid) == 0) /* that's weird, no hosts even found */
     {
@@ -3502,6 +3506,8 @@ static void _ircd_catch_undeleted_ch (void *ch)
 
 static void _ircd_catch_undeleted_cl (void *cl)
 {
+  if (CLIENT_IS_ME((CLIENT *)cl))
+    return;
   ERROR ("ircd:_ircd_catch_undeleted_cl: client %s (%s)", ((CLIENT *)cl)->nick,
 	 (CLIENT_IS_SERVER((CLIENT *)cl)) ? "server" : "user");
   if (CLIENT_IS_SERVER((CLIENT *)cl))
@@ -4042,7 +4048,7 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
   INTERFACE *tmp;
   int i;
   peer_priv *pp;
-  register char *z; /* unused */
+  char buff[MESSAGEMAX];
 
   if (Ircd == NULL) {
     ERROR("ircd: got signal but module already dead");
@@ -4119,6 +4125,7 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
 	break;				/* ignore it */
       }
       /* find first valid IRCD record and use it, ignoring any others */
+      _ircd_sublist_buffer = buff;
       tmp = Add_Iface (I_TEMP, NULL, NULL, &_ircd_sublist_receiver, NULL);
       i = Get_Clientlist (tmp, U_SPECIAL, ".logout", "ircd");
       if (i == 0)			/* ouch! no network record! */
@@ -4132,7 +4139,7 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
       Get_Request();
       Unset_Iface();
       tmp->ift = I_DIED;		/* done with it */
-      z=gettoken (_ircd_sublist_buffer, NULL); /* take one name from list */
+      if (gettoken (_ircd_sublist_buffer, NULL)) /* take one name from list */
       Ircd->iface = Add_Iface (I_SERVICE, _ircd_sublist_buffer, &_ircd_signal,
 			       &_ircd_request, Ircd);
       strfcpy (MY_NAME, Nick, sizeof(MY_NAME)); /* unchangeable in runtime */
