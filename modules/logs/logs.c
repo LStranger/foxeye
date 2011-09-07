@@ -589,7 +589,9 @@ static int add_to_log (INTERFACE *iface, REQUEST *req)
     x = textlog_rmcolor ((line = buff), req->string, sizeof(buff));
   else
     x = strlen ((line = req->string));
-  if (log->wantprefix != FALSE && (req->flag & F_PREFIXED))
+  if (x == 0)
+    Add_Request(I_LOG, "*", F_WARN, "logs:add_to_log: message size=%zd", x++);
+  else if (log->wantprefix != FALSE && (req->flag & F_PREFIXED))
     x = log->add_buf (log, line, x, strlen(log_prefix), (log->colormode > 0));
   else
     x = log->add_buf (log, line, x, 0, (log->colormode > 0));

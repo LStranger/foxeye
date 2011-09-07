@@ -25,6 +25,7 @@ Tue Sep  6 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc-ctcp/dcc.c: fixed SIGSEGV on module termination.
 	* modules/irc-ctcp/dcc.c: fixed CPU eating on sending file.
 	* modules/irc-ctcp/dcc.c: fixed resume on sending file.
+	* modules/logs/logs.c: fixed infinite loop on empty log message.
 
 Mon Sep  5 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c, core/init.*: fixed wrong boot ending.
