@@ -1398,6 +1398,8 @@ static void *_listen_port (void *input_data)
 	   NONULL(acptr->confline), errstr);
     return NULL;
   }
+  SocketDomain(acptr->socket, &port);	/* update with real one */
+  acptr->lport = port;
   /* rename interface if need */
   if (!acptr->confline) {
     SocketDomain(acptr->socket, &port);
