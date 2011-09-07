@@ -467,7 +467,7 @@ static inline int _ircd_query_lusers (IRCD *ircd, CLIENT *cl, struct peer_priv *
   else
     op = 0;
   for (i = 1; i < ircd->s; i++)
-    if (simple_match (smask, ircd->token[i]->lcnick) >= 0)
+    if (ircd->token[i] && simple_match (smask, ircd->token[i]->lcnick) >= 0)
     {
       COUNT_USERS (ircd->token[i]->c.lients, gu, gs, gl);
       x++;

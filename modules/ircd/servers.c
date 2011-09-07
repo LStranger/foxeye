@@ -128,6 +128,10 @@ static inline void _ircd_extend_id(CLIENT *cl, int id)
 /* if id isn't received yet then register it and return 1, else return 0 */
 int ircd_test_id(CLIENT *cl, int id)
 {
+  if (cl == NULL || !CLIENT_IS_SERVER(cl)) {
+    ERROR("ircd:ircd_test_id: called not for server");
+    return (-1);
+  }
   dprint(4, "ircd:ircd_test_id:server %s id %d", cl->lcnick, id);
   id &= IRCD_ID_MAXVAL;		/* get it to template */
   if (cl->last_id[0] < 0) {

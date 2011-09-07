@@ -319,7 +319,7 @@ void Delete_Binding (const char *table, Function func, const char *name)
 	}
 	else
 	{
-	  DBG ("init.c:-bind:skipping %p => %p/tree", b, b->prev);
+	  //DBG ("init.c:-bind:skipping %p => %p/tree", b, b->prev);
 	  last = b;
 	  b = b->prev;
 	}
@@ -370,7 +370,7 @@ void Delete_Binding (const char *table, Function func, const char *name)
       }
       else /* bind->func != func */
       {
-	DBG ("init.c:-bind:skipping %p => %p/tree", bind, bind->prev);
+	//DBG ("init.c:-bind:skipping %p => %p/tree", bind, bind->prev);
 	next = bind;
 	bind = next->prev;
       }

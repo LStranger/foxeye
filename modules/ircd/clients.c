@@ -178,7 +178,7 @@ static int ircd_quit_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl;
   char msg[STRING];
 
-  if (argc)
+  if (argc == 0)
     strfcpy (msg, "I Quit", sizeof(msg));
   else
   {

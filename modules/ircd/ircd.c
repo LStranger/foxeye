@@ -937,7 +937,7 @@ static iftype_t _ircd_client_signal (INTERFACE *cli, ifsig_t sig)
   char buff[STRING];
 
   dprint(4, "ircd:ircd.c:_ircd_client_signal: name=%s sig=%d",
-	 NONULL(cli->name), (int)sig);
+	 NONULL((char *)cli->name), (int)sig);
   switch (sig)
   {
     case S_REPORT:
@@ -1008,8 +1008,8 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 #endif
   register LINK **ll;
 
-  dprint(4, "ircd:ircd.c:_ircd_client_request: name=%s state=%d req=%p",
-	 NONULL(cli->name), (int)peer->p.state, req);
+//  dprint(4, "ircd:ircd.c:_ircd_client_request: name=%s state=%d req=%p",
+//	 NONULL(cli->name), (int)peer->p.state, req);
   if (peer->p.state == P_DISCONNECTED)
     return REQ_REJECTED;
   cl = peer->link->cl;
@@ -1021,7 +1021,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	if (strncmp (req->string, "ERROR ", 6) &&
 	    strncmp (NextWord(req->string), "KILL ", 5))
 	  return REQ_OK;	/* skip anything but ERROR or KILL message */
-	DBG("sending last message to client %s", NONULL(cli->name));
+	DBG("sending last message to client \"%s\"", cl->nick);
 	sw = strlen (req->string);
 	if (sw && Peer_Put ((&peer->p), req->string, &sw) == 0)
 	  return REQ_REJECTED;	/* try again later */
@@ -1115,8 +1115,8 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
     case P_TALK:
     case P_IDLE:
       sw = 0;
-      if (req && Peer_Put ((&peer->p), "", &sw) == CONNCHAIN_READY)
-      {
+      if (Peer_Put ((&peer->p), "", &sw) == CONNCHAIN_READY && req) {
+	  /* flush buffer in any case*/
 	if (req->string[0] == ':' ||		/* if already prefixed or */
 	    req->from->IFRequest != &_ircd_client_request || /* alien message */
 	    !strncmp (req->string, "ERROR ", 6)) /* or ERROR message */
@@ -1184,7 +1184,8 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	  req = NULL;			/* it's done */
 	}
 	//TODO: else check if sendq isn't exceeded limit
-      }
+      } else if (Peer_Put ((&peer->p), buff, &sw) < 0)
+	
       break;
   }
   sr = Peer_Get ((&peer->p), buff, sizeof(buff));
@@ -1229,7 +1230,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
     } while (*c);
     i = 0;
     argv[argc] = NULL;
-    if (!*argv[0] || !*argv[1]);	/* got malformed line */
+    if (!*argv[1]);			/* got malformed line */
     else if (!Ircd->iface);		/* internal error! */
     else if (peer->p.state == P_INITIAL) /* not registered yet */
     {
@@ -1237,7 +1238,8 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
       if (b)
 	if (!b->name)
 	  i = b->func (Ircd->iface, &peer->p, argc - 2, &argv[2]);
-    }
+    } else if (!*argv[0])
+      WARNING("ircd: invalid prefix from peer \"%s\"", peer->p.dname);
     else if (CLIENT_IS_SERVER (cl))	/* got server protocol input */
       i = _ircd_do_server_message (peer, argc, argv);
     else				/* got client protocol input */
@@ -1268,7 +1270,8 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
       peer->noidle = Time;		/* for idle calculation */
 #endif
   }
-  if (CLIENT_IS_SERVER (cl))
+  if (peer->p.state == P_QUIT);		/* died in execution! */
+  else if (CLIENT_IS_SERVER (cl))
     i = _ircd_server_class_pingf;
   else
     i = cl->x.class->pingf;
@@ -1520,8 +1523,7 @@ static iftype_t _ircd_uplink_sig (INTERFACE *uli, ifsig_t sig)
   register peer_priv **ull;
   register LINK **ll;
 
-  dprint(2, "ircd:ircd.c:_ircd_uplink_sig: name=%s sig=%d", NONULL(uli->name),
-	 (int)sig);
+  dprint(2, "ircd:ircd.c:_ircd_uplink_sig: name=%s sig=%d", uli->name, (int)sig);
   if (!uplink)				/* already terminated */
     return I_DIED;
   switch (sig)
@@ -1585,8 +1587,8 @@ static int _ircd_uplink_req (INTERFACE *uli, REQUEST *req)
   register CLIENT *ul;
   peer_priv *_uplink = uli->data;
 
-  dprint(3, "ircd:ircd.c:_ircd_uplink_req: name=%s state=%d req=%p",
-	 NONULL(uli->name), (int)_uplink->p.state, req);
+//  dprint(3, "ircd:ircd.c:_ircd_uplink_req: name=%s state=%d req=%p",
+//	 NONULL(uli->name), (int)_uplink->p.state, req);
   ul = _ircd_find_client_lc (_uplink->link->cl->lcnick);
   if (ul && !ul->hold_upto && CLIENT_IS_LOCAL(ul)) /* it's connected already! */
     _uplink->p.state = P_LASTWAIT;	/* so abort this one */
@@ -1845,6 +1847,20 @@ static int ircd_pass (INTERFACE *srv, struct peer_t *peer, int argc, const char 
   return 1;
 }
 
+BINDING_TYPE_ircd_register_cmd(ircd_quit_rb);
+static int ircd_quit_rb(INTERFACE *srv, struct peer_t *peer, int argc, const char **argv)
+{ /* args: [<Quit Message>] */
+  CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl;
+  const char *msg;
+
+  if (argc > 0)
+    msg = argv[0];
+  else
+    msg = "I Quit";
+  _ircd_peer_kill (cl->via, msg);
+  return 1;
+}
+
 static char _ircd_modesstring[128]; /* should be enough for two A-Za-z */
 
 /* adds it into lists, sets fields, sends notify to all servers */
@@ -1915,6 +1931,7 @@ static int _ircd_got_local_user (CLIENT *cl)
 #endif
   if (cl->umode & A_RESTRICTED)
     ircd_do_unumeric (cl, ERR_RESTRICTED, cl, 0, NULL);
+  cl->via->p.state = P_TALK;
   return 1;
 }
 
@@ -3872,7 +3889,8 @@ int ircd_do_unumeric (CLIENT *requestor, int n, const char *template,
 	     %L - ident, %# - nick, %P - $i, %- - idle, %* - $m */
   printl (buff, sizeof(buff), template, 0, requestor->nick,
 	  CLIENT_IS_SERVER(target) ? target->fname : target->host,
-	  target->user, target->nick, i, 0,
+	  target->user,
+	  CLIENT_IS_SERVER(target) ? target->lcnick : target->nick, i, 0,
 	  target->via ? (Time - target->via->p.last_input) : (time_t)0, m);
   if (!b || b->name ||
       !b->func (Ircd->iface, n, requestor->nick, requestor->umode, buff))
@@ -4109,6 +4127,7 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
       UnregisterFunction ("ircd");
       Delete_Binding ("ircd-auth", &_ircd_class_in, NULL);
       Delete_Binding ("ircd-register-cmd", &ircd_pass, NULL);
+      Delete_Binding ("ircd-register-cmd", &ircd_quit_rb, NULL);
       Delete_Binding ("ircd-register-cmd", &ircd_server_rb, NULL);
       Delete_Binding ("ircd-server-cmd", (Function)&ircd_server_sb, NULL);
 #if IRCD_MULTICONNECT
@@ -4224,6 +4243,7 @@ SigFunction ModuleInit (char *args)
   /* add every binding into them */
   Add_Binding ("ircd-auth", "*", 0, 0, &_ircd_class_in, NULL);
   Add_Binding ("ircd-register-cmd", "pass", 0, 0, &ircd_pass, NULL);
+  Add_Binding ("ircd-register-cmd", "quit", 0, 0, &ircd_quit_rb, NULL);
   Add_Binding ("ircd-register-cmd", "server", 0, 0, &ircd_server_rb, NULL);
   Add_Binding ("ircd-server-cmd", "server", 0, 0, (Function)&ircd_server_sb, NULL);
 #if IRCD_MULTICONNECT
