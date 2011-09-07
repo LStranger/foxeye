@@ -344,28 +344,27 @@ static void chat_handler (char *lname, char *ident, const char *host, void *data
     Unset_Iface();
     msg = "no access";
   }
-  if (msg == NULL)		/* no errors on connection */
+  if (msg != NULL)		/* some errors on connection */
   {
-    dcc->socket = -1;		/* socket might be inherited by login */
-    Set_Iface (NULL);		/* ask dispatcher to kill thread 2 */
-    dcc->l.iface->ift |= I_FINWAIT; /* all rest will be done by _dcc_sig_2() */
+    snprintf (buf, sizeof(buf), "Access denied: %s", msg);
+    sz = strlen (buf);
+    sp = 0;
+    while (sz && (got = Peer_Put (peer, &buf[sp], &sz)) >= 0)
+      sp += got;
+    SocketDomain (dcc->socket, &p);
+    /* %L - Lname, %P - port, %@ - hostname, %* - reason */
+    Set_Iface (NULL);
+    printl (buf, sizeof(buf), format_dcc_closed, 0,
+	    NULL, host, lname, NULL, 0, p, 0, msg);
     Unset_Iface();
-    pthread_cleanup_pop(0);
-    return;
+    LOG_CONN ("%s", buf);
+    return;			/* implisit pthread_cleanup_pop(1) applied */
   }
-  snprintf (buf, sizeof(buf), "Access denied: %s", msg);
-  sz = strlen (buf);
-  sp = 0;
-  while (sz && (got = Peer_Put (peer, &buf[sp], &sz)) >= 0)
-    sp += got;
-  SocketDomain (dcc->socket, &p);
-  /* %L - Lname, %P - port, %@ - hostname, %* - reason */
-  Set_Iface (NULL);
-  printl (buf, sizeof(buf), format_dcc_closed, 0,
-	  NULL, host, lname, NULL, 0, p, 0, msg);
+  dcc->socket = -1;		/* socket might be inherited by login */
+  Set_Iface (NULL);		/* ask dispatcher to kill thread 2 */
+  dcc->l.iface->ift |= I_FINWAIT; /* all rest will be done by _dcc_sig_2() */
   Unset_Iface();
-  LOG_CONN ("%s", buf);
-  //pthread_cleanup_pop(1);
+  pthread_cleanup_pop(0);
 }
 
 /* thread 2 (incoming connection) */
@@ -1809,7 +1808,7 @@ static int ssirc_send (struct peer_t *peer, INTERFACE *w, char *args)
     *cc = ' ';
     return 1;
   }
-  else if (sb.st_size > UINT_MAX)
+  else if ((uint64_t)sb.st_size > UINT_MAX)
   {
     New_Request (peer->iface, 0, _("File %s is too big."), c);
     *cc = ' ';

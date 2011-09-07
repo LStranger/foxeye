@@ -1351,25 +1351,39 @@ static void _listen_port_cleanup (void *input_data)
   //safe_free (&input_data); /* FREE (&acptr) */
 }
 
+static inline unsigned short _random_port(unsigned short start,
+					  unsigned short end)
+{
+  register unsigned short ps;
+
+  if (end == start)
+    return start;
+  ps = end - start + 1;
+  ps = random() % ps;
+  return (start + ps);
+}
+
 static void *_listen_port (void *input_data)
 {
   idx_t new_idx;
   accept_t *child;
   char buf[8];
   char *host = acptr->host;
-  int n, cancelstate;
-  unsigned short port = acptr->lport;
+  int n, i, cancelstate;
+  unsigned short port;
 
   /* set cleanup for the thread before any cancellation point */
   pthread_cleanup_push (&_listen_port_cleanup, input_data);
   acptr->id = 0;
+  i = acptr->eport - acptr->lport;
   FOREVER {
+    port = _random_port(acptr->lport, acptr->eport);
     n = SetupSocket(acptr->socket, (host && *host) ? host : NULL, port,
 		    &_direct_listener_callback, input_data);
     DBG("_listen_port:SetupSocket for port %hu returned %d", port, n);
     if (n == 0)
       break;
-    if (port >= acptr->eport &&		/* final try */
+    if (--i < 0 &&			/* final try */
 	(!acptr->cb || acptr->cb(NULL, acptr->data) != E_AGAIN))
 					/* give it a chance */
       break;
@@ -1442,7 +1456,9 @@ static void _assign_port_range (unsigned short *ps, unsigned short *pe)
 {
   *ps = *pe = 0;
   sscanf (dcc_port_range, "%hu - %hu", ps, pe);
-  /* FIXME: use system algorhytm if dcc_port_range is empty and 0 requested */
+  /* use system algorhytm if dcc_port_range is empty and 0 requested */
+  if (*ps == 0 && *pe == 0)
+    return;
   if (*ps < 1024)
     *ps = 1024;
   if (*pe < *ps)
@@ -2318,7 +2334,7 @@ static void IntCrypt (const char *pass, char **cr)
     strfcpy (salt, &c[2], sizeof(salt));
   else					/* generate a new password */
   {
-    i = rand();
+    i = random();
     salt[0] = __crlph[i%64];
     salt[1] = __crlph[(i/64)%64];
     salt[2] = 0;
@@ -2636,23 +2652,22 @@ static void _dport_handler (char *cname, char *ident, const char *host, void *d)
   Unset_Iface();
   if (msg == NULL)
     msg = session_handler_main (ident, host, dcc, (flag & 256), buf, client);
-  if (msg == NULL) {			/* no errors on connection */
-    pthread_cleanup_pop(0);
-    return;
+  if (msg != NULL) {			/* some errors on connection */
+    LOG_CONN (_("Connection from %s terminated: %s"), host, msg);
+    snprintf (buf, sizeof(buf), "Access denied: %s", msg);
+    sz = strlen (buf);
+    if (Peer_Put (dcc, buf, &sz) > 0)	/* it should be OK */
+      while (!(Peer_Put (dcc, NULL, &sz))); /* wait it to die */
+    SocketDomain (dcc->socket, &p);
+    /* %L - Lname, %P - port, %@ - hostname, %* - reason */
+    Set_Iface (NULL);
+    printl (buf, sizeof(buf), format_dcc_closed, 0,
+	    NULL, host, client, NULL, 0, p, 0, msg);
+    Unset_Iface();
+    LOG_CONN ("%s", buf);
+    return;			/* implisit pthread_cleanup_pop(1) applied */
   }
-  LOG_CONN (_("Connection from %s terminated: %s"), host, msg);
-  snprintf (buf, sizeof(buf), "Access denied: %s", msg);
-  sz = strlen (buf);
-  if (Peer_Put (dcc, buf, &sz) > 0)	/* it should be OK */
-    while (!(Peer_Put (dcc, NULL, &sz))); /* wait it to die */
-  SocketDomain (dcc->socket, &p);
-  /* %L - Lname, %P - port, %@ - hostname, %* - reason */
-  Set_Iface (NULL);
-  printl (buf, sizeof(buf), format_dcc_closed, 0,
-	  NULL, host, client, NULL, 0, p, 0, msg);
-  Unset_Iface();
-  LOG_CONN ("%s", buf);
-  //pthread_cleanup_pop(1);
+  pthread_cleanup_pop(0);
 }
 
 static iftype_t _port_retrier_s (INTERFACE *iface, ifsig_t signal)

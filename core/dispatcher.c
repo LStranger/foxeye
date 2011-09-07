@@ -1456,7 +1456,7 @@ int dispatcher (INTERFACE *start_if)
     close(pidfd);
   /* start random generator */
   pid = getpid();
-  srand48((long)pid);
+  srandom(pid);
   /* booted OK, send all messages :) */
   end_boot();
   //tp.tv_sec = 0;
