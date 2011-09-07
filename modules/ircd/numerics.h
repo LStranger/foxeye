@@ -1,10 +1,10 @@
-#define RPL_WELCOME		001, ":Welcome to the Internet Relay Network %#!%L@%@"
-#define RPL_YOURHOST		002, ":Your host is %#, running version %V"
-#define RPL_CREATED		003, ":This server was created %*"
-#define RPL_MYINFO		004, "%# %V %*"
-#define RPL_BOUNCE		005, ":Try server %#, port %P"
+#define RPL_WELCOME		  1, ":Welcome to the Internet Relay Network %#!%L@%@"
+#define RPL_YOURHOST		  2, ":Your host is %#, running version %V"
+#define RPL_CREATED		  3, ":This server was created %*"
+#define RPL_MYINFO		  4, "%# %V %*"
+#define RPL_BOUNCE		  5, ":Try server %#, port %P"
 /* 010 reserved */
-/* 020 reserved */
+#define RPL_HELLO		 20, ":*** You are connected to %*. Please wait..."
 #define RPL_TRACELINK		200, "Link %V%?P.d%P?? %# %*"
 #define RPL_TRACECONNECTING	201, "Try. %* %#"
 #define RPL_TRACEHANDSHAKE	202, "H.S. %* %#"

@@ -1417,6 +1417,8 @@ static void _ircd_handler (char *cln, char *ident, const char *host, void *data)
   Unset_Iface();			/* done so unlock bindtable */
   if (msg)				/* not allowed! */
     _ircd_peer_kill (peer, msg);
+  else
+    ircd_do_unumeric (cl, RPL_HELLO, &ME, 0, Ircd->iface->name);
 }
 #undef peer
 
@@ -3895,15 +3897,16 @@ int ircd_do_unumeric (CLIENT *requestor, int n, const char *template,
   if (!b || b->name ||
       !b->func (Ircd->iface, n, requestor->nick, requestor->umode, buff))
   {
+    char *rnick = (requestor->nick[0]) ? requestor->nick : MY_NAME;
+
     if (CLIENT_IS_LOCAL(requestor))	/* send it directly */
       New_Request (requestor->via->p.iface, 0, ":%s %03d %s %s", MY_NAME, n,
-		   requestor->nick, buff);
+		   rnick, buff);
     else				/* send numeric or INUM */
     {
       ircd_sendto_new (requestor, ":%s INUM %d %03d %s %s", MY_NAME,
-		       ircd_new_id(), n, requestor->nick, buff);
-      ircd_sendto_old (requestor, ":%s %03d %s %s", MY_NAME, n,
-		       requestor->nick, buff);
+		       ircd_new_id(), n, rnick, buff);
+      ircd_sendto_old (requestor, ":%s %03d %s %s", MY_NAME, n, rnick, buff);
     }
   }
   return 1;
