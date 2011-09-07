@@ -846,7 +846,7 @@ static int ircd_charset_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 
   if (argc > 0) {
     conv = Get_Conversion(argv[0]);
-    if (conv == NULL)
+    if (conv == NULL && strcasecmp(Conversion_Charset(conv), argv[0]))
       return ircd_do_unumeric(cl, ERR_NOCODEPAGE, cl, 0, argv[0]);
     Free_Conversion(peer->iface->conv);
     peer->iface->conv = conv;
