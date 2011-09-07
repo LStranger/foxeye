@@ -487,7 +487,7 @@ static void isend_handler (char *lname, char *ident, const char *host, void *dat
   Send_Signal (I_MODULE, "ui", S_FLUSH); /* notify the UI on transfer */
   Unset_Iface();
   fseek (f, dcc->startptr, SEEK_SET);
-  aptr = ptr = 0;
+  aptr = ptr = dcc->startptr;
   ahead = dcc->ahead * bs;
   time (&t);
   memset (statistics, 0, sizeof(statistics));
@@ -511,8 +511,8 @@ static void isend_handler (char *lname, char *ident, const char *host, void *dat
       break;					/* connection error */
     else if (sw > 0)
     {
-      DBG ("DCC SEND %s:got ack %#x.", dcc->filename, (int)sw);
       sr = ntohl (nptr);
+      DBG ("DCC SEND %s:got ack %#x.", dcc->filename, (int)sr);
     }
     else					/* try again */
       sr = aptr;

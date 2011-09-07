@@ -24,6 +24,7 @@ Tue Sep  6 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc-ctcp/dcc.c: fixed wrong passive receiving initiation.
 	* modules/irc-ctcp/dcc.c: fixed SIGSEGV on module termination.
 	* modules/irc-ctcp/dcc.c: fixed CPU eating on sending file.
+	* modules/irc-ctcp/dcc.c: fixed resume on sending file.
 
 Mon Sep  5 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c, core/init.*: fixed wrong boot ending.
