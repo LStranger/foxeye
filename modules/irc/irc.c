@@ -490,8 +490,9 @@ static char *_irc_try_nick (irc_server *serv, struct clrec_t *clr)
     for (c = nlist; *c; c = NextWord (c))
       if (!strncmp (c, serv->mynick, s) && (c[s] == 0 || c[s] == ' '))
 	break;
-    if (*c)
-      nlist = NextWord (c);
+    c = NextWord (c);	/* choose next one */
+    if (*c)		/* if no next - get first */
+      nlist = c;	/* or else get next */
     FREE (&serv->mynick);
     for (c = nn; *nlist && *nlist != ' ' && c < &nn[sizeof(nn)-1]; nlist++)
       *c++ = *nlist;
@@ -1333,6 +1334,30 @@ static int irc_err_nosuchnick (INTERFACE *net, char *sv, char *me, unsigned char
   return 0;
 }
 
+BINDING_TYPE_irc_raw (irc_err_unavailable);
+static int irc_err_unavailable (INTERFACE *net, char *sv, char *me, unsigned char *src,
+		int parc, char **parv, size_t (*lc)(char *, const char *, size_t))
+{ /* Parameters: me nick/chan text */
+  struct clrec_t *clr;
+  irc_server *serv = net->data;
+
+  if (parc != 3)
+    return -1;
+  if (!strcmp (serv->mynick, parv[1]))
+  {
+    dprint (4, "irc_err_unavailable: %s: nickname %s juped", net->name, serv->mynick);
+    clr = Lock_Clientrecord (net->name);
+    if (clr)
+    {
+      _irc_try_nick (serv, clr);
+      Unlock_Clientrecord (clr);
+    }
+    New_Request (net, 0, "NICK %s", serv->mynick);
+  }
+  /* else ignore */
+  return 0;
+}
+
 BINDING_TYPE_irc_raw (irc_notice);
 static int irc_notice (INTERFACE *net, char *sv, char *me, unsigned char *src,
 		int parc, char **parv, size_t (*lc)(char *, const char *, size_t))
@@ -1859,8 +1884,8 @@ static void _irc_init_bindings (void)
   NB ("401", irc_err_nosuchnick);
   NB ("432", irc__nextnick);
   NB ("433", irc__nextnick);
-  NB ("436", irc__nextnick);
-  NB ("437", irc__nextnick);
+//  NB ("436", irc__nextnick); // server kills us in that case
+  NB ("437", irc_err_unavailable);
   NB ("451", irc__nextnick);
   NB ("463", irc__fatal);
   NB ("464", irc__fatal);
