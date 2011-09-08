@@ -1321,14 +1321,27 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
  *   using password, port, and flags from hostrecord; port may replace one
  */
 
+static inline size_t _ircd_make_hello_msg(char *buff, size_t bs, int num,
+					  const char *template)
+{
+  size_t sw;
+
+  sw = snprintf(buff, bs, ":%s %03d %s ", MY_NAME, num, MY_NAME);
+  /* macros: %# - network name */
+  printl(&buff[sw], bs - sw, template, 0, NULL, NULL, NULL, Ircd->iface->name,
+	 0, 0, (time_t)0, NULL);
+  return (strlen(buff));
+}
+
 /* -- ircd listener interface ---------------------------------------------
    called right after socket was answered or listener died */
 static void _ircd_prehandler (pthread_t th, void **data, idx_t *as)
 {
   peer_priv *peer;
   char *pn;		/* [host/]port[%flags] */
+  size_t sw;
 #if IRCD_USES_ICONV
-  char charset[64];	/* I hope it's enough */
+  char charset[128];	/* I hope it's enough */
 #endif
 
   if (*as < 0)
@@ -1370,11 +1383,13 @@ static void _ircd_prehandler (pthread_t th, void **data, idx_t *as)
   else
     peer->p.iface->conv = NULL;
 #endif
-  Unset_Iface();
   /* cannot do ircd_do_unumeric so have to handle and send it myself
      while in listening thread yet
      note: listener will wait it, can we handle DDoS here? */
-//  ??ircd_do_unumeric?? (cl, RPL_HELLO, &ME, 0, Ircd->iface->name);
+  sw = _ircd_make_hello_msg(charset, sizeof(charset), RPL_HELLO);
+  Unset_Iface();
+  if (Peer_Put((&peer->p), charset, &sw) > 0) /* connchain should get it */
+    while (Peer_Put((&peer->p), NULL, &sw) == 0); /* wait until data sent */
 }
 
 #define peer ((peer_priv *)data)

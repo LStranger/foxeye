@@ -231,9 +231,8 @@ UNLD  "uunnllooaadd"         MASK
     socket identifier; pointer to sending buffer; pointer to counter of
     bytes to send; pointer to instance's own buffer. If _s_e_n_d() got NULL
     pointer to sending buffer then it have to try to send what is still
-    left in own buffer as it probably will never receive data again. It
-    still may get calls but as soon as own buffer is empty or it gets an
-    error from next link it should always return error. If _s_e_n_d() got
+    left in own buffer and return 0. If own buffer is empty then _s_e_n_d()
+    should return error code from next link in chain. If _s_e_n_d() got
     pointer to sending buffer not equal to NULL but count of bytes to
     send equal to 0 then it should return value CONNCHAIN_READY if it can
     take data for sending on next call (that includes checking next link

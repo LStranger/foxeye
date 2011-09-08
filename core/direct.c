@@ -706,12 +706,11 @@ static ssize_t _ccfilter_y_send(struct connchain_i **ch, idx_t id,
 
   if (*b == NULL)			/* already terminated */
     return i;
-  if (str == NULL ||			/* got termination */
-      (i = Connchain_Put (ch, id, "", &ii)) < 0) /* check next link */
+  if ((i = Connchain_Put (ch, id, "", &ii)) < 0) /* check next link */
     return i;
   if (i != CONNCHAIN_READY)		/* next link in chain isn't ready */
     return 0;				/* we don't ready too, of course */
-  if ((left = *sz) == 0)		/* it's a test! */
+  if (str && (left = *sz) == 0)		/* it's a test! */
     return CONNCHAIN_READY;
   if ((*b)->tosend)			/* there was something to send */
   {
@@ -725,6 +724,8 @@ static ssize_t _ccfilter_y_send(struct connchain_i **ch, idx_t id,
       return 0;				/* we don't ready to do anything */
     }
   }
+  if (str == NULL)			/* no buffer and got flush */
+    return (Connchain_Put (ch, id, str, sz));
   while ((i = left) != 0)		/* cycle line+IAC */
   {
     c = memchr (str, '\377', i);	/* IAC */
@@ -877,8 +878,9 @@ static ssize_t _ccfilter_b_send(struct connchain_i **ch, idx_t id,
 
   if (*b == NULL)			/* already terminated */
     return E_NOSOCKET;
-  if (str == NULL ||			/* got termination */
-      (i = Connchain_Put (ch, id, "", &i)) < 0)	/* dead end */
+  if (str == NULL)			/* ah, it was a flush! */
+    return (Connchain_Put (ch, id, str, sz));
+  if ((i = Connchain_Put (ch, id, "", &i)) < 0)	/* dead end */
   {
     *b = NULL;
     return E_NOSOCKET;

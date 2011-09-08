@@ -6,7 +6,7 @@
 #define RPL_BOUNCE		 10, ":Try server %#, port %P"
 /* 015 reserved */
 /* 017-018 reserved */
-#define RPL_HELLO		 20, ":*** You are connected to %*. Please wait..."
+#define RPL_HELLO		 20, ":Welcome to %#! Please wait until checks are done."
 /* 042-043 reserved */
 #define RPL_TRACELINK		200, "Link %V%?P.d%P?? %# %*"
 #define RPL_TRACECONNECTING	201, "Try. %* %#"

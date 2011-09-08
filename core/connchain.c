@@ -54,8 +54,8 @@ static ssize_t _connchain_send (struct connchain_i **chain, idx_t idx,
 {
   ssize_t i, ptr = 0;
 
-  if (data == NULL)		/* if it's NULL then we have to terminate */
-    i = E_NOSOCKET;
+  if (data == NULL)		/* no own buffer to flush */
+    i = E_NOSOCKET;		/* so return error then */
   else if (*sz == 0)		/* if it's a test then answer we are ready */
     return CONNCHAIN_READY;
   else if ((*(struct peer_t **)b)->state < P_LOGIN) /* it's in thread yet */
@@ -264,12 +264,10 @@ static ssize_t _ccfilter_x_send (connchain_i **ch, idx_t id, const char *str,
       return 0;
     }
   }
-  if (str == NULL)			/* got termination */
-  {
-    bb->inbuf = -1;			/* forget buffer */
-    return E_NOSOCKET;			/* return error */
-  }
-  i = *sz;
+  if (str == NULL)			/* got flush request */
+    i = 0;
+  else
+    i = *sz;
   if (i == 0)				/* it was a test and we are ready */
     return Connchain_Put (ch, id, str, sz); /* bounce test to next link */
   if (i > (ssize_t)sizeof(bb->buf) - 2)	/* line + CR/LF */
