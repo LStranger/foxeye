@@ -631,7 +631,7 @@ static inline int _ircd_do_server_numeric(peer_priv *peer, const char *sender,
   CLIENT *tgt;
   register struct binding_t *b;
   size_t ptr;
-  int i;
+  int i, num;
   char buf[MESSAGEMAX];
 
   if ((tgt = ircd_find_client(sender, peer)) == NULL)
@@ -645,21 +645,23 @@ static inline int _ircd_do_server_numeric(peer_priv *peer, const char *sender,
       buf[ptr++] = ' ';
     ptr += strfcpy(&buf[ptr], argv[i], sizeof(buf) - ptr);
   }
+  num = atoi(argv[1]);
+  if (peer != NULL && num < 100) /* special care for transit - see orig. ircd */
+    num += 100;
   snprintf(&buf[ptr], sizeof(buf) - ptr, "%s:%s", ptr ? " " : "", argv[i]);
   b = Check_Bindtable(BTIrcdDoNumeric, argv[1], U_ALL, U_ANYCH, NULL);
   if (b && !b->name &&
-      b->func(Ircd->iface, atoi(argv[1]), argv[2], tgt->umode, buf))
+      b->func(Ircd->iface, num, argv[2], tgt->umode, buf))
     return 1;				/* aborted by binding */
 #if IRCD_MULTICONNECT
   if (!CLIENT_IS_LOCAL(tgt) && id != -1)
   {
-    ircd_sendto_new(tgt, ":%s INUM %d %s %s %s", sender, id, argv[1], argv[2],
-		    buf);
-    ircd_sendto_old(tgt, ":%s %s %s %s", sender, argv[1], argv[2], buf);
+    ircd_sendto_new(tgt, ":%s INUM %d %d %s %s", sender, id, num, argv[2], buf);
+    ircd_sendto_old(tgt, ":%s %d %s %s", sender, num, argv[2], buf);
   }
   else
 #endif
-    ircd_sendto_one(tgt, ":%s %s %s %s", sender, argv[1], argv[2], buf);
+    ircd_sendto_one(tgt, ":%s %d %s %s", sender, num, argv[2], buf);
   return 1;
 }
 

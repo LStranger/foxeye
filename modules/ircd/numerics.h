@@ -2,9 +2,12 @@
 #define RPL_YOURHOST		  2, ":Your host is %#, running version %V"
 #define RPL_CREATED		  3, ":This server was created %*"
 #define RPL_MYINFO		  4, "%# %V %*"
-#define RPL_BOUNCE		  5, ":Try server %#, port %P"
-/* 010 reserved */
+/* 005 reserved: RPL_ISUPPORT */
+#define RPL_BOUNCE		 10, ":Try server %#, port %P"
+/* 015 reserved */
+/* 017-018 reserved */
 #define RPL_HELLO		 20, ":*** You are connected to %*. Please wait..."
+/* 042-043 reserved */
 #define RPL_TRACELINK		200, "Link %V%?P.d%P?? %# %*"
 #define RPL_TRACECONNECTING	201, "Try. %* %#"
 #define RPL_TRACEHANDSHAKE	202, "H.S. %* %#"
@@ -86,6 +89,7 @@
 /* 333 reserved */
 #define RPL_INVITING		341, "%# %*"
 #define RPL_SUMMONING		342, "%# :Summoning user to IRC"
+/* 344-345 reserved */
 #define RPL_INVITELIST		346, "%# %@"
 #define RPL_ENDOFINVITELIST	347, "%# :End of channel invite list"
 #define RPL_EXCEPTLIST		348, "%# %@"
@@ -111,10 +115,10 @@
 #define RPL_YOURESERVICE	383, "You are service %#"
 /* 384-385 reserved */
 #define RPL_TIME		391, "%= :%*"
-#define RPL_USERSSTART		392, ":UserID   Terminal  Host"
-#define RPL_USERS		393, ":%L %P %@"
-#define RPL_ENDOFUSERS		394, ":End of users"
-#define RPL_NOUSERS		395, ":Nobody logged in"
+#define RPL_USERSSTART		392, ":UserID   Terminal  Host" /* RFC1459 */
+#define RPL_USERS		393, ":%L %P %@" /* RFC1459 */
+#define RPL_ENDOFUSERS		394, ":End of users" /* RFC1459 */
+#define RPL_NOUSERS		395, ":Nobody logged in" /* RFC1459 */
 #define ERR_NOSUCHNICK		401, "%* :No such nick/channel"
 #define ERR_NOSUCHSERVER	402, "%* :No such server"
 #define ERR_NOSUCHCHANNEL	403, "%* :No such channel"
@@ -146,7 +150,7 @@
 #define ERR_USERONCHANNEL	443, "%N %# :is already on channel"
 #define ERR_NOLOGIN		444, "%# :User not logged in"
 #define ERR_SUMMONDISABLED	445, ":SUMMON has been disabled"
-#define ERR_USERSDISABLED	446, ":USERS has been disabled"
+#define ERR_USERSDISABLED	446, ":USERS has been disabled" /* RFC1459 */
 #define ERR_NOTREGISTERED	451, ":You have not registered"
 #define ERR_NEEDMOREPARAMS	461, "%* :Not enough parameters"
 #define ERR_ALREADYREGISTRED	462, ":Unauthorized command (already registered)"
@@ -176,6 +180,6 @@
 /* 486 reserved */
 #define ERR_NOOPERHOST		491, ":No O-lines for your host"
 /* 492 reserved */
-/* 500 reserved */
+/* 499-500 reserved */
 #define ERR_UMODEUNKNOWNFLAG	501, ":Unknown MODE flag"
 #define ERR_USERSDONTMATCH	502, ":Cannot change mode for other users"
