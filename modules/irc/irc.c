@@ -993,6 +993,7 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
       }
       /* run bindings */
       bind = NULL;
+      //FIXME: how we can have no mynick still here?
       while ((bind = Check_Bindtable (BT_Irc, params[2], U_ALL, U_ANYCH, bind)))
       {
 	if (bind->name) /* cannot use RunBinding here! */

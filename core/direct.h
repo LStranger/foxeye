@@ -27,8 +27,8 @@
 typedef enum
 {
   P_DISCONNECTED = 0,			/* no socket yet / lost socket */
-  P_INITIAL,				/* out the message and go P_LOGIN */
-  P_LOGIN,				/* main login state */
+  P_INITIAL,				/* authentication request sent */
+  P_LOGIN,				/* thread done, main login state */
   P_TALK,				/* connected, main state */
   P_IDLE,				/* waiting for response */
   P_QUIT,				/* has to send quit message */

@@ -438,10 +438,12 @@ static inline void _ircd_bt_lost_client(CLIENT *cl, const char *server)
 static inline void _ircd_peer_kill (peer_priv *peer, const char *msg)
 {
   dprint(4, "ircd:ircd.c:_ircd_peer_kill: %p state=%#x", peer, (int)peer->p.state);
-  if (peer->p.state != P_DISCONNECTED)	/* link might be not initialized yet */
+  if (peer->p.state != P_DISCONNECTED) { /* link might be not initialized yet */
     Add_Request (I_LOG, "*", F_CONN, "ircd: killing peer %s@%s: %s",
 		 peer->link->cl->user, peer->link->cl->host, msg);
-  New_Request (peer->p.iface, F_AHEAD, "ERROR :%s", msg);
+    New_Request (peer->p.iface, F_AHEAD, "ERROR : closing link to %s@%s: %s",
+		 peer->link->cl->user, peer->link->cl->host, msg);
+  }
   Set_Iface (peer->p.iface);		/* lock it for next call */
   if (peer->p.state != P_DISCONNECTED && !CLIENT_IS_SERVER(peer->link->cl))
     _ircd_class_out (peer->link);
@@ -922,10 +924,10 @@ static void _ircd_remote_user_gone(CLIENT *cl)
 
 /* state	client		server		outgoing
  *
- * P_INITIAL	waiting		waiting		sent PASS
- * P_LOGIN	got USER / NICK	got PASS
- * P_IDLE					sent SERVER
- * P_TALK	got both	got+sent SERVER	got SERVER
+ * P_INITIAL	auth		auth		connected
+ * P_LOGIN	registering	registering
+ * P_IDLE					sent PASS+SERVER
+ * P_TALK	got NICK+USER	got+sent SERVER	got SERVER
  */
 
 /* -- client interface ----------------------------------------------------
@@ -948,17 +950,17 @@ static iftype_t _ircd_client_signal (INTERFACE *cli, ifsig_t sig)
       switch (peer->p.state)
       {
 	case P_DISCONNECTED:		/* there is a thread still */
+	case P_INITIAL:
 	  pthread_cancel (peer->th);
 	  Unset_Iface();		/* let it to finish bindings */
 	  pthread_join (peer->th, NULL);
 	  Set_Iface(cli);
-	case P_INITIAL:			/* isn't registered yet */
+	case P_LOGIN:			/* isn't registered yet */
 	case P_IDLE:
-	case P_LOGIN:
 	  _ircd_peer_kill (peer, NONULL(ShutdownR));
 	case P_QUIT:			/* shutdown is in progress */
 	case P_LASTWAIT:
-	  cli->ift &= ~I_FINWAIT;	/* don't kill me anymore */
+	  cli->ift &= ~I_FINWAIT;	/* don't kill me again */
 	  break;
 	case P_TALK:			/* shedule death to it */
 	  if (CLIENT_IS_SERVER (peer->link->cl))
@@ -1010,8 +1012,11 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 
 //  dprint(4, "ircd:ircd.c:_ircd_client_request: name=%s state=%d req=%p",
 //	 NONULL(cli->name), (int)peer->p.state, req);
-  if (peer->p.state == P_DISCONNECTED)
+  if (peer->p.state < P_LOGIN) {
+    if (req != NULL)
+      WARNING("ircd:_ircd_client_request: got request to client which isn't ready");
     return REQ_REJECTED;
+  }
   cl = peer->link->cl;
   switch (peer->p.state)
   {
@@ -1110,7 +1115,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
       pthread_mutex_unlock (&IrcdLock);
       return REQ_OK;		/* interface will now die */
     case P_DISCONNECTED:	/* unused here, handled above */
-    case P_INITIAL:
+    case P_INITIAL:		/* and this one too */
     case P_LOGIN:
     case P_TALK:
     case P_IDLE:
@@ -1232,7 +1237,8 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
     argv[argc] = NULL;
     if (!*argv[1]);			/* got malformed line */
     else if (!Ircd->iface);		/* internal error! */
-    else if (peer->p.state == P_INITIAL) /* not registered yet */
+    else if (peer->p.state == P_LOGIN ||
+	     peer->p.state == P_IDLE)	/* not registered yet */
     {
       b = Check_Bindtable (BTIrcdRegisterCmd, argv[1], U_ALL, U_ANYCH, NULL);
       if (b)
@@ -1362,6 +1368,10 @@ static void _ircd_prehandler (pthread_t th, void **data, idx_t *as)
     peer->p.iface->conv = NULL;
 #endif
   Unset_Iface();
+  /* cannot do ircd_do_unumeric so have to handle and send it myself
+     while in listening thread yet
+     note: listener will wait it, can we handle DDoS here? */
+//  ??ircd_do_unumeric?? (cl, RPL_HELLO, &ME, 0, Ircd->iface->name);
 }
 
 #define peer ((peer_priv *)data)
@@ -1417,8 +1427,6 @@ static void _ircd_handler (char *cln, char *ident, const char *host, void *data)
   Unset_Iface();			/* done so unlock bindtable */
   if (msg)				/* not allowed! */
     _ircd_peer_kill (peer, msg);
-  else
-    ircd_do_unumeric (cl, RPL_HELLO, &ME, 0, Ircd->iface->name);
 }
 #undef peer
 
@@ -1535,7 +1543,7 @@ static iftype_t _ircd_uplink_sig (INTERFACE *uli, ifsig_t sig)
       break;
     case S_TERMINATE:
       /* free everything including socket */
-      if (uplink->p.state == P_DISCONNECTED) /* there is a thread still */
+      if (uplink->p.state < P_LOGIN)	/* there is a thread still */
       {
 	pthread_cancel (uplink->th);
 	pthread_join (uplink->th, NULL); /* it never locks dispatcher */
@@ -2274,7 +2282,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
     _ircd_peer_kill (cl->via, "bad password");
     return 1;
   }
-  if (peer->state == P_INITIAL) /* if it's incoming then check it to match */
+  if (peer->state == P_LOGIN) /* if it's incoming then check it to match */
   {
     INTERFACE *tmp;
     const char *ipname;
@@ -2330,7 +2338,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
       return 1;
     }
   }
-  else
+  else /* P_IDLE */
   {
     Unlock_Clientrecord (u);
     if (_ircd_uplink) /* there is autoconnected RFC2813 server already */
@@ -2395,7 +2403,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
      don't using interface but connchain only to avoid message queue
      connchain should be ready at this point to get one message up to
      MB_LEN_MAX*MESSAGEMAX-2 so we will send both PASS and SERVER at once */
-  if (peer->state == P_INITIAL)
+  if (peer->state == P_LOGIN)
   {
     size_t sz;
 
@@ -4013,11 +4021,11 @@ int ircd_show_trace (CLIENT *rq, CLIENT *tgt)
     switch (tgt->via->p.state)
     {
       case P_DISCONNECTED:
+      case P_INITIAL:
 	return ircd_do_unumeric (rq, RPL_TRACECONNECTING, &ME, 0, "-");
       case P_IDLE:
       case P_LOGIN:
 	return ircd_do_unumeric (rq, RPL_TRACEHANDSHAKE, &ME, 0, "-");
-      case P_INITIAL:
       case P_QUIT:
       case P_LASTWAIT:
 	return ircd_do_unumeric (rq, RPL_TRACEUNKNOWN, &ME, 0, "-");

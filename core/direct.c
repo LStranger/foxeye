@@ -325,7 +325,7 @@ static void _died_iface (INTERFACE *iface, char *buf, size_t s)
 	  SocketDomain (dcc->socket, NULL), iface->name, NULL, 0, 0, 0, NULL);
   LOG_CONN ("%s", buf);
   NoCheckFlood (&dcc->priv->floodcnt);		/* remove all flood timers */
-  if (dcc->state == P_LOGIN)			/* if it was fresh connection */
+  if (dcc->state <= P_LOGIN)			/* if it was fresh connection */
   {
     FREE (&dcc->priv);
     return;
@@ -540,6 +540,8 @@ static int dcc_request (INTERFACE *iface, REQUEST *req)
   /* we sent the message, can P_INITIAL -> P_LOGIN */
   if (dcc->state == P_INITIAL)
   {
+    WARNING("direct.c:dcc_request: unexpectedly P_INITIAL state for %s",
+	    iface->name);
     dcc->state = P_LOGIN;
     return REQ_OK;
   }
@@ -600,7 +602,7 @@ static iftype_t dcc_signal (INTERFACE *iface, ifsig_t signal)
     case S_REPORT:
       switch (dcc->state)
       {
-        case P_LOGIN:
+	case P_LOGIN:
 	  /* %@ - hostname, %L and %N - Lname, %P - socket, %* - state */
 	  printl (buf, sizeof(buf), ReportFormat, 0,
 		  dcc->iface->name, SocketDomain (dcc->socket, NULL),
@@ -1052,6 +1054,7 @@ static void get_chat (char *name, char *ident, char *host, peer_t *dcc,
   dcc->priv->ssbt = NULL;
   /* create interfaces - lock dispatcher to syncronize */
   Set_Iface (NULL);
+  dcc->state = P_LOGIN;
   dcc->iface = Add_Iface (I_DIRECT | I_CONNECT, name, &dcc_signal,
 			  &dcc_request, dcc);
   /* try to create a clone for scripts :) */
@@ -2633,7 +2636,7 @@ static void _dport_handler (char *cname, char *ident, const char *host, void *d)
 
   dcc = safe_malloc (sizeof(peer_t));
   dcc->socket = ((_port_acceptor *)d)->as;
-  dcc->state = P_LOGIN;
+  dcc->state = P_INITIAL;
   dcc->dname = NULL;
   dcc->parse = &Dcc_Parse;
   dcc->connchain = NULL;
