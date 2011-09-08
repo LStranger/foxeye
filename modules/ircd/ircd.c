@@ -4117,7 +4117,7 @@ static void _ircd_register_all (void)
   RegisterString ("ircd-version-string", _ircd_version_string,
 		  sizeof(_ircd_version_string), 1);
   RegisterString ("ircd-description-string", _ircd_description_string,
-		  sizeof(_ircd_description_string), 1);
+		  sizeof(_ircd_description_string), 0);
   RegisterInteger ("ircd-hold-period", &_ircd_hold_period);
   RegisterInteger ("ircd-serverclass-pingf", &_ircd_server_class_pingf);
   RegisterFunction ("ircd", &func_ircd, "charset [host/]port");
