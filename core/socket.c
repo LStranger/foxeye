@@ -388,7 +388,7 @@ int SetupSocket(idx_t idx, const char *domain, unsigned short port,
 		int (*callback)(const struct sockaddr *, void *),
 		void *callback_data)
 {
-  int i, sockfd, type, cancelstate;
+  int i, sockfd, type;
   socklen_t len;
   inet_addr_t addr;
   struct linger ling;
@@ -439,6 +439,8 @@ int SetupSocket(idx_t idx, const char *domain, unsigned short port,
 	freeaddrinfo (ai);
 #ifdef ENABLE_IPV6
 	if (addr.sa.sa_family != AF_INET) {
+	  int cancelstate;
+
 	  /* close IPv4 socket and open IPv6 one instead */
 	  pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancelstate);
 	  pthread_mutex_lock (&LockPoll);

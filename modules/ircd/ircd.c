@@ -441,7 +441,7 @@ static inline void _ircd_peer_kill (peer_priv *peer, const char *msg)
   if (peer->p.state != P_DISCONNECTED) { /* link might be not initialized yet */
     Add_Request (I_LOG, "*", F_CONN, "ircd: killing peer %s@%s: %s",
 		 peer->link->cl->user, peer->link->cl->host, msg);
-    New_Request (peer->p.iface, F_AHEAD, "ERROR : closing link to %s@%s: %s",
+    New_Request (peer->p.iface, F_AHEAD, "ERROR :closing link to %s@%s: %s",
 		 peer->link->cl->user, peer->link->cl->host, msg);
   }
   Set_Iface (peer->p.iface);		/* lock it for next call */
@@ -1359,6 +1359,7 @@ static void _ircd_prehandler (pthread_t th, void **data, idx_t *as)
   Connchain_Grow (&peer->p, 'x');	/* text parser is mandatory */
   peer->p.last_input = peer->started = Time;
   /* create interface */
+  peer->p.state = P_INITIAL;
   peer->p.iface = Add_Iface (I_CLIENT | I_CONNECT, NULL, &_ircd_client_signal,
 			     &_ircd_client_request, peer);
 #if IRCD_USES_ICONV
@@ -1423,7 +1424,7 @@ static void _ircd_handler (char *cln, char *ident, const char *host, void *data)
       if (res == 0)
 	break;				/* auth error */
     }
-  peer->p.state = P_INITIAL;
+  peer->p.state = P_LOGIN;
   Unset_Iface();			/* done so unlock bindtable */
   if (msg)				/* not allowed! */
     _ircd_peer_kill (peer, msg);
