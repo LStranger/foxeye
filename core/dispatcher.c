@@ -191,6 +191,8 @@ void bot_shutdown (char *message, int e)
   NewEvent (W_DOWN, ID_ME, ID_ME, e);
   if (*PID_path)
     unlink (PID_path);
+  if (e > 0)
+    return; /* let it do coredump */
   exit (e);
 }
 
@@ -1393,6 +1395,7 @@ int dispatcher (INTERFACE *start_if)
   sigaction (SIGINT, &act, NULL);
   sigaction (SIGHUP, &act, NULL);
   act.sa_handler = &errors_handler;
+  act.sa_flags = SA_RESETHAND;
   sigaction (SIGQUIT, &act, NULL);	/* catch these signals as errors */
   sigaction (SIGABRT, &act, NULL);
   sigaction (SIGILL, &act, NULL);
@@ -1405,6 +1408,7 @@ int dispatcher (INTERFACE *start_if)
   sigaction (SIGSYS, &act, NULL);
 #endif
   act.sa_handler = SIG_IGN;
+  act.sa_flags = 0;
   sigaction (SIGPIPE, &act, NULL);	/* ignore these signals */
   sigaction (SIGUSR1, &act, NULL);
   sigaction (SIGUSR2, &act, NULL);
