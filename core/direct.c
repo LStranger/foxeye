@@ -710,7 +710,7 @@ static ssize_t _ccfilter_y_send(struct connchain_i **ch, idx_t id,
     return i;
   if (i != CONNCHAIN_READY)		/* next link in chain isn't ready */
     return 0;				/* we don't ready too, of course */
-  if (str && (left = *sz) == 0)		/* it's a test! */
+  if ((left = *sz) == 0 && str != NULL)	/* it's a test! */
     return CONNCHAIN_READY;
   if ((*b)->tosend)			/* there was something to send */
   {
@@ -1013,7 +1013,7 @@ static void get_chat (char *name, char *ident, char *host, peer_t *dcc,
     if ((sp = Peer_Put (dcc, "", &sz)) < 0 ||	/* push connchain buffers */
 	(sp = Peer_Get (dcc, buf, SHORT_STRING)))
       break;				/* in both cases on error or success */
-  if (sp == 0)
+  if (sz != 0 || sp == 0)
   {
     *msg = "login timeout";
     return;
@@ -1130,7 +1130,8 @@ static char *session_handler_main (char *ident, const char *host, peer_t *dcc,
   Set_Iface (NULL);
   Connchain_Grow (dcc, 'x');	/* adding text parser now! */
   Unset_Iface();
-  if (get > 0)		/* everything sent and sz == 0 */
+  get = 0;
+  if (sz == 0)		/* everything sent and sz == 0 */
     while (time(NULL) < t) /* push chain buffer if there is some */
       if ((get = Peer_Put (dcc, "", &sz)) < 0 ||
 	  (get = Peer_Get (dcc, client, LNAMELEN+1)))
@@ -2664,7 +2665,7 @@ static void _dport_handler (char *cname, char *ident, const char *host, void *d)
     snprintf (buf, sizeof(buf), "Access denied: %s", msg);
     sz = strlen (buf);
     if (Peer_Put (dcc, buf, &sz) > 0)	/* it should be OK */
-      while (!(Peer_Put (dcc, NULL, &sz))); /* wait it to die */
+      while (!(Peer_Put (dcc, NULL, &sz))); /* wait it to be sent */
     SocketDomain (dcc->socket, &p);
     /* %L - Lname, %P - port, %@ - hostname, %* - reason */
     Set_Iface (NULL);

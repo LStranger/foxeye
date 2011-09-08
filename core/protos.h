@@ -71,7 +71,7 @@ int Change_Lname (const char *, const char *);
 
 void dprint (int, const char *, ...)		/* dispatch.c */
 	__attribute__ ((format(printf, 2, 3)));
-void bot_shutdown (char *, int) __attribute__ ((noreturn));
+void bot_shutdown (char *, int) __attribute__((noreturn));
 int dispatcher (INTERFACE *);
 
 #define ERROR(...) dprint (0, __VA_ARGS__)

@@ -196,7 +196,7 @@ ssize_t Connchain_Put (connchain_i **chain, idx_t idx, const char *buf, size_t *
     return E_NOSOCKET;
   /* ok, it seems we got something to run */
   i = (*chain)->send (&(*chain)->next, idx, buf, sz, &(*chain)->buf);
-  if (i >= 0)					/* everything seems OK */
+  if (buf == NULL || i >= 0)			/* everything seems OK */
     return i;
   if ((i = Connchain_Put (&(*chain)->next, idx, NULL, 0)) < 0)
     return i;					/* next link finished */

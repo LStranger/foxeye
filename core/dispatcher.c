@@ -114,7 +114,8 @@ static ifi_t *__Init;		/* interface of init */
 
 /* locks on input: (LockIface) */
 /* e: -1 if SIGTERM, 0 on normal termination, >0 if error condition */
-void bot_shutdown (char *message, int e)
+/* this one does return, bot_shutdown() doesn't */
+static void _bot_shutdown (char *message, int e)
 {
   unsigned int i = 0;
   ifi_t *con = NULL, *cur;
@@ -191,9 +192,13 @@ void bot_shutdown (char *message, int e)
   NewEvent (W_DOWN, ID_ME, ID_ME, e);
   if (*PID_path)
     unlink (PID_path);
-  if (e > 0)
-    return; /* let it do coredump */
-  exit (e);
+  /* return here -- let it do coredump */
+}
+
+void bot_shutdown (char *message, int e)
+{
+  _bot_shutdown (message, e);
+  exit(0);
 }
 
 /*
@@ -853,7 +858,6 @@ static INTERFACE *unstack_iface (void)
   if (!StCur)
   {
     bot_shutdown ("OOPS! interface stack exhausted! Extra Unset_Iface() called?", 7);
-    return NULL;
   }
 //  DBG("dispatcher: cancel state restoring to previous");
   pthread_setcancelstate(StCur->cancelstate, NULL);
@@ -1323,7 +1327,7 @@ static void errors_handler (int signo)
   snprintf (msg, sizeof(msg), "Caught signal SIG%s, shutdown...", signame);
   if (pthread_mutex_trylock (&SigLock) == 0)
   {
-    bot_shutdown (msg, norm_exit);
+    _bot_shutdown (msg, norm_exit);
 #ifdef HAVE_PTHREAD_KILL_OTHER_THREADS_NP
     pthread_kill_other_threads_np();
 #endif

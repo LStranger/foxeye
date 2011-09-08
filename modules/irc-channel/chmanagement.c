@@ -1783,7 +1783,7 @@ static LINK *_ctcp_find_target(INTERFACE *client, char *lname, char *unick,
   CHANNEL *ch;
   LINK *link, *me = NULL;
   char *nn;
-  userflag uf;
+  userflag uf = 0; /* initialize to avoid warning */
 
   DBG ("_ctcp_find_target:%s:%s:%s", client->name, lname, NONULL(tgt));
   if (tgt == NULL)
@@ -1935,7 +1935,7 @@ static void _ctcp_inviting(INTERFACE *client, unsigned char *who, char *lname,
   CHANNEL *ch;
   LINK *me;
   size_t s;
-  userflag gf, cf;
+  userflag gf = 0, cf = 0; /* initialize to avoid warning */
   int fail;
   char pass[IFNAMEMAX+1];
 

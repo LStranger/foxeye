@@ -1191,8 +1191,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	  req = NULL;			/* it's done */
 	}
 	//TODO: else check if sendq isn't exceeded limit
-      } else if (Peer_Put ((&peer->p), buff, &sw) < 0)
-	
+      }
       break;
   }
   sr = Peer_Get ((&peer->p), buff, sizeof(buff));
@@ -1388,7 +1387,7 @@ static void _ircd_prehandler (pthread_t th, void **data, idx_t *as)
      note: listener will wait it, can we handle DDoS here? */
   sw = _ircd_make_hello_msg(charset, sizeof(charset), RPL_HELLO);
   Unset_Iface();
-  if (Peer_Put((&peer->p), charset, &sw) > 0) /* connchain should get it */
+  if (Peer_Put((&peer->p), charset, &sw) > 0) /* connchain should eat it */
     while (Peer_Put((&peer->p), NULL, &sw) == 0); /* wait until data sent */
 }
 
