@@ -43,6 +43,8 @@ static struct bindtable_t *BT_CChain;
 
 typedef struct connchain_i connchain_i;
 
+static pthread_mutex_t CC_Mutex = PTHREAD_MUTEX_INITIALIZER;
+
 ALLOCATABLE_TYPE (connchain_i, _CC_, next) /* alloc_connchain_i(), free_... */
 
 /* send raw data into socket, *chain and *b are undefined here */
@@ -90,7 +92,9 @@ static ssize_t _connchain_recv (struct connchain_i **chain, idx_t idx,
 /* allocate starting link structure */
 static void _connchain_create (struct peer_t *peer)
 {
+  pthread_mutex_lock(&CC_Mutex);
   peer->connchain = alloc_connchain_i();
+  pthread_mutex_unlock(&CC_Mutex);
   peer->connchain->recv = &_connchain_recv;
   peer->connchain->send = &_connchain_send;
   /* ignoring ->buf since we don't need it for _this_ link */
@@ -127,7 +131,9 @@ int Connchain_Grow (struct peer_t *peer, char c)
   tc[0] = c;
   tc[1] = 0;
   b = NULL;				/* start from scratch */
+  pthread_mutex_lock(&CC_Mutex);
   chain = alloc_connchain_i();		/* allocate link struct */
+  pthread_mutex_unlock(&CC_Mutex);
   while ((b = Check_Bindtable (BT_CChain, tc, U_ALL, U_ANYCH, b)))
     if (!b->name &&			/* internal only? trying to init */
 	b->func (peer, &chain->recv, &chain->send, &chain->buf))
@@ -135,7 +141,9 @@ int Connchain_Grow (struct peer_t *peer, char c)
   if (b == NULL)			/* no handler found there! */
   {
     dprint (3, "connchain.c: link %c not found.", c);
+    pthread_mutex_lock(&CC_Mutex);
     free_connchain_i (chain);		/* unalloc struct then */
+    pthread_mutex_unlock(&CC_Mutex);
     return 0;
   }
   chain->next = peer->connchain;	/* it's done OK, insert into chain */
@@ -207,7 +215,9 @@ ssize_t Connchain_Get (connchain_i **chain, idx_t idx, char *buf, size_t sz)
     return i;
   if(Connchain_Get (&(*chain)->next, idx, NULL, 0))i=i; /* it's dead, kill next */
   dprint (2, "connchain.c: destroying link %p", *chain);
+  pthread_mutex_lock(&CC_Mutex);
   free_connchain_i (*chain);
+  pthread_mutex_unlock(&CC_Mutex);
   *chain = NULL;
   return i;
 }

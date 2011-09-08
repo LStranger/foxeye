@@ -123,10 +123,10 @@ UNLD  "uunnllooaadd"         MASK
     locked so very first thing the binding must do is to make call
     Unset_Iface(). Connection chain is already created, filter 'x' is
     included, and it is bound to _p_e_e_r but there is no 'iface' or 'priv'
-    fields set in it (note that 'priv' field must be NULL while in thread
-    but not upon success). The binding makes password checking if it is
-    required and creates an interface if there were no errors. Else it
-    should return an error message in _m_s_g so _p_e_e_r will be destroyed on
+    fields set in it. If required then binding makes password checking,
+    creates an interface if there were no errors and changes _p_e_e_r state
+    to something other than P_DISCONNECTED or P_INITIAL. In case of error
+    it should return an error message in _m_s_g so _p_e_e_r will be destroyed on
     return. Parameters _i_d_e_n_t, and _h_o_s_t are coming from peer connection
     socket. If _b_u_f contains empty string then it's telnet session. Buffer
     _b_u_f can be used by the binding. Note: the binding must be

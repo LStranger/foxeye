@@ -1226,25 +1226,30 @@ Connection chain API:
     can take data for sending on next call or some other value otherwise.
     If there are data to send and there were no errors encountered then
     appropriately updates counter at _s and returns number of bytes that
-    were sent. This function should never close or destroy the socket.
+    were sent. It will use N_POLL socket writing mode if peer state is
+    P_DISCONNECTED or P_INITIAL. This function should never close or
+    destroy the socket.
 	Reenterability: async-safe
 
   ssize_t CCoonnnncchhaaiinn__GGeett (struct connchain_i **_c_c, idx_t _i_d_x, char *_b_u_f,
 			 size_t _s);
     Tries to receive and filter data from socket _i_d_x through connection
     chain _c_c and put them into buffer _b_u_f of maximum size _s. If _b_u_f is
-    NULL then chain will be destroyed immediately and socket closed. If
-    there was and error on receiving data then chain will return data
-    that still left in buffers and if no data left then chain will be
-    destroyed and socket closed. Returns either error or size of data
-    that was received into _b_u_f.
+    NULL then chain will be destroyed immediately. If there was an error
+    on receiving data then chain will return data that still left in
+    buffers and if no data left then chain will be destroyed. If socket
+    is still waiting for connection then it counts as error too. This
+    function should never close or destroy the socket. It will use N_POLL
+    socket reading mode if peer state is P_DISCONNECTED or P_INITIAL.
+    Returns either error code or size of data that was received into _b_u_f.
 	Reenterability: thread-safe
 	Cancellation point: maybe
 
   CCoonnnncchhaaiinn__KKiillll (struct peer_t *_p_e_e_r);
     Macro, defined as: Connchain_Get(&_p_e_e_r->connchain,_p_e_e_r->socket,NULL,0)
     Used for terminating connection chain. Returns value E_NOSOCKET but
-    generates warning if that value left unused.
+    generates warning if that value left unused. Typical usage of it is:
+          if (Connchain_Kill(peer)) KillSocket(&peer->socket);
 	Reenterability: thread-safe
 	Cancellation point: maybe
 
