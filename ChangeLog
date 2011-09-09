@@ -13,6 +13,8 @@ Fri Sep  9 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c: fixed exit code on shutdown.
 	* modules/ircd/ircd.c: fixed SIGSEGV in JOIN and WHO.
 	* core/dispatcher.c: foxed bug with I_PENDING queuing.
+	* core/list.c, core/main.c, modules/ircd/ircd.c, modules/logs/logs.c:
+	  fixed handling of S_SHUTDOWN signal.
 
 Thu Sep  8 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/connchain.c, core/direct.*, modules/ircd/ircd.c: revised all

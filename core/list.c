@@ -2239,6 +2239,8 @@ static int _save_listfile (const char *filename, int quiet)
 	continue;
       if (_nonamed_record_is_invalid (ur))
       {
+	if (quiet)
+	  continue;
 	rw_wrlock (&UFLock);
 	_delete_userrecord (ur, 0);		/* remove invalid record */
 	rw_unlock (&UFLock);
@@ -2265,8 +2267,9 @@ static int _save_listfile (const char *filename, int quiet)
 	snprintf (buff, sizeof(buff), "+%s\n", hr->hostmask);
 	i = _write_listfile (buff, fd);
       }
-      pthread_mutex_lock (&ur->mutex);
-      for (chr = ur->channels; chr && i; )
+      if (!quiet)
+	pthread_mutex_lock (&ur->mutex);
+      for (chr = ur->channels; chr && i; chr = chr->next)
       {
 	register struct clrec_t *sur;
 
@@ -2277,10 +2280,11 @@ static int _save_listfile (const char *filename, int quiet)
 	{
 	  register user_chr *c = chr;
 
+	  if (quiet)
+	    continue;
 	  DBG ("dropped unknown service %d(%s) subrecord from \"%s\": %s",
 	       (int)chr->cid, (sur && sur->lname) ? sur->lname : "",
 	       NONULL(ur->lname), NONULL(chr->greeting));
-	  chr = chr->next;
 	  _del_channel (&ur->channels, c);	/* remove invalid subrecord */
 	  continue;
 	}
@@ -2288,9 +2292,10 @@ static int _save_listfile (const char *filename, int quiet)
 	{
 	  register user_chr *c = chr;
 
+	  if (quiet)
+	    continue;
 	  DBG ("dropped expired service %d(%s) subrecord from \"%s\"",
 	       (int)chr->cid, sur ? sur->lname : "", NONULL(ur->lname));
-	  chr = chr->next;
 	  _del_channel (&ur->channels, c);	/* remove expired subrecord */
 	  continue;
 	}
@@ -2300,9 +2305,9 @@ static int _save_listfile (const char *filename, int quiet)
 		  userflagtostr (chr->flag, f), (unsigned long)chr->expire,
 		  NONULL(chr->greeting));
 	i = _write_listfile (buff, fd);
-	chr = chr->next;
       }
-      pthread_mutex_unlock (&ur->mutex);
+      if (!quiet)
+	pthread_mutex_unlock (&ur->mutex);
       for (fr = ur->fields; fr && i; fr = fr->next)
       {
 	snprintf (buff, sizeof(buff), " %s %s\n", Field[fr->id], fr->value);
@@ -2325,6 +2330,8 @@ static int _save_listfile (const char *filename, int quiet)
   Add_Request (I_LOG, "*", F_BOOT,
 	       "Saved %s: %d bans, %d regular, and %d special records.",
 	       filename, _d, _r, _s);
+  if (quiet)
+    return 0;
   pthread_mutex_lock (&FLock);
   _i -= _R_i;
   _d -= _R_d;

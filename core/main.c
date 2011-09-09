@@ -267,7 +267,8 @@ static iftype_t _signal (INTERFACE *iface, ifsig_t signal)
 	if(write (Fifo_Out[1], ShutdownR, safe_strlen (ShutdownR)))*buff=*buff;
 	if(write (Fifo_Out[1], "\n", 1))*buff=*buff; /* make compiler happy */
       }
-      _kill_pipe (iface);
+      //_kill_pipe (iface);
+      iface->ift = I_DIED;
     default: ;
   }
   return 0;

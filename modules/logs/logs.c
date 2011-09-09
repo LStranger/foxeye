@@ -560,9 +560,10 @@ static iftype_t logfile_signal (INTERFACE *iface, ifsig_t sig)
       while ((x = flush_log (log, 1, 1)) != 0)
 	if ((x != EACCES && x != EAGAIN) || ++lockcount >= logfile_locks)
 	  break;		/* try to flush log up to 16 times */
+      if (sig == S_SHUTDOWN)
+	break;
       close (log->fd);
-      if (sig == S_TERMINATE)
-	FREE (&log->path);
+      FREE (&log->path);
       break;
     case S_FLUSH:
       flush_log (log, 1, 0);

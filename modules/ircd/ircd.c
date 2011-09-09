@@ -4194,7 +4194,8 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
       return I_DIED;
     case S_SHUTDOWN:
       for (pp = IrcdPeers; pp; pp = pp->p.priv) /* just notify everyone */
-	_ircd_client_signal (pp->p.iface, S_SHUTDOWN);
+	if (!(pp->p.iface->ift & I_DIED))
+	  _ircd_client_signal (pp->p.iface, S_SHUTDOWN);
       break;
     case S_REPORT:
       // TODO......
