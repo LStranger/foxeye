@@ -504,15 +504,15 @@ static inline void _ircd_who_reply (CLIENT *rq, CLIENT *srv, CLIENT *tgt,
       ch[0] = '@';
     else
       ch[0] = ircd_mode2whochar (m->mode);
-    snprintf (buf, sizeof(buf), "%s %s %s %s %s%c%s%s :%hu %s", m->chan->name,
-	      tgt->user, tgt->host, srv->nick, tgt->nick,
+    snprintf (buf, sizeof(buf), "%s %s %s %s %s %c%s%s :%hu %s", m->chan->name,
+	      tgt->user, tgt->host, srv->lcnick, tgt->nick,
 	      (tgt->umode & A_AWAY) ? 'G' : 'H',
 	      (tgt->umode & (A_OP | A_HALFOP)) ? "*" : "", ch, tgt->hops,
 	      tgt->fname);
   }
   else
-    snprintf (buf, sizeof(buf), "* %s %s %s %s%c%s :%hu %s", tgt->user,
-	      tgt->host, srv->nick, tgt->nick, (tgt->umode & A_AWAY) ? 'G' : 'H',
+    snprintf (buf, sizeof(buf), "* %s %s %s %s %c%s :%hu %s", tgt->user,
+	      tgt->host, srv->lcnick, tgt->nick, (tgt->umode & A_AWAY) ? 'G' : 'H',
 	      (tgt->umode & (A_OP | A_HALFOP)) ? "*" : "", tgt->hops, tgt->fname);
   ircd_do_unumeric (rq, RPL_WHOREPLY, rq, 0, buf);
 }
@@ -534,61 +534,7 @@ static int ircd_who_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
     if ((argv[0])[1] != '\0' || (*argv[0] != '0' && *argv[0] != '*'))
       mask = argv[0];
   }
-  if (mask && !strpbrk (mask, "*?."))	/* no wildcards */
-  {
-    if ((m = ircd_find_member ((IRCD *)srv->data, mask, NULL)))
-    {
-      if (m != NOSUCHCHANNEL &&
-	  !(m->chan->mode & (A_ANONYMOUS | A_QUIET))) /* users are hidden */
-      {
-	mc = m;				/* allow seeing for opers */
-	if ((cl->umode & (A_OP | A_HALFOP)) ||
-	    (mc = _ircd_is_on_channel (cl, m->chan)) ||
-	    !(m->chan->mode & (A_PRIVATE | A_SECRET)))
-	  for ( ; m; m = m->prevnick)
-	    if ((m->mode & mmf) == mmf) /* use "o" parameter against chanmode */
-	      if (mc || !(m->who->umode & A_INVISIBLE))
-		_ircd_who_reply (cl, CLIENT_IS_LOCAL (m->who) ? me : m->who->cs,
-				 m->who, m); /* ME can be only in QUIET chan */
-      }
-    }
-    else if ((tgt = ircd_find_client(mask, NULL)) && !tgt->hold_upto &&
-	     !CLIENT_IS_SERVER(tgt) && (tgt->umode & mmf) == mmf)
-    {
-      for (m = tgt->c.hannels; (mc = m); m = m->prevchan)
-	if (!(m->chan->mode & (A_ANONYMOUS | A_QUIET)))
-	  if ((cl->umode & (A_OP | A_HALFOP)) ||
-	      (mc = _ircd_is_on_channel (cl, mc->chan)) ||
-	      !(mc->chan->mode & (A_PRIVATE | A_SECRET)))
-	    break;
-      if (mc || !(tgt->umode & A_INVISIBLE))
-	_ircd_who_reply (cl, CLIENT_IS_LOCAL (tgt) ? me : tgt->cs, tgt, mc);
-    }
-  }
-  else if ((tgt = ircd_find_client(mask, NULL)) != NULL)
-  {
-    LINK *link;
-
-    if (!CLIENT_IS_SERVER (tgt) || tgt->hold_upto)
-      ircd_do_unumeric (cl, ERR_NOSUCHSERVER, cl, 0, mask);
-    else
-      for (link = tgt->c.lients; link; link = link->prev)
-      {
-	tgt = link->cl;
-	if ((tgt->umode & mmf) != mmf)
-	  continue;
-	for (m = tgt->c.hannels; (mc = m); m = m->prevchan)
-	  if (!(m->chan->mode & (A_ANONYMOUS | A_QUIET)))
-	    if ((cl->umode & (A_OP | A_HALFOP)) ||
-		(mc = _ircd_is_on_channel (cl, mc->chan)) ||
-		!(mc->chan->mode & (A_PRIVATE | A_SECRET)))
-	      break;
-	if (mc || !(tgt->umode & A_INVISIBLE))
-	  _ircd_who_reply (cl, CLIENT_IS_LOCAL (tgt) ? me : tgt->cs, tgt, mc);
-      }
-  }
-  else					/* so we have wildcards, ok */
-  {
+  if (!mask || strpbrk (mask, "*?.")) { /* so we have wildcards, ok */
     NODE *t = ((IRCD *)srv->data)->clients;
     LEAF *l = NULL;
     LINK *link;
@@ -603,17 +549,20 @@ static int ircd_who_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
       if (tgt->hold_upto || CLIENT_IS_SERVER (tgt) || !CLIENT_IS_LOCAL (tgt) ||
 	  (tgt->umode & mmf) != mmf)
 	continue;
-      for (m = tgt->c.hannels; (mc = m); m = m->prevchan)
-	if (!(m->chan->mode & (A_ANONYMOUS | A_QUIET)))
-	  if ((cl->umode & (A_OP | A_HALFOP)) ||
-	      (mc = _ircd_is_on_channel (cl, mc->chan)) ||
-	      !(mc->chan->mode & (A_PRIVATE | A_SECRET)))
-	    break;
-      if (mc || !(tgt->umode & A_INVISIBLE))
+      if ((cl->umode & (A_OP | A_HALFOP)) || !(tgt->umode & A_INVISIBLE) ||
+	  tgt == cl)
+	mc = (MEMBER *)1;
+      else
+	for (m = tgt->c.hannels; (mc = m); m = m->prevchan)
+	  if (!(m->chan->mode & (A_PRIVATE | A_SECRET)) ||
+	      ((!(m->chan->mode & (A_ANONYMOUS | A_QUIET))) &&
+	       (mc = _ircd_is_on_channel (cl, mc->chan))))
+	      break;
+      if (mc)
 	if (!mask || smatched >= 0 || simple_match (mask, tgt->host) >= 0 ||
 	    simple_match (mask, tgt->lcnick) >= 0 ||
 	    simple_match (mask, tgt->fname) >= 0) //TODO: LC search?
-	  _ircd_who_reply (cl, CLIENT_IS_LOCAL (tgt) ? me : tgt->cs, tgt, mc);
+	  _ircd_who_reply (cl, CLIENT_IS_LOCAL (tgt) ? me : tgt->cs, tgt, NULL);
     }
     /* and other servers now too */
     for (i = 1; i < ((IRCD *)srv->data)->s; i++)
@@ -626,18 +575,49 @@ static int ircd_who_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 	  tgt = link->cl;
 	  if (CLIENT_IS_SERVER (tgt) || (tgt->umode & mmf) != mmf)
 	    continue;
-	  for (m = tgt->c.hannels; (mc = m); m = m->prevchan)
-	    if (!(m->chan->mode & (A_ANONYMOUS | A_QUIET)))
-	      if ((cl->umode & (A_OP | A_HALFOP)) ||
-		  (mc = _ircd_is_on_channel (cl, mc->chan)) ||
-		  !(mc->chan->mode & (A_PRIVATE | A_SECRET)))
-		break;
-	  if (mc || !(tgt->umode & A_INVISIBLE))
+	  if ((cl->umode & (A_OP | A_HALFOP)) || !(tgt->umode & A_INVISIBLE) ||
+	      tgt == cl)
+	    mc = (MEMBER *)1;
+	  else
+	    for (m = tgt->c.hannels; (mc = m); m = m->prevchan)
+	      if (!(m->chan->mode & (A_PRIVATE | A_SECRET)) ||
+		  ((!(m->chan->mode & (A_ANONYMOUS | A_QUIET))) &&
+		   (mc = _ircd_is_on_channel (cl, mc->chan))))
+		  break;
+	  if (mc)
 	    if (!mask || smatched >= 0 || simple_match (mask, tgt->host) >= 0 ||
 		simple_match (mask, tgt->lcnick) >= 0 ||
 		simple_match (mask, tgt->fname) >= 0) //TODO: LC search?
-	      _ircd_who_reply (cl, CLIENT_IS_LOCAL (tgt) ? me : tgt->cs, tgt, mc);
+	      _ircd_who_reply (cl, CLIENT_IS_LOCAL (tgt) ? me : tgt->cs, tgt, NULL);
 	}
+      }
+  } else if ((m = ircd_find_member ((IRCD *)srv->data, mask, NULL)) &&
+	     m != NOSUCHCHANNEL) {
+    if (!(m->chan->mode & (A_ANONYMOUS | A_QUIET))) { /* users are hidden */
+      mc = m;				/* allow seeing for opers */
+      if ((cl->umode & (A_OP | A_HALFOP)) ||
+	  (mc = _ircd_is_on_channel (cl, m->chan)) ||
+	  !(m->chan->mode & (A_PRIVATE | A_SECRET)))
+	for ( ; m; m = m->prevnick)
+	  if ((m->mode & mmf) == mmf) /* use "o" parameter against chanmode */
+	    if (mc || !(m->who->umode & A_INVISIBLE))
+	      _ircd_who_reply (cl, CLIENT_IS_LOCAL (m->who) ? me : m->who->cs,
+			       m->who, m); /* ME can be only in QUIET chan */
+      }
+  } else if ((tgt = ircd_find_client(mask, NULL)) != NULL &&
+	     !tgt->hold_upto && !CLIENT_IS_SERVER(tgt) &&
+	     (tgt->umode & mmf) == mmf) {
+    _ircd_who_reply (cl, CLIENT_IS_LOCAL (tgt) ? me : tgt->cs, tgt, NULL);
+  } else if (tgt != NULL && CLIENT_IS_SERVER (tgt)) {
+    LINK *link;
+
+    if (tgt->hold_upto)
+      ircd_do_unumeric (cl, ERR_NOSUCHSERVER, cl, 0, mask);
+    else
+      for (link = tgt->c.lients; link; link = link->prev) {
+	tgt = link->cl;
+	if ((tgt->umode & mmf) == mmf)
+	  _ircd_who_reply (cl, CLIENT_IS_LOCAL (tgt) ? me : tgt->cs, tgt, NULL);
       }
   }
   return ircd_do_unumeric (cl, RPL_ENDOFWHO, cl, 0, mask ? mask : "*");

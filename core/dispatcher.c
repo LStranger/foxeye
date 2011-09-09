@@ -384,7 +384,7 @@ static void vsadd_request (ifi_t *to, iftype_t ift, const char *mask,
     return;
   cur = alloc_request_t();
   strfcpy (cur->a.to, NONULL(mask), sizeof(cur->a.to));
-  cur->a.mask_if = (ift & ~I_PENDING);	/* reset it anyway */
+  cur->a.mask_if = ift;
   cur->a.from = &Current->a;
   cur->a.flag = flag;
   vsnprintf (cur->a.string, sizeof(cur->a.string), fmt, ap);
@@ -427,6 +427,7 @@ static void vsadd_request (ifi_t *to, iftype_t ift, const char *mask,
 	n += add2queue (Interface[i], cur);
     }
   ift &= ~I_PENDING;
+  cur->a.mask_if = ift;		/* reset it anyway */
   ii = _Inum;
   if (!(flag & F_DEBUG))
     dprint (5, "dispatcher:vsadd_request: matching finished: %u targets", n);
