@@ -113,7 +113,7 @@ static int is_in_shutdown = 0;
 static ifi_t *__Init;		/* interface of init */
 
 /* locks on input: (LockIface) */
-/* e: -1 if SIGTERM, 0 on normal termination, >0 if error condition */
+/* e: 0 on normal termination, >0 if error condition */
 /* this one does return, bot_shutdown() doesn't */
 static void _bot_shutdown (char *message, int e)
 {
@@ -130,7 +130,7 @@ static void _bot_shutdown (char *message, int e)
   else
     sig = S_TERMINATE;
   /* set message to all queues and send S_SHUTDOWN signal */
-  if (!e)
+  if (e == 0)
     pthread_mutex_lock (&LockInum);
   /* shutdown all connections */
   for (; i < _Inum; i++)
@@ -141,10 +141,10 @@ static void _bot_shutdown (char *message, int e)
     else if ((cur->a.ift & I_CONNECT) &&
 	     !(cur->a.ift & I_DIED) && cur->a.IFSignal)
     {
-      if (!e)
+      if (e == 0)	/* interface may try to create another on terminating */
 	pthread_mutex_unlock (&LockInum);
       cur->a.IFSignal (&cur->a, sig);
-      if (!e)
+      if (e == 0)
 	pthread_mutex_lock (&LockInum);
     }
   }
@@ -182,7 +182,7 @@ static void _bot_shutdown (char *message, int e)
 	con->a.IFRequest (&con->a, &q->request->a);
     con->a.IFSignal (&con->a, S_SHUTDOWN);
   }
-  if (!e)
+  if (e == 0)
     pthread_mutex_unlock (&LockInum);
   NewEvent (W_DOWN, ID_ME, ID_ME, e);
   if (*PID_path)
@@ -193,7 +193,7 @@ static void _bot_shutdown (char *message, int e)
 void bot_shutdown (char *message, int e)
 {
   _bot_shutdown (message, e);
-  exit(0);
+  exit(e);
 }
 
 /*
@@ -1279,7 +1279,6 @@ static void errors_handler (int signo)
   char *signame;
   char msg[100];
   struct sigaction act;
-  int norm_exit = 1;
 
   act.sa_handler = SIG_DFL;
   sigemptyset (&act.sa_mask);
@@ -1312,15 +1311,13 @@ static void errors_handler (int signo)
       signame = "SYS";
       break;
 #endif
-    case SIGTERM:
     default:
-      signame = "TERM";
-      norm_exit = -1;
+      signame = "xxx";
   }
   snprintf (msg, sizeof(msg), "Caught signal SIG%s, shutdown...", signame);
   if (pthread_mutex_trylock (&SigLock) == 0)
   {
-    _bot_shutdown (msg, norm_exit);
+    _bot_shutdown (msg, 10);
   }
   pthread_kill (pthread_self(), signo);
 }

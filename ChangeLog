@@ -9,6 +9,9 @@ TODO:
 	* core/direct.c: to add support for charset and comments in motd file.
 
 --- [0.10.0]
+Fri Sep  9 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/dispatcher.c: fixed exit code on shutdown.
+
 Thu Sep  8 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/connchain.c, core/direct.*, modules/ircd/ircd.c: revised all
 	  peer states, P_INITIAL should be only when in thread from now on.
