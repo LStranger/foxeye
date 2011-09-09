@@ -538,7 +538,8 @@ static int ircd_who_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
   {
     if ((m = ircd_find_member ((IRCD *)srv->data, mask, NULL)))
     {
-      if (!(m->chan->mode & (A_ANONYMOUS | A_QUIET))) /* users are hidden */
+      if (m != NOSUCHCHANNEL &&
+	  !(m->chan->mode & (A_ANONYMOUS | A_QUIET))) /* users are hidden */
       {
 	mc = m;				/* allow seeing for opers */
 	if ((cl->umode & (A_OP | A_HALFOP)) ||

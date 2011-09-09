@@ -11,6 +11,7 @@ TODO:
 --- [0.10.0]
 Fri Sep  9 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c: fixed exit code on shutdown.
+	* modules/ircd/ircd.c: fixed SIGSEGV in JOIN and WHO.
 
 Thu Sep  8 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/connchain.c, core/direct.*, modules/ircd/ircd.c: revised all

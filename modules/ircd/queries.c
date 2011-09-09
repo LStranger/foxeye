@@ -943,7 +943,6 @@ static void _ircd_do_whois (CLIENT *cl, CLIENT *tgt, CLIENT *me)
     ircd_do_unumeric (cl, RPL_WHOISCHARSET, tgt, 0,
 		      Conversion_Charset (tgt->via->p.iface->conv));
 #endif
-  ircd_do_unumeric (cl, RPL_ENDOFWHOIS, tgt, 0, NULL);
 }
 
 static inline int _ircd_query_whois (IRCD *ircd, CLIENT *cl, struct peer_priv *via,
@@ -967,11 +966,12 @@ static inline int _ircd_query_whois (IRCD *ircd, CLIENT *cl, struct peer_priv *v
     return 1;
   }
   n = 0;
-  for (c = (char *)argv[0]; c; c = cnext)
+  c = (char *)argv[0];
+  while (c)
   {
     cnext = strchr (c, ',');
     if (cnext)
-      *cnext++ = '\0';
+      *cnext = '\0';
     tgt = ircd_find_client (c, via);
     if (tgt && !tgt->hold_upto)
     {
@@ -1004,8 +1004,11 @@ static inline int _ircd_query_whois (IRCD *ircd, CLIENT *cl, struct peer_priv *v
     }
     else
       ircd_do_unumeric (cl, ERR_NOSUCHNICK, cl, 0, c);
+    if (cnext)
+      *cnext++ = ',';
+    c = cnext;
   }
-  return ircd_do_unumeric (cl, RPL_ENDOFWHOIS, cl, 0, NULL);
+  return ircd_do_unumeric (cl, RPL_ENDOFWHOIS, cl, 0, argv[0]);
 }
 
 BINDING_TYPE_ircd_client_cmd(ircd_whois_cb);

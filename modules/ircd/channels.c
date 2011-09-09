@@ -1164,10 +1164,11 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 #undef CONTINUE_ON_MODE_ERROR
 
 /* modified version of ircd_new_to_channel() */
-static inline MEMBER *_ircd_do_join(IRCD *ircd, CLIENT *cl, CHANNEL *ch,
+static inline MEMBER *_ircd_do_join(IRCD *ircd, CLIENT *cl, CHANNEL **chptr,
 				    const char *name, modeflag mf)
 {
   MEMBER *r;
+  CHANNEL *ch = *chptr;
   register MEMBER *mm;
 
   if (!ch)
@@ -1179,6 +1180,7 @@ static inline MEMBER *_ircd_do_join(IRCD *ircd, CLIENT *cl, CHANNEL *ch,
     ch = _ircd_find_channel_lc (ircd, lcname); /* last check for the name */
     if (!ch)				/* it may comply after validation */
       ch = _ircd_new_channel (ircd, name, lcname);
+    *chptr = ch;
   }
   for (mm = ch->invited; mm; mm = mm->prevnick)
     if (mm->who == cl)
@@ -1368,7 +1370,7 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
     else if (x++ >= MAXCHANNELS)	/* joined too many channels already */
       ircd_do_unumeric (cl, ERR_TOOMANYCHANNELS, cl, 0, NULL);
     else if (i > 0) {			/* so user can join, do it then */
-      mm = _ircd_do_join ((IRCD *)srv->data, cl, ch, nchn, mf);
+      mm = _ircd_do_join ((IRCD *)srv->data, cl, &ch, nchn, mf);
       if (!(ch->mode & A_INVISIBLE)) {	/* it is not a local channel */
 	char smode[sizeof(Ircd_modechar_list)+1];
 
@@ -2177,7 +2179,7 @@ void ircd_quit_all_channels (IRCD *ircd, CLIENT *cl, int tohold, int isquit)
 	if (td != ch && !CLIENT_IS_ME(td->who) && CLIENT_IS_LOCAL (td->who))
 	  td->who->via->p.iface->ift |= I_PENDING; /* it needs notify */
   /* remove from list of invited too */
-  if (!CLIENT_IS_ME(td->who) && CLIENT_IS_LOCAL(cl))
+  if (!CLIENT_IS_ME(cl) && CLIENT_IS_LOCAL(cl))
     while (cl->via->i.nvited)
       _ircd_del_from_invited (cl->via->i.nvited);
   if (!isquit)

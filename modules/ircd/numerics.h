@@ -73,7 +73,7 @@
 #define RPL_ENDOFWHO		315, "%# :End of WHO list"
 /* 316 reserved */
 #define RPL_WHOISIDLE		317, "%# %* :seconds idle"
-#define RPL_ENDOFWHOIS		318, "%# :End of WHOIS list"
+#define RPL_ENDOFWHOIS		318, "%* :End of WHOIS list"
 #define RPL_WHOISCHANNELS	319, "%# :%*"
 #if IRCD_USES_ICONV
 # define RPL_WHOISCHARSET	320, "%# :charset is %*"
