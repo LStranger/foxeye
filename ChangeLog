@@ -17,6 +17,7 @@ Thu Sep  8 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  Connchain_Put().
 	* core/dispatcher.c: fixed possibility to make coredumps.
 	* modules/irc/irc.c: fixed SIGSEGV after wrong nick choosing (bug#73).
+	* core/direct.c: fixed broken channel name change in dc_console.
 
 Wed Sep  7 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.c: applied random generator to port selection.

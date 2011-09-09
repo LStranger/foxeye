@@ -1911,6 +1911,7 @@ static int dc_console (peer_t *dcc, char *args)
 	return -1;
       }
       args = cc;
+      cc = msg;
     }
     else if (*args == '*')		/* reset channel */
       args = NextWord (args);
