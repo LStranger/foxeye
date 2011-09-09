@@ -254,7 +254,6 @@ static iftype_t _dcc_sig_2 (INTERFACE *iface, ifsig_t signal)
     case S_TERMINATE:
       if (dcc->socket >= 0)		/* check if it's forced to die */
 	LOG_CONN (_("DCC connection to %s terminated."), iface->name);
-      //CloseSocket (dcc->socket);	/* just kill its socket... */
       pthread_cancel(dcc->th);
       Unset_Iface();			/* unlock dispatcher */
       pthread_join (dcc->th, NULL);	/* ...it die itself, waiting for it */
@@ -269,9 +268,7 @@ static iftype_t _dcc_sig_2 (INTERFACE *iface, ifsig_t signal)
       Unset_Iface();			/* restore status quo */
       break;
     case S_SHUTDOWN:
-      /* just kill it... */
-      //CloseSocket (dcc->socket);
-      /* ...it die itself */
+      /* nothing can do... */
       return I_DIED;
     default:;
   }
@@ -472,10 +469,6 @@ static void isend_handler (char *lname, char *ident, const char *host, void *dat
   {
     strerror_r (errno, buff, sizeof(buff));
     ERROR ("DCC SEND: cannot open file %s: %s.", dcc->filename, buff);
-    //KillSocket (&dcc->socket);
-    //FREE (&buff);
-    //dcc->l.iface->ift |= I_FINWAIT; /* all rest will be done by _dcc_sig_2() */
-    //Unset_Iface();
     goto done;
   }
   bs = ircdcc_blocksize;
@@ -587,9 +580,6 @@ static void isend_handler (char *lname, char *ident, const char *host, void *dat
   else
     ERROR ("DCC SEND %s failed: sent %lu out of %lu bytes.", dcc->filename,
 	   (unsigned long int)ptr, (unsigned long int)dcc->size);
-  //fclose (f);
-  //KillSocket (&dcc->socket);
-  //FREE (&buff);
   Set_Iface (NULL);
 done:
   dcc->socket = -1;			/* it will be closed by cleanup */
@@ -743,11 +733,6 @@ static void _dcc_send_handler (int res, void *input_data)
   if (f == NULL)
   {
     ERROR ("DCC GET: cannot open local file to download there.");
-    //KillSocket (&dcc->socket);
-    //Set_Iface (NULL);
-    //dcc->l.iface->ift |= I_FINWAIT; /* all rest will be done by _dcc_sig_2() */
-    //Unset_Iface();
-    //return;
     goto done;
   }
   scd->buff = buff = safe_malloc (MAXBLOCKSIZE);
@@ -885,8 +870,6 @@ static void _dcc_send_handler (int res, void *input_data)
 	      _("Got incomplete file \"%s\" from %s: %lu/%lu bytes."), sfn,
 	      dcc->l.iface->name, (unsigned long)ptr, (unsigned long)dcc->size);
   LOG_CONN ("%s", (char *)buff);		/* do logging */
-  //KillSocket (&dcc->socket);			/* close/unallocate all */
-  //fclose (f);
   if (ptr == dcc->size)				/* successfully downloaded */
   {
     struct binding_t *bind = NULL;
@@ -926,7 +909,6 @@ static void _dcc_send_handler (int res, void *input_data)
   }
 done:
   dcc->socket = -1;				/* it will be closed by cleanup */
-  //safe_free (&buff);
   pthread_cleanup_pop(1);
   Set_Iface (NULL);
   dcc->l.iface->ift |= I_FINWAIT; /* all rest will be done by _dcc_sig_2() */
@@ -1001,7 +983,6 @@ static int _dcc_callback(const struct sockaddr *sa, void *data)
   char *filename;
   uint32_t ip_local;			/* my IP in host byte order */
   unsigned short port;
-  //char t[8];
 
   if (dld)
     dcc = dld->dcc;
@@ -1037,7 +1018,6 @@ failed:
   } else
     Add_Request(I_CLIENT, dcc->uh, F_T_CTCP, "DCC CHAT chat %u %hu", ip_local,
 		port);
-  //snprintf (t, sizeof(t), "%hu", port); /* setup timeout timer */
   Set_Iface (NULL);
   if (ircdcc_conn_timeout > 0)
     dcc->tid = NewTimer(I_LISTEN, dcc->l.iname, S_TERMINATE,
@@ -1442,7 +1422,6 @@ static int dcc_send (INTERFACE *w, uchar *who, char *lname, char *cw)
       ad = htonl (ip);
       inet_ntop (AF_INET, &ad, path, sizeof(path));
       dcc->l.iface = Add_Iface (I_CONNECT, dcc->uh, &_dcc_sig_2, NULL, dcc);
-      //dcc->state = P_INITIAL;		/* prepare for _isent_phandler */
       strfcpy (dcc->uh, who, sizeof(dcc->uh));
       if (lname)
 	strfcpy (dcc->lname, lname, sizeof(dcc->lname));

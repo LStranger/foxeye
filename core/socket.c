@@ -84,32 +84,13 @@ static pthread_mutex_t LockPoll = PTHREAD_MUTEX_INITIALIZER;
 /* every thread will wait on this one */
 static pthread_cond_t PollCond = PTHREAD_COND_INITIALIZER;
 
-//static volatile sig_atomic_t _got_sigio = 0;
-
 /* this one is called only from main thread (due to F_SETOWN) so safe to poll */
 static void sigio_handler (int signo)
 {
-  //_got_sigio = 1;
-  //poll(Pollfd, _Snum, 0);
 }
 
 /* use this as mark of unused socket, -1 is just freed one */
 #define UNUSED_FD -2
-
-/* this should be called only:
- - from dispatcher (i.e. poll() isn't running)
- - from awaken thread (i.e. internally here)
- - from emergency shutdown sequence (i.e. Pollfd is irrelevant) */
-//void CloseSocket (idx_t idx)
-//{
-//  if (Pollfd[idx].fd >= 0)
-//  {
-//    DBG ("socket:CloseSocket: %hd (fd=%d)", idx, Pollfd[idx].fd);
-//    shutdown (Pollfd[idx].fd, SHUT_RDWR);
-//    close (Pollfd[idx].fd);
-//    Pollfd[idx].fd = -1;
-//  }
-//}
 
 /*
  * returns -1 if too many opened sockets or idx
@@ -152,7 +133,6 @@ static void _socket_timedwait(void)
     abstime.tv_nsec -= 1000000000;
     abstime.tv_sec++;
   }
-//  pthread_mutex_lock(&LockPoll); /* locks mutex */
   pthread_cleanup_push(&_socket_timedwait_cleanup, &LockPoll);
   pthread_cond_timedwait(&PollCond, &LockPoll, &abstime);
   pthread_cleanup_pop(0);	/* leaves mutex locked */
@@ -171,22 +151,12 @@ ssize_t ReadSocket (char *buf, idx_t idx, size_t sr, int mode)
   if (idx < 0 || idx >= _Snum || Pollfd[idx].fd < 0)
     return (E_NOSOCKET);
   sock = &Socket[idx];
-//  {
-//    if (_got_sigio)
-//    {
-//      _got_sigio = 0;
-//      poll (Pollfd, _Snum, 0);
-//    }
-    rev = Pollfd[idx].revents;
-//  }
+  rev = Pollfd[idx].revents;
   /* now check for incomplete connection... */
   if (sock->ready == FALSE)
   {
     if (!rev)
       return (E_AGAIN);		/* still waiting for connection */
-//    pthread_mutex_lock (&LockPoll);
-//    Pollfd[idx].events = POLLIN | POLLPRI; /* reset it now */
-//    pthread_mutex_unlock (&LockPoll);
     sock->ready = TRUE;		/* connection established or failed */
   }
   /* if mode isn't M_POLL then it's dispatcher or else we should wait */
@@ -198,9 +168,6 @@ ssize_t ReadSocket (char *buf, idx_t idx, size_t sr, int mode)
     pthread_mutex_unlock(&LockPoll);
   }
   if (rev & (POLLNVAL | POLLERR | POLLHUP)) {
-//    CloseSocket (idx);
-//    if (rev & POLLERR)
-//      return (E_ERRNO - errno);		/* asynchronous error occurred */
     sg = E_NOSOCKET;			/* cannot test errno variable ATM */
   }
   else if (rev & (POLLIN | POLLPRI))
@@ -210,7 +177,6 @@ ssize_t ReadSocket (char *buf, idx_t idx, size_t sr, int mode)
     if ((sg = read (Pollfd[idx].fd, buf, sr)) > 0 && mode != M_RAW)
       DBG ("got from socket %hd:[%-*.*s]", idx, (int)sg, (int)sg, buf);
     if (sg == 0) {
-//      CloseSocket (idx);		/* remote end closed connection */
       sg = E_EOF;
     } else if (sg < 0) {
       if (errno == EAGAIN)
@@ -539,13 +505,6 @@ idx_t AnswerSocket (idx_t listen)
   rev = Pollfd[listen].revents;
   if (!rev)
   {
-//    if (_got_sigio)
-//    {
-//      _got_sigio = 0;
-//      poll (Pollfd, _Snum, 0);
-//    }
-//    else
-//      poll (&Pollfd[listen], 1, POLL_TIMEOUT);
     pthread_mutex_lock (&LockPoll);
     locked = 1;
     _socket_timedwait();
@@ -557,7 +516,6 @@ idx_t AnswerSocket (idx_t listen)
       pthread_mutex_unlock (&LockPoll);
     return (E_AGAIN);
   } else if (rev & POLLNVAL) {
-//    CloseSocket (listen);
     if (locked)
       pthread_mutex_unlock (&LockPoll);
     return (E_NOSOCKET);
@@ -701,7 +659,6 @@ char *SocketError (int er, char *buf, size_t s)
 void PollSockets(int check_out)
 {
   register short i;
-//  struct timespec abstime;
 
   pthread_mutex_lock (&LockPoll);
   if (check_out) {		/* we have something in queue */
@@ -714,9 +671,6 @@ void PollSockets(int check_out)
   if (poll(Pollfd, _Snum, check_out ? 10 : POLL_TIMEOUT))
     pthread_cond_broadcast(&PollCond);
   pthread_mutex_unlock (&LockPoll);
-//  abstime.tv_sec = 0L;
-//  abstime.tv_nsec = 1000000L;	/* 1 ms */
-//  nanosleep(&abstime, NULL);	/* let threads acquire lock */
 }
 
 int _fe_init_sockets (void)

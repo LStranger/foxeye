@@ -3476,7 +3476,6 @@ static void _istats_l (INTERFACE *srv, const char *rq, modeflag umode)
   pthread_mutex_unlock (&IrcdLock);
 }
 
-#if 0 /* needs 'hits' field - 0.10+ */
 BINDING_TYPE_ircd_stats_reply(_istats_m);
 static void _istats_m (INTERFACE *srv, const char *rq, modeflag umode)
 {
@@ -3493,7 +3492,7 @@ static void _istats_m (INTERFACE *srv, const char *rq, modeflag umode)
   /* show commands in clients bindtable */
   while ((bc = Check_Bindtable (BTIrcdClientCmd, NULL, U_ALL, U_ANYCH, bc)))
   {
-    hc = b->hits;
+    hc = bc->hits;
     bs = Check_Bindtable (BTIrcdServerCmd, bc->key, U_ALL, U_ANYCH, NULL);
     if (bs)
       hs = bs->hits;
@@ -3512,7 +3511,7 @@ static void _istats_m (INTERFACE *srv, const char *rq, modeflag umode)
   {
     if (Check_Bindtable (BTIrcdClientCmd, bc->key, U_ALL, U_ANYCH, NULL))
       continue;				/* it was shown on previous cycle */
-    hs = b->hits;
+    hs = bc->hits;
 #ifndef IRCD_STATM_EMPTYTOO
     if (hs)
 #endif
@@ -3522,8 +3521,6 @@ static void _istats_m (INTERFACE *srv, const char *rq, modeflag umode)
     }
   }
 }
-#endif
-
 
 /* -- common network interface -------------------------------------------- */
 static int _ircd_request (INTERFACE *cli, REQUEST *req)
@@ -4180,7 +4177,7 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
       Delete_Binding ("connchain-grow", &_ccfilter_I_init, NULL);
 #endif
       Delete_Binding ("ircd-stats-reply", (Function)&_istats_l, NULL);
-//      Delete_Binding ("ircd-stats-reply", (Function)&_istats_m, NULL);
+      Delete_Binding ("ircd-stats-reply", (Function)&_istats_m, NULL);
       ircd_channel_proto_end();
       ircd_client_proto_end();
       ircd_server_proto_end();
@@ -4296,7 +4293,7 @@ SigFunction ModuleInit (char *args)
   Add_Binding ("connchain-grow", "I", 0, 0, &_ccfilter_I_init, NULL);
 #endif
   Add_Binding ("ircd-stats-reply", "l", 0, 0, (Function)&_istats_l, NULL);
-//  Add_Binding ("ircd-stats-reply", "m", 0, 0, (Function)&_istats_m, NULL);
+  Add_Binding ("ircd-stats-reply", "m", 0, 0, (Function)&_istats_m, NULL);
   Ircd = safe_calloc (1, sizeof(IRCD));
   ircd_channel_proto_start (Ircd);
   ircd_client_proto_start();

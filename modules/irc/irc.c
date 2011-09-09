@@ -615,7 +615,6 @@ static iftype_t _irc_signal (INTERFACE *iface, ifsig_t sig)
       inbuf = strlen (report);
       bufpos = 0;
       WriteSocket (serv->p.socket, report, &bufpos, &inbuf, M_RAW);
-      //CloseSocket (serv->p.socket);
       iface->ift |= I_DIED;
       serv->p.iface = NULL;
       break;

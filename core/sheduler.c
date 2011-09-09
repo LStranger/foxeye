@@ -389,7 +389,6 @@ static int Sheduler (INTERFACE *ifc, REQUEST *req)
 	j++;
       }
     }
-    //i = _STnum;
     pthread_mutex_unlock (&LockShed);
     if (j)
       dprint (4, "Sheduler: sent %u timer signal(s), remained %u/%u",

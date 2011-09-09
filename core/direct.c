@@ -314,7 +314,6 @@ static void _died_iface (INTERFACE *iface, char *buf, size_t s)
   iface = dcc->iface;				/* to the right one! */
   iface->ift |= I_DIED;
   dcc->state = P_LASTWAIT;
-  //CloseSocket (dcc->socket);			/* kill the socket */
   if (s == 0)					/* is this shutdown call? */
     return;
   dprint (4, "dcc:_died_iface: %s", iface->name);
@@ -1210,7 +1209,6 @@ static iftype_t port_signal (INTERFACE *iface, ifsig_t signal)
     case S_TERMINATE:
       DBG("Terminating listener %s...", iface->name);
       Unset_Iface();			/* unlock dispatcher */
-      //CloseSocket (acptr->socket);
       pthread_cancel (acptr->th);	/* just kill it... */
       pthread_join (acptr->th, NULL);	/* ...and wait until it die */
       Set_Iface (NULL);			/* restore status quo */
@@ -1225,9 +1223,7 @@ static iftype_t port_signal (INTERFACE *iface, ifsig_t signal)
       iface->ift |= I_DIED;
       break;
     case S_SHUTDOWN:
-      /* just kill it... */
-      //CloseSocket (acptr->socket);
-      /* ...it die itself */
+      /* cannot do anything with it */
     default: ;
   }
   return 0;
@@ -1349,12 +1345,6 @@ static void _listen_port_cleanup (void *input_data)
      don't do locking and I hope it's still atomic so should be OK */
   acptr->iface->ift = I_LISTEN | I_FINWAIT;
   /* everything will be done by dispatcher */
-  //KillSocket (&acptr->socket);
-  //FREE (&acptr->client);
-  //FREE (&acptr->confline);
-  //FREE (&acptr->host);
-  //FREE (&acptr->data);
-  //safe_free (&input_data); /* FREE (&acptr) */
 }
 
 static inline unsigned short _random_port(unsigned short start,
@@ -1512,12 +1502,8 @@ int Listen_Port (char *client, const char *host, unsigned short sport,
 			    &port_signal, NULL, acptr);
   if (pthread_create (&acptr->th, NULL, &_listen_port, acptr))
   {
-    //KillSocket (&idx);
-    //FREE (&acptr->client);
-    //FREE (&acptr->confline);
-    //FREE (&acptr->host);
-    //FREE (&acptr);
     acptr->iface->ift = (I_LISTEN | I_FINWAIT);
+    /* everything will be done by dispatcher */
     return E_NOTHREAD;
   }
   return 0;
@@ -2597,7 +2583,6 @@ typedef struct
   int cnt;
   unsigned short port;
   bool kill, done;
-//  tid_t tid;
 } _port_retrier;
 
 typedef struct

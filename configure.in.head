@@ -245,7 +245,6 @@ fi
 
 dnl Checks for library functions.
 AC_CHECK_FUNCS(rename sigaction strncasecmp towlower)
-AC_CHECK_FUNCS(pthread_kill_other_threads_np)
 
 AC_CACHE_CHECK([whether you need libcrypt], ac_cv_need_libcrypt,
 [

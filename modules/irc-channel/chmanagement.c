@@ -272,16 +272,11 @@ static char *_make_literal_mask (char *mask, char *uh, size_t s)
 
 static void _flush_mode (IRC *net, CHANNEL *chan, modebuf *mbuf)
 {
-//  char *c;
-//  int s;
 
   if (mbuf->cmd == NULL || mbuf->changes == 0)
     return;
   /* OpenSolaris is bugged with %.s so sending chan->real here in hope it
      will work */
-//  c = strrchr (chan->chi->name, '@');
-//  if (c) s = c - (char *)chan->chi->name; /* int should be enough for it */
-//  else s = strlen (chan->chi->name);
   mbuf->mchg[mbuf->pos] = 0;
   mbuf->args[mbuf->apos] = 0;
   DBG("_flush_mode:%s %s %s %s", mbuf->cmd, chan->real, mbuf->mchg, mbuf->args);

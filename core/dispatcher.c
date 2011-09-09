@@ -130,7 +130,6 @@ static void _bot_shutdown (char *message, int e)
   else
     sig = S_TERMINATE;
   /* set message to all queues and send S_SHUTDOWN signal */
-//  DBG ("shutdown with code %d: %s", e, ShutdownR);
   if (!e)
     pthread_mutex_lock (&LockInum);
   /* shutdown all connections */
@@ -142,7 +141,6 @@ static void _bot_shutdown (char *message, int e)
     else if ((cur->a.ift & I_CONNECT) &&
 	     !(cur->a.ift & I_DIED) && cur->a.IFSignal)
     {
-//      DBG ("shutdown %d: 0x%x, name %s", i, Interface[i]->a.ift, Interface[i]->a.name);
       if (!e)
 	pthread_mutex_unlock (&LockInum);
       cur->a.IFSignal (&cur->a, sig);
@@ -156,7 +154,6 @@ static void _bot_shutdown (char *message, int e)
     if ((Interface[i]->a.ift & I_MODULE) && !(Interface[i]->a.ift & I_DIED) &&
 	Interface[i]->a.IFSignal)
     {
-//      DBG ("shutdown %d: 0x%x, name %s", i, Interface[i]->a.ift, Interface[i]->a.name);
       Interface[i]->a.IFSignal (&Interface[i]->a, sig);
     }
   }
@@ -167,7 +164,6 @@ static void _bot_shutdown (char *message, int e)
       con = Interface[i];
     else if (!(Interface[i]->a.ift & I_DIED) && Interface[i]->a.IFSignal)
     {
-//      DBG ("shutdown %d: 0x%x, name %s", i, Interface[i]->a.ift, Interface[i]->a.name);
       Interface[i]->a.IFSignal (&Interface[i]->a, S_SHUTDOWN);
     }
   }
@@ -184,7 +180,6 @@ static void _bot_shutdown (char *message, int e)
     if (con->a.IFRequest)
       for (q = con->head; q; q = q->next)
 	con->a.IFRequest (&con->a, &q->request->a);
-//    fprintf (stderr, "shutdown console: 0x%x, name %s\n", con->ift, NONULL(con->name));
     con->a.IFSignal (&con->a, S_SHUTDOWN);
   }
   if (!e)
@@ -561,8 +556,12 @@ static int delete_request (ifi_t *i, queue_i *q)
   else
     req->x.used--;
   i->a.qsize--;
-//  DBG ("dispatcher:delete_request: deleted 0x%08x from 0x%08x: new head=0x%08x tail=0x%08x qsize=%d",
-//       q, i, i->head, i->tail, i->a.qsize);
+  if (lastdebuglog)
+  {
+    fprintf (lastdebuglog, "::dispatcher:delete_request: deleted %p from %p: new head=%p tail=%p qsize=%d",
+	     q, i, i->head, i->tail, i->a.qsize);
+    fflush (lastdebuglog);
+  }
   return 1;
 }
 
@@ -602,7 +601,6 @@ static int _get_current (void)
     out = REQ_OK;
   else if (curq)
   {
-//    DBG ("dispatcher:_get_current: do 0x%08x on 0x%08x: next 0x%08x", curq, Current, curq->next);
     Current->head = curq->next;			/* to allow recursion */
     if (Current->tail == curq)
       Current->tail = NULL;
@@ -827,7 +825,6 @@ static INTERFACE *stack_iface (INTERFACE *newif, int set_current)
     if (set_current)
       Current = (ifi_t *)StCur->ci;
     pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &StCur->cancelstate);
-//    DBG("dispatcher: cancel state set disabled");
     return NULL;
   }
   if (!(newst = StCur->next))
@@ -845,7 +842,6 @@ static INTERFACE *stack_iface (INTERFACE *newif, int set_current)
     newst->ci = newst->prev->ci;	/* inherit last */
   StCur = newst;
   pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &StCur->cancelstate);
-//  DBG("dispatcher: cancel state set disabled");
   if (set_current)
     Current = (ifi_t *)StCur->ci;
   return newst->prev->ci;
@@ -859,7 +855,6 @@ static INTERFACE *unstack_iface (void)
   {
     bot_shutdown ("OOPS! interface stack exhausted! Extra Unset_Iface() called?", 7);
   }
-//  DBG("dispatcher: cancel state restoring to previous");
   pthread_setcancelstate(StCur->cancelstate, NULL);
   StCur = StCur->prev;
   return StCur ? StCur->ci : NULL;
@@ -1178,8 +1173,6 @@ static void start_boot (void)
 {
   _Boot = (ifi_t *)Add_Iface (~(I_CONSOLE | I_LISTEN | I_MODULE | I_INIT |
 				I_DIED | I_LOCKED), "*", NULL, &_b_stub, NULL);
-//  pthread_mutex_lock (&LockIface);
-//  stack_iface ((INTERFACE *)_Boot, 1);
   if_or = I_LOCKED;
 }
 
@@ -1328,9 +1321,6 @@ static void errors_handler (int signo)
   if (pthread_mutex_trylock (&SigLock) == 0)
   {
     _bot_shutdown (msg, norm_exit);
-#ifdef HAVE_PTHREAD_KILL_OTHER_THREADS_NP
-    pthread_kill_other_threads_np();
-#endif
   }
   pthread_kill (pthread_self(), signo);
 }
@@ -1344,7 +1334,6 @@ int dispatcher (INTERFACE *start_if)
   pid_t pid;
   pthread_mutexattr_t attr;
   char *oldpid;
-  //struct timespec tp;
 
   /* check if bot already runs */
   pidfd = set_pid_path();
@@ -1467,8 +1456,6 @@ int dispatcher (INTERFACE *start_if)
   srandom(pid);
   /* booted OK, send all messages :) */
   end_boot();
-  //tp.tv_sec = 0;
-  //tp.tv_nsec = 10000000L;		/* 10ms timeout per full cycle */
   FOREVER
   {
     if (_got_signal)

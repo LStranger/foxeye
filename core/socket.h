@@ -48,7 +48,6 @@ int SetupSocket (idx_t, const char *, unsigned short, /* socket, domain, port */
 		 int (*)(const struct sockaddr *, void *), void *);
 void ResetSocket (idx_t, unsigned short);	/* reset after failed setup */
 int KillSocket (idx_t *);			/* forget the socket */
-//void CloseSocket (idx_t);			/* just close it */
 ssize_t ReadSocket (char *, idx_t, size_t, int); /* read full line, strip \r\n */
 ssize_t WriteSocket (idx_t, const char *, size_t *, size_t *, int);
 idx_t AnswerSocket (idx_t);

@@ -259,8 +259,6 @@ size_t unistrcut (const char *line, size_t len, int maxchars)
       cursize = mbrlen(ch, todo, &ms);
       if (cursize <= 0)			/* break at invalid char */
 	break;
-//      if (cursize > todo)
-//	break;
       chsize--;
       ch += cursize;
       todo -= cursize;
