@@ -22,6 +22,7 @@ Sat Sep 10 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/numerics.h: fixed RPL_ENDOF* messages.
 	* modules/ircd/ircd.c: added MODE message on client registering.
 	* modules/ircd/channels.c: added NO_SPARE_INVITES define.
+	* modules/ircd/channels.c: fixed not applying umode change.
 
 Fri Sep  9 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c: fixed exit code on shutdown.

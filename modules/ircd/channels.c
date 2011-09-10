@@ -1151,11 +1151,13 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	*c++ = '+';
 	ircd_make_umode (c, toadd, MAXMODES+1);
 	c += strlen (c);
+	cl->umode |= toadd;
       }
       if (todel)
       {
 	*c++ = '-';
 	ircd_make_umode (c, todel, MAXMODES+1);
+	cl->umode &= ~todel;
       }
 #ifdef USE_SERVICES
       //TODO: notify local services too
