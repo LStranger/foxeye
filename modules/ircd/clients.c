@@ -321,8 +321,10 @@ static int ircd_topic_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char
   /* private and secret channels should be not visible such way - RFC2811 */
   if ((ch->mode & (A_PRIVATE | A_SECRET | A_TOPICLOCK | A_NOOUTSIDE)) &&
       memb == NULL)
-    return ircd_do_unumeric (cl, ERR_NOTONCHANNEL, cl, 0, argv[0]);
+#else
+  if (memb == NULL)
 #endif
+    return ircd_do_unumeric (cl, ERR_NOTONCHANNEL, cl, 0, argv[0]);
   if (argc == 1)			/* it's query */
   {
     if (ch->topic[0])
