@@ -28,7 +28,7 @@
 #define RPL_STATSQLINE		217, "%*"
 #define RPL_STATSYLINE		218, "%*"
 #define RPL_ENDOFSTATS		219, "%* :End of STATS report"
-#define RPL_UMODEIS		221, "%*"
+#define RPL_UMODEIS		221, "+%*"
 #if IRCD_USES_ICONV
 # define RPL_CODEPAGE		222, "%* :is your charset now"
 #endif
@@ -47,9 +47,9 @@
 /* 248-249 reserved */
 #define RPL_STATSDLINE		250, "%*"
 #define RPL_LUSERCLIENT		251, ":%*"
-#define RPL_LUSEROP		252, "%P :operator(s) online"
-#define RPL_LUSERUNKNOWN	253, "%P :unknown connection(s)"
-#define RPL_LUSERCHANNELS	254, "%P :channels formed"
+#define RPL_LUSEROP		252, "%?P%P?0? :operator(s) online"
+#define RPL_LUSERUNKNOWN	253, "%?P%P?0? :unknown connection(s)"
+#define RPL_LUSERCHANNELS	254, "%?P%P?0? :channels formed"
 #define RPL_LUSERME		255, ":%*"
 #define RPL_ADMINME		256, "%= :Administrative info"
 #define RPL_ADMINLOC1		257, ":%*"
@@ -79,9 +79,9 @@
 # define RPL_WHOISCHARSET	320, "%# :charset is %*"
 #endif
 #define RPL_LISTSTART		321, "Channel :Users  Name"
-#define RPL_LIST		322, "%# %P :%*"
+#define RPL_LIST		322, "%# %?P%P?0? :%*"
 #define RPL_LISTEND		323, ":End of LIST"
-#define RPL_CHANNELMODEIS	324, "%# %*"
+#define RPL_CHANNELMODEIS	324, "%# +%*"
 #define RPL_UNIQOPIS		325, "%# %*"
 /* 327 reserved */
 #define RPL_NOTOPIC		331, "%# :No topic is set"
@@ -99,7 +99,7 @@
 #define RPL_NAMREPLY		353, "%*"
 #define RPL_ENDOFNAMES		366, "%* :End of NAMES list"
 /* 361-363 reserved */
-#define RPL_LINKS		364, "%* %# :%P %@"
+#define RPL_LINKS		364, "%* %# :%?P%P?0? %@"
 #define RPL_ENDOFLINKS		365, "%* :End of LINKS list"
 #define RPL_BANLIST		367, "%# %@"
 #define RPL_ENDOFBANLIST	368, "%# :End of channel ban list"

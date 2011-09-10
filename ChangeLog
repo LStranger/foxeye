@@ -16,6 +16,7 @@ Fri Sep  9 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/list.c, core/main.c, modules/ircd/ircd.c, modules/logs/logs.c:
 	  fixed handling of S_SHUTDOWN signal.
 	* core/init.c: implemented scan for B_UNIQ and B_KEYWORD by NULL key.
+	* modules/ircd/*: fixed most of bugs in client protocol.
 
 Thu Sep  8 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/connchain.c, core/direct.*, modules/ircd/ircd.c: revised all

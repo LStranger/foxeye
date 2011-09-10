@@ -634,7 +634,7 @@ static inline int _ircd_do_server_numeric(peer_priv *peer, const char *sender,
   int i, num;
   char buf[MESSAGEMAX];
 
-  if ((tgt = ircd_find_client(sender, peer)) == NULL)
+  if ((tgt = ircd_find_client(argv[2], peer)) == NULL)
   {
     ERROR("ircd: target %s for numeric from %s not found!", argv[2], sender);
     return 0;
@@ -739,7 +739,7 @@ __attribute__((warn_unused_result)) static inline CLIENT *
 /* should be called after nick is deleted from Ircd->clients */
 static inline void _ircd_move_acks (CLIENT *tgt, CLIENT *clone)
 {
-  dprint(4, "ircd:ircd.c:_ircd_move_acks: %s", tgt->nick);
+  dprint(4, "ircd:ircd.c:_ircd_move_acks: %s: %d", tgt->nick, tgt->on_ack);
   if (tgt->on_ack)
   {
     register LINK *l;
@@ -1413,7 +1413,8 @@ static void _ircd_handler (char *cln, char *ident, const char *host, void *data)
   pthread_mutex_unlock (&IrcdLock);
   strfcpy (cl->user, NONULL(ident), sizeof(cl->user));
   unistrlower (cl->host, host, sizeof(cl->host));
-  cl->pcl = cl->cs = NULL;
+  cl->pcl = NULL;
+  cl->cs = cl;
   cl->umode = 0;
   cl->nick[0] = 0;
   cl->lcnick[0] = 0;
@@ -1695,7 +1696,8 @@ static inline void _ircd_start_uplink2 (const char *name, char *host,
   uplink->via->p.dname = uplink->lcnick;
   uplink->via->p.state = P_DISCONNECTED;
   uplink->via->p.connchain = NULL;
-  uplink->pcl = uplink->cs = NULL;
+  uplink->pcl = NULL;
+  uplink->cs = uplink;
   uplink->x.class = NULL;
   uplink->hold_upto = 0;
   uplink->umode = A_UPLINK;
@@ -3495,28 +3497,31 @@ static void _istats_m (INTERFACE *srv, const char *rq, modeflag umode)
     hc = bc->hits;
     bs = Check_Bindtable (BTIrcdServerCmd, bc->key, U_ALL, U_ANYCH, NULL);
     if (bs)
-      hs = bs->hits;
+      hs = --bs->hits;
     else
       hs = 0;
 #ifndef IRCD_STATM_EMPTYTOO
     if (hc > 0 || hs > 0)
 #endif
     {
-      snprintf (buf, sizeof(buf), "%u %u", hc, hs);
+      snprintf (buf, sizeof(buf), "%s %u %u", bc->key, hc, hs);
       _ircd_do_server_message (NULL, 4, argv);
     }
   }
   /* show server-only commands */
   while ((bc = Check_Bindtable (BTIrcdServerCmd, NULL, U_ALL, U_ANYCH, bc)))
   {
-    if (Check_Bindtable (BTIrcdClientCmd, bc->key, U_ALL, U_ANYCH, NULL))
+    bs = Check_Bindtable (BTIrcdClientCmd, bc->key, U_ALL, U_ANYCH, NULL);
+    if (bs) {
+      bs->hits--;
       continue;				/* it was shown on previous cycle */
+    }
     hs = bc->hits;
 #ifndef IRCD_STATM_EMPTYTOO
     if (hs)
 #endif
     {
-      snprintf (buf, sizeof(buf), "0 %u", hs);
+      snprintf (buf, sizeof(buf), "%s 0 %u", bc->key, hs);
       _ircd_do_server_message (NULL, 4, argv);
     }
   }
@@ -3690,7 +3695,9 @@ CLIENT *ircd_find_client (const char *name, peer_priv *via)
   if (!name)
     return &ME;
   c = _ircd_find_client (name);
-  if (c != NULL && via != NULL && !CLIENT_IS_SERVER(c))
+  if (via != NULL && !CLIENT_IS_SERVER(via->link->cl))
+    return (c);
+  if (c != NULL && !CLIENT_IS_SERVER(c))
     c = _ircd_find_phantom(c, via);
   if (c == NULL || c->umode & (A_SERVER|A_SERVICE))
     return (c);
@@ -3914,7 +3921,7 @@ int ircd_do_unumeric (CLIENT *requestor, int n, const char *template,
   printl (buff, sizeof(buff), template, 0, requestor->nick,
 	  CLIENT_IS_SERVER(target) ? target->fname : target->host,
 	  target->user,
-	  CLIENT_IS_SERVER(target) ? target->lcnick : target->nick, i, 0,
+	  CLIENT_IS_SERVER(target) ? target->lcnick : target->nick, 0, i,
 	  target->via ? (Time - target->via->p.last_input) : (time_t)0, m);
   if (!b || b->name ||
       !b->func (Ircd->iface, n, requestor->nick, requestor->umode, buff))
@@ -3942,9 +3949,9 @@ int ircd_do_cnumeric (CLIENT *requestor, int n, const char *template,
 
   snprintf (buff, sizeof(buff), "%03d", n); /* use buffer to get binding first */
   b = Check_Bindtable (BTIrcdDoNumeric, buff, U_ALL, U_ANYCH, NULL);
-  /* macros: %N - nick(requestor), %# - channel, %* - $m */
+  /* macros: %N - nick(requestor), %# - channel, %P - $i, %* - $m */
   printl (buff, sizeof(buff), template, 0, requestor->nick, NULL,
-	  NULL, target->name, i, 0, 0, m);
+	  NULL, target->name, 0, i, 0, m);
   if (!b || b->name ||
       !b->func (Ircd->iface, n, requestor->nick, requestor->umode, buff))
   {
@@ -4182,6 +4189,7 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
       ircd_client_proto_end();
       ircd_server_proto_end();
       ircd_queries_proto_end();
+      ircd_message_proto_end();
       _ircd_signal (Ircd->iface, S_TERMINATE);
       FREE (&Ircd->token);
       FREE (&Ircd);
@@ -4300,6 +4308,7 @@ SigFunction ModuleInit (char *args)
   ircd_client_proto_start();
   ircd_server_proto_start();
   ircd_queries_proto_start();
+  ircd_message_proto_start();
   /* need to add interface into Ircd->iface ASAP! */
   _ircd_corrections = FloodType ("ircd-errors"); /* sets corrections */
   NewTimer (I_MODULE, "ircd", S_TIMEOUT, 1, 0, 0, 0);

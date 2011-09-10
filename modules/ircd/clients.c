@@ -266,7 +266,7 @@ static int ircd_part_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	{
 	  New_Request (peer->iface, 0, ":%s PART %s :%s", cl->nick,
 		       memb->chan->name, msg);
-	  ircd_sendto_chan_butone (memb->chan, memb,
+	  ircd_sendto_chan_butone (memb->chan, cl,
 				   ":anonymous!anonymous@anonymous. PART %s :anonymous",
 				   memb->chan->name);
 	}
@@ -760,7 +760,8 @@ static int ircd_userhost_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
       tgt = ircd_find_client(nick, NULL);
       if (tgt == NULL || CLIENT_IS_SERVER(tgt))
 	continue;
-      if (s + strlen(tgt->nick) + strlen(tgt->host) >= sizeof(buf) - 4) {
+      if ((s + strlen(tgt->nick) + strlen(tgt->user) +
+	  strlen(tgt->host)) >= (sizeof(buf) - 5)) {
 	ircd_do_unumeric(cl, RPL_USERHOST, cl, 0, buf);
 	s = 0;
       }
@@ -773,7 +774,9 @@ static int ircd_userhost_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
       if (tgt->umode & A_AWAY)
 	buf[s++] = '-';
       else
-	buf[s--] = '+';
+	buf[s++] = '+';
+      s += strfcpy(&buf[s], tgt->user, sizeof(buf) - s);
+      buf[s++] = '@';
       s += strfcpy(&buf[s], tgt->host, sizeof(buf) - s);
     }
   }

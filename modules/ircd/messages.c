@@ -49,10 +49,10 @@ static inline void _ircd_bmsgl_chan (CHANNEL *ch, CLIENT *cl, const char *user,
 				     const char *msg)
 {
   if (ch->mode & A_ANONYMOUS)
-    ircd_sendto_chan_local (ch, ":anonymous!anonymous@anonymous. %s %s :%s",
+    ircd_sendto_chan_butone(ch, cl, ":anonymous!anonymous@anonymous. %s %s :%s",
 			    mode, ch->name, msg);
   else
-    ircd_sendto_chan_local (ch, ":%s!%s@%s %s %s :%s",
+    ircd_sendto_chan_butone(ch, cl, ":%s!%s@%s %s %s :%s",
 			    cl->nick, user, host, mode, ch->name, msg);
 }
 
@@ -173,8 +173,8 @@ static void _ircd_broadcast_msglist_new (IRCD *ircd, struct peer_priv *via,
       {
 	c++;
 	for (mm = tch->users; mm; mm = mm->prevnick)
-	  if (mm->who->cs->via != via && mm->who->cs->x.token != token &&
-	      (mm->who->cs->umode & A_MULTI) &&
+	  if (!CLIENT_IS_LOCAL(mm->who) && mm->who->cs->via != via &&
+	      mm->who->cs->x.token != token && (mm->who->cs->umode & A_MULTI) &&
 	      !(mm->who->cs->via->p.iface->ift & I_PENDING) &&
 	      simple_match (c, mm->who->cs->lcnick) > 0)
 	    mm->who->cs->via->p.iface->ift |= I_PENDING;
@@ -182,8 +182,8 @@ static void _ircd_broadcast_msglist_new (IRCD *ircd, struct peer_priv *via,
       else
       {
 	for (mm = tch->users; mm; mm = mm->prevnick)
-	  if (mm->who->cs->via != via && mm->who->cs->x.token != token &&
-	      (mm->who->cs->umode & A_MULTI))
+	  if (!CLIENT_IS_LOCAL(mm->who) && mm->who->cs->via != via &&
+	      mm->who->cs->x.token != token && (mm->who->cs->umode & A_MULTI))
 	    mm->who->cs->via->p.iface->ift |= I_PENDING;
       }
     }
@@ -241,7 +241,8 @@ static void _ircd_broadcast_msglist_old (IRCD *ircd, struct peer_priv *via,
       {
 	c++;
 	for (mm = tch->users; mm; mm = mm->prevnick)
-	  if (mm->who->cs->via != via && mm->who->cs->x.token != token &&
+	  if (!CLIENT_IS_LOCAL(mm->who) && mm->who->cs->via != via &&
+	      mm->who->cs->x.token != token &&
 #if IRCD_MULTICONNECT
 	      (all || !(mm->who->cs->umode & A_MULTI)) &&
 #endif
@@ -252,7 +253,7 @@ static void _ircd_broadcast_msglist_old (IRCD *ircd, struct peer_priv *via,
       else
       {
 	for (mm = tch->users; mm; mm = mm->prevnick)
-	  if (mm->who->cs->via != via &&
+	  if (!CLIENT_IS_LOCAL(mm->who) && mm->who->cs->via != via &&
 #if IRCD_MULTICONNECT
 	      (all || !(mm->who->cs->umode & A_MULTI)) &&
 #endif

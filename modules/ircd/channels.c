@@ -879,9 +879,7 @@ static inline int _ircd_mode_mask_query_reply (INTERFACE *srv, CLIENT *cl,
   return 1;
 }
 
-#define CONTINUE_ON_MODE_ERROR(A,B) do { \
-    ircd_do_cnumeric (cl, A, ch, 0, B); \
-    continue; } while(0)
+#define CONTINUE_ON_MODE_ERROR(A,B) if (ircd_do_cnumeric (cl, A, ch, 0, B)) continue;
 
 BINDING_TYPE_ircd_client_cmd(ircd_mode_cb); /* huge one as hell */
 static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char *user,
@@ -967,7 +965,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	    CONTINUE_ON_MODE_ERROR (ERR_UNKNOWNMODE, charstr);
 	  tar = NULL;
 	  if ((par = strchr (Ircd_modechar_list, *c)) /* check for compliance */
-	      && Ircd_whochar_list[par-Ircd_modechar_list] == ' ')
+	      && Ircd_whochar_list[par-Ircd_modechar_list] != ' ')
 	  {
 	    if (i + 1 >= argc)		/* if param available at all */
 	      CONTINUE_ON_MODE_ERROR (ERR_NEEDMOREPARAMS, NULL);
@@ -1109,8 +1107,9 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 					     U_ALL, U_ANYCH, b)))
 	    if (!b->name && !b->func (cl->umode, peer->dname, mf, add))
 	      mf = 0;			/* change denied, stop */
-	  if (!mf)
+	  if (!mf) {
 	    continue;			/* change denied */
+	  }
 	  if (add)
 	  {
 	    mf &= ~cl->umode;		/* reset modes that we have already */
@@ -1190,8 +1189,6 @@ static inline MEMBER *_ircd_do_join(IRCD *ircd, CLIENT *cl, CHANNEL **chptr,
   r = ircd_add_to_channel (ircd, NULL, ch, cl, mf); /* this way cannot get errors */
   if (ch->topic[0])
     ircd_do_cnumeric (cl, RPL_TOPIC, ch, 0, ch->topic);
-  else
-    ircd_do_cnumeric (cl, RPL_NOTOPIC, ch, 0, NULL);
   ircd_names_reply (ircd_find_client(NULL, NULL), cl, ch, 0); /* RPL_NAMREPLY */
   ircd_do_unumeric (cl, RPL_ENDOFNAMES, cl, 0, ch->name);
   return (r);
@@ -1212,7 +1209,7 @@ static inline void _ircd_join_0_local (IRCD *ircd, CLIENT *cl, char *key)
     {
       New_Request (cl->via->p.iface, 0, ":%s!%s@%s PART %s :%s", cl->nick,
 		   cl->user, cl->host, ch->name, key);
-      ircd_sendto_chan_butone (ch, cl->c.hannels, ":anonymous!anonymous@anonymous. PART %s :anonymous",
+      ircd_sendto_chan_butone (ch, cl, ":anonymous!anonymous@anonymous. PART %s :anonymous",
 			       ch->name);
     }
     else
@@ -1971,7 +1968,7 @@ MEMBER *ircd_add_to_channel (IRCD *ircd, struct peer_priv *bysrv, CHANNEL *ch,
       if (!CLIENT_IS_ME(cl) && CLIENT_IS_LOCAL(cl))
 	New_Request (cl->via->p.iface, 0, ":%s!%s@%s JOIN %s", cl->nick,
 		     cl->user, cl->host, ch->name);
-      ircd_sendto_chan_butone (ch, memb, ":anonymous!anonymous@anonymous. JOIN %s",
+      ircd_sendto_chan_butone (ch, cl, ":anonymous!anonymous@anonymous. JOIN %s",
 			       ch->name); /* broadcast for users */
     }
     else
@@ -1979,8 +1976,8 @@ MEMBER *ircd_add_to_channel (IRCD *ircd, struct peer_priv *bysrv, CHANNEL *ch,
       _ircd_make_wmode (smode, memb->mode, sizeof(smode)); /* mode chars */
       for (i = 0, n = strlen (smode), sz = 0; i < n && sz < sizeof(madd)-3; i++)
       {
-	madd[sz++] = ' ';
-	sz += strfcpy (madd, cl->nick, sizeof(madd) - sz); /* add " nick" there */
+	madd[sz++] = ' ';		/* add " nick" there */
+	sz += strfcpy (&madd[sz], cl->nick, sizeof(madd) - sz);
       }
       ircd_sendto_chan_local (ch, ":%s!%s@%s JOIN %s", cl->nick, cl->user,
 			      cl->host, ch->name); /* broadcast for users */
@@ -1990,7 +1987,7 @@ MEMBER *ircd_add_to_channel (IRCD *ircd, struct peer_priv *bysrv, CHANNEL *ch,
 	server = ircd_find_client(NULL, NULL);
       if (*smode)			/* we have a mode provided */
 	ircd_sendto_chan_local(ch, ":%s MODE %s +%s%s", server->lcnick,
-			       cl->nick, smode, madd);
+			       ch->name, smode, madd);
       madd[0] = 0;
       if (modeadd)			/* it is a fresh channel or updated */
 	_ircd_mode2cmode (madd, modeadd, sizeof(madd)); /* make channel mode */
@@ -2174,7 +2171,7 @@ void ircd_quit_all_channels (IRCD *ircd, CLIENT *cl, int tohold, int isquit)
       }
   /* and now work with non-anonymous and non-quiet channels, mark them */
   for (ch = cl->c.hannels; ch; ch = ch->prevchan)
-    if (!(td->chan->mode & (A_ANONYMOUS | A_QUIET)))
+    if (!(ch->chan->mode & (A_ANONYMOUS | A_QUIET)))
       for (td = ch->chan->users; td; td = td->prevnick)
 	if (td != ch && !CLIENT_IS_ME(td->who) && CLIENT_IS_LOCAL (td->who))
 	  td->who->via->p.iface->ift |= I_PENDING; /* it needs notify */
@@ -2233,7 +2230,7 @@ static inline char *_ircd_ch_flush_umodes (INTERFACE *i, char *c, char *e)
       b->name)
     return c;
   ff = (void *)b->func;
-  mode = ff (i, NULL, 0, 0);
+  mode = (ff (i, NULL, 0, 0) & 0xfffffffc);
   IRCD_SET_MODECHAR (mode, _ircd_umodes, *c);
   if (c < e)
     c++;
@@ -2253,10 +2250,10 @@ static inline char *_ircd_ch_flush_cmodes (INTERFACE *i, char *c, char *e)
       b->name)
     return c;
   ff = (void *)b->func;		/* make _ircd_cmodes */
-  mode = ff (i, NULL, 0, NULL, 0, 0, '\0', &dummy);
+  mode = (ff (i, NULL, 0, NULL, 0, 0, '\0', &dummy) & 0xfffffffc);
   IRCD_SET_MODECHAR (mode, _ircd_cmodes, *c);
   ff = (void *)b->func;		/* make Ircd_modechar_mask */
-  mode = ff (i, NULL, 0, "", 0, 0, '\0', &dummy);
+  mode = (ff (i, NULL, 0, "", 0, 0, '\0', &dummy) & 0xfffffffc);
   Ircd_modechar_mask |= mode;
   IRCD_SET_MODECHAR (mode, _ircd_wmodes, *c);
   if (c < e)
