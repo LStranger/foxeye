@@ -1422,7 +1422,6 @@ static void _istats_u (INTERFACE *srv, const char *rq, modeflag umode)
  * Common external functions.
  */
 
-
 /* common end and start of channel protocol */
 void ircd_queries_proto_end (void)
 {
@@ -1475,13 +1474,18 @@ void ircd_queries_proto_end (void)
   FREE (&IrcdWhowasArray);
 }
 
-void ircd_queries_proto_start (void)
+void ircd_queries_register (void)
 {
   RegisterString ("ircd-motd-file", _ircd_motd_file, sizeof(_ircd_motd_file), 0);
   RegisterString ("ircd-admin-info", _ircd_admin_info,
 		  sizeof(_ircd_admin_info), 0);
   RegisterString ("ircd-admin-email", _ircd_admin_email,
 		  sizeof(_ircd_admin_email), 0);
+}
+
+void ircd_queries_proto_start (void)
+{
+  ircd_queries_register();
   //TODO: fail to start if no admin email set?
   BTIrcdStatsReply = Add_Bindtable ("ircd-stats-reply", B_KEYWORD);
   Add_Binding ("ircd-client-cmd", "names", 0, 0, &ircd_names_cb, NULL);

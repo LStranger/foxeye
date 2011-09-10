@@ -335,9 +335,10 @@ void ircd_client_proto_end (void);
 	/* server.c bindings */
 void ircd_server_proto_start (void);
 void ircd_server_proto_end (void);
-	/* queries.c bindings */
+	/* queries.c bindings + variables */
 void ircd_queries_proto_start (void);
 void ircd_queries_proto_end (void);
+void ircd_queries_register (void);
 	/* messages.c bindings */
 void ircd_message_proto_start (void);
 void ircd_message_proto_end (void);

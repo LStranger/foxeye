@@ -4124,6 +4124,7 @@ static void _ircd_register_all (void)
 		  sizeof(_ircd_description_string), 0);
   RegisterInteger ("ircd-hold-period", &_ircd_hold_period);
   RegisterInteger ("ircd-serverclass-pingf", &_ircd_server_class_pingf);
+  ircd_queries_register();
   RegisterFunction ("ircd", &func_ircd, "charset [host/]port");
 }
 

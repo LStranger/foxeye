@@ -9,6 +9,10 @@ TODO:
 	* core/direct.c: to add support for charset and comments in motd file.
 
 --- [0.10.0]
+Sat Sep 10 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/ircd.*: added missing variables registration.
+	* configure: added profile enabling on Solaris.
+
 Fri Sep  9 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c: fixed exit code on shutdown.
 	* modules/ircd/ircd.c: fixed SIGSEGV in JOIN and WHO.

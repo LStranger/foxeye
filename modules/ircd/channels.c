@@ -2230,7 +2230,7 @@ static inline char *_ircd_ch_flush_umodes (INTERFACE *i, char *c, char *e)
       b->name)
     return c;
   ff = (void *)b->func;
-  mode = (ff (i, NULL, 0, 0) & 0xfffffffc);
+  mode = (ff (i, NULL, 0, 0) & ~(A_ISON | A_PINGED));
   IRCD_SET_MODECHAR (mode, _ircd_umodes, *c);
   if (c < e)
     c++;
@@ -2250,10 +2250,10 @@ static inline char *_ircd_ch_flush_cmodes (INTERFACE *i, char *c, char *e)
       b->name)
     return c;
   ff = (void *)b->func;		/* make _ircd_cmodes */
-  mode = (ff (i, NULL, 0, NULL, 0, 0, '\0', &dummy) & 0xfffffffc);
+  mode = (ff (i, NULL, 0, NULL, 0, 0, '\0', &dummy) & ~(A_ISON | A_PINGED));
   IRCD_SET_MODECHAR (mode, _ircd_cmodes, *c);
   ff = (void *)b->func;		/* make Ircd_modechar_mask */
-  mode = (ff (i, NULL, 0, "", 0, 0, '\0', &dummy) & 0xfffffffc);
+  mode = (ff (i, NULL, 0, "", 0, 0, '\0', &dummy) & ~(A_ISON | A_PINGED));
   Ircd_modechar_mask |= mode;
   IRCD_SET_MODECHAR (mode, _ircd_wmodes, *c);
   if (c < e)
