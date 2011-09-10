@@ -70,7 +70,7 @@
 #define RPL_WHOISSERVER		312, "%* %# :%@"
 #define RPL_WHOISOPERATOR	313, "%# :is an IRC operator"
 #define RPL_WHOWASUSER		314, "%*"
-#define RPL_ENDOFWHO		315, "%# :End of WHO list"
+#define RPL_ENDOFWHO		315, "%* :End of WHO list"
 /* 316 reserved */
 #define RPL_WHOISIDLE		317, "%# %* :seconds idle"
 #define RPL_ENDOFWHOIS		318, "%* :End of WHOIS list"

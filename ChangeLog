@@ -19,6 +19,7 @@ Sat Sep 10 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.c: moved ident request into own thread.
 	* modules/ircd/clients.c: fixed +m mode.
 	* modules/ircd/channels.c: fixed inappropriate modechar ' '.
+	* modules/ircd/numerics.h: fixed RPL_ENDOFWHO.
 
 Fri Sep  9 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c: fixed exit code on shutdown.
