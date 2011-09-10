@@ -1986,14 +1986,14 @@ MEMBER *ircd_add_to_channel (IRCD *ircd, struct peer_priv *bysrv, CHANNEL *ch,
       else
 	server = ircd_find_client(NULL, NULL);
       if (*smode)			/* we have a mode provided */
-	ircd_sendto_chan_local(ch, ":%s MODE %s +%s%s", server->lcnick,
-			       ch->name, smode, madd);
+	ircd_sendto_chan_local(ch, ":%s!%s@%s MODE %s +%s%s", cl->nick,
+			       cl->user, cl->host, ch->name, smode, madd);
       madd[0] = 0;
       if (modeadd)			/* it is a fresh channel or updated */
 	_ircd_mode2cmode (madd, modeadd, sizeof(madd)); /* make channel mode */
       if (madd[0])
-	ircd_sendto_chan_local(ch, ":%s MODE %s +%s", server->lcnick,
-			       ch->name, madd);
+	ircd_sendto_chan_local(ch, ":%s!%s@%s MODE %s +%s", cl->nick,
+			       cl->user, cl->host, ch->name, madd);
     }
 #ifdef USE_SERVICES
     //inform services!
