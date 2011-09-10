@@ -1906,7 +1906,7 @@ char ircd_mode2whochar (modeflag mf)
 	if (strchr (wm, ch))		/* and present in mf */
 	  return Ircd_whochar_list[i];	/* then return whochar */
   }
-  return ' ';
+  return '\0';
 }
 
 /* adds to existing channel and does local broadcast */
@@ -2354,6 +2354,7 @@ void ircd_burst_channels (INTERFACE *to, NODE *channels)
     m = ch->users;
     while (m)				/* do NJOIN */
     {
+      register char c;
       l = snprintf (buff, sizeof(buff), "NJOIN %s", ch->name); /* start size */
       while (m)
       {
@@ -2363,9 +2364,10 @@ void ircd_burst_channels (INTERFACE *to, NODE *channels)
 	  break;
 	if (m->mode & A_ADMIN)		/* creator */
 	  s = snprintf (&buff[l], sizeof(buff) - l, " @@%s", m->who->nick);
+	else if ((c = ircd_mode2whochar (m->mode)))
+	  s = snprintf (&buff[l], sizeof(buff) - l, " %c%s", c, m->who->nick);
 	else
-	  s = snprintf (&buff[l], sizeof(buff) - l, " %c%s",
-			ircd_mode2whochar (m->mode), m->who->nick);
+	  s = snprintf (&buff[l], sizeof(buff) - l, " %s", m->who->nick);
 	l += s;
 	m = m->prevnick;
       }

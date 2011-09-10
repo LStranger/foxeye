@@ -78,8 +78,8 @@ static int ichmsg_ircd (modeflag umode, modeflag mmode, char *msg)
     return 0;
   if (umode & (A_OP | A_ADMIN))		/* ops can send always */
     return 1;
-  if ((mmode & A_MODERATED) && (umode & A_VOICE))
-    return -1;
+  if ((mmode & A_MODERATED) && !(umode & A_VOICE))
+    return 0;
   if (umode & A_DENIED)			/* banned are silent */
     return 0;
   return -1;				/* default to allow */

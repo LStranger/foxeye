@@ -1231,6 +1231,32 @@ static iftype_t port_signal (INTERFACE *iface, ifsig_t signal)
 
 /* internal thread functions for Listen_Port */
 #define acptr ((accept_t *)input_data)
+static void _ident_cleanup (void *input_data)
+{
+  acptr->tst = 0;
+}
+
+static void *_ask_ident (void *input_data)
+{
+  const char *domain;
+  size_t sz, sp;
+  unsigned short p;
+  char buf[SHORT_STRING];
+
+  pthread_cleanup_push (&_ident_cleanup, input_data);
+  domain = SocketDomain (acptr->socket, &p);
+  if (SetupSocket (acptr->id, domain, 113, NULL, NULL) == 0)
+  {
+    snprintf (buf, sizeof(buf), "%hu, %hu\n", p, acptr->lport);
+    dprint (5, "ask host %s for ident: %s", domain, buf);
+    sz = strlen (buf);
+    sp = 0;
+    while (!(WriteSocket (acptr->id, buf, &sp, (size_t *)&sz, M_POLL)));
+  }
+  pthread_cleanup_pop(1);
+  return (NULL);
+}
+
 static void _accept_port_cleanup (void *input_data)
 {
   KillSocket (&acptr->id);
@@ -1249,6 +1275,7 @@ static void *_accept_port (void *input_data)
   unsigned short p;
   time_t t;
   struct timespec ts1, ts2;
+  pthread_t ith;
 
   /* set cleanup for the thread before any cancellation point */
   acptr->id = -1;
@@ -1264,18 +1291,18 @@ static void *_accept_port (void *input_data)
   /* get ident of user */
   *ident = 0;
   acptr->id = GetSocket (M_RAW);
-  if (acptr->id >= 0 && SetupSocket (acptr->id, domain, 113, NULL, NULL) == 0)
+  if (acptr->id >= 0 && pthread_create(&ith, NULL, &_ask_ident, input_data) == 0)
   {
-    snprintf (buf, sizeof(buf), "%hu, %hu\n", p, acptr->lport);
-    dprint (5, "ask host %s for ident: %s", domain, buf);
-    sz = strlen (buf);
-    sp = 0;
     time (&t);
     Set_Iface (NULL);
     t += ident_timeout;
     Unset_Iface();
-    while (!(WriteSocket (acptr->id, buf, &sp, (size_t *)&sz, M_POLL)))
-      if (time(NULL) > t) break;
+    while (acptr->tst != 0) {
+      nanosleep (&ts1, &ts2);		/* wait for prehandler */
+      if (time(NULL) > t)
+	pthread_cancel(ith);
+    }
+    pthread_join(ith, NULL);
     sp = 0;
     sz = 0;
     while (time(NULL) < t)
@@ -1305,10 +1332,10 @@ static void *_accept_port (void *input_data)
       if (strcmp (buf, "USERID"))		/* bad answer */
 	*ident = 0;
       /* TODO: make support for OTHER ident prepending it with '=' */
-    }
-  } /* ident is checked */
-  DBG ("_accept_port: killing ident socket");
-  KillSocket (&acptr->id);
+    } /* ident is checked */
+    DBG ("_accept_port: killing ident socket");
+    KillSocket (&acptr->id);
+  }
   /* %* - ident, %@ - hostname, %L - Lname, %P - port */
   Set_Iface (NULL);
   printl (buf, sizeof(buf), format_dcc_input_connection, 0, NULL, domain,

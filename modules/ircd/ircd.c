@@ -290,6 +290,10 @@ static void _ircd_class_out (LINK *link)
   register CLIENT **clp;
   CLASS *cc = link->cl->x.class;
 
+  if (cc == NULL) {
+    ERROR("ircd:ircd.c: undefined class for %s!", link->cl->nick);
+    return;
+  }
   dprint(4, "ircd:ircd.c: removing %s from class %s", link->cl->nick, cc->name);
   /* removing from ->prev */
   if (CLIENT_IS_LOCAL (link->cl))
