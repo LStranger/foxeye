@@ -1362,6 +1362,7 @@ static void _ircd_prehandler (pthread_t th, void **data, idx_t *as)
 #endif
   pthread_mutex_lock (&IrcdLock);
   *data = peer = alloc_peer_priv();
+  peer->p.network_type = "ircd";
   peer->p.state = P_DISCONNECTED;
   peer->p.priv = IrcdPeers;
   IrcdPeers = peer;
@@ -1689,6 +1690,7 @@ static inline void _ircd_start_uplink2 (const char *name, char *host,
   pthread_mutex_lock (&IrcdLock);
   uplink = alloc_CLIENT();
   uplink->via = alloc_peer_priv();
+  uplink->via->p.network_type = "ircd";
   uplink->via->link = alloc_LINK();
   uplink->via->link->cl = uplink;
   uplink->via->link->where = &ME;

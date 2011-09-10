@@ -34,56 +34,75 @@ function ircd
 
 set ircd-default-class
 :%* <string>
-:
-:
+:Default class parameters string.
+:This variable defines parameters for connections which are not match to\
+ any other private or global client mask. It is a string which consists of\
+ five numbers: maximum number of links from this [user@]host on the server,\
+ maximum number of links from this [user@]host in this network, maximum\
+ number of connections in this default class, ping frequency in seconds,\
+ and sendQ for each client.
  Default: "2 2 100 90 1000".
 
 set ircd-serverclass-pingf
 :%* <seconds>
-:
-:
+:Ping frequency for server links.
+:This variable defines as often idle neighbour servers will be pinged to\
+ check if they are alive.
  Default: 30.
 
 set ircd-flags-first
 :%* <string>
-:
-:
+:Raw stream handling server flags.
+:This variable defines which flags will be probed to apply to raw stream\
+ on server link (i.e. before text parser/splitter to lines). You have to\
+ include here any filter that requires raw stream - zip compression for\
+ example.
  Default: "Z".
 
 set ircd-flags-post
 :%* <string>
-:
-:
+:Text stream handling server flags.
+:This variable defines which flags from PASS handshake will be probed to\
+ apply to each line of IRC protocol. You have to include here any filter\
+ that makes some network-specific protocol conversions to make difference\
+ and compatibility with other servers in network.
  Default: "IPU".
 
 set ircd-description-string
 :%* <string>
-:
-:
+:Server common description.
+:This variable presents definition of the server which will be visible\
+ across network. It should contain some geographic information.
  Default: "".
 
 set ircd-admin-info
 :%* <string>
-:
-:
+:Server administrative info.
+:This variable presents details of the institution and/or network which\
+ this server belongs to.
  Default: "Not configured.".
 
 set ircd-admin-email
 :%* <string>
-:
-:
+:Server administration e-mail.
+:This variable defines electronic contact to server administration and\
+ it is imperative to have it valid so users can find you in case of any\
+ troubles.
  Default: "lame@lame.org".
 
 set ircd-hold-period
 :%* <seconds>
-:
-:
+:Period of keeping nicks on hold due to network splits.
+:This variable defines how long nicks will be kept unavailable after some\
+ server was disconnected from network. Such unavailability is required to\
+ prevent nick collisions after the server reconnect.
  Default: 900.
 
 set ircd-motd-file
 :%* /path/to/file
-:
-:
+:Path to MOTD file.
+:This variable defines where file containing MOTD for the server lays. It\
+ can contain full path to the file or path relative to starting config.
  Default: "ircd.motd".
 
 flood-type ircd-errors
