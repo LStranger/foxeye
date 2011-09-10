@@ -12,6 +12,7 @@ TODO:
 Sat Sep 10 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.*: added missing variables registration.
 	* configure: added profile enabling on Solaris.
+	* core/dispatcher.c: allowed profiler to write out daemon data.
 
 Fri Sep  9 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c: fixed exit code on shutdown.

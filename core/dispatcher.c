@@ -1366,8 +1366,10 @@ int dispatcher (INTERFACE *start_if)
       return 5;
     }
     /* OK, this is parent */
-    if (write_pid (pidfd, pid) == 0) /* no errors */
+    if (write_pid (pidfd, pid) == 0) { /* no errors */
+      chdir("/tmp"); /* let profiler write out only child info */
       return 0;
+    }
     perror _("write PID file");
     kill (pid, SIGTERM);
     return 5;
