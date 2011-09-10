@@ -72,7 +72,8 @@ static inline CLIENT *_ircd_find_by_mask (IRCD *ircd, struct peer_priv *p,
 
   if (!strpbrk (m, "*?"))
   {
-    cl = ircd_find_client (m, p);
+    if ((cl = ircd_find_client (m, p)) == NULL)
+      return (cl);
     if (CLIENT_IS_SERVER(cl))
       return (cl->via != p) ? cl : NULL;
     return (cl->cs);

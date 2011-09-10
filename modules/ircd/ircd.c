@@ -1479,15 +1479,15 @@ ScriptFunction (func_ircd)
     /* note: ignore parameter charset if no iconv available */
 #if IRCD_USES_ICONV
     args++;
-    args = NextWord_Unquoted (&buff[s], (char *)args, sizeof(buff) - s - 1);
-    conv = Get_Conversion (&buff[s]);
-    if (!conv)
-    {
-      BindResult = "unknown charset";
-      return 0;
-    }
-    s += strlen (&buff[s]);
-    buff[s++] = ' ';
+    args = NextWord_Unquoted (&buff[s+1], (char *)args, sizeof(buff) - s - 2);
+    conv = Get_Conversion (&buff[s+1]);
+    if (conv) {
+      buff[s++] = '-';
+      s += strlen (&buff[s]);
+      buff[s++] = ' ';
+    } else
+      Add_Request(I_LOG, "*", F_WARN, "ircd: using default charset for ircd %s",
+		  args);
 #else
     args = NextWord ((char *)args);
     Add_Request (I_LOG, "*", F_WARN,
@@ -3709,7 +3709,7 @@ CLIENT *ircd_find_client (const char *name, peer_priv *via)
   c = _ircd_find_client (name);
   if (via != NULL && !CLIENT_IS_SERVER(via->link->cl))
     return (c);
-  if (c != NULL && !CLIENT_IS_SERVER(c))
+  if (c != NULL && via != NULL && !CLIENT_IS_SERVER(c))
     c = _ircd_find_phantom(c, via);
   if (c == NULL || c->umode & (A_SERVER|A_SERVICE))
     return (c);

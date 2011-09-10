@@ -24,6 +24,12 @@ Sat Sep 10 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: added NO_SPARE_INVITES define.
 	* modules/ircd/channels.c: fixed not applying umode change.
 	* modules/ircd/channels.c: fixed wrong multiparameter channel mode.
+	* configure: added -KPIC for Solaris modules.
+	* modules/ircd/channels.c: fixed errors on join to -k channel.
+	* modules/ircd/ircd.c: fixed setting of charset from listener.
+	* modules/ircd/queries.c: fixed SIGSEGV on whois on nonexistent user.
+	* modules/ircd/ircd.c: fixed SIGSEGV on phantom finding.
+	* modules/ircd/clients.c: fixed wrong IRCOp umodes.
 
 Fri Sep  9 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c: fixed exit code on shutdown.

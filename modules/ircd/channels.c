@@ -1295,7 +1295,7 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
     if (cmask)
       cmask++;
     /* now we have chn, cmask, and key prepared so check them */
-    i = 0;
+    i = -1;
     mf = 0;
     cnfc[0] = chn[0];
     lcb[0] = '\0';
@@ -1308,7 +1308,7 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
     }
     nchn = NULL;
     if (cmask && simple_match (cmask, me->lcnick) <= 0)
-      i = -ircd_do_unumeric (cl, ERR_BADCHANMASK, cl, 0, cmask);
+      ircd_do_unumeric (cl, ERR_BADCHANMASK, cl, 0, cmask);
     else if ((b = Check_Bindtable (BTIrcdChannel, cnfc, U_ALL, U_ANYCH, NULL))
 	     && !b->name)
       mf = (f = (void *)b->func) (peer->iface, cl->umode, ch ? ch->mode : 0,
@@ -1324,10 +1324,11 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
       i = 1;
     else if (ch->limit && ch->count >= ch->limit) /* out of channel limit */
       ircd_do_cnumeric (cl, ERR_CHANNELISFULL, ch, 0, NULL);
-    else if (ch->key[0] && strcmp (ch->key, key)) /* check key */
+    else if (ch->key[0] && safe_strcmp (ch->key, key)) /* check key */
       ircd_do_cnumeric (cl, ERR_BADCHANNELKEY, ch, 0, NULL);
     else if (ch->mode & A_INVITEONLY)	/* check invitations */
     {
+      i = 0;
       for (mm = ch->invited; mm; mm = mm->prevnick)
 	if (mm->who == cl)
 	  break;			/* found */
@@ -1340,7 +1341,8 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	if (!cm)			/* not found */
 	  i = -ircd_do_cnumeric (cl, ERR_INVITEONLYCHAN, ch, 0, NULL);
       }
-    }
+    } else
+      i = 0;
     if (mf && i == 0)			/* check bans/exceptions */
     {
       for (mm = ch->invited; mm; mm = mm->prevnick)

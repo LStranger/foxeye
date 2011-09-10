@@ -152,6 +152,7 @@ if test "$fe_cv_static" = no; then
 	solaris*)
 #	    LD="ld -G -z text"
 	    LD="ld -G"
+	    CPPFLAGS="-KPIC ${CPPFLAGS}"
 	    AC_CHECK_LDFLAG(fe_cv_add_wl_e, [-Wl,-E], LDFLAGS)
 	    ;;
 	sunos*)

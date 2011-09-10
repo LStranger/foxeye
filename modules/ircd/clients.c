@@ -157,16 +157,16 @@ static int ircd_oper_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
   if (fl & U_OP)
   {
     cl->umode |= A_OP;			/* global oper */
-    New_Request (peer->iface, 0, "MODE %s +O", peer->dname);
-    ircd_sendto_servers_new ((IRCD *)srv->data, NULL, ":%s IMODE %d %s +O",
+    New_Request (peer->iface, 0, "MODE %s +o", peer->dname);
+    ircd_sendto_servers_new ((IRCD *)srv->data, NULL, ":%s IMODE %d %s +o",
 			     peer->dname, ircd_new_id(), peer->dname);
-    ircd_sendto_servers_old ((IRCD *)srv->data, NULL, ":%s MODE %s +O",
+    ircd_sendto_servers_old ((IRCD *)srv->data, NULL, ":%s MODE %s +o",
 			     peer->dname, peer->dname);
   }
   else
   {
     cl->umode |= A_HALFOP;		/* local oper */
-    New_Request (peer->iface, 0, "MODE %s +o", peer->dname);
+    New_Request (peer->iface, 0, "MODE %s +O", peer->dname);
   }
   return ircd_do_unumeric (cl, RPL_YOUREOPER, cl, 0, NULL);
 }
