@@ -395,6 +395,17 @@ struct binding_t *Check_Bindtable (struct bindtable_t *bt, const char *str,
 
   if (bt == NULL || bt->type == B_UNDEF)
     return NULL;
+  if (!str &&
+      (bt->type == B_UNIQ || bt->type == B_KEYWORD)) { /* scan requested */
+    register LEAF *l;
+
+    if (bind) {
+      l = Find_Leaf (bt->list.tree, bind->key, 1);
+      l = Next_Leaf (bt->list.tree, l, NULL);
+    } else
+      l = Find_Leaf (bt->list.tree, "", 0);
+    return (l == NULL) ? NULL : l->s.data;
+  }
   cf = (scf & ~U_EQUAL);		/* drop the flag to matching */
   if (bt->type == B_MASK || bt->type == B_UNIQMASK)
     cc = 0;
