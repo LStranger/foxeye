@@ -398,7 +398,9 @@ static modeflag imch_a(INTERFACE *srv, const char *rq, modeflag rchmode,
     return 0;
   if (chtype == '&')			/* & channel */
     return A_ANONYMOUS;
-  if (chtype == '!' && (rchmode && A_ADMIN) && add) /* creator on ! channel */
+  if (chtype != '!')			/* wrong mode */
+    return 0;
+  if ((rchmode && A_ADMIN) && add)	/* creator on ! channel */
     return A_ANONYMOUS;
   return A_PINGED; /* mark of ERR_UNIQOPPRIVSNEEDED */
 }
@@ -692,7 +694,11 @@ static modeflag imch_I(INTERFACE *srv, const char *rq, modeflag rchmode,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char *))
 {
+#ifdef NO_SPARE_INVITES
   if (!target && (rchmode & A_OP) && (tmode & A_INVITEONLY))
+#else
+  if (!target && (rchmode & A_OP))
+#endif
   {
     *ma = &_imch_do_inviteset;
     return (A_INVITED | 1);
@@ -1001,9 +1007,12 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 					     U_ALL, U_ANYCH, b)))
 	    if (!b->name && !b->func (memb->mode, ch->mode, mf, add, tar))
 	      mf = 0;			/* change denied, stop */
-	  if (!mf)			/* check permissions */
-	    CONTINUE_ON_MODE_ERROR (ERR_CHANOPRIVSNEEDED, NULL);
-	  if (n == MAXMODES)
+	  if (!mf) {
+	    if (!(memb->mode & (A_OP | A_ADMIN))) { /* check permissions */
+	      CONTINUE_ON_MODE_ERROR (ERR_CHANOPRIVSNEEDED, NULL);
+	    } else
+	      CONTINUE_ON_MODE_ERROR (ERR_UNKNOWNMODE, charstr);
+	  } else if (n == MAXMODES)
 	    continue; //TODO: silently ignore or what?
 	  n++;				/* one more accepted */
 	  if (add)
