@@ -613,7 +613,7 @@ static int _imch_do_banset (INTERFACE *srv, const char *rq, const char *ch,
 
     for (m = _imch_channel->bans; m; m = m->next)
       ircd_do_cnumeric (_imch_client, RPL_BANLIST, _imch_channel, 0, m->what);
-    ircd_do_unumeric (_imch_client, RPL_ENDOFBANLIST, _imch_client, 0, NULL);
+    ircd_do_cnumeric (_imch_client, RPL_ENDOFBANLIST, _imch_channel, 0, NULL);
     return 1;
   }
   else if (add)
@@ -645,7 +645,7 @@ static int _imch_do_exemptset (INTERFACE *srv, const char *rq, const char *ch,
 
     for (m = _imch_channel->exempts; m; m = m->next)
       ircd_do_cnumeric (_imch_client, RPL_EXCEPTLIST, _imch_channel, 0, m->what);
-    ircd_do_unumeric (_imch_client, RPL_ENDOFEXCEPTLIST, _imch_client, 0, NULL);
+    ircd_do_cnumeric (_imch_client, RPL_ENDOFEXCEPTLIST, _imch_channel, 0, NULL);
     return 1;
   }
   else if (add)
@@ -677,7 +677,7 @@ static int _imch_do_inviteset (INTERFACE *srv, const char *rq, const char *ch,
 
     for (m = _imch_channel->invites; m; m = m->next)
       ircd_do_cnumeric (_imch_client, RPL_INVITELIST, _imch_channel, 0, m->what);
-    ircd_do_unumeric (_imch_client, RPL_ENDOFINVITELIST, _imch_client, 0, NULL);
+    ircd_do_cnumeric (_imch_client, RPL_ENDOFINVITELIST, _imch_channel, 0, NULL);
     return 1;
   }
   else if (add)

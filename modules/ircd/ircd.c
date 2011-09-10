@@ -1966,6 +1966,8 @@ static int _ircd_got_local_user (CLIENT *cl)
   ircd_do_unumeric (cl, RPL_CODEPAGE, cl, 0,
 		    Conversion_Charset (cl->via->p.iface->conv));
 #endif
+  if (mb[0])
+    New_Request(cl->via->p.iface, 0, ":%s MODE %s +%s", cl->nick, cl->nick, mb);
   if (cl->umode & A_RESTRICTED)
     ircd_do_unumeric (cl, ERR_RESTRICTED, cl, 0, NULL);
   cl->via->p.state = P_TALK;

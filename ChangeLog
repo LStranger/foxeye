@@ -20,6 +20,7 @@ Sat Sep 10 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/clients.c: fixed +m mode.
 	* modules/ircd/channels.c: fixed inappropriate modechar ' '.
 	* modules/ircd/numerics.h: fixed RPL_ENDOFWHO.
+	* modules/ircd/ircd.c: added MODE message on client registering.
 
 Fri Sep  9 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c: fixed exit code on shutdown.
