@@ -1367,6 +1367,7 @@ static void _ircd_prehandler (pthread_t th, void **data, idx_t *as)
   peer->p.start[0] = 0;
   peer->bs = peer->br = peer->ms = peer->mr = 0;
   peer->th = th;
+  while (__ircd_have_started == 0) sleep(1); /* wait for main thread */
   /* lock dispatcher and create connchain */
   Set_Iface (NULL);
   if ((pn = strchr (pn, '%')))		/* do custom connchains for SSL etc. */
@@ -1388,7 +1389,6 @@ static void _ircd_prehandler (pthread_t th, void **data, idx_t *as)
   /* cannot do ircd_do_unumeric so have to handle and send it myself
      while in listening thread yet
      note: listener will wait it, can we handle DDoS here? */
-  while (__ircd_have_started == 0); /* wait for main thread */
   sw = _ircd_make_hello_msg(charset, sizeof(charset), RPL_HELLO);
   Unset_Iface();
   if (Peer_Put((&peer->p), charset, &sw) > 0) /* connchain should eat it */
@@ -3473,6 +3473,8 @@ static void _istats_l (INTERFACE *srv, const char *rq, modeflag umode)
   pthread_mutex_lock (&IrcdLock);
   for (peer = IrcdPeers; peer; peer = peer->p.priv)
   {
+    if (peer->p.state < P_LOGIN) /* no link data yet */
+      continue;
     snprintf (buf, sizeof(buf), "%s[%s@%s] %d %zu %zu %zu %zu %ld",
 	      peer->link->cl->nick, peer->link->cl->user, peer->link->cl->host,
 	      peer->p.iface->qsize, peer->ms, peer->bs/1000, peer->mr,
