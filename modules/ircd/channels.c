@@ -789,7 +789,7 @@ static inline void _ircd_mode_broadcast (IRCD *ircd, int id, CLIENT *sender,
 					 char *modepass, const char **passed,
 					 int x)
 {
-  ssize_t sz;
+  size_t sz, ptr = 0;
   int i;
   char buff[MESSAGEMAX];
 
@@ -798,8 +798,8 @@ static inline void _ircd_mode_broadcast (IRCD *ircd, int id, CLIENT *sender,
   *imp = '\0';				/* terminate line */
   sz = sizeof(buff);
   buff[0] = 0;				/* in case if no arguments */
-  for (i = 0; i < x && sz > 0; i++)	/* compose arguments */
-    sz -= snprintf (buff, sz, " %s", passed[i]);
+  for (i = 0; i < x && ptr < sz; i++)	/* compose arguments */
+    ptr += snprintf (&buff[ptr], sz - ptr, " %s", passed[i]);
     //TODO: errors check?
   /* notify local users who are on channel */
   if (CLIENT_IS_SERVER (sender))
