@@ -143,7 +143,7 @@
 #define ERR_NICKNAMEINUSE	433, "%# :Nickname is already in use"
 /* 434-435 reserved */
 #define ERR_NICKCOLLISION	436, "%N :Nickname collision KILL from %L@%@"
-#define ERR_UNAVAILRESOURCE	437, "%# :Nick/channel is temporarily unavailable"
+#define ERR_UNAVAILRESOURCE	437, "%* :Nick/channel is temporarily unavailable"
 /* 438 reserved */
 #define ERR_USERNOTINCHANNEL	441, "%N %# :They aren't on that channel"
 #define ERR_NOTONCHANNEL	442, "%N :You're not on that channel"

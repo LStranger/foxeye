@@ -2120,7 +2120,7 @@ static int _ircd_check_nick_cmd (CLIENT *cl, char *b, const char *nick,
     _ircd_try_drop_collision(&cl2);
     if (cl2 != NULL)
     {
-      ircd_do_unumeric (cl, ERR_UNAVAILRESOURCE, cl, 0, NULL);
+      ircd_do_unumeric (cl, ERR_UNAVAILRESOURCE, cl, 0, b);
       b[0] = 0;
       return 0;
     }

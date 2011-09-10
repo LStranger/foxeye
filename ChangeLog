@@ -32,6 +32,7 @@ Sat Sep 10 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/clients.c: fixed wrong IRCOp umodes.
 	* core/list.c: fixed search bug in Get_Clientlist().
 	* modules/ircd/queries.c: fixed stats o.
+	* modules/ircd/ircd.c: fixed wrong nick if change unavailable.
 
 Fri Sep  9 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c: fixed exit code on shutdown.
