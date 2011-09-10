@@ -15,6 +15,7 @@ Sat Sep 10 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c: allowed profiler to write out daemon data.
 	* modules/ircd/channels.c: fixed mode setting on a fresh channel.
 	* modules/ircd/clients.c: fixed SIGSEGV with #undef IRCD_PUBLIC_TOPIC.
+	* modules/ircd/ircd.c: fixed SIGSEGV with too early connections.
 
 Fri Sep  9 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c: fixed exit code on shutdown.

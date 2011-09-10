@@ -31,6 +31,7 @@
 #include "socket.h"
 
 #include <wchar.h>
+#include <signal.h>
 
 #include "ircd.h"
 #include "numerics.h"
@@ -94,6 +95,8 @@ static int _ircd_uplinks = 0;		/* number of autoconnects active */
 
 static CLIENT ME = { .umode = A_SERVER, .via = NULL, .x.token = 0,
 		     .c.lients = NULL };
+
+static sig_atomic_t __ircd_have_started = 0;
 
 #define MY_NAME ME.lcnick
 
@@ -1385,6 +1388,7 @@ static void _ircd_prehandler (pthread_t th, void **data, idx_t *as)
   /* cannot do ircd_do_unumeric so have to handle and send it myself
      while in listening thread yet
      note: listener will wait it, can we handle DDoS here? */
+  while (__ircd_have_started == 0); /* wait for main thread */
   sw = _ircd_make_hello_msg(charset, sizeof(charset), RPL_HELLO);
   Unset_Iface();
   if (Peer_Put((&peer->p), charset, &sw) > 0) /* connchain should eat it */
@@ -4243,6 +4247,7 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
       Ircd->s = TOKEN_ALLOC_SIZE;
       Ircd->token[0] = &ME;		/* set token 0 to ME */
       Insert_Key (&Ircd->clients, MY_NAME, &ME, 1); /* nothing to check? */
+      __ircd_have_started = 1;
       /* continue with S_FLUSH too */
     case S_FLUSH:
       ircd_channels_flush (Ircd, _ircd_modesstring, sizeof(_ircd_modesstring));
