@@ -851,7 +851,7 @@ int Get_Clientlist (INTERFACE *iface, userflag uf, const char *fn,
   lid = LID_MIN;
   do {
     if ((u = UList[lid - LID_MIN]) && ((u->flag & gf) || /* has global flags */
-	(fnisservice && (Get_Flags (u, fn) & uf))))	/* or service flags */
+	(fnisservice && (Get_Flags (u, &fn[1]) & uf)))) /* or service flags */
     {
       if (canbenonamed ||		/* if it's check for ban/invite/etc. */
 	  fn == NULL)			/* NULL means check lname and host */

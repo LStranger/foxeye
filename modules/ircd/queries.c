@@ -89,6 +89,8 @@ static void (*_ircd_list_receiver_show) (INTERFACE *, char *);
 
 static int _ircd_qlist_r (INTERFACE *tmp, REQUEST *r)
 {
+  void (*f)(INTERFACE *, char *) = _ircd_list_receiver_show;
+
   if (r)
   {
     if (tmp->qsize)			/* do recursion to consume queue */
@@ -98,7 +100,7 @@ static int _ircd_qlist_r (INTERFACE *tmp, REQUEST *r)
       while (*c)
       {
 	char *cnext = gettoken (c, NULL);
-	_ircd_list_receiver_show (tmp, c);
+	f (tmp, c);
 	c = cnext;
       }
     }
