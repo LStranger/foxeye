@@ -300,8 +300,9 @@ chattr
 +host
 :%* name hostmask
 :
-:Adds a hostmask to client record %_name%_. Hostmask helps bot to identify\
- a client.
+:Adds a %_hostmask%_ to client record %_name%_. Hostmask helps bot to identify\
+ a client. If %_name%_ contains no '%^.%^' characters then %_hostmask%_ will\
+ be normalized (lowercased).
 
 -host
 :%* name hostmask
@@ -312,7 +313,8 @@ chattr
 :%* [-<network type>] name [hostmask [flags]]
 :
 :Creates a new client record for given %_name%_. If %_hostmask%_ different\
- from "%^-%^" is given then adds that hostmask to listfile. The new record\
+ from "%^-%^" is given then adds that hostmask to listfile (converted to\
+ lower case if %_name%_ contains no '%^.%^' characters) The new record\
  will have given %_flags%_ or no flags otherwise. You may also add special\
  records (for network, bot, local service, etc.) with this command too, in\
  that case you have to add %_network type%_ before %_name%_ with minus sign.\

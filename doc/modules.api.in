@@ -606,9 +606,11 @@ Listfile API:
 -------------
   int AAdddd__CClliieennttrreeccoorrdd (const char *_n_a_m_e, const unsigned char *_m_a_s_k,
 			userflag _u_f);
-    Adds user with Lname _n_a_m_e, hostmask _m_a_s_k in form nick!user@host and
-    global userflags _u_f to Listfile. See match() for hostmask details.
-    Returns nonull value if successful.
+    Adds user with Lname _n_a_m_e, hostmask _m_a_s_k (in form of nick!user@host
+    for common users) and global userflags _u_f to Listfile. See match()
+    description for hostmask details. If _n_a_m_e contains no '.' then _m_a_s_k
+    will be normalized (i.e. lowercased) on adding. Returns nonull value
+    if successful.
 	Reenterability: none
 
   int AAdddd__AAlliiaass (const char *_n_a_m_e, const char *_o_w_n_e_r);
@@ -721,9 +723,10 @@ Listfile API:
 	Reenterability: none
 
   int AAdddd__MMaasskk (struct clrec_t *_u_s_e_r, const unsigned char *_m_a_s_k);
-    Adds hostmask _m_a_s_k at form nick!user@host for user with internal
-    Listfile record structure at _u_s_e_r. See match() for hostmask details.
-    Returned value is not 0 if successful.
+    Adds hostmask _m_a_s_k (usually in form of nick!user@host) for user with
+    internal Listfile record structure at _u_s_e_r. See match() for hostmask
+    details. If _u_s_e_r name contains no '.' then _m_a_s_k will be normalized
+    (i.e. lowercased) on adding. Returns nonull value if successful.
 	Reenterability: none
 
   int DDeelleettee__MMaasskk (struct clrec_t *_u_s_e_r, const unsigned char *_m_a_s_k);

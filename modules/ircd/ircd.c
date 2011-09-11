@@ -446,8 +446,8 @@ static inline void _ircd_peer_kill (peer_priv *peer, const char *msg)
 {
   dprint(4, "ircd:ircd.c:_ircd_peer_kill: %p state=%#x", peer, (int)peer->p.state);
   if (peer->p.state != P_DISCONNECTED) { /* link might be not initialized yet */
-    Add_Request (I_LOG, "*", F_CONN, "ircd: killing peer %s@%s: %s",
-		 peer->link->cl->user, peer->link->cl->host, msg);
+    LOG_CONN ("ircd: killing peer %s@%s: %s", peer->link->cl->user,
+	      peer->link->cl->host, msg);
     New_Request (peer->p.iface, F_AHEAD, "ERROR :closing link to %s@%s: %s",
 		 peer->link->cl->user, peer->link->cl->host, msg);
   }
@@ -1727,8 +1727,7 @@ static inline void _ircd_start_uplink2 (const char *name, char *host,
 				    uplink->via);
   if (Connect_Host (host, atoi(port), &uplink->via->th,
 		    &uplink->via->p.socket, &_ircd_uplink_handler, uplink))
-    Add_Request (I_LOG, "*", F_CONN, "ircd: starting autoconnect: %s/%s",
-		 host, port);
+    LOG_CONN ("ircd: starting autoconnect: %s/%s", host, port);
   else
   {
     register peer_priv **pp;
@@ -1805,8 +1804,7 @@ static void _ircd_init_uplinks (void)
     c = _ircd_sublist_buffer = buff;
     Set_Iface (tmp);
     Get_Request();
-    Add_Request (I_LOG, "*", F_CONN, "ircd: got autoconnect list: %s",
-		 _ircd_sublist_buffer);
+    LOG_CONN ("ircd: got autoconnect list: %s", _ircd_sublist_buffer);
     /* side effect: autoconnect list should be not longer that one message */
     while (*c)				/* for each autoconnect */
     {

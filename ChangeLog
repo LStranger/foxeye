@@ -9,6 +9,11 @@ TODO:
 	* core/direct.c: to add support for charset and comments in motd file.
 
 --- [0.10.0]
+Sun Sep 11 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/protos.h, core/direct.c, modules/irc-ctcp/dcc.c, modules/ircd/ircd.c:
+	  moved macro LOG_CONN to common header.
+	* core/list.c, doc/modules.api: made hosts of server records literals.
+
 Sat Sep 10 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.*: added missing variables registration.
 	* configure: added profile enabling on Solaris.

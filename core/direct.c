@@ -300,8 +300,6 @@ static char *getconsole (peer_t *dcc, char *str, size_t sz)
 
 static short *flood_dcc;
 
-#define LOG_CONN(...) Add_Request (I_LOG, "*", F_CONN, __VA_ARGS__)
-
 /* if s==0 then quiet termination (shutdown sequence) */
 static void _died_iface (INTERFACE *iface, char *buf, size_t s)
 {
@@ -1217,8 +1215,7 @@ static iftype_t port_signal (INTERFACE *iface, ifsig_t signal)
       FREE (&acptr->confline);
       FREE (&acptr->data);
       FREE (&acptr->host);
-      Add_Request (I_LOG, "*", F_CONN,
-		   _("Listening socket on port %hu terminated."), acptr->lport);
+      LOG_CONN (_("Listening socket on port %hu terminated."), acptr->lport);
       /* we don't need to free acptr since dispatcher will do it for us */
       iface->ift |= I_DIED;
       break;

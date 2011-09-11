@@ -79,6 +79,8 @@ int dispatcher (INTERFACE *);
 
 #define DBG(...) dprint (100, __VA_ARGS__)
 
+#define LOG_CONN(...) Add_Request (I_LOG, "*", F_CONN, __VA_ARGS__)
+
 /* ----------------------------------------------------------------------------
  * Common library functions and definitions
  */

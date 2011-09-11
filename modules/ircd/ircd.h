@@ -97,8 +97,8 @@ typedef struct ACK
 } ACK;
 #endif
 
-/* client link instance: prev is CLASS->local or IRCD->servers list for us
-   or CLIENT->cs for other servers
+/* client link instance: prev is previous link in the chain, last link is at
+   CLASS->local or IRCD->servers for us or CLIENT->c.lients for other servers
    cl is client data
    where is where it seen, never NULL */
 typedef struct LINK

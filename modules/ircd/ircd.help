@@ -101,7 +101,7 @@ set ircd-hold-period
 set ircd-motd-file
 :%* /path/to/file
 :Path to MOTD file.
-:This variable defines where file containing MOTD for the server lays. It\
+:This variable defines where file containing MOTD for the server lies. It\
  can contain full path to the file or path relative to starting config.
  Default: "ircd.motd".
 

@@ -819,7 +819,7 @@ static int ircd_ison_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
     }
   }
   ircd_do_unumeric(cl, RPL_ISON, cl, 0, buf);
-  return 1;
+  return (-1);				/* don't reset idle time */
 }
 
 #if IRCD_USES_ICONV

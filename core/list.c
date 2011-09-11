@@ -258,7 +258,10 @@ static int _add_usermask (struct clrec_t *user, const char *mask)
   int r;
   char lcmask[HOSTMASKLEN+1];
 
-  unistrlower (lcmask, mask, sizeof(lcmask));  
+  if (strchr(user->lname, '.')) /* it's server name rather than user name */
+    strfcpy (lcmask, mask, sizeof(lcmask));
+  else
+    unistrlower (lcmask, mask, sizeof(lcmask));
   /* check for aliases */
   if (user->flag & U_ALIAS)	/* no need lock since threads has R/O access */
     user = user->u.owner;

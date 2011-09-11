@@ -559,7 +559,7 @@ static int delete_request (ifi_t *i, queue_i *q)
   i->a.qsize--;
   if (lastdebuglog)
   {
-    fprintf (lastdebuglog, "::dispatcher:delete_request: deleted %p from %p: new head=%p tail=%p qsize=%d",
+    fprintf (lastdebuglog, "::dispatcher:delete_request: deleted %p from %p: new head=%p tail=%p qsize=%d\n",
 	     q, i, i->head, i->tail, i->a.qsize);
     fflush (lastdebuglog);
   }
@@ -1014,7 +1014,12 @@ void dprint (int level, const char *text, ...)
   if (lastdebuglog)
   {
     va_copy (cp, ap);
-    fprintf (lastdebuglog, "::");
+    if (level == 100) { /* DBG */
+      struct timespec tv;
+      clock_gettime(CLOCK_REALTIME, &tv);
+      fprintf (lastdebuglog, "[%ld.%09ld]", tv.tv_sec, tv.tv_nsec);
+    } else
+      fprintf (lastdebuglog, "::");
     vfprintf (lastdebuglog, text, cp);
     fprintf (lastdebuglog, "\n");
     fflush (lastdebuglog);
