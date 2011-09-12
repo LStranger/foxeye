@@ -443,7 +443,8 @@ static void isend_handler (char *lname, char *ident, const char *host, void *dat
   size_t bs, bptr, ahead;
   ssize_t sw;
   size_t statistics[16];		/* to calculate average speed */
-  int rsm;				/* read socket mode */
+  //int rsm;				/* read socket mode */
+  bool wantack;
 
   dprint (4, "dcc:isend_handler for %s to \"%s\".", lname, dcc->lname);
   scd = safe_calloc(1, sizeof(struct send_cleanup));
@@ -481,8 +482,9 @@ static void isend_handler (char *lname, char *ident, const char *host, void *dat
   ahead = dcc->ahead * bs;
   start = time (&t);
   memset (statistics, 0, sizeof(statistics));
-  rsm = M_RAW;
-  FOREVER					/* cycle to get file */
+  //rsm = M_RAW;
+  wantack = FALSE;
+  FOREVER					/* cycle to send file */
   {
     pthread_mutex_lock (&dcc->mutex);
     dcc->ptr = ptr;
@@ -499,7 +501,10 @@ static void isend_handler (char *lname, char *ident, const char *host, void *dat
 	statistics[(++t)%16] = 0;
     }
     pthread_mutex_unlock (&dcc->mutex);
-    sw = ReadSocket ((char *)&nptr, dcc->socket, 4, rsm); /* next block ack */
+    if (wantack)
+      sw = ReadSocket ((char *)&nptr, dcc->socket, 4); /* next block ack */
+    else
+      sw = 0;
     if (sw < 0 && sw != E_AGAIN)
       break;					/* connection error */
     else if (sw > 0)
@@ -513,18 +518,20 @@ static void isend_handler (char *lname, char *ident, const char *host, void *dat
       break;
     if (sr >= dcc->size)			/* all done! */
       break;
-    rsm = M_POLL;				/* don't cycle in M_RAW */
+    //rsm = M_POLL;				/* don't cycle in M_RAW */
+    wantack = TRUE;
     aptr = sr;					/* updating aptr */
     if (aptr + ahead < ptr)
       continue;					/* not ready to send anything */
     sw = sr = fread (buff, 1, bs, f);		/* 0 if EOF or error */
     bptr = 0;
     while (sw)
-      if (WriteSocket (dcc->socket, buff, &bptr, &sw, M_POLL) < 0)
+      if (WriteSocket (dcc->socket, buff, &bptr, &sw) < 0)
 	break;					/* if socket died */
-    if (sw)
+    if (sw || !sr)
       break;
-    rsm = M_RAW;				/* we polled already */
+    //rsm = M_RAW;				/* we polled already */
+    wantack = FALSE;
     ptr += sr;					/* updating ptr */
     statistics[t%16] += sr;
     DBG ("DCC SEND %s:sent %u bytes.", dcc->filename, (unsigned int)sr);
@@ -771,7 +778,7 @@ static void _dcc_send_handler (int res, void *input_data)
 //    if (ptr >= toget)
     if (ptr >= dcc->size)
       break;					/* and we got it all */
-    sw = ReadSocket (buff, dcc->socket, MAXBLOCKSIZE, M_POLL); /* next block */
+    sw = ReadSocket (buff, dcc->socket, MAXBLOCKSIZE); /* next block */
     if (sw > 0)
       bs = fwrite (buff, 1, sw, f);
     else if (!sw || sw == E_AGAIN)		/* try again */
@@ -789,7 +796,7 @@ static void _dcc_send_handler (int res, void *input_data)
 	bs = 0;
 	sw = sizeof(nptr);
 	while (sw)				/* send network-ordered ptr */
-	  if (WriteSocket (dcc->socket, (char *)&nptr, &bs, &sw, M_POLL) < 0)
+	  if (WriteSocket (dcc->socket, (char *)&nptr, &bs, &sw) < 0)
 	    break;
 	if (sw)
 	  break;				/* if socket died */
@@ -823,7 +830,7 @@ static void _dcc_send_handler (int res, void *input_data)
     bs = 0;
     sw = sizeof(nptr);
     while (sw)					/* send network-ordered ptr */
-      if (WriteSocket (dcc->socket, (char *)&nptr, &bs, &sw, M_POLL) < 0)
+      if (WriteSocket (dcc->socket, (char *)&nptr, &bs, &sw) < 0)
 	break;					/* if socket died */
     if (sw)					/* we got all we can */
       break;

@@ -7,12 +7,35 @@ TODO:
 	* core/wtmp.c: to handle errors somehow?
 	* core/help.c: to add support for '##$charset utf-8' at helpfile start.
 	* core/direct.c: to add support for charset and comments in motd file.
+	* core/socket.c: to make socket limit extendible.
 
 --- [0.10.0]
+Mon Sep 12 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/init.c, core/modules.c, modules/ircd/channels.c, modules/ircd/ircd.c, modules/lua/lua.c, modules/tcl/modtcl.c:
+	  got rid of Sun CC warnings about function assignments.
+	* core/direct.c, modules/irc/*.c: fixed type for bit-field data.
+	* core/socket.c: rewritten polling scheme to minimize CPU usage.
+	* configure: removed -KPIC as it makes random crashes very soon.
+
 Sun Sep 11 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/protos.h, core/direct.c, modules/irc-ctcp/dcc.c, modules/ircd/ircd.c:
 	  moved macro LOG_CONN to common header.
 	* core/list.c, doc/modules.api: made hosts of server records literals.
+	* core/foxeye.h, modules/ircd/channels.c: removed MAXJOINS ircd limit.
+	* modules/ircd/ircd.h, modules/ircd/channels.c: fixed macro
+	  CLIENT_IS_LOCAL.
+	* modules/ircd/channels.c: added check if MODE target is server.
+	* modules/ircd/channels.c: fixed sending NJOIN for '&' channels.
+	* modules/ircd/channels.c: fixed infinite loop on channel burst.
+	* modules/ircd/ircd.c: removed leftovers of local chain from CLASS.
+	* modules/ircd/ircd.c: implemented finding reason for QUIT from socket
+	  errors.
+	* modules/ircd/ircd.c: removed prefix enforce from servers traffic.
+	* modules/ircd/ircd.c: fixed uplink start.
+	* modules/ircd/ircd.c: fixed broken password sending to partner.
+	* modules/ircd/ircd.c: added RPL_HELLO support at registering.
+	* modules/ircd/ircd.c: fixed NICK handler from servers.
+	* modules/ircd/queries.c: fixed PING and PONG from servers.
 
 Sat Sep 10 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.*: added missing variables registration.

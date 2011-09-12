@@ -52,6 +52,13 @@ static char _ircd_umodes[32]; /* 1 char per modeflag bit */
 static char _ircd_cmodes[32]; /* 1 char per modeflag bit */
 static char _ircd_wmodes[32]; /* 1 char per modeflag bit */
 
+/* prototypes for too complex functions not easy castable */
+#define static
+typedef BINDING_TYPE_ircd_modechange ((*_mch_func_t));
+typedef BINDING_TYPE_ircd_whochar ((*_wch_func_t));
+#undef static
+
+
 /* ---------------------------------------------------------------------------
  * Common functions.
  */
@@ -865,9 +872,7 @@ static inline int _ircd_mode_mask_query_reply (INTERFACE *srv, CLIENT *cl,
 					CHANNEL *ch, const char *par, modeflag mm)
 {
   modeflag mf;
-#define static register
-  BINDING_TYPE_ircd_modechange ((*f));
-#undef static
+  register _mch_func_t f;
   int (*ma)(INTERFACE *, const char *, const char *, int, const char *);
   register struct binding_t *b;
 
@@ -877,7 +882,7 @@ static inline int _ircd_mode_mask_query_reply (INTERFACE *srv, CLIENT *cl,
   ma = NULL;
   if (!b || b->name || b->key[1] != '*') /* check for parameterized */
     return ircd_do_cnumeric (cl, ERR_UNKNOWNMODE, ch, 0, par);
-  f = (void *)b->func;		/* run binding */
+  f = (_mch_func_t)b->func;		/* run binding */
   if (!(mf = f (srv, cl->nick, mm, NULL, ch->mode, -1, ch->name[0], &ma)) ||
       !ma)
     return ircd_do_cnumeric (cl, ERR_CHANOPRIVSNEEDED, ch, 0, NULL);
@@ -957,9 +962,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	  struct binding_t *b;
 	  modeflag mf = 0;
 	  char charstr[2];
-#define static register
-	  BINDING_TYPE_ircd_modechange ((*f));
-#undef static
+	  register _mch_func_t f;
 	  int (*ma)(INTERFACE *, const char *, const char *, int, const char *);
 	  const char *par = NULL;
 	  MEMBER *tar;
@@ -984,7 +987,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	  {
 	    if (!b->name)
 	    {
-	      f = (void *)b->func;
+	      f = (_mch_func_t)b->func;
 	      if (tar)			/* modechange for target */
 		mf |= f (srv, peer->dname, memb->mode, tar->who->nick,
 			 tar->mode, add, ch->name[0], &ma);
@@ -1108,8 +1111,8 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	  }
 	  while (b)			/* cycle thru all */
 	  {
-	    if (!b->name)
-	      mf |= (f = (void *)b->func) (srv, peer->dname, cl->umode, add);
+	    if (!b->name && (f = (modeflag (*)())b->func))
+	      mf |= f (srv, peer->dname, cl->umode, add);
 	    b = Check_Bindtable (BTIrcdUmodechange, charstr, U_ALL, U_ANYCH, b);
 	  }
 	  while (mf && (b = Check_Bindtable (BTIrcdCheckModechange, peer->dname,
@@ -1252,7 +1255,7 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 #undef static
   MASK *cm;
   modeflag mf;
-  int n = 0, x, i, ptr;
+  int x, i, ptr;
   char cnfc[2];
   char lcb[MB_LEN_MAX*NICKLEN+USERLEN+HOSTLEN+3];
   char bufforservers[MB_LEN_MAX*IRCMSGLEN];
@@ -1311,9 +1314,10 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
       ircd_do_unumeric (cl, ERR_BADCHANMASK, cl, 0, cmask);
     else if ((b = Check_Bindtable (BTIrcdChannel, cnfc, U_ALL, U_ANYCH, NULL))
 	     && !b->name)
-      mf = (f = (void *)b->func) (peer->iface, cl->umode, ch ? ch->mode : 0,
-				  ch ? ch->count : 0, chn,
-				  ((IRCD *)srv->data)->channels, &nchn);
+      mf = (f = (modeflag (*)())b->func) (peer->iface, cl->umode,
+					  ch ? ch->mode : 0, ch ? ch->count : 0,
+					  chn, ((IRCD *)srv->data)->channels,
+					  &nchn);
     if (ch && !mf)			/* channel is still on hold */
       ircd_do_unumeric (cl, ERR_UNAVAILRESOURCE, cl, 0, chn);
     else if (!mf)			/* cannot create a channel */
@@ -1370,14 +1374,12 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
       b = NULL;
       while ((b = Check_Bindtable (BTIrcdCheckModechange, ch->name, U_ALL,
 				   U_ANYCH, b)))
-	if (!b->name && (ff = (void *)b->func) (cl->umode, mf, 1, 0, NULL) == 0)
+	if (!b->name && (ff = b->func) && ff (cl->umode, mf, 1, 0, NULL) == 0)
 	  break;			/* denied! */
       if (!b)
 	i = 1;				/* so he/she allowed at last */
     }
-    if (n++ >= MAXJOINS)		/* bad arguments list */
-      ircd_do_unumeric (cl, ERR_TOOMANYTARGETS, cl, 0, "Join aborted.");
-    else if (x++ >= MAXCHANNELS)	/* joined too many channels already */
+    if (x++ >= MAXCHANNELS)		/* joined too many channels already */
       ircd_do_unumeric (cl, ERR_TOOMANYCHANNELS, cl, 0, NULL);
     else if (i > 0) {			/* so user can join, do it then */
       mm = _ircd_do_join ((IRCD *)srv->data, cl, &ch, nchn, mf);
@@ -1501,9 +1503,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	  struct binding_t *b;
 	  modeflag mf = 0;
 	  char charstr[2];
-#define static register
-	  BINDING_TYPE_ircd_modechange ((*f));
-#undef static
+	  register _mch_func_t f;
 	  int (*ma)(INTERFACE *, const char *, const char *, int, const char *);
 	  const char *par = NULL;
 	  MEMBER *tar;
@@ -1538,7 +1538,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	  {
 	    if (!b->name)
 	    {
-	      f = (void *)b->func;
+	      f = (_mch_func_t)b->func;
 	      if (tar)			/* modechange for target */
 		mf |= f (srv, pp->p.dname, whof, tar->who->nick,
 			 tar->mode, add, ch->name[0], &ma);
@@ -1642,7 +1642,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	  break; /* return */
   }
   else if ((tgt = ircd_find_client(argv[0], pp)) != NULL &&
-	   !tgt->hold_upto)		/* user mode */
+	   !CLIENT_IS_SERVER(tgt) && !tgt->hold_upto) /* user mode */
   {
     modeflag toadd = 0, todel = 0;
     const char *lasterror[MAXTRACKED_MODE_ERRORS];
@@ -1688,8 +1688,8 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	  }
 	  while (b)			/* cycle thru all */
 	  {
-	    if (!b->name)
-	      mf |= (f = (void *)b->func) (srv, pp->p.dname, src->umode, add);
+	    if (!b->name && (f = (modeflag (*)())b->func))
+	      mf |= f (srv, pp->p.dname, src->umode, add);
 	    b = Check_Bindtable (BTIrcdUmodechange, charstr, U_ALL, U_ANYCH, b);
 	  }
 	  if (!mf)
@@ -1711,7 +1711,8 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	    if (!mf)
 	      continue;
 	    n++;			/* one more accepted */
-	    New_Request (tgt->via->p.iface, 0, "MODE %s +%c", tgt->nick, *c);
+	    if (CLIENT_IS_LOCAL(tgt))
+	      New_Request (tgt->via->p.iface, 0, "MODE %s +%c", tgt->nick, *c);
 	    toadd |= mf;
 	    todel &= ~mf;
 	    continue;
@@ -1720,7 +1721,8 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	  if (!mf)
 	    continue;
 	  n++;				/* one more accepted */
-	  New_Request (tgt->via->p.iface, 0, "MODE %s -%c", tgt->nick, *c);
+	  if (CLIENT_IS_LOCAL(tgt))
+	    New_Request (tgt->via->p.iface, 0, "MODE %s -%c", tgt->nick, *c);
 	  todel |= mf;
 	  toadd &= ~mf;
 	}
@@ -2094,7 +2096,7 @@ void ircd_del_from_channel (IRCD *ircd, MEMBER *memb, int tohold)
     {
       register INTERFACE *u;
 
-      f = (void *)b->func;
+      f = (modeflag (*)())b->func;
       if (CLIENT_IS_ME (memb->who))
 	u = NULL;
       if (CLIENT_IS_LOCAL (memb->who))
@@ -2242,7 +2244,7 @@ static inline char *_ircd_ch_flush_umodes (INTERFACE *i, char *c, char *e)
   if (!(b = Check_Bindtable (BTIrcdUmodechange, c, U_ALL, U_ANYCH, NULL)) ||
       b->name)
     return c;
-  ff = (void *)b->func;
+  ff = (modeflag (*)())b->func;
   mode = (ff (i, NULL, 0, 0) & ~(A_ISON | A_PINGED));
   IRCD_SET_MODECHAR (mode, _ircd_umodes, *c);
   if (c < e)
@@ -2255,17 +2257,15 @@ static inline char *_ircd_ch_flush_cmodes (INTERFACE *i, char *c, char *e)
   Function dummy;
   modeflag mode;
   struct binding_t *b;
-#define static register
-  BINDING_TYPE_ircd_modechange ((*ff));
-#undef static
+  register _mch_func_t ff;
 
   if (!(b = Check_Bindtable (BTIrcdModechange, c, U_ALL, U_ANYCH, NULL)) ||
       b->name)
     return c;
-  ff = (void *)b->func;		/* make _ircd_cmodes */
+  ff = (_mch_func_t)b->func;	/* make _ircd_cmodes */
   mode = (ff (i, NULL, 0, NULL, 0, 0, '\0', &dummy) & ~(A_ISON | A_PINGED));
   IRCD_SET_MODECHAR (mode, _ircd_cmodes, *c);
-  ff = (void *)b->func;		/* make Ircd_modechar_mask */
+  ff = (_mch_func_t)b->func;	/* make Ircd_modechar_mask */
   mode = (ff (i, NULL, 0, "", 0, 0, '\0', &dummy) & ~(A_ISON | A_PINGED));
   Ircd_modechar_mask |= mode;
   IRCD_SET_MODECHAR (mode, _ircd_wmodes, *c);
@@ -2281,9 +2281,7 @@ void ircd_channels_flush (IRCD *ircd, char *modestring, size_t s)
   struct binding_t *b = NULL;
   char ch;
   char *c, *e;
-#define static
-  BINDING_TYPE_ircd_whochar ((*f));
-#undef static
+  _wch_func_t f;
 
   for (i = 0; Ircd_modechar_list[i]; i++)
     Ircd_whochar_list[i] = ' ';		/* clear list of channel whochars */
@@ -2294,7 +2292,7 @@ void ircd_channels_flush (IRCD *ircd, char *modestring, size_t s)
   while ((b = Check_Bindtable (BTIrcdWhochar, c, U_ALL, U_ANYCH, b)))
     if (!b->name) /* do internal only */
       for (i = 0; Ircd_modechar_list[i]; i++)
-	if ((ch = (f = (void *)b->func) (Ircd_modechar_list[i])))
+	if ((ch = (f = (_wch_func_t)b->func) (Ircd_modechar_list[i])))
 	  Ircd_whochar_list[i] = ch;	/* update list of channel whochars */
   /* make modes for 004 - including 'O' hidden mode for ! channels */
   memset (_ircd_umodes, 0, sizeof(_ircd_umodes));
@@ -2364,6 +2362,9 @@ void ircd_burst_channels (INTERFACE *to, NODE *channels)
     ch = leaf->s.data;
     if (ch->hold_upto)			/* it's unavailable */
       continue;
+    if (ch->mode & A_INVISIBLE)		/* local channel */
+      continue;
+    dprint(4, "ircd:channels.c:ircd_burst_channels: send channel %s", ch->name);
     m = ch->users;
     while (m)				/* do NJOIN */
     {
@@ -2371,9 +2372,9 @@ void ircd_burst_channels (INTERFACE *to, NODE *channels)
       l = snprintf (buff, sizeof(buff), "NJOIN %s", ch->name); /* start size */
       while (m)
       {
-	t = strlen (m->who->nick) + 3;	/* projected size */
-	s = unistrcut (buff, sizeof(buff) - t, IRCMSGLEN - 2 - t); /* a room */
-	if (s <= l)			/* insufficient space */
+	t = strlen (m->who->nick) + 3;	/* projected max size */
+	s = unistrcut (buff, sizeof(buff) - t - 1, IRCMSGLEN - 2 - t); /* a room */
+	if (s < l)			/* insufficient space */
 	  break;
 	if (m->mode & A_ADMIN)		/* creator */
 	  s = snprintf (&buff[l], sizeof(buff) - l, " @@%s", m->who->nick);
@@ -2473,7 +2474,7 @@ modeflag ircd_char2umode(INTERFACE *srv, const char *sname, char c)
   b = Check_Bindtable (BTIrcdUmodechange, charstr, U_ALL, U_ANYCH, NULL);
   while (b) {			/* cycle thru all */
     if (!b->name)
-      mf |= (f = (void *)b->func) (srv, sname, A_SERVER, 1);
+      mf |= (f = (modeflag (*)())b->func) (srv, sname, A_SERVER, 1);
     b = Check_Bindtable (BTIrcdUmodechange, charstr, U_ALL, U_ANYCH, b);
   }
   return mf;
@@ -2486,8 +2487,8 @@ modeflag ircd_char2mode(INTERFACE *srv, const char *sname, const char *tar,
   struct binding_t *b;
 #define static register
   BINDING_TYPE_ircd_channel ((*ff));
-  BINDING_TYPE_ircd_modechange ((*f));
 #undef static
+  register _mch_func_t f;
   int (*ma)(INTERFACE *, const char *, const char *, int, const char *);
   modeflag mf;
   char chfc[2];
@@ -2498,7 +2499,7 @@ modeflag ircd_char2mode(INTERFACE *srv, const char *sname, const char *tar,
     b = Check_Bindtable(BTIrcdChannel, chfc, U_ALL, U_ANYCH, NULL);
     if (b == NULL || b->name != NULL)
       return 0;
-    return ((ff = (void *)b->func)(NULL, 0, 0, 0, chname,
+    return ((ff = (modeflag (*)())b->func)(NULL, 0, 0, 0, chname,
 				   ((IRCD *)srv->data)->channels, &p));
   }
   chfc[0] = c;
@@ -2511,7 +2512,7 @@ modeflag ircd_char2mode(INTERFACE *srv, const char *sname, const char *tar,
   {
     if (!b->name)
     {
-      f = (void *)b->func;
+      f = (_mch_func_t)b->func;
       mf |= f(srv, sname, (A_OP|A_ADMIN), tar, (modeflag)0, 1, chname[0], &ma);
     }
     b = Check_Bindtable (BTIrcdModechange, chfc, U_ALL, U_ANYCH, b);
@@ -2528,8 +2529,8 @@ modeflag ircd_whochar2mode(char ch)
   if (ptr == NULL)
     return (0);
   ch = Ircd_modechar_list[ptr-Ircd_whochar_list];
-  for (i = 0; i < sizeof(_ircd_cmodes); i++)
-    if (_ircd_cmodes[i] == ch)
+  for (i = 0; i < sizeof(_ircd_wmodes); i++)
+    if (_ircd_wmodes[i] == ch)
       return (1 << i);
   return (0);
 }

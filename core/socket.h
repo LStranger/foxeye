@@ -48,8 +48,8 @@ int SetupSocket (idx_t, const char *, unsigned short, /* socket, domain, port */
 		 int (*)(const struct sockaddr *, void *), void *);
 void ResetSocket (idx_t, unsigned short);	/* reset after failed setup */
 int KillSocket (idx_t *);			/* forget the socket */
-ssize_t ReadSocket (char *, idx_t, size_t, int); /* read full line, strip \r\n */
-ssize_t WriteSocket (idx_t, const char *, size_t *, size_t *, int);
+ssize_t ReadSocket (char *, idx_t, size_t);
+ssize_t WriteSocket (idx_t, const char *, size_t *, size_t *);
 idx_t AnswerSocket (idx_t);
 const char *SocketDomain (idx_t, unsigned short *); /* returns nonull value! */
 const char *SocketIP (idx_t);			/* the same but text IP */

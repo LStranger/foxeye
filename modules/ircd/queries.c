@@ -267,7 +267,7 @@ static int ircd_names_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char
 //TODO: check and forbid services to query
 #define DO_SERVER_QUERY(F) \
   register CLIENT *cl = _ircd_find_client_lc ((IRCD *)srv->data, lcsender); \
-  if (!cl || CLIENT_IS_SERVER(cl)) \
+  if (!cl || !CLIENT_IS_SERVER(cl)) \
   { \
     ERROR ("ircd:Invalid query source %s from %s", sender, peer->dname); \
     return ircd_recover_done (peer->iface->data, "Invalid query source"); \
@@ -1131,7 +1131,7 @@ static inline int _ircd_query_ping (IRCD *ircd, CLIENT *cl, struct peer_priv *vi
       return ircd_do_unumeric (cl, ERR_NOSUCHSERVER, cl, 0, argv[1]);
     if (CLIENT_IS_ME(tgt))
       return _ircd_query_ping (ircd, cl, via, 1, argv);
-    New_Request (tgt->via->p.iface, 0, ":%s PING %s %s", cl->nick, argv[0],
+    New_Request (tgt->cs->via->p.iface, 0, ":%s PING %s %s", cl->nick, argv[0],
 		 tgt->nick);
     return (-1);		/* don't reset idle time */
   }
@@ -1169,8 +1169,8 @@ static inline int _ircd_query_pong (IRCD *ircd, CLIENT *cl, struct peer_priv *vi
     if (!tgt)
       return ircd_do_unumeric (cl, ERR_NOSUCHSERVER, cl, 0, argv[1]);
     if (!CLIENT_IS_ME(tgt))
-      New_Request (tgt->via->p.iface, 0, ":%s PONG %s %s", cl->nick, argv[0],
-		   tgt->nick);
+      New_Request (tgt->cs->via->p.iface, 0, ":%s PONG %s %s", cl->nick,
+		   argv[0], tgt->nick);
   }
   return (-1);			/* don't reset idle time */
 }
@@ -1203,7 +1203,7 @@ static inline int _ircd_query_summon(IRCD *ircd, CLIENT *cl, struct peer_priv *v
     if (!tgt)
       return ircd_do_unumeric (cl, ERR_NOSUCHSERVER, cl, 0, argv[1]);
     if (!CLIENT_IS_ME(tgt)) {
-      New_Request(tgt->via->p.iface, 0, ":%s SUMMON %s %s %s", cl->nick,
+      New_Request(tgt->cs->via->p.iface, 0, ":%s SUMMON %s %s %s", cl->nick,
 		  argv[0], tgt->nick, NONULL(argv[2]));
       return 1;
     }
@@ -1250,7 +1250,7 @@ static inline int _ircd_query_users(IRCD *ircd, CLIENT *cl, struct peer_priv *vi
       return ircd_do_unumeric(cl, ERR_NOSUCHSERVER, cl, 0, argv[0]);
     if (CLIENT_IS_ME(tgt))
       return _ircd_query_users(ircd, cl, via, 0, argv);
-    New_Request(tgt->via->p.iface, 0, ":%s USERS %s", cl->nick, tgt->nick);
+    New_Request(tgt->cs->via->p.iface, 0, ":%s USERS %s", cl->nick, tgt->nick);
     return 1;
   }
 #ifdef IRCD_ENABLE_USERS
@@ -1523,8 +1523,8 @@ void ircd_queries_proto_start (void)
   Add_Binding ("ircd-server-cmd", "info", 0, 0, (Function)&ircd_info_sb, NULL);
   Add_Binding ("ircd-server-cmd", "whois", 0, 0, (Function)&ircd_whois_sb, NULL);
   Add_Binding ("ircd-server-cmd", "whowas", 0, 0, (Function)&ircd_whowas_sb, NULL);
-  Add_Binding ("ircd-server-cmd", "ping", 0, 0, (Function)&ircd_ping_cb, NULL);
-  Add_Binding ("ircd-server-cmd", "pong", 0, 0, (Function)&ircd_pong_cb, NULL);
+  Add_Binding ("ircd-server-cmd", "ping", 0, 0, (Function)&ircd_ping_sb, NULL);
+  Add_Binding ("ircd-server-cmd", "pong", 0, 0, (Function)&ircd_pong_sb, NULL);
   Add_Binding ("ircd-server-cmd", "summon", U_HALFOP, 0, (Function)&ircd_summon_sb, NULL);
   Add_Binding ("ircd-server-cmd", "users", U_HALFOP, 0, (Function)&ircd_users_sb, NULL);
   Add_Binding ("ircd-got-client", "*", 0, 0, (Function)&_igotc_lu_mo, NULL);

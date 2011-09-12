@@ -65,7 +65,7 @@ typedef struct irc_await {
   pthread_t th;
   irc_server *serv;
   struct irc_await *next;
-  int ready:1;
+  unsigned ready:1;
 } irc_await;
 
 /* must be locked by dispatcher lock so don't access it from threads! */
@@ -613,7 +613,7 @@ static iftype_t _irc_signal (INTERFACE *iface, ifsig_t sig)
       snprintf (report, sizeof(report), "\r\nQUIT :%s\r\n", reason);
       inbuf = strlen (report);
       bufpos = 0;
-      WriteSocket (serv->p.socket, report, &bufpos, &inbuf, M_RAW);
+      WriteSocket (serv->p.socket, report, &bufpos, &inbuf);
       iface->ift |= I_DIED;
       serv->p.iface = NULL;
       break;
@@ -761,9 +761,8 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
       /* if there was an error then serv->p.socket < 0 (see function
 	 _irc_connection_ready()), else if waiting for connection
 	 then ReadSocket will return E_AGAIN */
-      if (serv->p.socket >= 0 && 
-	  (sw = ReadSocket (thebuf, serv->p.socket, sizeof(thebuf),
-			    M_RAW)) >= 0)
+      if (serv->p.socket >= 0 &&
+	  (sw = ReadSocket(thebuf, serv->p.socket, sizeof(thebuf))) >= 0)
       {
 	struct clrec_t *clr;
 	char *ident, *realname, *sl;

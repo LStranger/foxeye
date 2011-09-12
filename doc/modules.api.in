@@ -1075,22 +1075,22 @@ Sockets API:
     value of _b_u_f.
 	Reenterability: async-safe
 
-  ssize_t RReeaaddSSoocckkeett (char *_b_u_f, idx_t _i_d_x, size_t _s_z, int _m_o_d_e);
-    Reads data from socket _i_d_x to buffer _b_u_f. If _m_o_d_e is not M_POLL then
-    reads raw data to max buffer size _s_z and returns size of data that
-    was got. If _m_o_d_e is M_POLL then do the same but may wait up to 200
-    milliseconds. If socket was died unexpectedly or we got EOF then
-    returns E_NOSOCKET. Also may return E_AGAIN if socket is waiting a
-    connection.
+  ssize_t RReeaaddSSoocckkeett (char *_b_u_f, idx_t _i_d_x, size_t _s_z);
+    Reads raw data from socket _i_d_x to buffer _b_u_f of max size _s_z and then
+    returns size of read data. If called from threads then may wait up to
+    200 milliseconds. If there was an error on socket then returns error
+    code and if socket was died unexpectedly then returns E_NOSOCKET.
+    Also may return E_AGAIN if socket is waiting for a connection.
 	Reenterability: thread-safe
 	Cancellation point: maybe
 
   ssize_t WWrriitteeSSoocckkeett (idx_t _i_d_x, const char *_b_u_f, size_t *_p_t_r,
-		       size_t *_s_z, int _m_o_d_e);
-    Writes raw data of size _s_z to socket _i_d_x from buffer _b_u_f at _p_t_r.
-    Returns number of bytes written and changes counters _p_t_r and _s_z. If
-    _m_o_d_e is M_POLL then do the same but may wait up to 200 milliseconds.
-    If the socket was died unexpectedly then returns -1.
+		       size_t *_s_z);
+    Writes raw data of size _s_z to socket _i_d_x from buffer _b_u_f at _p_t_r. If
+    called from threads then may wait up to 200 milliseconds. Returns
+    number of bytes written and changes counters _p_t_r and _s_z. If there was
+    an error on socket then returns error code and if socket was died
+    unexpectedly then returns E_NOSOCKET.
 	Reenterability: thread-safe
 	Cancellation point: maybe
 

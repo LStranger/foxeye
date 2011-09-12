@@ -157,7 +157,7 @@ ScriptFunction (FE_module)
     if (modh == NULL)
       func = NULL;
     else
-      func = dlsym (modh, "ModuleInit");
+      func = (SigFunction (*)())dlsym (modh, "ModuleInit");
     if (!func)
     {
       c = (char *)dlerror();

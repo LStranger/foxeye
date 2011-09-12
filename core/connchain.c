@@ -58,10 +58,10 @@ static ssize_t _connchain_send (struct connchain_i **chain, idx_t idx,
     i = E_NOSOCKET;		/* so return error then */
   else if (*sz == 0)		/* if it's a test then answer we are ready */
     return CONNCHAIN_READY;
-  else if ((*(struct peer_t **)b)->state < P_LOGIN) /* it's in thread yet */
-    i = WriteSocket (idx, data, &ptr, sz, M_POLL);
-  else
-    i = WriteSocket (idx, data, &ptr, sz, M_RAW);
+//  else if ((*(struct peer_t **)b)->state < P_LOGIN) /* it's in thread yet */
+//    i = WriteSocket (idx, data, &ptr, sz, M_POLL);
+//  else
+    i = WriteSocket (idx, data, &ptr, sz);
   if (i < 0)
     DBG ("connchain: send: socket error %d", (int)i);
   else if (i)
@@ -78,10 +78,10 @@ static ssize_t _connchain_recv (struct connchain_i **chain, idx_t idx,
 
   if (data == NULL)		/* if it's NULL then we have to stop */
     i = E_NOSOCKET;
-  else if ((*(struct peer_t **)b)->state < P_LOGIN) /* it's in thread yet */
-    i = ReadSocket (data, idx, sz, M_POLL);
-  else
-    i = ReadSocket (data, idx, sz, M_RAW);
+//  else if ((*(struct peer_t **)b)->state < P_LOGIN) /* it's in thread yet */
+//    i = ReadSocket (data, idx, sz, M_POLL);
+//  else
+    i = ReadSocket (data, idx, sz);
   if (i < 0)
     DBG ("connchain: recv: socket error %d", (int)i);
   else if (i)

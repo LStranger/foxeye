@@ -97,8 +97,8 @@ typedef struct ACK
 } ACK;
 #endif
 
-/* client link instance: prev is previous link in the chain, last link is at
-   CLASS->local or IRCD->servers for us or CLIENT->c.lients for other servers
+/* client link instance: prev is CLASS->local or IRCD->servers list for us
+   or CLIENT->cs for other servers
    cl is client data
    where is where it seen, never NULL */
 typedef struct LINK
@@ -225,7 +225,7 @@ struct peer_priv
 };
 
 #define CLIENT_IS_ME(x) ((x)->via == NULL)
-#define CLIENT_IS_LOCAL(x) ((x)->via->link->cl == x)
+#define CLIENT_IS_LOCAL(x) ((x)->cs->via->link->cl == x)
 #define CLIENT_IS_SERVER(x) ((x)->umode & A_SERVER)
 #define CLIENT_IS_SERVICE(x) ((x)->umode & A_SERVICE)
 
@@ -297,7 +297,7 @@ void ircd_del_from_channel (IRCD *, MEMBER *, int);
 MEMBER *ircd_find_member (IRCD *, const char *, CLIENT *);
 /* args: ircd, client, tohold, isquit; should be called after broadcast */
 void ircd_quit_all_channels (IRCD *, CLIENT *, int, int);
-/* adds invite to existing channel */
+/* adds invite for local client to existing channel */
 void ircd_add_invited (CLIENT *, CHANNEL *);
 /* args: ircd, channel; should be called only if no acks left */
 void ircd_drop_channel (IRCD *, CHANNEL *);

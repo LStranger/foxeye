@@ -919,7 +919,7 @@ static int lua_call_function (lua_State *L) /* int = func(arg) */
       !lua_islightuserdata (Lua, lua_upvalueindex (1)))
     return luaL_error (Lua, "incorrect function call");
   BindResult = NULL;
-  fn = lua_touserdata (Lua, lua_upvalueindex (1));
+  fn = (Function)lua_touserdata (Lua, lua_upvalueindex (1));
   i = fn (lua_tostring (Lua, 1));
   if (i != 0 && BindResult != NULL)
     lua_pushstring (Lua, BindResult);

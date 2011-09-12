@@ -1973,7 +1973,7 @@ modeflag Inspect_Client (const char *net, const char *pub, const char *name,
     bind = NULL;
   if (!bind || bind->name)
     return 0;		/* no such network/service */
-  f = (void *)bind->func;
+  f = (modeflag (*)())bind->func;
   return f (net, pub, name, lname, host, idle, cnt);
 }
 

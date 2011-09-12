@@ -175,9 +175,9 @@ static int _tcl_call_function (ClientData func, Tcl_Interp *tcl, int argc, TCLAR
   char string[LONG_STRING];
   char buf[LONG_STRING];
   char *c, *cs = string, *ptr;
+  int (*f)(const char *) = (Function)func;
   size_t s, ss = sizeof(string) - 1;
   int i = 1;				/* skip function name */
-  int (*f)(const char *) = func;
 
   while (--argc && ss)			/* make a string from argv[] */
   {

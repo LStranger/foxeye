@@ -32,7 +32,7 @@ typedef struct pmsgout_stack {
   time_t last;
   short msg_flood;
   short ctcp_flood;
-  int run:1;
+  unsigned run:1;
 } pmsgout_stack;
 
 

@@ -661,7 +661,7 @@ static iftype_t dcc_signal (INTERFACE *iface, ifsig_t signal)
 	strfcat (buf, "\r\n", sizeof(buf));
 	inbuf = strlen (buf);
 	bufpos = 0;
-	WriteSocket (dcc->socket, buf, &bufpos, &inbuf, M_RAW);
+	WriteSocket (dcc->socket, buf, &bufpos, &inbuf);
       }
       _died_iface (iface, NULL, 0);
     default: ;
@@ -1177,8 +1177,8 @@ typedef struct
   INTERFACE *iface;		/* interface of listener */
   unsigned short lport, eport;	/* listener port range */
   idx_t socket, id;
-  int tst:1;
   pthread_t th;
+  unsigned tst:1;
 } accept_t;
 
 static iftype_t port_signal (INTERFACE *iface, ifsig_t signal)
@@ -1248,7 +1248,7 @@ static void *_ask_ident (void *input_data)
     dprint (5, "ask host %s for ident: %s", domain, buf);
     sz = strlen (buf);
     sp = 0;
-    while (!(WriteSocket (acptr->id, buf, &sp, (size_t *)&sz, M_POLL)));
+    while (!(WriteSocket (acptr->id, buf, &sp, (size_t *)&sz)));
   }
   pthread_cleanup_pop(1);
   return (NULL);
@@ -1304,7 +1304,7 @@ static void *_accept_port (void *input_data)
     sz = 0;
     while (time(NULL) < t)
     {
-      sz = ReadSocket (&buf[sp], acptr->id, sizeof(buf) - sp, M_POLL);
+      sz = ReadSocket (&buf[sp], acptr->id, sizeof(buf) - sp);
       if (sz < 0)
 	break;
       while (sz)
