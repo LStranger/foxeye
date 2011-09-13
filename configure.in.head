@@ -113,15 +113,22 @@ AC_ARG_ENABLE(debug,
     ], [ac_cv_add_optimization=yes
 ])
 if test $ac_cv_add_optimization = yes; then
-    dnl Adding -O2 (optimize) to compiler and -s (strip) to linker
-    AC_CHECK_LDFLAG(fe_cv_add_oo, -O2, CFLAGS)
+    dnl Adding -s (strip) to linker
     AC_CHECK_LDFLAG(fe_cv_add_s, -s, LDFLAGS)
     dnl Compiler specific options
     case "$CC" in
 	c99*)
 	    AC_CHECK_LDFLAG(fe_cv_add_erroff, -erroff, CFLAGS)
+	    AC_CHECK_LDFLAG(fe_cv_add_fast, -fast, CFLAGS)
+	    fe_save_CC="$CC"
+	    CC="c99 -fast"
+	    AC_CHECK_LDFLAG(fe_cv_add_xipo, -xipo=2, CFLAGS)
+	    CC="$fe_save_CC"
+	    AC_CHECK_LDFLAG(fe_cv_add_xrestrict, [-xrestrict=%all], CFLAGS)
+	    AC_CHECK_LDFLAG(fe_cv_add_xinline, [-xinline=%auto], CFLAGS)
 	    ;;
 	*)
+	    AC_CHECK_LDFLAG(fe_cv_add_oo, -O2, CFLAGS)
 	    ;;
     esac
 fi
