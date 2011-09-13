@@ -10,12 +10,19 @@ TODO:
 	* core/socket.c: to make socket limit extendible.
 
 --- [0.10.0]
+Tue Sep 13 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/socket.c: replaced kill() with pthread_kill() calls.
+	* configure: removed _REENTRANT and added check for optimization flags.
+	* Makefile: added 'LANG = C' statement to avoid compilation errors.
+
 Mon Sep 12 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/init.c, core/modules.c, modules/ircd/channels.c, modules/ircd/ircd.c, modules/lua/lua.c, modules/tcl/modtcl.c:
 	  got rid of Sun CC warnings about function assignments.
 	* core/direct.c, modules/irc/*.c: fixed type for bit-field data.
 	* core/socket.c: rewritten polling scheme to minimize CPU usage.
 	* configure: removed -KPIC as it makes random crashes very soon.
+	* core/connchain.c, core/direct.c, core/socket.*, doc/modules.api, modules/irc-ctcp/dcc.c, modules/irc/irc.c:
+	  removed mode parameter from ReadSocket() and WriteSocket().
 
 Sun Sep 11 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/protos.h, core/direct.c, modules/irc-ctcp/dcc.c, modules/ircd/ircd.c:

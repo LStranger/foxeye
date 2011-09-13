@@ -257,7 +257,7 @@ int KillSocket (idx_t *idx)
   if (i >= _Snum)		/* it should be atomic ATM */
     return -1;			/* no such socket */
   dprint (4, "socket:KillSocket: fd=%d", Pollfd[i].fd);
-  kill(_mypid, SIGIO);		/* break poll() in main thread */
+  pthread_kill(__main_thread, SIGIO); /* break poll() in main thread */
   pthread_mutex_lock (&LockPoll);
   Socket[i].port = 0;
   FREE (&Socket[i].ipname);
@@ -284,7 +284,7 @@ idx_t GetSocket (unsigned short type)
     sockfd = socket (AF_INET, SOCK_STREAM, 0);
   if (sockfd < 0)
     return (E_NOSOCKET);
-  kill(_mypid, SIGIO);		/* break poll() in main thread */
+  pthread_kill(__main_thread, SIGIO); /* break poll() in main thread */
   pthread_mutex_lock (&LockPoll);
   idx = allocate_socket();
   if (idx >= 0)
@@ -685,8 +685,8 @@ void PollSockets(int check_out)
   }
   for (i = 0; i < _Snum; i++) {
     if (SChanged) {
-      if (Pollfd[i].fd != _pollfd[i].fd) /* it changed, clear */
-	_pollfd[i].events = 0;
+//      if (Pollfd[i].fd != _pollfd[i].fd) /* it changed, clear */
+//	_pollfd[i].events = 0;
       _pollfd[i].fd = Pollfd[i].fd;
       _pollfd[i].events |= Pollfd[i].events;
       Pollfd[i].events = 0;
