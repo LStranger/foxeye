@@ -26,6 +26,8 @@
 # include <crypt.h>
 #endif
 #include <fcntl.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
 
 #include "socket.h"
 #include "direct.h"
@@ -58,6 +60,7 @@ static struct bindtable_t *BT_Chatoff;
 static struct bindtable_t *BT_Chatjoin;
 static struct bindtable_t *BT_Chatpart;
 static struct bindtable_t *BT_Connect;
+static struct bindtable_t *BT_Listener;
 
 #define DccIdx(a) ((int)(a)->socket + 1)
 
@@ -1181,6 +1184,10 @@ typedef struct
   unsigned tst:1;
 } accept_t;
 
+#define static
+typedef BINDING_TYPE_got_listener ((*_got_listener_func_t));
+#undef static
+
 static iftype_t port_signal (INTERFACE *iface, ifsig_t signal)
 {
   accept_t *acptr = (accept_t *)iface->data;
@@ -1211,6 +1218,19 @@ static iftype_t port_signal (INTERFACE *iface, ifsig_t signal)
       pthread_join (acptr->th, NULL);	/* ...and wait until it die */
       Set_Iface (NULL);			/* restore status quo */
       KillSocket (&acptr->socket);	/* free everything now */
+      if (acptr->tst) {			/* release NAT */
+	struct binding_t *b;
+	_got_listener_func_t func;
+	struct sockaddr_in sin;
+
+	b = Check_Bindtable(BT_Listener, "*", U_ALL, U_ANYCH, NULL);
+	if ((b != NULL) && (b->name == NULL) && (func = b->func)) {
+	  memset(&sin, 0, sizeof(sin));
+	  sin.sin_port = htons(acptr->lport);
+	  sin.sin_family = AF_INET;
+	  func((struct sockaddr *)&sin, 0);
+	}
+      }
       FREE (&acptr->client);
       FREE (&acptr->confline);
       FREE (&acptr->data);
@@ -1347,13 +1367,27 @@ static void *_accept_port (void *input_data)
   return NULL;
 }
 
+static void _direct_listener_callback_cleanup(void *ptr)
+{
+  Unset_Iface();
+}
+
 static int _direct_listener_callback(const struct sockaddr *sa, void *input_data)
 {
+  struct binding_t *b;
+  _got_listener_func_t func;
   register int ec;
 
   if (acptr->cb == NULL)
     return (0);
   ec = acptr->cb(sa, acptr->data);
+  pthread_cleanup_push(&_direct_listener_callback_cleanup, NULL);
+  Set_Iface(NULL);
+  b = Check_Bindtable(BT_Listener, "*", U_ALL, U_ANYCH, NULL);
+  if ((b != NULL) && (b->name == NULL) && (func = b->func))
+    if (func((struct sockaddr *)sa, 1))
+      acptr->tst = 1;
+  pthread_cleanup_pop(1);
   if (ec != E_AGAIN)
     acptr->cb = NULL;
   return (ec);
@@ -1518,6 +1552,7 @@ int Listen_Port (char *client, const char *host, unsigned short sport,
   else
     _assign_port_range (&acptr->lport, &acptr->eport);
   acptr->socket = idx;
+  acptr->tst = 0;
   /* create interface now */
   if (!acptr->confline)
     snprintf (buf, sizeof(buf), "%hu", sport);
@@ -2855,6 +2890,7 @@ char *IFInit_DCC (void)
   BT_Chatjoin = Add_Bindtable ("chat-join", B_MASK);
   BT_Chatpart = Add_Bindtable ("chat-part", B_MASK);
   BT_Connect = Add_Bindtable ("connect", B_MASK);
+  BT_Listener = Add_Bindtable ("got-listener", B_UNIQMASK);
   Add_Binding ("connchain-grow", "y", 0, 0, &_ccfilter_y_init, NULL);
   Add_Binding ("connchain-grow", "b", 0, 0, &_ccfilter_b_init, NULL);
   flood_dcc = FloodType ("dcc");
