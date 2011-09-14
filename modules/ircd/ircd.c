@@ -148,9 +148,11 @@ static int _ircd_class_in (struct peer_t *peer, char *user, char *host, const ch
     *msg = "internal error";
     return 0;
   }
+  DBG("ircd:ircd.c: trying find %s", uh);
   cl = Find_Clientrecord (uh, &clname, NULL, NULL);
   if (!cl) {				/* do matching by IP too */
     snprintf (uh, sizeof(uh), "%s@%s", NONULL(user), SocketIP(peer->socket));
+    DBG("ircd:ircd.c: trying find %s", uh);
     cl = Find_Clientrecord (uh, &clname, NULL, NULL);
   }
   if (cl)
@@ -659,7 +661,9 @@ static int _ircd_sublist_receiver (INTERFACE *iface, REQUEST *req)
    if [to] is active nick holder then caller should remember it or else
    that relation will be lost after the return from this function
    sets only relation with [to] and previous nick and reference to nick holder
-   collision relations should be set by caller */
+   removing relation to previous nick of nick holder if it's required
+   collision relations should be set by caller
+   if returned client has ->cs pointed to itself then it's lonely one */
 __attribute__((warn_unused_result)) static inline CLIENT *
 	_ircd_get_phantom(const char *on, const char *lon, CLIENT *to)
 {
@@ -679,6 +683,12 @@ __attribute__((warn_unused_result)) static inline CLIENT *
   if (cl) {
     cl2->cs = cl;
     cl2->lcnick[0] = 0;
+    if (cl->rfr == NULL) ;		/* it was alone nick or phantom */
+    else if (cl->rfr->cs != cl)		/* and it had previous nick */
+      cl->rfr->x.rto = NULL;		/* reset relation with previous on it */
+    else				/* it was a keyholder already */
+      cl2->pcl = cl->rfr;		/* so just insert it */
+    cl->rfr = cl2;			/* and set relation from keyholder */
   } else {
     cl2->cs = cl2;
     if (lon)
@@ -2965,7 +2975,7 @@ static CLIENT *_ircd_do_nickchange(CLIENT *tgt, peer_priv *pp,
     holded = NULL;			/* it's not nick holder */
   phantom = _ircd_get_phantom(tgt->nick, tgt->lcnick, tgt);
   phantom->hold_upto = Time + CHASETIMELIMIT; /* nick delay for collided */
-  if (holded != NULL) {			/* do inheritance */
+  if (holded != NULL) {			/* do inheritance of keyholding */
     phantom->pcl = holded;
     _ircd_bounce_collision(phantom);
   }
@@ -3026,18 +3036,11 @@ static int _ircd_remote_nickchange(CLIENT *tgt, peer_priv *pp,
     //create collided phantom client and get it linked.......
     collision = NULL;
     if (tgt->rfr != NULL && tgt->rfr->cs == tgt)
-      collision = tgt->rfr;		/* it is nick holder */
+      collision = tgt->rfr;		/* it is nick holder, no 'from' */
     phantom = _ircd_get_phantom(nn, NULL, tgt); /* order: ? -> phantom -> tgt */
-    if (collision != NULL)		/* restore it */
-      tgt->rfr = collision;		/* phantom->x.rto is asymmetric now! */
-    if (phantom->cs != phantom) {	/* have to set new collision */
-      if (phantom->cs->rfr->cs == phantom->cs) { /* active keyholder */
-	phantom->pcl = phantom->cs->rfr; /* insert it */
-	phantom->cs->rfr = phantom;
-      } else {
-	phantom->pcl = phantom->cs->pcl; /* insert it */
-	phantom->cs->pcl = phantom;
-      }
+    if (collision != NULL) {
+      tgt->rfr = collision;		/* restore it now */
+      phantom->x.rto = NULL;		/* and isolate new phantom */
     }
 #if IRCD_MULTICONNECT
     if (pp->link->cl->umode & A_MULTI)
@@ -3055,8 +3058,6 @@ static int _ircd_remote_nickchange(CLIENT *tgt, peer_priv *pp,
       ircd_sendto_servers_all_ack(Ircd, tgt, NULL, pp,
 				  ":%s KILL %s :Nick collision from %s", MY_NAME,
 				  tgt->nick, pp->p.dname); /* broadcast KILL */
-      if (collision != NULL)
-	tgt->rfr = phantom;		/* recover; see above */
       ircd_prepare_quit(tgt, pp, "nick collision");
       tgt->hold_upto = Time + CHASETIMELIMIT;
       Add_Request(I_PENDING, "*", 0, ":%s!%s@%s QUIT :Nick collision from %s",
@@ -3067,9 +3068,7 @@ static int _ircd_remote_nickchange(CLIENT *tgt, peer_priv *pp,
     New_Request(pp->p.iface, 0, ":%s NICK :%s", nn, checknick);
   }
   collision = _ircd_do_nickchange(tgt, pp, token, checknick);
-  /* order is now: ? -> (?phantom?) -> collision -> tgt */
-  if (phantom != NULL)			/* it may be asymmetric; see above */
-    collision->rfr = phantom;		/* change back relation to right one */
+  /* order is now: ? -> (?phantom?) -> collision=old -> tgt=new */
   return 1;
 }
 
@@ -3125,15 +3124,6 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   if (ct != 0) {			/* change on collision */
     //create collided nick on hold and add link to it.......
     phantom = _ircd_get_phantom(argv[0], NULL, tgt);
-    if (phantom->cs != phantom) {	/* have to set new collision */
-      if (phantom->cs->rfr->cs == phantom->cs) { /* active keyholder */
-	phantom->pcl = phantom->cs->rfr; /* insert it */
-	phantom->cs->rfr = phantom;
-      } else {
-	phantom->pcl = phantom->cs->pcl; /* insert it */
-	phantom->cs->pcl = phantom;
-      }
-    }
 #if IRCD_MULTICONNECT
     if (pp->link->cl->umode & A_MULTI)
       ircd_add_ack(pp, phantom, NULL); /* either KILL or NICK */
@@ -3144,7 +3134,7 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     if (tgt->nick[0] == '\0')
     {
       New_Request(peer->iface, 0, ":%s KILL %s :Nick collision", MY_NAME, argv[0]);
-      phantom->pcl = NULL;
+      phantom->x.rto = NULL;
       free_CLIENT(tgt);
       return 1;
     }

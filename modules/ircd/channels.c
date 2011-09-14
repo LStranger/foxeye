@@ -1689,7 +1689,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	  while (b)			/* cycle thru all */
 	  {
 	    if (!b->name && (f = (modeflag (*)())b->func))
-	      mf |= f (srv, pp->p.dname, src->umode, add);
+	      mf |= f (srv, pp->p.dname, (src->umode | A_SERVER), add);
 	    b = Check_Bindtable (BTIrcdUmodechange, charstr, U_ALL, U_ANYCH, b);
 	  }
 	  if (!mf)

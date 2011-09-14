@@ -233,6 +233,17 @@ struct peer_priv
  * remote server        (path)  CLIENT  0
  * dying                peer    (smth)  >0
  * phantom              NULL    holder  >0
+ *
+ * client                       ->cs        ->rfr       ->x.rto
+ * active alone                 CLIENT      NULL        --
+ * active (new nick)            CLIENT      old         --
+ * kept on collision            CLIENT      clones      --
+ * killed on collision          keeper      (old)       NULL
+ * killed (keeper)              CLIENT      clones      NULL
+ * died (splitted) alone        CLIENT      (old)       NULL
+ * renamed on collision         keeper      (old)       new nick
+ * renamed (keeper)             CLIENT      clones      new nick
+ * renamed (old nick)           CLIENT      (old)       new nick
  */
 
 /* test for ME : valid always */
