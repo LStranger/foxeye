@@ -62,6 +62,7 @@ void ircd_add_ack (struct peer_priv *link, CLIENT *who, CHANNEL *where)
   ack->contrary = 0;
   if (where != NULL && where != CHANNEL0)
     where->on_ack++;
+  dprint(3, "ircd:serverc.s: new ack: who=%p where=%p", who, where);
 }
 
 /* removes first ack from link */
@@ -69,15 +70,18 @@ void ircd_drop_ack (IRCD *ircd, struct peer_priv *link)
 {
   register ACK *ack = link->acks;
 
+  dprint(3, "ircd:serverc.s: del ack: who=%p where=%p", ack->who, ack->where);
   link->acks = ack->next;
   if (ack->who) {
     ack->who->on_ack--;			/* unlock one more */
-    if (Time > ack->who->hold_upto && !ack->who->on_ack)
+    if (!ack->who->on_ack && ack->who->hold_upto &&
+	(Time > ack->who->hold_upto))
       ircd_drop_nick (ack->who);	/* it was on hold by acks */
   }
   if (ack->where != NULL && ack->where != CHANNEL0) {
     ack->where->on_ack--;
-    if (Time > ack->where->hold_upto && !ack->where->on_ack)
+    if (!ack->where->on_ack && ack->where->hold_upto &&
+	(Time > ack->where->hold_upto))
       ircd_drop_channel (ircd, ack->where); /* it was on hold by acks */
   }
   free_ACK (ack);
@@ -922,7 +926,7 @@ static int ircd_ack(INTERFACE *srv, struct peer_t *peer, unsigned short token,
   }
   //TODO: check if parameters do match link->acks
   ircd_drop_ack((IRCD *)srv->data, pp);
-  return (0);
+  return (1);
 }
 #endif /* IRCD_MULTICONNECT */
 #undef __TRANSIT__

@@ -14,6 +14,7 @@ Wed Sep 14 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/*c, modules/ircd/sendto.h: replaced some CLIENT_IS_LOCAL
 	  with CLIENT_IS_REMOTE as latter is more fast.
 	* core/direct.c: added new bindtable "got-listener".
+	* modules/ircd/servers.c: fixed ACK handling.
 
 Tue Sep 13 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/socket.c: replaced kill() with pthread_kill() calls.
