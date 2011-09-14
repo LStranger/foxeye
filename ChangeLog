@@ -15,6 +15,7 @@ Wed Sep 14 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  with CLIENT_IS_REMOTE as latter is more fast.
 	* core/direct.c: added new bindtable "got-listener".
 	* modules/ircd/servers.c: fixed ACK handling.
+	* modules/ircd/messages.c: fixed duplicating privmsg between servers.
 
 Tue Sep 13 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/socket.c: replaced kill() with pthread_kill() calls.

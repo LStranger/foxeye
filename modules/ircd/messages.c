@@ -292,7 +292,7 @@ static void _ircd_broadcast_msglist_old (IRCD *ircd, struct peer_priv *via,
       CLIENT *tcl = _ircd_find_client_lc (ircd, tlist[i]);
 
 #if IRCD_MULTICONNECT
-      if (all || (tcl->cs->via->link->cl->umode & A_MULTI))
+      if (all || !(tcl->cs->via->link->cl->umode & A_MULTI))
 #endif
 	tcl->cs->via->p.iface->ift |= I_PENDING;
     }
