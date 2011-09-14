@@ -248,10 +248,10 @@ UNLD  "uunnllooaadd"         MASK
     The binding is called with _s_e_t equal to 1 from listening thread
     which has cancelling state enabled at that moment. The binding is
     called before of call of the backcall function (see description of
-    Listen_Port() for details) with the same sctructure _s_a and the
-    binding have full access to it. This binding call is implemented for
-    purpose if we are behind NAT and binding can make some calls to NAT
-    firewall to make a DNAT port forwarding (UPnP can do it for example).
-    Also called from the same listening thread with _s_e_t equal to 0 when
-    listener is terminated but in that case cancelling state is disabled.
+    Listen_Port() for details) with the same sctructure _s_a and binding
+    have full access to it. This binding call is implemented for purpose
+    if we are behind NAT and binding can make some calls to NAT firewall
+    to make a DNAT port forwarding (UPnP can do it for example). Binding
+    also called from main thread with _s_e_t equal to 0 after listener was
+    terminated but only port is set in _s_a this time.
       Matching: anything.

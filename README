@@ -129,4 +129,5 @@ Which modules are available?
    su		- enables change of user on chat subsystem
    syslog	- support for logging some messages to syslog
    ui		- support for generic user interface (text or GUI)
+   upnp		- support for UPnP listening port forwarding
    ziplink	- support for compressed connections
