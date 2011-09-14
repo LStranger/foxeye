@@ -1711,7 +1711,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	    if (!mf)
 	      continue;
 	    n++;			/* one more accepted */
-	    if (CLIENT_IS_LOCAL(tgt))
+	    if (!CLIENT_IS_REMOTE(tgt))
 	      New_Request (tgt->via->p.iface, 0, "MODE %s +%c", tgt->nick, *c);
 	    toadd |= mf;
 	    todel &= ~mf;
@@ -1721,7 +1721,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	  if (!mf)
 	    continue;
 	  n++;				/* one more accepted */
-	  if (CLIENT_IS_LOCAL(tgt))
+	  if (!CLIENT_IS_REMOTE(tgt))
 	    New_Request (tgt->via->p.iface, 0, "MODE %s -%c", tgt->nick, *c);
 	  todel |= mf;
 	  toadd &= ~mf;
@@ -1980,7 +1980,7 @@ MEMBER *ircd_add_to_channel (IRCD *ircd, struct peer_priv *bysrv, CHANNEL *ch,
   {
     if(ch->mode & A_ANONYMOUS)
     {
-      if (!CLIENT_IS_ME(cl) && CLIENT_IS_LOCAL(cl))
+      if (!CLIENT_IS_ME(cl) && !CLIENT_IS_REMOTE(cl))
 	New_Request (cl->via->p.iface, 0, ":%s!%s@%s JOIN %s", cl->nick,
 		     cl->user, cl->host, ch->name);
       ircd_sendto_chan_butone (ch, cl, ":anonymous!anonymous@anonymous. JOIN %s",
@@ -2014,7 +2014,7 @@ MEMBER *ircd_add_to_channel (IRCD *ircd, struct peer_priv *bysrv, CHANNEL *ch,
     //inform services!
 #endif
   }
-  else if (!CLIENT_IS_ME(cl) && CLIENT_IS_LOCAL(cl)) /* notify only sender */
+  else if (!CLIENT_IS_ME(cl) && !CLIENT_IS_REMOTE(cl)) /* notify only sender */
     New_Request (cl->via->p.iface, 0, ":%s!%s@%s JOIN %s", cl->nick, cl->user,
 		 cl->host, ch->name);
   return memb;
@@ -2097,12 +2097,10 @@ void ircd_del_from_channel (IRCD *ircd, MEMBER *memb, int tohold)
       register INTERFACE *u;
 
       f = (modeflag (*)())b->func;
-      if (CLIENT_IS_ME (memb->who))
+      if (CLIENT_IS_ME (memb->who) || CLIENT_IS_REMOTE (memb->who))
 	u = NULL;
-      if (CLIENT_IS_LOCAL (memb->who))
-	u = memb->who->via->p.iface;
       else
-	u = NULL;
+	u = memb->who->via->p.iface;
       mf = f (u, memb->who->umode, memb->chan->mode, memb->chan->count,
 	      memb->chan->name, ircd->channels, NULL);
     }
@@ -2152,7 +2150,7 @@ void ircd_add_invited (CLIENT *cl, CHANNEL *ch)
 {
   register MEMBER *memb;
 
-  if (CLIENT_IS_ME(cl) || !CLIENT_IS_LOCAL (cl))
+  if (CLIENT_IS_ME(cl) || CLIENT_IS_REMOTE (cl))
     return;
   for (memb = ch->invited; memb; memb = memb->prevnick)
     if (memb->who == cl)
@@ -2178,7 +2176,7 @@ void ircd_quit_all_channels (IRCD *ircd, CLIENT *cl, int tohold, int isquit)
       if (ch->chan->mode & A_ANONYMOUS)
       {
 	for (td = ch->chan->users; td; td = td->prevnick) /* ignore cl and me */
-	  if (td != ch && !CLIENT_IS_ME(td->who) && CLIENT_IS_LOCAL (td->who))
+	  if (td != ch && !CLIENT_IS_ME(td->who) && !CLIENT_IS_REMOTE (td->who))
 	    td->who->via->p.iface->ift |= I_PENDING; /* it needs notify */
 	Add_Request (I_PENDING, "*", 0, /* PART instead of QUIT, RFC2811 */
 		     ":anonymous!anonymous@anonymous. PART %s :anonymous",
@@ -2188,10 +2186,10 @@ void ircd_quit_all_channels (IRCD *ircd, CLIENT *cl, int tohold, int isquit)
   for (ch = cl->c.hannels; ch; ch = ch->prevchan)
     if (!(ch->chan->mode & (A_ANONYMOUS | A_QUIET)))
       for (td = ch->chan->users; td; td = td->prevnick)
-	if (td != ch && !CLIENT_IS_ME(td->who) && CLIENT_IS_LOCAL (td->who))
+	if (td != ch && !CLIENT_IS_ME(td->who) && !CLIENT_IS_REMOTE (td->who))
 	  td->who->via->p.iface->ift |= I_PENDING; /* it needs notify */
   /* remove from list of invited too */
-  if (!CLIENT_IS_ME(cl) && CLIENT_IS_LOCAL(cl))
+  if (!CLIENT_IS_ME(cl) && !CLIENT_IS_REMOTE(cl))
     while (cl->via->i.nvited)
       _ircd_del_from_invited (cl->via->i.nvited);
   if (!isquit)

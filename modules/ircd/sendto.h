@@ -25,14 +25,14 @@
 #define ircd_sendto_chan_local(a,...) do {\
   register MEMBER *M; \
   for (M = a->users; M; M = M->prevnick) \
-    if (!CLIENT_IS_ME(M->who) && CLIENT_IS_LOCAL(M->who)) \
+    if (!CLIENT_IS_ME(M->who) && !CLIENT_IS_REMOTE(M->who)) \
       M->who->via->p.iface->ift |= I_PENDING; \
   Add_Request (I_PENDING, "*", 0, __VA_ARGS__); } while(0)
 /* sends to other local users on chan; args: channel, client, message... */
 #define ircd_sendto_chan_butone(a,b,...) do {\
   register MEMBER *M; \
   for (M = a->users; M; M = M->prevnick) \
-    if (M->who != b && !CLIENT_IS_ME(M->who) && CLIENT_IS_LOCAL(M->who)) \
+    if (M->who != b && !CLIENT_IS_ME(M->who) && !CLIENT_IS_REMOTE(M->who)) \
       M->who->via->p.iface->ift |= I_PENDING; \
   Add_Request (I_PENDING, "*", 0, __VA_ARGS__); } while(0)
 

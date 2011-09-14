@@ -387,7 +387,7 @@ static int ircd_invite_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, cha
   if (!tgt)
     return 1;
   ircd_sendto_one (tgt, "INVITE %s %s", argv[0], argv[1]);
-  if (CLIENT_IS_LOCAL(tgt) && memb != NOSUCHCHANNEL)
+  if (!CLIENT_IS_REMOTE(tgt) && memb != NOSUCHCHANNEL)
     ircd_add_invited (tgt, memb->chan);
   if (tgt->away[0])
     ircd_do_unumeric (cl, RPL_AWAY, tgt, 0, tgt->away);
@@ -482,7 +482,7 @@ static int ircd_servlist_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, c
     {
       snprintf (buf, sizeof(buf), "%s %s %s %hu :%s",
 #ifdef USE_SERVICES
-      CLIENT_IS_LOCAL (tgt) ? me :
+      !CLIENT_IS_REMOTE (tgt) ? me :
 #endif
 		tgt->cs->nick, mask, tgt->away, tgt->hops, tgt->fname);
       ircd_do_unumeric (cl, RPL_SERVLIST, tgt, 0, buf);
@@ -577,12 +577,12 @@ static int ircd_who_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 	for ( ; m; m = m->prevnick)
 	  if ((m->mode & mmf) == mmf) /* use "o" parameter against chanmode */
 	    if (mc || !(m->who->umode & A_INVISIBLE))
-	      _ircd_who_reply (cl, CLIENT_IS_LOCAL (m->who) ? me : m->who->cs,
+	      _ircd_who_reply (cl, CLIENT_IS_REMOTE (m->who) ? m->who->cs : me,
 			       m->who, m); /* ME can be only in QUIET chan */
       }
   } else if ((tgt = ircd_find_client(mask, NULL)) != NULL &&
 	     !CLIENT_IS_SERVER(tgt) && (tgt->umode & mmf) == mmf) {
-    _ircd_who_reply (cl, CLIENT_IS_LOCAL (tgt) ? me : tgt->cs, tgt, NULL);
+    _ircd_who_reply (cl, CLIENT_IS_REMOTE (tgt) ? tgt->cs : me, tgt, NULL);
   } else if (tgt != NULL && CLIENT_IS_SERVER (tgt)) {
     LINK *link;
 
@@ -592,7 +592,7 @@ static int ircd_who_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
       for (link = tgt->c.lients; link; link = link->prev) {
 	tgt = link->cl;
 	if ((tgt->umode & mmf) == mmf)
-	  _ircd_who_reply (cl, CLIENT_IS_LOCAL (tgt) ? me : tgt->cs, tgt, NULL);
+	  _ircd_who_reply (cl, CLIENT_IS_REMOTE (tgt) ? tgt->cs : me, tgt, NULL);
       }
   }
   return ircd_do_unumeric (cl, RPL_ENDOFWHO, cl, 0, mask ? mask : "*");
@@ -622,7 +622,7 @@ static int ircd_kill_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
   snprintf(reason, sizeof(reason), "%s!%s (%.*s)", cl->host, cl->nick, len,
 	   argv[1]);			/* make the message with reason */
   //TODO: implement LOCAL_KILL_ONLY option
-  if (CLIENT_IS_LOCAL(tcl))
+  if (!CLIENT_IS_REMOTE(tcl))
     New_Request(tcl->via->p.iface, 0, ":%s KILL %s :%s", cl->nick, tcl->nick,
 		reason);		/* notify the victim */
   ircd_sendto_servers_all_ack((IRCD *)srv->data, tcl, NULL, NULL,

@@ -775,7 +775,7 @@ static inline int _ircd_query_trace (IRCD *ircd, CLIENT *cl, struct peer_priv *v
       return ircd_do_unumeric (cl, ERR_NOSUCHSERVER, cl, 0, argv[0]);
     if (CLIENT_IS_ME(tgt))
       return _ircd_query_trace (ircd, cl, via, 0, argv);
-    if (!CLIENT_IS_SERVER(tgt) && CLIENT_IS_LOCAL(tgt))
+    if (!CLIENT_IS_SERVER(tgt) && !CLIENT_IS_REMOTE(tgt))
     {
       ircd_show_trace (cl, tgt);
       return ircd_do_unumeric (cl, RPL_TRACEEND, cl, O_DLEVEL, NULL);
@@ -903,18 +903,15 @@ static void _ircd_do_whois (CLIENT *cl, CLIENT *tgt, CLIENT *me)
   char buf[IRCMSGLEN];
 
   ircd_do_unumeric (cl, RPL_WHOISUSER, tgt, 0, tgt->fname);
-  if (CLIENT_IS_ME(tgt) || CLIENT_IS_LOCAL (tgt))
+  if (!CLIENT_IS_REMOTE (tgt)) {
     ircd_do_unumeric (cl, RPL_WHOISSERVER, me, 0, tgt->nick);
-  else
+    snprintf (buf, sizeof(buf), "%u", (unsigned int)(Time - tgt->via->noidle));
+    ircd_do_unumeric (cl, RPL_WHOISIDLE, tgt, 0, buf);
+  } else
     ircd_do_unumeric (cl, RPL_WHOISSERVER, tgt->cs, 0, tgt->nick);
   if (tgt->umode & (A_OP | A_HALFOP))
     //TODO: notify target about whois on them
     ircd_do_unumeric (cl, RPL_WHOISOPERATOR, tgt, 0, NULL);
-  if (!CLIENT_IS_ME(tgt) && CLIENT_IS_LOCAL (tgt))
-  {
-    snprintf (buf, sizeof(buf), "%u", (unsigned int)(Time - tgt->via->noidle));
-    ircd_do_unumeric (cl, RPL_WHOISIDLE, tgt, 0, buf);
-  }
   if ((tgt->umode & A_AWAY) && tgt->away)
     ircd_do_unumeric (cl, RPL_AWAY, tgt, 0, tgt->away);
   ptr = 0;
@@ -946,7 +943,7 @@ static void _ircd_do_whois (CLIENT *cl, CLIENT *tgt, CLIENT *me)
   if (ptr)
     ircd_do_unumeric (cl, RPL_WHOISCHANNELS, tgt, 0, buf);
 #if IRCD_USES_ICONV
-  if (!CLIENT_IS_ME(tgt) && CLIENT_IS_LOCAL (tgt))
+  if (!CLIENT_IS_REMOTE (tgt))
     ircd_do_unumeric (cl, RPL_WHOISCHARSET, tgt, 0,
 		      Conversion_Charset (tgt->via->p.iface->conv));
 #endif
@@ -989,7 +986,8 @@ static inline int _ircd_query_whois (IRCD *ircd, CLIENT *cl, struct peer_priv *v
     }
     else if (strpbrk (c, "*?"))
     {
-      if (CLIENT_IS_LOCAL (cl))		/* cl cannot be ME */
+      //FIXME: error if cl is server?
+      if (!CLIENT_IS_REMOTE(cl))	/* cl cannot be ME */
       {
 	NODE *t = ircd->clients;
 	LEAF *l = NULL;
@@ -997,6 +995,8 @@ static inline int _ircd_query_whois (IRCD *ircd, CLIENT *cl, struct peer_priv *v
 	while (n < MAXWHOIS && (l = Next_Leaf (t, l, NULL)))
 	{
 	  tgt = l->s.data;
+	  if ((cl->umode & (A_SERVER | A_SERVICE)) | cl->hold_upto)
+	    continue;
 	  if ((cl->umode & (A_OP | A_HALFOP)) || !(tgt->umode & A_INVISIBLE) ||
 	      _ircd_is_on_the_same_channel (cl, tgt))
 	    if (simple_match (c, tgt->lcnick))
@@ -1006,7 +1006,7 @@ static inline int _ircd_query_whois (IRCD *ircd, CLIENT *cl, struct peer_priv *v
 	    }
 	}
       }
-      else				/* wildcards from remore are forbidden */
+      else				/* wildcards from remote are forbidden */
 	ircd_do_unumeric (cl, ERR_TOOMANYMATCHES, cl, 0, c);
     }
     else

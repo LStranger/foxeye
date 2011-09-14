@@ -204,7 +204,7 @@ static int _ircd_class_in (struct peer_t *peer, char *user, char *host, const ch
   for (td = clcl->glob; td; td = td->pcl)
     if ((!user || !strcmp (td->user, link->cl->user)) &&
 	!strcmp (td->host, link->cl->host)) {
-      if (CLIENT_IS_LOCAL(td))
+      if (!CLIENT_IS_REMOTE(td))
 	locnt++;
       glcnt++;
     }
@@ -436,8 +436,10 @@ static inline void _ircd_recalculate_hops (void)
   for (i = 1; i < Ircd->s; i++) /* reset whole servers list */
     if ((t = Ircd->token[i]) != NULL)
     {
-      if (!CLIENT_IS_LOCAL(t))
-	t->hops = Ircd->s; /* don't reset local connects! */
+      if (!CLIENT_IS_LOCAL(t)) {
+	t->via = NULL; /* don't reset local connects! */
+	t->hops = Ircd->s;
+      }
       t->alt = NULL; /* reset data */
     }
   hops = 1;
@@ -572,7 +574,8 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
 	     argv[1]);
       return (0);
     } /* it's not phantom at this moment */
-    if ((CLIENT_IS_ME(c) || (CLIENT_IS_LOCAL(c) && !(CLIENT_IS_SERVER(c)))) &&
+    if (((CLIENT_IS_ME(c)) ||
+	 (!(CLIENT_IS_REMOTE(c)) && !(CLIENT_IS_SERVER(c)))) &&
 	peer != c->via) /* we should not get our or our users messages back */
     {
       ERROR ("ircd: message %s from %s seems looped back by %s", argv[1],
@@ -619,7 +622,7 @@ static inline int _ircd_do_server_numeric(peer_priv *peer, const char *sender,
       b->func(Ircd->iface, num, argv[2], tgt->umode, buf))
     return 1;				/* aborted by binding */
 #if IRCD_MULTICONNECT
-  if (!CLIENT_IS_LOCAL(tgt) && id != -1)
+  if (CLIENT_IS_REMOTE(tgt) && id != -1)
   {
     ircd_sendto_new(tgt, ":%s INUM %d %d %s %s", sender, id, num, argv[2], buf);
     ircd_sendto_old(tgt, ":%s %d %s %s", sender, num, argv[2], buf);
@@ -841,7 +844,7 @@ static CLIENT *_ircd_check_nick_collision(char *nick, size_t nsz, peer_priv *pp)
   if (collided->hold_upto != 0) {	/* collision with phantom */
     DBG("ircd:collision with nick %s on hold", collided->nick);
   } else if (res == 0) {		/* no solution from binding */
-    if (CLIENT_IS_LOCAL(collided))
+    if (!CLIENT_IS_REMOTE(collided))
       New_Request(collided->via->p.iface, 0, ":%s KILL %s :Nick collision from %s",
 		  MY_NAME, collided->nick, pp->p.dname); /* notify the victim */
     ircd_sendto_servers_all_ack(Ircd, collided, NULL, NULL,
@@ -2947,7 +2950,7 @@ static CLIENT *_ircd_do_nickchange(CLIENT *tgt, peer_priv *pp,
   ircd_sendto_servers_all_ack(Ircd, tgt, NULL, pp, ":%s NICK %s", tgt->nick, nn);
   /* notify local users including this one about nick change */
   ircd_quit_all_channels(Ircd, tgt, 0, 0); /* mark for notify */
-  if (CLIENT_IS_LOCAL(tgt))
+  if (!CLIENT_IS_REMOTE(tgt))
     tgt->via->p.iface->ift |= I_PENDING;
   Add_Request(I_PENDING, "*", 0, ":%s!%s@%s NICK %s", tgt->nick, tgt->user,
 	      tgt->host, nn);
@@ -3044,7 +3047,7 @@ static int _ircd_remote_nickchange(CLIENT *tgt, peer_priv *pp,
     phantom->hold_upto = Time + CHASETIMELIMIT; /* nick delay for collided */
     strfcpy(phantom->away, pp->p.dname, sizeof(phantom->away));
     if (checknick[0] == '\0') {		/* unresolvable nick collision */
-      if (CLIENT_IS_LOCAL(tgt))
+      if (!CLIENT_IS_REMOTE(tgt))
 	New_Request(tgt->via->p.iface, 0, ":%s KILL %s :Nick collision from %s",
 		    MY_NAME, tgt->nick, pp->p.dname); /* notify the victim */
       New_Request(pp->p.iface, 0, ":%s KILL %s :Unresolvable nick collision",
@@ -3400,7 +3403,7 @@ static modeflag incl_ircd(const char *net, const char *public,
     *host = cl->host;
   if (lname)
     *lname = cl->user;
-  if (idle && CLIENT_IS_LOCAL(cl))
+  if (idle && !CLIENT_IS_REMOTE(cl))
     *idle = cl->via->noidle;
   if (public == NULL)			/* request for client's umode */
     return cl->umode;
@@ -3765,10 +3768,10 @@ void ircd_prepare_quit (CLIENT *client, peer_priv *via, const char *msg)
 //    if (s->cl->via != via)		/* don't send it back */
 //      s->cl->via->p.iface->ift |= I_PENDING; /* all linked servers need notify */
   //FIXME: should I check if it's not phantom and not server?
-  if (CLIENT_IS_LOCAL (client))
-    _ircd_peer_kill (client->via, msg);
-  else
+  if (CLIENT_IS_REMOTE (client))
     _ircd_remote_user_gone(client);
+  else
+    _ircd_peer_kill (client->via, msg);
   client->away[0] = '\0';		/* caller may not fill it */
 }
 
@@ -3964,15 +3967,13 @@ int ircd_do_unumeric (CLIENT *requestor, int n, const char *template,
   {
     char *rnick = (requestor->nick[0]) ? requestor->nick : MY_NAME;
 
-    if (CLIENT_IS_LOCAL(requestor))	/* send it directly */
-      New_Request (requestor->via->p.iface, 0, ":%s %03d %s %s", MY_NAME, n,
-		   rnick, buff);
-    else				/* send numeric or INUM */
-    {
+    if (CLIENT_IS_REMOTE(requestor)) {	/* send numeric or INUM */
       ircd_sendto_new (requestor, ":%s INUM %d %03d %s %s", MY_NAME,
 		       ircd_new_id(), n, rnick, buff);
       ircd_sendto_old (requestor, ":%s %03d %s %s", MY_NAME, n, rnick, buff);
-    }
+    } else				/* send it directly */
+      New_Request (requestor->via->p.iface, 0, ":%s %03d %s %s", MY_NAME, n,
+		   rnick, buff);
   }
   return 1;
 }
@@ -3991,16 +3992,14 @@ int ircd_do_cnumeric (CLIENT *requestor, int n, const char *template,
   if (!b || b->name ||
       !b->func (Ircd->iface, n, requestor->nick, requestor->umode, buff))
   {
-    if (CLIENT_IS_LOCAL(requestor))	/* send it directly */
-      New_Request (requestor->via->p.iface, 0, ":%s %03d %s %s", MY_NAME, n,
-		   requestor->nick, buff);
-    else				/* send numeric or INUM */
-    {
+    if (CLIENT_IS_REMOTE(requestor)) {	/* send numeric or INUM */
       ircd_sendto_new (requestor, ":%s INUM %d %03d %s %s", MY_NAME,
 		       ircd_new_id(), n, requestor->nick, buff);
       ircd_sendto_old (requestor, ":%s %03d %s %s", MY_NAME, n,
 		       requestor->nick, buff);
-    }
+    } else				/* send it directly */
+      New_Request (requestor->via->p.iface, 0, ":%s %03d %s %s", MY_NAME, n,
+		   requestor->nick, buff);
   }
   return 1;
 }
@@ -4115,7 +4114,7 @@ int ircd_show_trace (CLIENT *rq, CLIENT *tgt)
 	return ircd_do_unumeric (rq, RPL_TRACEUSER, tgt, 0, tgt->x.class->name);
     }
 #ifdef IRCD_TRACE_USERS
-  if (CLIENT_IS_LOCAL(rq) && (rq->umode & (A_OP | A_HALFOP)))
+  if (!CLIENT_IS_REMOTE(rq) && (rq->umode & (A_OP | A_HALFOP)))
     tgt = rq;				/* mark it for full listing */
 #endif
   pthread_mutex_lock (&IrcdLock);
@@ -4123,7 +4122,7 @@ int ircd_show_trace (CLIENT *rq, CLIENT *tgt)
     if (tgt || (t->link->cl->umode & (A_SERVER | A_SERVICE | A_OP | A_HALFOP)))
       ircd_show_trace (rq, t->link->cl);
 #ifdef IRCD_TRACE_USERS
-  if (!CLIENT_IS_LOCAL(rq) && (rq->umode & A_OP)) /* for remote opers only */
+  if (CLIENT_IS_REMOTE(rq) && (rq->umode & A_OP)) /* for remote opers only */
     for (c = Ircd->users; c; c = c->next)
       ircd_do_unumeric (rq, RPL_TRACECLASS, rq, c->lin, c->name);
 #endif

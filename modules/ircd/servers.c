@@ -639,7 +639,7 @@ static int ircd_invite_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
       return ircd_do_unumeric (cl, ERR_USERONCHANNEL, tgt, 0, argv[1]);
   }
   ircd_sendto_one (tgt, "INVITE %s %s", argv[0], argv[1]);
-  if (CLIENT_IS_LOCAL(tgt) && memb != NOSUCHCHANNEL)
+  if (!CLIENT_IS_REMOTE(tgt) && memb != NOSUCHCHANNEL)
     ircd_add_invited (tgt, memb->chan);
   if (!(cl->umode & (A_SERVER|A_SERVICE)) && tgt->away[0])
     ircd_do_unumeric (cl, RPL_AWAY, tgt, 0, tgt->away);
@@ -788,7 +788,7 @@ static int ircd_kill_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   //TODO: check if reason is badly formatted - should be path!killer (reason)
   /* prepare the message with path and reason */
   snprintf(reason, sizeof(reason), "%s!%s", peer->dname, argv[1]);
-  if (CLIENT_IS_LOCAL(tcl))
+  if (!CLIENT_IS_REMOTE(tcl))
     New_Request(tcl->via->p.iface, 0, ":%s KILL %s :%s", cl->nick, tcl->nick,
 		reason);		/* notify the victim */
   ircd_sendto_servers_all_ack((IRCD *)srv->data, tcl, NULL, NULL,
