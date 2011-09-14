@@ -13,10 +13,17 @@ channel names are presented in arguments of foxeye's module procedures in
 form TheNick@Network not just TheNick but eggdrop's procedures have them
 just TheNick. Third difference is matching model, in FoxEye patterns are
 in shell style so there can be some 'strange' chars in masks such as '['
-and '{' but there is no support for '%' and '~' patterns.
+and '{' but there is no support for '%' and '~' patterns. But except for
+those differences scripts that were written for Eggdrop should work fine
+with FoxEye if you add a line 'source eggcompat.tcl' into your config
+file. Look into that supplied eggcompat.tcl script and you will find out
+how to adapt your scripts for FoxEye if some incompatibilities prevent
+those scripts from working.
     Note about encoding in Tcl. In last versions of Tcl it's strict about
 UTF-8 as internal encoding so it's advisable to change 'charset' variable
-in config file to UTF-8 if you run into any problems in your Tcl scripts.
+in config file to UTF-8 if you run into any problem in your Tcl script
+but in most cases you should not have any problem as module does required
+transcoding for you now.
 
  bind <type> <attr> key|mask [cmd]
     - binds some procedure <cmd> to match some key/mask and some flags
@@ -49,7 +56,7 @@ in config file to UTF-8 if you run into any problems in your Tcl scripts.
 and 'module' from the core) is presented in interpreter as
 
  function param
- 
+
 i.e. as function that gets one parameter. It returns one numeric result.
 See documentation on functions for more details.
 
@@ -57,5 +64,5 @@ See documentation on functions for more details.
 as well and the core) is presented in interpreter with name where any
 dashes are replaced with underscores (i.e. "tcl-default-network" variable
 can be read in TCL scripts as $tcl_default_network).
- 
+
 	Copyright (C) 2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>

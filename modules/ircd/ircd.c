@@ -92,7 +92,7 @@ static peer_priv *_ircd_uplink = NULL;	/* RFC2813 autoconnected server */
 static int _ircd_uplinks = 0;		/* number of autoconnects active */
 #endif
 
-static CLIENT ME = { .umode = A_SERVER, .via = NULL, .x.token = 0,
+static CLIENT ME = { .umode = A_SERVER, .via = NULL, .x.token = 0, .cs = NULL,
 		     .c.lients = NULL };
 
 static sig_atomic_t __ircd_have_started = 0;
@@ -204,7 +204,7 @@ static int _ircd_class_in (struct peer_t *peer, char *user, char *host, const ch
   for (td = clcl->glob; td; td = td->pcl)
     if ((!user || !strcmp (td->user, link->cl->user)) &&
 	!strcmp (td->host, link->cl->host)) {
-      if (!CLIENT_IS_ME(td) && CLIENT_IS_LOCAL(td))
+      if (CLIENT_IS_LOCAL(td))
 	locnt++;
       glcnt++;
     }
@@ -437,10 +437,7 @@ static inline void _ircd_recalculate_hops (void)
     if ((t = Ircd->token[i]) != NULL)
     {
       if (!CLIENT_IS_LOCAL(t))
-      {
-	t->via = NULL; /* don't reset local connects! */
-	t->hops = Ircd->s;
-      }
+	t->hops = Ircd->s; /* don't reset local connects! */
       t->alt = NULL; /* reset data */
     }
   hops = 1;
@@ -574,7 +571,7 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
       dprint(2, "ircd: sender [%s] of message %s is offline for us", argv[0],
 	     argv[1]);
       return (0);
-    }
+    } /* it's not phantom at this moment */
     if ((CLIENT_IS_ME(c) || (CLIENT_IS_LOCAL(c) && !(CLIENT_IS_SERVER(c)))) &&
 	peer != c->via) /* we should not get our or our users messages back */
     {
@@ -602,7 +599,7 @@ static inline int _ircd_do_server_numeric(peer_priv *peer, const char *sender,
   int i, num;
   char buf[MESSAGEMAX];
 
-  if ((tgt = ircd_find_client(argv[2], peer)) == NULL)
+  if ((tgt = ircd_find_client(argv[2], peer)) == NULL || CLIENT_IS_SERVER(tgt))
   {
     ERROR("ircd: target %s for numeric from %s not found!", argv[2], sender);
     return 0;
@@ -689,7 +686,7 @@ __attribute__((warn_unused_result)) static inline CLIENT *
     else
       dprint(3, "ircd:ircd.c:_ircd_get_phantom: new name %s", cl2->lcnick);
   }
-  cl2->via = NULL;			/* to CLIENT_IS_ME work */
+  cl2->via = NULL;			/* no structures for this */
   cl2->host[0] = 0;			/* mark it to drop later */
   cl2->away[0] = 0;			/* it's used by nick tracking */
   cl2->x.rto = to;			/* set 'renamed to' */
@@ -839,9 +836,11 @@ static CLIENT *_ircd_check_nick_collision(char *nick, size_t nsz, peer_priv *pp)
     else {
       ERROR("ircd:collision resolving conflict for nick %s", nick);
       nick[0] = '\0';
-    }
+    } /* here res: 0 = kill collided, 1 = may leave it, 2 = rename it */
   }
-  if (res == 0) {			/* no solution from binding */
+  if (collided->hold_upto != 0) {	/* collision with phantom */
+    DBG("ircd:collision with nick %s on hold", collided->nick);
+  } else if (res == 0) {		/* no solution from binding */
     if (CLIENT_IS_LOCAL(collided))
       New_Request(collided->via->p.iface, 0, ":%s KILL %s :Nick collision from %s",
 		  MY_NAME, collided->nick, pp->p.dname); /* notify the victim */
@@ -890,7 +889,7 @@ static void _ircd_remote_user_gone(CLIENT *cl)
     cl->pcl = cl->rfr;
     cl->rfr = NULL;
   }
-  cl->via = NULL;	/* to CLIENT_IS_ME work */
+  /* cl->via is NULL for remotes */
   pthread_mutex_lock (&IrcdLock);
   if (l != NULL)	/* free structure */
     free_LINK(l);
@@ -1091,7 +1090,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 #if IRCD_MULTICONNECT
       if (cl->on_ack)		/* hold it until acks gone */
       {
-	cl->via = NULL;		/* to CLIENT_IS_ME work */
+	cl->via = NULL;		/* no structures for this */
 	cl->hold_upto = Time;
       }
       else
@@ -2935,7 +2934,7 @@ static inline void _ircd_transform_invalid_nick(char *buf, const char *nick,
   *buf = '\0';
 }
 
-/* args: client, server-sender, sender token, new nick
+/* args: live client, server-sender, sender token, new nick
    returns: phantom (on hold) old nick
    new nick should be checked to not collide! */
 static CLIENT *_ircd_do_nickchange(CLIENT *tgt, peer_priv *pp,
@@ -2997,7 +2996,7 @@ static int _ircd_remote_nickchange(CLIENT *tgt, peer_priv *pp,
   if (pp->link->cl->umode & A_MULTI)
     New_Request(pp->p.iface, 0, "ACK NICK %s", sender);
 #endif
-  if (!tgt || (tgt->umode & (A_SERVER | A_SERVICE))) {
+  if (!tgt || tgt->hold_upto != 0 || (tgt->umode & (A_SERVER | A_SERVICE))) {
     ERROR("ircd:got NICK from nonexistent user %s via %s", sender, pp->p.dname);
     return ircd_recover_done(pp, "Bogus NICK sender");
   }
@@ -3712,7 +3711,7 @@ void ircd_drop_nick (CLIENT *cl)
   dprint(4, "ircd:ircd.c:ircd_drop_nick: %s", cl->nick);
   if (cl->umode & A_SERVER)
     return;
-  if (cl->cs == NULL)
+  if (cl->via != NULL)
     ERROR("ircd:ircd_drop_nick() not for nick on hold: %s", cl->nick);
   else if (cl->cs->hold_upto != 0)
     _ircd_try_drop_collision(&cl->cs);	/* phantom nick holder */
@@ -3731,7 +3730,7 @@ CLIENT *ircd_find_client (const char *name, peer_priv *via)
     return &ME;
   c = _ircd_find_client (name);
   if (via != NULL && !CLIENT_IS_SERVER(via->link->cl))
-    return (c);
+    return ((c->hold_upto == 0) ? c : NULL);
   if (c != NULL && via != NULL && !CLIENT_IS_SERVER(c))
     c = _ircd_find_phantom(c, via);
   if (c == NULL || c->umode & (A_SERVER|A_SERVICE))
@@ -3765,6 +3764,7 @@ void ircd_prepare_quit (CLIENT *client, peer_priv *via, const char *msg)
 //  for (s = Ircd->servers; s; s = s->prev)
 //    if (s->cl->via != via)		/* don't send it back */
 //      s->cl->via->p.iface->ift |= I_PENDING; /* all linked servers need notify */
+  //FIXME: should I check if it's not phantom and not server?
   if (CLIENT_IS_LOCAL (client))
     _ircd_peer_kill (client->via, msg);
   else
@@ -3807,7 +3807,6 @@ static inline void _ircd_squit_one (LINK *link)
       l->cl->rfr = NULL;
     }
     //TODO: run "ircd-lost-client" bindtable
-    l->cl->via = NULL;			/* to CLIENT_IS_ME work */
     strfcpy (l->cl->host, server->lcnick, sizeof(l->cl->host));
   }
   _ircd_free_token (server->x.token);	/* no token for gone server */

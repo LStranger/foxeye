@@ -305,7 +305,7 @@ static inline CLIENT *_ircd_find_msg_target (IRCD *i, const char *target,
 {
   CLIENT *tgt = ircd_find_client (target, pp);
 
-  if (tgt && (tgt->hold_upto || (tgt->umode & (A_SERVER | A_SERVICE))))
+  if (tgt && (tgt->umode & (A_SERVER | A_SERVICE)))
     return NULL;
   //TODO: proc not plain too: user[%host]@servername user%host nickname!user@host
   return tgt;

@@ -224,9 +224,26 @@ struct peer_priv
   pthread_t th;		/* thread ID if p.state == P_DISCONNECTED */
 };
 
-#define CLIENT_IS_ME(x) ((x)->via == NULL)
+/*
+ * client               ->via   ->cs    ->hold
+ * ME                   NULL    NULL    0
+ * local client         peer    CLIENT  0
+ * local server         peer    CLIENT  0
+ * remote client        NULL    (path)  0
+ * remote server        (path)  CLIENT  0
+ * dying                peer    (smth)  >0
+ * phantom              NULL    holder  >0
+ */
+
+/* test for ME : valid always */
+#define CLIENT_IS_ME(x) ((x)->cs == NULL)
+/* test for local clients/servers : crashes on ME, invalid on phantoms */
 #define CLIENT_IS_LOCAL(x) ((x)->cs->via->link->cl == x)
+/* test for remote clients : invalid on ME or phantoms */
+#define CLIENT_IS_REMOTE(x) ((x)->via == NULL)
+/* test for any server : valid always */
 #define CLIENT_IS_SERVER(x) ((x)->umode & A_SERVER)
+/* test for any service : valid always */
 #define CLIENT_IS_SERVICE(x) ((x)->umode & A_SERVICE)
 
 	/* ircd.c common functions */

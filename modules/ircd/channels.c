@@ -1394,11 +1394,11 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	    ptr = 0;
 	  }
 	  ptr += snprintf(bufforservers, sizeof(bufforservers) - ptr, "%s%s%s%s",
-			  ptr ? "," : "", ch->name, *smode ? "" : "\007", smode);
+			  ptr ? "," : "", ch->name, *smode ? "\007" : "", smode);
 	} else				/* there is a channel mask */
 	  ircd_sendto_servers_mask((IRCD *)srv->data, NULL, cmask,
 				   ":%s JOIN %s%c%s", cl->nick, ch->name,
-				   *smode ? '\0' : '\007', smode);
+				   *smode ? '\007' : '\0', smode);
       }
     }
     chn = nextch;
@@ -1642,7 +1642,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	  break; /* return */
   }
   else if ((tgt = ircd_find_client(argv[0], pp)) != NULL &&
-	   !CLIENT_IS_SERVER(tgt) && !tgt->hold_upto) /* user mode */
+	   !CLIENT_IS_SERVER(tgt))	/* user mode */
   {
     modeflag toadd = 0, todel = 0;
     const char *lasterror[MAXTRACKED_MODE_ERRORS];

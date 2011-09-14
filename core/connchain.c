@@ -60,7 +60,7 @@ static ssize_t _connchain_send (struct connchain_i **chain, idx_t idx,
     return CONNCHAIN_READY;
 //  else if ((*(struct peer_t **)b)->state < P_LOGIN) /* it's in thread yet */
 //    i = WriteSocket (idx, data, &ptr, sz, M_POLL);
-//  else
+  else
     i = WriteSocket (idx, data, &ptr, sz);
   if (i < 0)
     DBG ("connchain: send: socket error %d", (int)i);
@@ -80,7 +80,7 @@ static ssize_t _connchain_recv (struct connchain_i **chain, idx_t idx,
     i = E_NOSOCKET;
 //  else if ((*(struct peer_t **)b)->state < P_LOGIN) /* it's in thread yet */
 //    i = ReadSocket (data, idx, sz, M_POLL);
-//  else
+  else
     i = ReadSocket (data, idx, sz);
   if (i < 0)
     DBG ("connchain: recv: socket error %d", (int)i);

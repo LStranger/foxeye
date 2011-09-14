@@ -257,6 +257,8 @@ static int ircd_squit_sb(INTERFACE *srv, struct peer_t *peer, unsigned short tok
       return 0;				/* kill our peer instead */
     }
     ircd_do_squit(l, pp, argv[1]);
+  } else if (cl->hold_upto) {
+    ERROR("ircd:got SQUIT from dead man %s", sender);
   } else {
     /* we doing squit only for shortest way despite of possible multiconnect! */
     if (CLIENT_IS_LOCAL(tgt)) {		/* squit if it's local link */

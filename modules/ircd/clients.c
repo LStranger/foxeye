@@ -372,7 +372,7 @@ static int ircd_invite_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, cha
   if (argc < 2)
     return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, NULL);
   tgt = ircd_find_client (argv[0], NULL);
-  if (!tgt || tgt->hold_upto || (tgt->umode & (A_SERVER|A_SERVICE)))
+  if (!tgt || (tgt->umode & (A_SERVER|A_SERVICE)))
     ircd_do_unumeric (cl, ERR_NOSUCHNICK, cl, 0, argv[0]);
   memb = ircd_find_member ((IRCD *)srv->data, argv[1], cl);
   if (memb != NOSUCHCHANNEL)
@@ -537,37 +537,11 @@ static int ircd_who_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
       mask = argv[0];
   }
   if (!mask || strpbrk (mask, "*?.")) { /* so we have wildcards, ok */
-    NODE *t = ((IRCD *)srv->data)->clients;
-    LEAF *l = NULL;
     LINK *link;
     int i, smatched = 0;
 
-    /* do local users first */
-    if (mask)
-      smatched = simple_match (mask, me->lcnick);
-    while ((l = Next_Leaf (t, l, NULL)))
-    {
-      tgt = l->s.data;
-      if (tgt->hold_upto || CLIENT_IS_SERVER (tgt) || !CLIENT_IS_LOCAL (tgt) ||
-	  (tgt->umode & mmf) != mmf)
-	continue;
-      if ((cl->umode & (A_OP | A_HALFOP)) || !(tgt->umode & A_INVISIBLE) ||
-	  tgt == cl)
-	mc = (MEMBER *)1;
-      else
-	for (m = tgt->c.hannels; (mc = m); m = m->prevchan)
-	  if (!(m->chan->mode & (A_PRIVATE | A_SECRET)) ||
-	      ((!(m->chan->mode & (A_ANONYMOUS | A_QUIET))) &&
-	       (mc = _ircd_is_on_channel (cl, mc->chan))))
-	      break;
-      if (mc)
-	if (!mask || smatched >= 0 || simple_match (mask, tgt->host) >= 0 ||
-	    simple_match (mask, tgt->lcnick) >= 0 ||
-	    simple_match (mask, tgt->fname) >= 0) //TODO: LC search?
-	  _ircd_who_reply (cl, CLIENT_IS_LOCAL (tgt) ? me : tgt->cs, tgt, NULL);
-    }
-    /* and other servers now too */
-    for (i = 1; i < ((IRCD *)srv->data)->s; i++)
+    /* do every server starting from me */
+    for (i = 0; i < ((IRCD *)srv->data)->s; i++)
       if ((tgt = ((IRCD *)srv->data)->token[i]) && !tgt->hold_upto)
       {
 	if (mask)
@@ -590,7 +564,7 @@ static int ircd_who_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 	    if (!mask || smatched >= 0 || simple_match (mask, tgt->host) >= 0 ||
 		simple_match (mask, tgt->lcnick) >= 0 ||
 		simple_match (mask, tgt->fname) >= 0) //TODO: LC search?
-	      _ircd_who_reply (cl, CLIENT_IS_LOCAL (tgt) ? me : tgt->cs, tgt, NULL);
+	      _ircd_who_reply (cl, (i == 0) ? me : tgt->cs, tgt, NULL);
 	}
       }
   } else if ((m = ircd_find_member ((IRCD *)srv->data, mask, NULL)) &&
@@ -607,8 +581,7 @@ static int ircd_who_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 			       m->who, m); /* ME can be only in QUIET chan */
       }
   } else if ((tgt = ircd_find_client(mask, NULL)) != NULL &&
-	     !tgt->hold_upto && !CLIENT_IS_SERVER(tgt) &&
-	     (tgt->umode & mmf) == mmf) {
+	     !CLIENT_IS_SERVER(tgt) && (tgt->umode & mmf) == mmf) {
     _ircd_who_reply (cl, CLIENT_IS_LOCAL (tgt) ? me : tgt->cs, tgt, NULL);
   } else if (tgt != NULL && CLIENT_IS_SERVER (tgt)) {
     LINK *link;

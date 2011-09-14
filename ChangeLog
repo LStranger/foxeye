@@ -15,6 +15,11 @@ Tue Sep 13 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* configure: removed _REENTRANT and added check for optimization flags.
 	* Makefile: added 'LANG = C' statement to avoid compilation errors.
 	* configure: added lot of optimization flags for Solaris compiler.
+	* core/connchain.c: fixed connchain testing.
+	* modules/ircd/channels.c: fixed server JOIN message.
+	* modules/ircd/clients.c, modules/ircd/ircd.*, modules/ircd/messages.c, modules/ircd/queries.c, modules/ircd/servers.c:
+	  fixed SERVER_IS_* macros.
+	* modules/ircd/ircd.c: fixed SIGSEGV in collision with phantom.
 
 Mon Sep 12 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/init.c, core/modules.c, modules/ircd/channels.c, modules/ircd/ircd.c, modules/lua/lua.c, modules/tcl/modtcl.c:
