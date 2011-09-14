@@ -18,6 +18,7 @@ Wed Sep 14 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/messages.c: fixed duplicating privmsg between servers.
 	* modules/ircd/ircd.c: revised nick collision handling.
 	* modules/ircd/channels.c: fixed server MODE handling.
+	* modules/ircd/ircd.c: fixed source check in server message parser.
 
 Tue Sep 13 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/socket.c: replaced kill() with pthread_kill() calls.

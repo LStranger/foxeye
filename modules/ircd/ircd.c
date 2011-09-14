@@ -552,9 +552,9 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
 	//TODO: RFC2813:3.3 - KILL for (c) if it's a client instead?
       }
     /* check if this link have phantom instead of real client on nick */
-    if (peer != NULL && !CLIENT_IS_SERVER(c))
+    if (peer != NULL && !CLIENT_IS_SERVER(c) && c->hold_upto != 0)
       /* link haven't got our NICK or KILL so track it */
-      c = _ircd_find_phantom(c, peer);
+      c = _ircd_find_phantom(c, peer); //FIXME: shouldn't we skip it for A_MULTI?
 #if IRCD_MULTICONNECT
     //TODO: rewrite acks check for QUIT and NICK here!
     if (peer && c->hold_upto && !(CLIENT_IS_SERVER(c)) &&
@@ -3722,10 +3722,9 @@ CLIENT *ircd_find_client (const char *name, peer_priv *via)
   if (!name)
     return &ME;
   c = _ircd_find_client (name);
-  if (via != NULL && !CLIENT_IS_SERVER(via->link->cl))
+  if (via == NULL || !CLIENT_IS_SERVER(via->link->cl) ||
+      !(via->link->cl->umode & A_MULTI))
     return ((c->hold_upto == 0) ? c : NULL);
-  if (c != NULL && via != NULL && !CLIENT_IS_SERVER(c))
-    c = _ircd_find_phantom(c, via);
   if (c == NULL || c->umode & (A_SERVER|A_SERVICE))
     return (c);
   /* if it's phantom then go to current nick */
@@ -3741,7 +3740,7 @@ CLIENT *ircd_find_client_nt(const char *name, peer_priv *via)
   if (!name)
     return &ME;
   c = _ircd_find_client(name);
-  if (c == NULL || via == NULL || CLIENT_IS_SERVER(c))
+  if (c == NULL || via == NULL || CLIENT_IS_SERVER(c) || (c->hold_upto == 0))
     return (c);
   return (_ircd_find_phantom(c, via));
 }
