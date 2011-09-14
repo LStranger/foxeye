@@ -3722,11 +3722,11 @@ CLIENT *ircd_find_client (const char *name, peer_priv *via)
   if (!name)
     return &ME;
   c = _ircd_find_client (name);
+  if (c == NULL || c->umode & (A_SERVER|A_SERVICE))
+    return (c);
   if (via == NULL || !CLIENT_IS_SERVER(via->link->cl) ||
       !(via->link->cl->umode & A_MULTI))
     return ((c->hold_upto == 0) ? c : NULL);
-  if (c == NULL || c->umode & (A_SERVER|A_SERVICE))
-    return (c);
   /* if it's phantom then go to current nick */
   while (c != NULL && c->hold_upto != 0)
     c = c->x.rto;
