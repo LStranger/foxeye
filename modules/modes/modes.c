@@ -77,7 +77,7 @@ static int dc_chban (struct peer_t *from, char *args)
   args = NextWord (args);
   if (match ("*@*", mask) < 0)
     return 0;				/* need second parameter too */
-  if ((u = Find_Clientrecord (mask, &lname, &uf, NULL)) && lname)
+  if ((u = Find_Clientrecord (mask, (const char **)&lname, &uf, NULL)) && lname)
   {
     Unlock_Clientrecord (u);		/* it's not unnamed ban! */
     u = NULL;
@@ -294,7 +294,7 @@ static int dc_pban (struct peer_t *from, char *args)
   if (match ("*@*", mask) < 0)
     return 0;				/* need second parameter too */
   /* check if this mask does not exist as unnamed mode record yet */
-  if ((u = Find_Clientrecord (mask, &lname, NULL, NULL)) && lname)
+  if ((u = Find_Clientrecord(mask, (const char **)&lname, NULL, NULL)) && lname)
   {
     Unlock_Clientrecord (u);		/* it's not unnamed ban! */
     u = NULL;
@@ -385,7 +385,7 @@ static int dc_pban (struct peer_t *from, char *args)
     ERROR ("modes:dc_pban: unexpected error, could not add %s!", mask);
     return -1;
   }
-  u = Find_Clientrecord (mask, &tgt, NULL, NULL);
+  u = Find_Clientrecord (mask, (const char **)&tgt, NULL, NULL);
   if (!u || tgt != NULL)
   {
     ERROR ("modes:dc_pban: unexpected error!");
@@ -429,7 +429,7 @@ BINDING_TYPE_dcc (dc_mban);
 static int dc_mban (struct peer_t *from, char *args)
 {
   struct clrec_t *u;
-  char *lname;
+  const char *lname;
   lid_t id = ID_REM; /* shut up compiler */
   INTERFACE *tmp;
 

@@ -368,7 +368,8 @@ int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
   char lcnick[HOSTMASKLEN+1];
   char tocl[IFNAMEMAX+1];
   int msg_type;
-  char *lname, *ft, *ae; /* ae - at exclamation */
+  const char *lname;
+  char *ft, *ae; /* ae - at exclamation */
   size_t msglen = 0;			/* avoiding compiler warning */
   INTERFACE *client;
   struct clrec_t *clr;

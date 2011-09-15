@@ -1029,8 +1029,8 @@ static lid_t _get_index_fr (const char *field)
 
 /*--- R --- no locks ---*/
 /* returns UFLock locked if found */
-struct clrec_t *Find_Clientrecord (const uchar *mask, char **lname,
-				   userflag *uf, char *net)
+struct clrec_t *Find_Clientrecord (const uchar *mask, const char **lname,
+				   userflag *uf, const char *net)
 {
   struct clrec_t *user = NULL;
   int cancelstate;

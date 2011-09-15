@@ -636,7 +636,8 @@ Listfile API:
 #include "list.h"
 
   struct clrec_t *FFiinndd__CClliieennttrreeccoorrdd (const unsigned char *_m_a_s_k,
-				     char **_n_a_m_e, userflag *_u_f, char *_n_e_t);
+				     const char **_n_a_m_e, userflag *_u_f,
+				     const char *_n_e_t);
     Finds user that is matched to hostmask _m_a_s_k (nick!ident@host]) and
     gets his user login _n_a_m_e (Lname below) and his userflags _u_f compiled
     from global flags and flags for network _n_e_t (if _n_e_t is NULL then for

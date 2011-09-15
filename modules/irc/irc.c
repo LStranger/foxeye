@@ -573,7 +573,7 @@ static int _irc_send (irc_server *serv, char *line)
 /* since Find_Clientrecord is case-insensitive now, we don't need lower case */
 static char *_irc_get_lname (char *nuh, userflag *uf, char *net)
 {
-  char *c;
+  const char *c;
   struct clrec_t *u;
 
   DBG ("irc:_irc_get_lname:looking for %s", nuh);
@@ -582,7 +582,7 @@ static char *_irc_get_lname (char *nuh, userflag *uf, char *net)
   {
     c = safe_strdup (c);
     Unlock_Clientrecord (u);
-    return c;
+    return (char *)c;
   }
   return NULL;
 }

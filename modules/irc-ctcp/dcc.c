@@ -538,7 +538,7 @@ static void isend_handler (char *lname, char *ident, const char *host, void *dat
   }
   if (ptr >= dcc->size)
   {
-    char *c;
+    const char *c;
     userflag uf;
     struct clrec_t *u;
     struct binding_t *b;
@@ -555,7 +555,7 @@ static void isend_handler (char *lname, char *ident, const char *host, void *dat
     {
       lname = safe_strdup (c);
       Unlock_Clientrecord (u);
-      c = NONULL(lname);
+      c = NONULL((const char *)lname);
     }
     else				/* cannot recognize target Lname */
     {

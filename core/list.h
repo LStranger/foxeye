@@ -39,8 +39,8 @@ userflag Match_Client (const char *, const char *, const char *)
 			__attribute__((warn_unused_result));
 userflag Get_Clientflags (const char *, const char *)
 			__attribute__((warn_unused_result));
-struct clrec_t *Find_Clientrecord (const uchar *, char **, userflag *, char *)
-			__attribute__((warn_unused_result));
+struct clrec_t *Find_Clientrecord (const uchar *, const char **, userflag *,
+			    const char *) __attribute__((warn_unused_result));
 struct clrec_t *Lock_Clientrecord (const char *)
 			__attribute__((warn_unused_result));
 char *Get_Field (struct clrec_t *, const char *, time_t *)

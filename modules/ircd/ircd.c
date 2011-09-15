@@ -131,7 +131,7 @@ static int _ircd_class_in (struct peer_t *peer, char *user, char *host, const ch
 {
   LINK *link = ((peer_priv *)peer->iface->data)->link; /* really peer->link */
   struct clrec_t *cl;
-  char *clname;
+  const char *clname;
   char *clparms = NULL;
   CLASS **clp;
   userflag uf = 0;
@@ -157,6 +157,7 @@ static int _ircd_class_in (struct peer_t *peer, char *user, char *host, const ch
   }
   if (cl)
   {
+    DBG("ircd:ircd.c: found matched");
     clparms = Get_Field (cl, Ircd->iface->name, NULL);
     uf = Get_Flags (cl, Ircd->iface->name);
   }
@@ -179,6 +180,7 @@ static int _ircd_class_in (struct peer_t *peer, char *user, char *host, const ch
       break;
   if (!clcl)
     *clp = clcl = _ircd_get_new_class (clname, clparms);
+  DBG("ircd:ircd.c: got class: %s", clname);
 #if IRCD_USES_ICONV
   uh[0] = 0;
 #endif
@@ -202,6 +204,7 @@ static int _ircd_class_in (struct peer_t *peer, char *user, char *host, const ch
     return 0;
   }
   /* check for local and global limits */
+  DBG("ircd:ircd.c: counting users in class");
   locnt = glcnt = 0;
   for (td = clcl->glob; td; td = td->pcl)
     if ((!user || !strcmp (td->user, link->cl->user)) &&
@@ -211,17 +214,18 @@ static int _ircd_class_in (struct peer_t *peer, char *user, char *host, const ch
       glcnt++;
     }
   Unset_Iface();
-  if (locnt > clcl->lpul)		/* local limit overloaded */
+  if (locnt >= clcl->lpul)		/* local limit overloaded */
   {
     *msg = "too many users from this host on this server";
     return 0;
   }
-  if (glcnt > clcl->lpug)		/* global limit overloaded */
+  if (glcnt >= clcl->lpug)		/* global limit overloaded */
   {
     *msg = "too many users from this host";
     return 0;
   }
 #if IRCD_USES_ICONV
+  DBG("ircd:ircd.c: setting charset %s", uh);
   if (*uh)				/* override charset with class' one */
   {
     Free_Conversion (peer->iface->conv);
@@ -237,7 +241,7 @@ static int _ircd_class_in (struct peer_t *peer, char *user, char *host, const ch
 static void _ircd_class_rin (LINK *l)
 {
   struct clrec_t *cl;
-  char *clname;
+  const char *clname;
   char *clparms = NULL;
   CLASS **clp;
   char uh[HOSTMASKLEN+1];
@@ -503,7 +507,8 @@ static inline CLIENT *_ircd_find_phantom(CLIENT *nick, peer_priv *via)
     phantom = nick;
   }
   while (phantom) {
-    if (!strcmp(phantom->away, via->p.dname))
+    if (phantom->hold_upto <= Time);
+    else if (!strcmp(phantom->away, via->p.dname))
       return (phantom);
     else if (resort == NULL && phantom->away[0] == '\0')
       resort = phantom;
@@ -806,6 +811,8 @@ static CLIENT *_ircd_check_nick_collision(char *nick, size_t nsz, peer_priv *pp)
 
   dprint(4, "ircd:ircd.c:_ircd_check_nick_collision: %s", nick);
   collided = _ircd_find_client(nick);
+  if (collided && collided->hold_upto != 0)
+    _ircd_try_drop_collision(&collided);
   if (collided == NULL)
     return (collided);
   if (collided->hold_upto != 0) { /* check if a collision was from the peer */
@@ -3722,14 +3729,21 @@ CLIENT *ircd_find_client (const char *name, peer_priv *via)
   if (!name)
     return &ME;
   c = _ircd_find_client (name);
+#if 0
   if (c == NULL || c->umode & (A_SERVER|A_SERVICE))
     return (c);
   if (via == NULL || !CLIENT_IS_SERVER(via->link->cl) ||
       !(via->link->cl->umode & A_MULTI))
     return ((c->hold_upto == 0) ? c : NULL);
   /* if it's phantom then go to current nick */
+  if (c->hold_upto != 0 && c->hold_upto <= Time)
+    return (NULL);
   while (c != NULL && c->hold_upto != 0)
     c = c->x.rto;
+#else
+  if (c == NULL || c->hold_upto != 0)
+    return (NULL);
+#endif
   return (c);
 }
 

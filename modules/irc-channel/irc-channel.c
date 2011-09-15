@@ -448,7 +448,7 @@ static NICK *_ircch_get_nick (IRC *net, const char *lcn, int create)
 static char *_ircch_get_lname (char *nuh, userflag *sf, userflag *cf, lid_t *id,
 			       char *net, char *chan, char **info, NICK *nn)
 {
-  char *c;
+  const char *c;
   struct clrec_t *u;
 
   if (nn && (nn->umode & A_REGISTERED))		/* we know lname aleady! */
@@ -469,7 +469,7 @@ static char *_ircch_get_lname (char *nuh, userflag *sf, userflag *cf, lid_t *id,
     if (id)
       *id = Get_LID (u);
     Unlock_Clientrecord (u);
-    return c;
+    return (char *)c;
   }
   if (sf) *sf = 0;
   if (cf) *cf = 0;

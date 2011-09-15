@@ -10,6 +10,14 @@ TODO:
 	* core/socket.c: to make socket limit extendible.
 
 --- [0.10.0]
+Thu Sep 15 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/list.*, doc/modules.api, modules/irc/*.c, modules/irc-channel/irc-channel.c, modules/irc-ctcp/dcc.c, modules/modes/modes.c:
+	  changed parameters of Find_Clientrecord() to be const.
+	* modules/ircd/ircd.c: fixed testing for phantoms if are expired.
+	* modules/ircd/ircd.c: simplified main search function - it does not
+	  check for previous nicks anymore.
+	* modules/ircd/ircd.c: fixed checking for users limit.
+
 Wed Sep 14 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/*c, modules/ircd/sendto.h: replaced some CLIENT_IS_LOCAL
 	  with CLIENT_IS_REMOTE as latter is more fast.
