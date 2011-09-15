@@ -995,6 +995,9 @@ static void _ircd_init_uplinks (void); /* declaration; definitoon is below */
 
 #define IRCDMAXARGS 16		/* maximum number of arguments in protocol */
 
+#define _ircd_start_timeout 30
+				//FIXME: it should be config variable!
+
 /* adds prefix to message if there is none */
 static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 {
@@ -1018,6 +1021,11 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
   if (peer->p.state < P_LOGIN) {
     if (req != NULL)
       WARNING("ircd:_ircd_client_request: got request to client which isn't ready");
+    if (Time >= peer->started + _ircd_start_timeout) {
+      c = (char *)SocketIP(peer->p.socket);
+      LOG_CONN("ircd: timeout on connection start from %s", NONULLP(c));
+      _ircd_client_signal(cli, S_TERMINATE);
+    }
     return REQ_REJECTED;
   }
   cl = peer->link->cl;

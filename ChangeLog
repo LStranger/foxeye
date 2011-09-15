@@ -17,6 +17,7 @@ Thu Sep 15 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: simplified main search function - it does not
 	  check for previous nicks anymore.
 	* modules/ircd/ircd.c: fixed checking for users limit.
+	* modules/ircd/ircd.c: added checking for timeout in auth thread.
 
 Wed Sep 14 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/*c, modules/ircd/sendto.h: replaced some CLIENT_IS_LOCAL
