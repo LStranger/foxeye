@@ -4310,6 +4310,7 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
 			       &_ircd_request, Ircd);
       strfcpy (MY_NAME, Nick, sizeof(MY_NAME)); /* unchangeable in runtime */
       strfcpy(ME.fname, _ircd_description_string, sizeof(ME.fname));
+      strfcpy(ME.away, _ircd_version_string, sizeof(ME.away));
       Ircd->token = safe_calloc (TOKEN_ALLOC_SIZE, sizeof(CLIENT *));
       Ircd->s = TOKEN_ALLOC_SIZE;
       Ircd->token[0] = &ME;		/* set token 0 to ME */

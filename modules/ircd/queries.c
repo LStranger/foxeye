@@ -64,6 +64,7 @@ static inline int _ircd_is_on_the_same_channel (CLIENT *one, CLIENT *two)
   return 0;
 }
 
+/* returns either server or local client */
 static inline CLIENT *_ircd_find_by_mask (IRCD *ircd, struct peer_priv *p,
 					  const char *m)
 {
@@ -230,7 +231,7 @@ static inline int _ircd_query_names (IRCD *ircd, CLIENT *cl, struct peer_priv *v
     me = _ircd_find_by_mask (ircd, via, argv[1]);
     if (!me)
       return ircd_do_unumeric (cl, ERR_NOSUCHSERVER, cl, 0, argv[1]);
-    if (CLIENT_IS_ME(me) || CLIENT_IS_LOCAL(me))
+    if (CLIENT_IS_ME(me) || !CLIENT_IS_SERVER(me))
       return _ircd_query_names (ircd, cl, via, 1, argv);
     New_Request (me->via->p.iface, 0, ":%s NAMES %s %s", cl->nick, argv[0],
 		 me->nick);
@@ -305,7 +306,7 @@ static inline int _ircd_query_list (IRCD *ircd, CLIENT *cl, struct peer_priv *vi
     me = _ircd_find_by_mask (ircd, via, argv[1]);
     if (!me)
       return ircd_do_unumeric (cl, ERR_NOSUCHSERVER, cl, 0, argv[1]);
-    if (CLIENT_IS_ME(me) || CLIENT_IS_LOCAL(me))
+    if (CLIENT_IS_ME(me) || !CLIENT_IS_SERVER(me))
       return _ircd_query_list (ircd, cl, via, 1, argv);
     New_Request (me->via->p.iface, 0, ":%s LIST %s %s", cl->nick, argv[0],
 		 me->nick);
@@ -403,7 +404,7 @@ static inline int _ircd_query_motd (IRCD *ircd, CLIENT *cl, struct peer_priv *vi
 
     if (!tgt)
       return ircd_do_unumeric (cl, ERR_NOSUCHSERVER, cl, 0, argv[0]);
-    if (CLIENT_IS_ME(tgt) || CLIENT_IS_LOCAL(tgt))
+    if (CLIENT_IS_ME(tgt) || !CLIENT_IS_SERVER(tgt))
       return _ircd_query_motd (ircd, cl, via, 0, argv);
     New_Request (tgt->via->p.iface, 0, ":%s MOTD :%s", cl->nick, tgt->nick);
     return 1;
@@ -451,7 +452,7 @@ static inline int _ircd_query_lusers (IRCD *ircd, CLIENT *cl, struct peer_priv *
 
     if (!tgt)
       return ircd_do_unumeric (cl, ERR_NOSUCHSERVER, cl, 0, argv[1]);
-    if (CLIENT_IS_ME(tgt) || CLIENT_IS_LOCAL(tgt))
+    if (CLIENT_IS_ME(tgt) || !CLIENT_IS_SERVER(tgt))
       return _ircd_query_lusers (ircd, cl, via, 1, argv);
     New_Request (tgt->via->p.iface, 0, ":%s LUSERS %s :%s", cl->nick, argv[0],
 		 tgt->nick);
@@ -575,7 +576,7 @@ static inline int _ircd_query_version (IRCD *ircd, CLIENT *cl, struct peer_priv 
 
     if (!tgt)
       return ircd_do_unumeric (cl, ERR_NOSUCHSERVER, cl, 0, argv[0]);
-    if (CLIENT_IS_ME(tgt) || CLIENT_IS_LOCAL(tgt))
+    if (CLIENT_IS_ME(tgt) || !CLIENT_IS_SERVER(tgt))
       return _ircd_query_version (ircd, cl, via, 0, argv);
     New_Request (tgt->via->p.iface, 0, ":%s VERSION %s", cl->nick, tgt->nick);
     return 1;
@@ -613,7 +614,7 @@ static inline int _ircd_query_stats (IRCD *ircd, CLIENT *cl, struct peer_priv *v
 
       if (!tgt)
 	return ircd_do_unumeric (cl, ERR_NOSUCHSERVER, cl, 0, argv[1]);
-      if (CLIENT_IS_ME(tgt) || CLIENT_IS_LOCAL(tgt))
+      if (CLIENT_IS_ME(tgt) || !CLIENT_IS_SERVER(tgt))
 	return _ircd_query_stats (ircd, cl, via, 1, argv);
       New_Request (tgt->via->p.iface, 0, ":%s STATS %s %s", cl->nick, argv[0],
 		   tgt->nick);
@@ -654,7 +655,7 @@ static inline int _ircd_query_links (IRCD *ircd, CLIENT *cl, struct peer_priv *v
 
     if (!tgt)
       return ircd_do_unumeric (cl, ERR_NOSUCHSERVER, cl, 0, argv[0]);
-    if (CLIENT_IS_ME(tgt) || CLIENT_IS_LOCAL(tgt))
+    if (CLIENT_IS_ME(tgt) || !CLIENT_IS_SERVER(tgt))
       return _ircd_query_links (ircd, cl, via, 1, &argv[1]);
     New_Request (tgt->via->p.iface, 0, ":%s LINKS %s :%s", cl->nick, tgt->nick,
 		 argv[1]);
@@ -697,7 +698,7 @@ static inline int _ircd_query_time (IRCD *ircd, CLIENT *cl, struct peer_priv *vi
 
     if (!tgt)
       return ircd_do_unumeric (cl, ERR_NOSUCHSERVER, cl, 0, argv[0]);
-    if (CLIENT_IS_ME(tgt) || CLIENT_IS_LOCAL(tgt))
+    if (CLIENT_IS_ME(tgt) || !CLIENT_IS_SERVER(tgt))
       return _ircd_query_time (ircd, cl, via, 0, argv);
     New_Request (tgt->via->p.iface, 0, ":%s TIME %s", cl->nick, tgt->nick);
     return 1;
@@ -733,7 +734,7 @@ static inline int _ircd_query_connect (IRCD *ircd, CLIENT *cl, struct peer_priv 
 
     if (!tgt)
       return ircd_do_unumeric (cl, ERR_NOSUCHSERVER, cl, 0, argv[2]);
-    if (CLIENT_IS_ME(tgt) || CLIENT_IS_LOCAL(tgt))
+    if (CLIENT_IS_ME(tgt) || !CLIENT_IS_SERVER(tgt))
       return _ircd_query_connect (ircd, cl, via, 2, argv);
     if (!(cl->umode & A_OP))
       return ircd_do_unumeric (cl, ERR_NOPRIVILEGES, cl, 0, NULL);
@@ -769,13 +770,11 @@ static inline int _ircd_query_trace (IRCD *ircd, CLIENT *cl, struct peer_priv *v
     CLIENT *tgt = _ircd_find_by_mask (ircd, via, argv[0]);
     char tstr[IRCMSGLEN];
 
-    if (!tgt)				/* no server by mask, trying client */
-      tgt = ircd_find_client (argv[0], via);
     if (!tgt)				/* no target found */
       return ircd_do_unumeric (cl, ERR_NOSUCHSERVER, cl, 0, argv[0]);
     if (CLIENT_IS_ME(tgt))
       return _ircd_query_trace (ircd, cl, via, 0, argv);
-    if (!CLIENT_IS_SERVER(tgt) && !CLIENT_IS_REMOTE(tgt))
+    if (!CLIENT_IS_SERVER(tgt))		/* local client here */
     {
       ircd_show_trace (cl, tgt);
       return ircd_do_unumeric (cl, RPL_TRACEEND, cl, O_DLEVEL, NULL);
@@ -785,10 +784,10 @@ static inline int _ircd_query_trace (IRCD *ircd, CLIENT *cl, struct peer_priv *v
 	      (int)(Time - tgt->cs->via->started), via->p.iface->qsize,
 	      tgt->cs->via->p.iface->qsize);
     ircd_do_unumeric (cl, RPL_TRACELINK, tgt, O_DLEVEL, tstr);
-    New_Request (tgt->cs->via->p.iface, 0, ":%s TRACE :%s", cl->nick, tgt->nick);
+    New_Request (tgt->cs->via->p.iface, 0, ":%s TRACE :%s", cl->nick, argv[0]);
     return 1;
   }
-  ircd_show_trace (cl, NULL);
+  ircd_show_trace (cl, NULL); //FIXME: don't show my links to remote?
   return ircd_do_unumeric (cl, RPL_TRACEEND, cl, O_DLEVEL, NULL);
 }
 
