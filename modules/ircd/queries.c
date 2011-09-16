@@ -815,7 +815,7 @@ static inline int _ircd_query_admin (IRCD *ircd, CLIENT *cl, struct peer_priv *v
 
     if (!tgt)				/* no target found */
       return ircd_do_unumeric (cl, ERR_NOSUCHSERVER, cl, 0, argv[0]);
-    if (CLIENT_IS_ME(tgt) || CLIENT_IS_LOCAL(tgt))
+    if (CLIENT_IS_ME(tgt) || !CLIENT_IS_SERVER(tgt))
       return _ircd_query_admin (ircd, cl, via, 0, argv);
     New_Request (tgt->cs->via->p.iface, 0, ":%s ADMIN %s", cl->nick, tgt->nick);
     return 1;
@@ -855,7 +855,7 @@ static inline int _ircd_query_info (IRCD *ircd, CLIENT *cl, struct peer_priv *vi
 
     if (!tgt)				/* no target found */
       return ircd_do_unumeric (cl, ERR_NOSUCHSERVER, cl, 0, argv[0]);
-    if (CLIENT_IS_ME(tgt) || CLIENT_IS_LOCAL(tgt))
+    if (CLIENT_IS_ME(tgt) || !CLIENT_IS_SERVER(tgt))
       return _ircd_query_info (ircd, cl, via, 0, argv);
     New_Request (tgt->via->p.iface, 0, ":%s INFO %s", cl->nick, tgt->nick);
     return 1;
@@ -962,7 +962,7 @@ static inline int _ircd_query_whois (IRCD *ircd, CLIENT *cl, struct peer_priv *v
     tgt = _ircd_find_by_mask (ircd, via, argv[0]);
     if (!tgt)				/* no target found */
       return ircd_do_unumeric (cl, ERR_NOSUCHSERVER, cl, 0, argv[0]);
-    if (CLIENT_IS_ME(tgt) || CLIENT_IS_LOCAL(tgt))
+    if (CLIENT_IS_ME(tgt) || !CLIENT_IS_SERVER(tgt))
       return _ircd_query_whois (ircd, cl, via, 1, &argv[1]);
     New_Request (tgt->via->p.iface, 0, ":%s WHOIS %s :%s", cl->nick,
 		 tgt->lcnick, argv[1]);
@@ -1066,7 +1066,7 @@ static inline int _ircd_query_whowas (IRCD *ircd, CLIENT *cl, struct peer_priv *
     tgt = _ircd_find_by_mask (ircd, via, argv[2]);
     if (!tgt)				/* no target found */
       return ircd_do_unumeric (cl, ERR_NOSUCHSERVER, cl, 0, argv[2]);
-    if (CLIENT_IS_ME(tgt) || CLIENT_IS_LOCAL(tgt))
+    if (CLIENT_IS_ME(tgt) || !CLIENT_IS_SERVER(tgt))
       return _ircd_query_whowas (ircd, cl, via, 2, argv);
     New_Request (tgt->via->p.iface, 0, ":%s WHOWAS %s %s %s", cl->nick,
 		 argv[0], argv[1], tgt->nick);
