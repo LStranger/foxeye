@@ -75,13 +75,13 @@ void ircd_drop_ack (IRCD *ircd, struct peer_priv *link)
   if (ack->who) {
     ack->who->on_ack--;			/* unlock one more */
     if (!ack->who->on_ack && ack->who->hold_upto &&
-	(Time > ack->who->hold_upto))
+	(Time >= ack->who->hold_upto))
       ircd_drop_nick (ack->who);	/* it was on hold by acks */
   }
   if (ack->where != NULL && ack->where != CHANNEL0) {
     ack->where->on_ack--;
     if (!ack->where->on_ack && ack->where->hold_upto &&
-	(Time > ack->where->hold_upto))
+	(Time >= ack->where->hold_upto))
       ircd_drop_channel (ircd, ack->where); /* it was on hold by acks */
   }
   free_ACK (ack);

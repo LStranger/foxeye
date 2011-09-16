@@ -586,15 +586,13 @@ static int ircd_who_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
   } else if (tgt != NULL && CLIENT_IS_SERVER (tgt)) {
     LINK *link;
 
-    if (tgt->hold_upto)
-      ircd_do_unumeric (cl, ERR_NOSUCHSERVER, cl, 0, mask);
-    else
-      for (link = tgt->c.lients; link; link = link->prev) {
-	tgt = link->cl;
-	if ((tgt->umode & mmf) == mmf)
-	  _ircd_who_reply (cl, CLIENT_IS_REMOTE (tgt) ? tgt->cs : me, tgt, NULL);
-      }
-  }
+    for (link = tgt->c.lients; link; link = link->prev) {
+      tgt = link->cl;
+      if ((tgt->umode & mmf) == mmf)
+	_ircd_who_reply (cl, CLIENT_IS_REMOTE (tgt) ? tgt->cs : me, tgt, NULL);
+    }
+  } else
+    ircd_do_unumeric (cl, ERR_NOSUCHSERVER, cl, 0, mask);
   return ircd_do_unumeric (cl, RPL_ENDOFWHO, cl, 0, mask ? mask : "*");
 }
 

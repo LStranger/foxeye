@@ -1303,7 +1303,7 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
     cnfc[0] = chn[0];
     lcb[0] = '\0';
     ch = _ircd_find_channel ((IRCD *)srv->data, chn);
-    if (ch && Time > ch->hold_upto &&	/* it's available to hold off now */
+    if (ch && Time >= ch->hold_upto &&	/* it's available to hold off now */
 	ch->count == 0)
     {
       ircd_drop_channel ((IRCD *)srv->data, ch);
@@ -2106,7 +2106,7 @@ void ircd_del_from_channel (IRCD *ircd, MEMBER *memb, int tohold)
     }
     //TODO: check if channel mode was changed and there are local users left
     if ((--memb->chan->count) == 0 && mf == 0 && /* want to delete channel */
-	Time > memb->chan->hold_upto)
+	Time >= memb->chan->hold_upto)
     {
       MASK *x;
 
