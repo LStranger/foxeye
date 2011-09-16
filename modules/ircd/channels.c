@@ -1868,7 +1868,8 @@ static iftype_t _ircd_internal_logger_sig (INTERFACE *i, ifsig_t sig)
   return 0;
 }
 
-static void _ircd_log_channel (IRCD *ircd, const char *name, flag_t fl)
+static void _ircd_log_channel (IRCD *ircd, const char *name, const char *topic,
+			       flag_t fl)
 {
   MEMBER *memb;
   register __ircd_logger *log;
@@ -1898,6 +1899,7 @@ static void _ircd_log_channel (IRCD *ircd, const char *name, flag_t fl)
   }
   log = &_ircd_internal_logger_list[_ircd_internal_logger_list_n++];
   log->m = memb->chan;
+  strfcpy(log->m->topic, topic, sizeof(log->m->topic));
   log->fl = fl;
 }
 
@@ -2625,13 +2627,19 @@ void ircd_channel_proto_start (IRCD *ircd)
   Add_Binding ("ircd-umodechange", "s", 0, 0, (Function)&iumch_s, NULL);
   Add_Binding ("ircd-check-modechange", "*", 0, 0, &ichmch_r, NULL);
   /* create common local channels */
-  _ircd_log_channel (ircd, "&KILLS", F_MODES);
-  _ircd_log_channel (ircd, "&NOTICES", F_WARN);
-  _ircd_log_channel (ircd, "&ERRORS", F_ERROR);
-  _ircd_log_channel (ircd, "&LOCAL", F_CONN);
-  _ircd_log_channel (ircd, "&CHANNEL", F_JOIN);
+  _ircd_log_channel (ircd, "&KILLS",
+		     "SERVER MESSAGES: operator and server kills", F_MODES);
+  _ircd_log_channel (ircd, "&NOTICES",
+		     "SERVER MESSAGES: warnings and notices", F_WARN);
+  _ircd_log_channel (ircd, "&ERRORS",
+		     "SERVER MESSAGES: server errors", F_ERROR);
+  _ircd_log_channel (ircd, "&LOCAL",
+		     "SERVER MESSAGES: notices about local connections", F_CONN);
+  _ircd_log_channel (ircd, "&CHANNEL",
+		     "SERVER MESSAGES: fake modes", F_JOIN);
 //  _ircd_log_channel ("&HASH", ?????);
 //  _ircd_log_channel ("&NUMERICS", ?????);
-  _ircd_log_channel (ircd, "&SERVERS", F_SERV);
+  _ircd_log_channel (ircd, "&SERVERS",
+		     "SERVER MESSAGES: servers joining and leaving", F_SERV);
 }
 #endif
