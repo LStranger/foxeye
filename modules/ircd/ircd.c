@@ -3798,7 +3798,7 @@ static inline void _ircd_squit_one (LINK *link)
     if (CLIENT_IS_SERVER(tgt))
       continue;
     if (tgt->hold_upto == 0) {
-      if (tgt->rfr->cs != tgt)	/* it's not nick holder */
+      if (tgt->rfr == NULL || tgt->rfr->cs != tgt) /* it's not nick holder */
 	continue;
       tgt = tgt->rfr;		/* go to phantoms list */
     }
