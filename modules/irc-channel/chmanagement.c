@@ -1927,7 +1927,7 @@ static void _ctcp_inviting(INTERFACE *client, unsigned char *who, char *lname,
   struct clrec_t *u;
   char *c;
   IRC *net;
-  CHANNEL *ch;
+  CHANNEL *ch = NULL; /* initialize to avoid warning */
   LINK *me;
   size_t s;
   userflag gf = 0, cf = 0; /* initialize to avoid warning */

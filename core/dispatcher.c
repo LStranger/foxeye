@@ -1372,7 +1372,8 @@ int dispatcher (INTERFACE *start_if)
     }
     /* OK, this is parent */
     if (write_pid (pidfd, pid) == 0) { /* no errors */
-      chdir("/tmp"); /* let profiler write out only child info */
+      if (chdir("/tmp")) /* let profiler write out only child info */
+	return 1; /* is it possible? */
       return 0;
     }
     perror _("write PID file");

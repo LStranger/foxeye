@@ -824,6 +824,7 @@ static CLIENT *_ircd_check_nick_collision(char *nick, size_t nsz, peer_priv *pp)
   if (b == NULL || b->name) {		/* no binding or script binding? */
     res = 0;
     nick[0] = '\0';			/* both should be removed (RFC2812) */
+    collnick = NULL;			/* initialize to avoid warning */
   } else {
     /* set res to 0 if collided is active and is renamed one so we are forced
        to change collided nick too or else we unable to resolve that */
@@ -2277,7 +2278,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
   CLIENT *cl = ((peer_priv *)peer->iface->data)->link->cl; /* it's really peer->link->cl */
   CLIENT *clt;
   struct clrec_t *u;
-  char *cc, *ourpass, *approved;
+  char *cc, *ourpass = NULL, *approved; /* initialize to avoid warning */
   char *ftbf;				/* those to be first */
   LINK **lnk;
   long token = 0;
