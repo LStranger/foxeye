@@ -2539,7 +2539,8 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
   }
   else
   {
-    cl->last_id[0] = cl->last_id[2] = -1; /* no ids received yet */
+    cl->last_id = -1;			/* no ids received yet */
+    memset(cl->id_cache, 0, sizeof(cl->id_cache));
 #endif
     strfcpy (cl->nick, argv[0], sizeof(cl->nick)); /* all done, fill data */
     cl->x.token = _ircd_alloc_token();	/* right after class out! */ //!
@@ -2737,7 +2738,8 @@ static CLIENT *_ircd_got_new_remote_server (peer_priv *pp, CLIENT *src,
   cl->x.token = _ircd_alloc_token();
   Ircd->token[cl->x.token] = cl;
 #if IRCD_MULTICONNECT
-  cl->last_id[0] = cl->last_id[2] = -1; /* no ids received yet */
+  cl->last_id = -1;			/* no ids received yet */
+  memset(cl->id_cache, 0, sizeof(cl->id_cache));
   cl->on_ack = 0;
 #endif
   cl->c.lients = NULL;

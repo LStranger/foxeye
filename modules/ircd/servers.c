@@ -114,6 +114,7 @@ int ircd_new_id(void)
   return (localid);
 }
 
+#if 0
 /* set misseds to current and set current to id */
 static inline void _ircd_extend_id(CLIENT *cl, int id)
 {
@@ -174,6 +175,124 @@ int ircd_test_id(CLIENT *cl, int id)
     cl->last_id[0] = id;
   } else
     _ircd_extend_id(cl, id);
+  return (1);
+}
+#endif
+
+#define ID_MAP_MASK (IRCD_ID_HISTORY-1)
+
+/* bit manipulation functions; borrowed from SLURM sources */
+#ifdef USE_64BIT_BITSTR
+typedef uint64_t bitstr_t;
+#define BITSTR_SHIFT 6
+#else
+typedef uint32_t bitstr_t;
+#define BITSTR_SHIFT 5
+#endif
+
+typedef int bitoff_t;
+
+/* max bit position in word */
+#define BITSTR_MAXPOS		(sizeof(bitstr_t)*8 - 1)
+
+/* word of the bitstring bit is in */
+#define _bit_word(bit)		((bit) >> BITSTR_SHIFT)
+
+/* address of the byte containing bit */
+#define _bit_byteaddr(name, bit) (char *)(name) + ((bit) >> 4)
+
+/* mask for the bit within its word */
+#ifdef WORDS_BIGENDIAN
+#define _bit_mask(bit) ((bitstr_t)1 << (BITSTR_MAXPOS - ((bit)&BITSTR_MAXPOS)))
+#else
+#define _bit_mask(bit) ((bitstr_t)1 << ((bit)&BITSTR_MAXPOS))
+#endif
+
+/* words in a bitstring of nbits bits */
+//#define _bitstr_words(nbits)	(((nbits) + BITSTR_MAXPOS) >> BITSTR_SHIFT)
+
+static inline int bit_test(bitstr_t *b, bitoff_t bit)
+{
+  return ((b[_bit_word(bit)] & _bit_mask(bit)) ? 1 : 0);
+}
+
+static inline void bit_set(bitstr_t *b, bitoff_t bit)
+{
+  b[_bit_word(bit)] |= _bit_mask(bit);
+}
+
+static inline void bit_clear(bitstr_t *b, bitoff_t bit)
+{
+  b[_bit_word(bit)] &= ~_bit_mask(bit);
+}
+
+static inline void bit_nclear(bitstr_t *b, bitoff_t start, bitoff_t stop)
+{
+  while (start <= stop && start % 8 > 0) /* partial first byte? */
+    bit_clear(b, start++);
+  while (stop >= start && (stop+1) % 8 > 0) /* partial last byte? */
+    bit_clear(b, stop--);
+  if (stop > start)			/* now do whole bytes */
+    memset(_bit_byteaddr(b, start), 0, (stop-start+1) / 8);
+}
+
+/* if id isn't received yet then register it and return 1, else return 0 */
+int ircd_test_id(CLIENT *cl, int id)
+{
+  int lastid;
+
+  if (id > cl->last_id) {	/* new id */
+    if (cl->last_id == -1) ;	/* fresh start */
+    else if (id > cl->last_id + ID_MAP_MASK) {
+      if (cl->last_id >= ID_MAP_MASK) { /* seems overflowed */
+	ERROR("ircd: overflow in bit cache from %s, messages may be lost",
+	      cl->lcnick);
+	memset(cl->id_cache, 0, sizeof(cl->id_cache));
+      } else if (bit_test((bitstr_t *)cl->id_cache, (id & ID_MAP_MASK)) == 0) {
+	bit_set((bitstr_t *)cl->id_cache, (id & ID_MAP_MASK));
+	return (1);
+      } else
+	return (0);		/* it seems restarted */
+    } else if (id > cl->last_id + 2) { /* few messages skipped */
+      lastid = (cl->last_id | ID_MAP_MASK);
+      if (id > lastid) {
+	bit_nclear((bitstr_t *)cl->id_cache, (cl->last_id & ID_MAP_MASK),
+		   ID_MAP_MASK);
+	lastid = (id & ID_MAP_MASK);
+	if (lastid == 1)
+	  bit_clear((bitstr_t *)cl->id_cache, 0);
+	else if (lastid > 1)
+	  bit_nclear((bitstr_t *)cl->id_cache, 0, lastid - 1);
+      } else
+	bit_nclear((bitstr_t *)cl->id_cache, (cl->last_id & ID_MAP_MASK),
+		   (id & ID_MAP_MASK));
+    } else if (id == cl->last_id + 2) /* one message skipped */
+      bit_clear((bitstr_t *)cl->id_cache, (id - 1) & ID_MAP_MASK);
+  } else if (id < cl->last_id - ID_MAP_MASK) { /* lost or restarted one */
+    if (id <= ID_MAP_MASK) {	/* counter restarted */
+      lastid = (cl->last_id & ID_MAP_MASK);
+      if (lastid == ID_MAP_MASK - 1)
+	bit_clear((bitstr_t *)cl->id_cache, ID_MAP_MASK);
+      else if (lastid < ID_MAP_MASK)
+	bit_nclear((bitstr_t *)cl->id_cache, lastid, ID_MAP_MASK);
+      if (id == 1)
+	bit_clear((bitstr_t *)cl->id_cache, 0);
+      else if (id > 1)
+	bit_nclear((bitstr_t *)cl->id_cache, 0, id - 1);
+    } else {
+      WARNING("ircd: probably lost ID %d from %s, skipping anyway", id,
+	      cl->lcnick);
+      return (0);
+    }
+  } else {			/* probably received one */
+    if (bit_test((bitstr_t *)cl->id_cache, (id & ID_MAP_MASK)) == 0) {
+      bit_set((bitstr_t *)cl->id_cache, (id & ID_MAP_MASK));
+      return (1);
+    } else
+      return (0);
+  }
+  bit_set((bitstr_t *)cl->id_cache, (id & ID_MAP_MASK));
+  cl->last_id = id;
   return (1);
 }
 #endif

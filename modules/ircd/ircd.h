@@ -37,6 +37,24 @@
 # undef IRCD_STRICT_NAMES
 #endif
 
+/* normalize IRCD_ID_HISTORY to be power of 2 */
+#define __IRCD_ID_HISTORY IRCD_ID_HISTORY
+#undef IRCD_ID_HISTORY
+#if __IRCD_ID_HISTORY < 2048
+# define IRCD_ID_HISTORY 1024
+#elif __IRCD_ID_HISTORY < 4096
+# define IRCD_ID_HISTORY 2048
+#elif __IRCD_ID_HISTORY < 8192
+# define IRCD_ID_HISTORY 4096
+#elif __IRCD_ID_HISTORY < 16384
+# define IRCD_ID_HISTORY 16384
+#elif __IRCD_ID_HISTORY < 32768
+# define IRCD_ID_HISTORY 32768
+#else
+# define IRCD_ID_HISTORY 65536
+#endif
+#undef __IRCD_ID_HISTORY
+
 /* these are used in structures below */
 #include <direct.h>
 #include <tree.h>
@@ -142,7 +160,8 @@ struct CLIENT
 #if IRCD_MULTICONNECT
   struct peer_priv *alt;		/* second shortest (link instance) */
   int on_ack;				/* references from ACK on me */
-  int last_id[3];			/* last seen originated message id */
+  uint32_t last_id;			/* last seen originated message id */
+  char id_cache[IRCD_ID_HISTORY/8];	/* bitmap for ids */
 #endif
   union {
     CLASS *class;			/* user's class */
