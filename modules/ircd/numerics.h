@@ -17,7 +17,7 @@
 #define RPL_TRACESERVER		206, "Serv %*"
 #define RPL_TRACESERVICE	207, "Service %*"
 #define RPL_TRACENEWTYPE	208, "%* 0 %#"
-#define RPL_TRACECLASS		209, "Class %*"
+#define RPL_TRACECLASS		209, "Class %* %P"
 /* 210 reserved */
 #define RPL_STATSLINKINFO	211, "%*"
 #define RPL_STATSCOMMANDS	212, "%*"
