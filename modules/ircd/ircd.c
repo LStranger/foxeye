@@ -1108,7 +1108,11 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	  *pp = peer->p.priv;
 	  break;
 	}
-      for (ll = &ME.c.lients; *ll != NULL; ll = &(*ll)->prev)
+      if (CLIENT_IS_SERVER (cl))
+	ll = &Ircd->servers;
+      else
+	ll = &ME.c.lients;
+      for ( ; *ll != NULL; ll = &(*ll)->prev)
 	if (*ll == peer->link)
 	  break;
       if (*ll != NULL)
@@ -1984,6 +1988,8 @@ static int ircd_user (INTERFACE *srv, struct peer_t *peer, int argc, const char 
   CLIENT *cl = ((peer_priv *)peer->iface->data)->link->cl; /* it's really peer->link->cl */
   int umode;
 
+  if (cl->umode & A_UPLINK)		/* illegal here! */
+    return (0);
   if (argc < 4)
     return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, NULL);
   if (cl->fname[0])			/* got USER already */
@@ -2137,6 +2143,8 @@ static int ircd_nick_rb (INTERFACE *srv, struct peer_t *peer, int argc, const ch
 { /* args: <nick> */
   CLIENT *cl = ((peer_priv *)peer->iface->data)->link->cl; /* it's really peer->link->cl */
 
+  if (cl->umode & A_UPLINK)		/* illegal here! */
+    return (0);
   if (argc == 0)
     return ircd_do_unumeric (cl, ERR_NONICKNAMEGIVEN, cl, 0, NULL);
   if (!_ircd_check_nick_cmd (cl, cl->nick, argv[0], sizeof(cl->nick)))
@@ -2523,7 +2531,8 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
     return 1;
   }
 #endif
-  _ircd_class_out (cl->via->link); /* it's still !A_SERVER */
+  if (!(cl->umode & A_SERVER))
+    _ircd_class_out (cl->via->link); /* it's still !A_SERVER if not uplink */
 #if IRCD_MULTICONNECT
   /* check if it's another connect of already known server */
   if (clt) /* see above! */
@@ -3223,7 +3232,7 @@ static int ircd_inum(INTERFACE *srv, struct peer_t *peer, unsigned short token,
   }
   if (!(pp->link->cl->umode & A_MULTI))
     return (0);		/* this is ambiguous to come from RFC2813 servers */
-  id = atoi(argv[2]);
+  id = atoi(argv[0]);
   if (!ircd_test_id(Ircd->token[token], id))
     //TODO: log duplicate?
     return (1);

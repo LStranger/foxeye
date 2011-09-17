@@ -38,22 +38,25 @@
 #endif
 
 /* normalize IRCD_ID_HISTORY to be power of 2 */
-#define __IRCD_ID_HISTORY IRCD_ID_HISTORY
-#undef IRCD_ID_HISTORY
-#if __IRCD_ID_HISTORY < 2048
+#if IRCD_ID_HISTORY < 2048
+# undef IRCD_ID_HISTORY
 # define IRCD_ID_HISTORY 1024
-#elif __IRCD_ID_HISTORY < 4096
+#elif IRCD_ID_HISTORY < 4096
+# undef IRCD_ID_HISTORY
 # define IRCD_ID_HISTORY 2048
-#elif __IRCD_ID_HISTORY < 8192
+#elif IRCD_ID_HISTORY < 8192
+# undef IRCD_ID_HISTORY
 # define IRCD_ID_HISTORY 4096
-#elif __IRCD_ID_HISTORY < 16384
+#elif IRCD_ID_HISTORY < 16384
+# undef IRCD_ID_HISTORY
 # define IRCD_ID_HISTORY 16384
-#elif __IRCD_ID_HISTORY < 32768
+#elif IRCD_ID_HISTORY < 32768
+# undef IRCD_ID_HISTORY
 # define IRCD_ID_HISTORY 32768
 #else
+# undef IRCD_ID_HISTORY
 # define IRCD_ID_HISTORY 65536
 #endif
-#undef __IRCD_ID_HISTORY
 
 /* these are used in structures below */
 #include <direct.h>
@@ -160,7 +163,7 @@ struct CLIENT
 #if IRCD_MULTICONNECT
   struct peer_priv *alt;		/* second shortest (link instance) */
   int on_ack;				/* references from ACK on me */
-  uint32_t last_id;			/* last seen originated message id */
+  int last_id;				/* last seen originated message id */
   char id_cache[IRCD_ID_HISTORY/8];	/* bitmap for ids */
 #endif
   union {

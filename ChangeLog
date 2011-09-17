@@ -17,6 +17,10 @@ Fri Sep 16 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  rewritten IDs check via bitmasks.
 	* modules/irc-channel/chmanagement.c, modules/ircd/ircd.c, core/dispatcher.c:
 	  cleared compiler warnings.
+	* modules/ircd/queries.c: fixed TRACE 'Link' output.
+	* modules/ircd/ircd.c: fixed server registration.
+	* modules/ircd/queries.c: fixed PING and PONG from servers.
+	* modules/ircd/ircd.c: fixed INUM handling.
 
 Thu Sep 15 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/list.*, doc/modules.api, modules/irc/*.c, modules/irc-channel/irc-channel.c, modules/irc-ctcp/dcc.c, modules/modes/modes.c:

@@ -241,7 +241,9 @@ int ircd_test_id(CLIENT *cl, int id)
 {
   int lastid;
 
+  DBG("ircd:ircd_test_id: testing %d (mask=%#x)", id, ID_MAP_MASK);
   if (id > cl->last_id) {	/* new id */
+    DBG("ircd:ircd_test_id: %d > %d", id, cl->last_id);
     if (cl->last_id == -1) ;	/* fresh start */
     else if (id > cl->last_id + ID_MAP_MASK) {
       if (cl->last_id >= ID_MAP_MASK) { /* seems overflowed */
@@ -269,6 +271,7 @@ int ircd_test_id(CLIENT *cl, int id)
     } else if (id == cl->last_id + 2) /* one message skipped */
       bit_clear((bitstr_t *)cl->id_cache, (id - 1) & ID_MAP_MASK);
   } else if (id < cl->last_id - ID_MAP_MASK) { /* lost or restarted one */
+    DBG("ircd:ircd_test_id: %d restarted(?) after %d", id, cl->last_id);
     if (id <= ID_MAP_MASK) {	/* counter restarted */
       lastid = (cl->last_id & ID_MAP_MASK);
       if (lastid == ID_MAP_MASK - 1)
@@ -285,6 +288,7 @@ int ircd_test_id(CLIENT *cl, int id)
       return (0);
     }
   } else {			/* probably received one */
+    DBG("ircd:ircd_test_id: test %d", id);
     if (bit_test((bitstr_t *)cl->id_cache, (id & ID_MAP_MASK)) == 0) {
       bit_set((bitstr_t *)cl->id_cache, (id & ID_MAP_MASK));
       return (1);

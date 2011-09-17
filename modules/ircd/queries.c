@@ -275,6 +275,16 @@ static int ircd_names_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char
   } \
   return F ((IRCD *)srv->data, cl, peer->iface->data, argc, argv)
 
+/* the same but for PING and PONG as servers can send them too */
+#define DO_SERVER2_QUERY(F) \
+  register CLIENT *cl = _ircd_find_client_lc ((IRCD *)srv->data, lcsender); \
+  if (cl == NULL || cl->hold_upto != 0) \
+  { \
+    ERROR ("ircd:Invalid query source %s from %s", sender, peer->dname); \
+    return ircd_recover_done (peer->iface->data, "Invalid query source"); \
+  } \
+  return F ((IRCD *)srv->data, cl, peer->iface->data, argc, argv)
+
 BINDING_TYPE_ircd_server_cmd(ircd_names_sb);
 static int ircd_names_sb(INTERFACE *srv, struct peer_t *peer, unsigned short token,
 			 const char *sender, const char *lcsender, char *cmd,
@@ -767,14 +777,16 @@ static inline int _ircd_query_trace (IRCD *ircd, CLIENT *cl, struct peer_priv *v
 { /* args: [<target>] */
   if (argc > 0)				/* transit trace */
   {
-    CLIENT *tgt = _ircd_find_by_mask (ircd, via, argv[0]);
+    CLIENT *tgt = ircd_find_client (argv[0], via);
     char tstr[IRCMSGLEN];
 
+    if (!tgt)
+      tgt = _ircd_find_by_mask (ircd, via, argv[0]);
     if (!tgt)				/* no target found */
       return ircd_do_unumeric (cl, ERR_NOSUCHSERVER, cl, 0, argv[0]);
     if (CLIENT_IS_ME(tgt))
       return _ircd_query_trace (ircd, cl, via, 0, argv);
-    if (!CLIENT_IS_SERVER(tgt))		/* local client here */
+    if (!CLIENT_IS_SERVER(tgt) && CLIENT_IS_LOCAL(tgt)) /* local client here */
     {
       ircd_show_trace (cl, tgt);
       return ircd_do_unumeric (cl, RPL_TRACEEND, cl, O_DLEVEL, NULL);
@@ -1152,7 +1164,7 @@ static int ircd_ping_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 			const char *sender, const char *lcsender, char *cmd,
 			int argc, const char **argv)
 {
-  DO_SERVER_QUERY (_ircd_query_ping);
+  DO_SERVER2_QUERY (_ircd_query_ping);
 }
 
 static inline int _ircd_query_pong (IRCD *ircd, CLIENT *cl, struct peer_priv *via,
@@ -1187,7 +1199,7 @@ static int ircd_pong_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 			const char *sender, const char *lcsender, char *cmd,
 			int argc, const char **argv)
 {
-  DO_SERVER_QUERY (_ircd_query_pong);
+  DO_SERVER2_QUERY (_ircd_query_pong);
 }
 
 static inline int _ircd_query_summon(IRCD *ircd, CLIENT *cl, struct peer_priv *via,
