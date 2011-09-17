@@ -30,13 +30,13 @@
     threshold in corrections, as soon we reach it we anyway send them SQUIT.
 
 *** Nick change conflicts (change from nick on hold to something):
-    - if it uplink then I send ACK and collision change, remember collided
-    - if it downlink I send no ACK but change from proposed to my change back
-    - if I get change from waiting ACK to collided - it should be as if I got
+√   - if it uplink then I send ACK and collision change, remember collided
+√   - if it downlink I send no ACK but change from proposed to my change back
+√   - if I get change from waiting ACK to collided - it should be as if I got
       ACK translated into waiting and change to collided so I send ACK for
       that duplicated change and wait ACK for my collision change
-    - both waiting and collided should be translated into changed one
-    - if I get any of those from any link I send them collision change so I
+√   - both waiting and collided should be translated into changed one
+√   - if I get any of those from any link I send them collision change so I
       keep only the changed active
 √   - if I get any KILL, MODE, KICK for holded I transfer it to changed
     * it should be in sync after this! */

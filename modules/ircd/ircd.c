@@ -3034,11 +3034,53 @@ static int _ircd_remote_nickchange(CLIENT *tgt, peer_priv *pp,
   char checknick[MB_LEN_MAX*NICKLEN+NAMEMAX+2];
 
   dprint(4, "ircd:ircd.c:_ircd_remote_nickchange: %s to %s", tgt->nick, nn);
-  //TODO: check nickchange collision (we got nickchange while sent ours)
 #if IRCD_MULTICONNECT
   if (pp->link->cl->umode & A_MULTI)
     New_Request(pp->p.iface, 0, "ACK NICK %s", sender);
 #endif
+  if (tgt && tgt->hold_upto != 0) {
+    dprint(4, "ircd:ircd.c: nickchange collision via %s", pp->p.dname);
+    tgt = _ircd_find_phantom(tgt, pp);
+#if IRCD_MULTICONNECT
+    collision = tgt;
+    if ((pp->link->cl->umode & A_MULTI) && ircd_check_ack(pp, tgt, NULL))
+      /* it's nickchange collision (we got nickchange while sent ours) */
+      changed = 1;
+    else
+      changed = 0;
+#endif
+    while (tgt != NULL && tgt->hold_upto != 0)
+      tgt = tgt->x.rto;			/* find current nick */
+    if (pp->link->cl->umode & A_UPLINK) { /* ok, it's uplink */
+#if IRCD_MULTICONNECT
+      if (changed) {
+	phantom = _ircd_find_client(nn);
+	if (phantom != NULL && collision->x.rto != NULL &&
+	    phantom == collision->x.rto->cs)
+	  return 1;			/* we got the change back */
+      }
+#endif
+      if (tgt)
+	dprint(4, "ircd:ircd.c:_ircd_remote_nickchange: accepting change from uplink %s => %s",
+	       tgt->nick, nn);
+    } else if (tgt) {			/* ok, it's downlink */
+#if IRCD_MULTICONNECT
+      if (changed)			/* we waiting ack on this one */
+	return (1);
+      if (pp->link->cl->umode & A_MULTI) {
+	WARNING("ircd: got phantom NICK on %s from %s after ACK", sender,
+		pp->p.dname);
+	ircd_add_ack(pp, tgt, NULL);
+      }
+#endif
+      dprint(4, "ircd:ircd.c:_ircd_remote_nickchange: reverting change from downlink %s => %s",
+	     nn, tgt->nick);
+      New_Request(pp->p.iface, 0, ":%s NICK :%s", nn, tgt->nick);
+      return 1;
+    } else
+      dprint(4, "ircd:ircd.c:_ircd_remote_nickchange: nick %s already gone",
+	     sender);
+  }
   if (!tgt || tgt->hold_upto != 0 || (tgt->umode & (A_SERVER | A_SERVICE))) {
     ERROR("ircd:got NICK from nonexistent user %s via %s", sender, pp->p.dname);
     return ircd_recover_done(pp, "Bogus NICK sender");
