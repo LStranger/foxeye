@@ -140,7 +140,7 @@ static int _ircd_class_in (struct peer_t *peer, char *user, char *host, const ch
   int locnt, glcnt;
   register CLIENT *td;
 
-  snprintf (uh, sizeof(uh), "%s@%s", NONULL(user), host);
+  snprintf (uh, sizeof(uh), "%s!%s@%s", NONULL(user), host);
   dprint(4, "ircd:ircd.c: adding %s into class", uh);
   if (!Ircd->iface)			/* OOPS! */
   {
@@ -151,7 +151,7 @@ static int _ircd_class_in (struct peer_t *peer, char *user, char *host, const ch
   DBG("ircd:ircd.c: trying find %s", uh);
   cl = Find_Clientrecord (uh, &clname, NULL, NULL);
   if (!cl) {				/* do matching by IP too */
-    snprintf (uh, sizeof(uh), "%s@%s", NONULL(user), SocketIP(peer->socket));
+    snprintf (uh, sizeof(uh), "%s!%s@%s", NONULL(user), SocketIP(peer->socket));
     DBG("ircd:ircd.c: trying find %s", uh);
     cl = Find_Clientrecord (uh, &clname, NULL, NULL);
   }

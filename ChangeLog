@@ -23,6 +23,7 @@ Fri Sep 16 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed INUM handling.
 	* modules/ircd/ircd.c: fixed diagnostics on SQUIT.
 	* modules/ircd/ircd.h: fixed TRACE 'Class' output.
+	* modules/ircd/ircd.c: fixed matching of hostmasks.
 
 Thu Sep 15 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/list.*, doc/modules.api, modules/irc/*.c, modules/irc-channel/irc-channel.c, modules/irc-ctcp/dcc.c, modules/modes/modes.c:
