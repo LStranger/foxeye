@@ -258,21 +258,21 @@ static int ircd_part_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
     else
     {
       if ((memb->chan->mode & A_QUIET)) /* notify only sender */
-	New_Request (peer->iface, 0, ":%s PART %s :%s", cl->nick,
-		     memb->chan->name, msg);
+	New_Request (peer->iface, 0, ":%s!%s@%s PART %s :%s", cl->nick, user,
+		     host, memb->chan->name, msg);
       else				/* notify local users */
       {
 	if (memb->chan->mode & A_ANONYMOUS)
 	{
-	  New_Request (peer->iface, 0, ":%s PART %s :%s", cl->nick,
-		       memb->chan->name, msg);
+	  New_Request (peer->iface, 0, ":%s!%s@%s PART %s :%s", cl->nick, user,
+		       host, memb->chan->name, msg);
 	  ircd_sendto_chan_butone (memb->chan, cl,
 				   ":anonymous!anonymous@anonymous. PART %s :anonymous",
 				   memb->chan->name);
 	}
 	else
-	  ircd_sendto_chan_local (memb->chan, ":%s PART %s :%s", cl->nick,
-				  memb->chan->name, msg);
+	  ircd_sendto_chan_local (memb->chan, ":%s!%s@%s PART %s :%s", cl->nick,
+				  user, host, memb->chan->name, msg);
       }
 #ifdef USE_SERVICES
       //TODO: notify services
