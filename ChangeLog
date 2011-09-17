@@ -18,6 +18,7 @@ Sat Sep 17 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.c: added support for 'OTHER' type ident.
 	* core/list.c: added error reporting on Listfile backup rename errors.
 	* core/list.c: added check on permissions to change other Lname.
+	* modules/ircd/ircd.c: added check for invalid server token.
 
 Fri Sep 16 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: reworked (and simplified) phantoms handling.

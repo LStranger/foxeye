@@ -1100,7 +1100,6 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	KillSocket(&peer->p.socket);
       cli->data = NULL;		/* disown it */
       cli->ift |= I_DIED;
-      //TODO: run "ircd-lost-client" bindtable on non-servers
       pthread_mutex_lock (&IrcdLock);
       for (pp = &IrcdPeers; *pp; pp = &(*pp)->p.priv)
 	if ((*pp) == peer)
@@ -2438,7 +2437,10 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
       ccur++;				/* go to next char */
     }
   }
-  //TODO: check if token is too big!
+  if (token > SHRT_MAX) {
+    _ircd_peer_kill (cl->via, "invalid token value");
+    return 1;
+  }
   cl->via->t = token + 1;		/* no tokens there yet */
   cl->via->i.token = safe_calloc (cl->via->t, sizeof(CLIENT *));
   cl->via->i.token[token] = cl;
@@ -2822,12 +2824,12 @@ static int ircd_server_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
   }
   if (argc > 3)
   {
-    if ((ntok = atoi (argv[2])) < 0) //TODO: check if token is too big!
+    if ((ntok = atoi (argv[2])) < 0 || ntok > SHRT_MAX)
     {
       ERROR ("Server %s sent us invalid token %ld", peer->dname, ntok);
-      if (!ircd_recover_done (pp, "Invalid token"))
-	return 1;
-      //TODO: drop link?
+      if (ircd_recover_done (pp, "Invalid token"))
+	ircd_do_squit (pp->link, pp, "Invalid token"); /* cannot continue */
+      return 1;
     }
     info = argv[3];
   }
@@ -2917,12 +2919,12 @@ static int ircd_iserver(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     ERROR ("ircd: %s introduced by %s is not hostname", nhn, peer->dname);
     return ircd_recover_done (pp, "Bogus server name");
   }
-  if ((ntok = atoi (argv[2])) < 0) //TODO: check if token is too big!
+  if ((ntok = atoi (argv[2])) < 0 || ntok > SHRT_MAX)
   {
     ERROR ("Server %s sent us invalid token %ld", peer->dname, ntok);
-    if (!ircd_recover_done (pp, "Invalid token"))
-      return 1;
-    //TODO: drop link?
+    if (ircd_recover_done (pp, "Invalid token"))
+      ircd_do_squit (pp->link, pp, "Invalid token"); /* cannot continue */
+    return 1;
   }
   if ((c = _ircd_validate_hub (pp, nhn)))
   {
@@ -3850,7 +3852,6 @@ static inline void _ircd_squit_one (LINK *link)
       l->cl->pcl = l->cl->rfr;
       l->cl->rfr = NULL;
     }
-    //TODO: run "ircd-lost-client" bindtable
     strfcpy (l->cl->host, server->lcnick, sizeof(l->cl->host));
   }
   _ircd_free_token (server->x.token);	/* no token for gone server */
