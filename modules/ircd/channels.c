@@ -1841,16 +1841,18 @@ static int _ircd_internal_logger_req (INTERFACE *i, REQUEST *req)
   {
     int i;
     register __ircd_logger *log;
-    const char *sender;
+//    const char *sender;
 
-    if (req-> from && req->from->name)
-      sender = req->from->name;
-    else
-      sender = "server";
+//    if (req-> from && req->from->name)
+//      sender = req->from->name;
+//    else
+//      sender = "server";
     for (i = 0; i < _ircd_internal_logger_list_n; i++)
       if ((log = &_ircd_internal_logger_list[i])->fl & req->flag)
-	ircd_sendto_chan_local (log->m, ":%s NOTICE %s :%s", sender,
-				log->m->name, req->string);
+//	ircd_sendto_chan_local (log->m, ":%s NOTICE %s :%s", sender,
+//				log->m->name, req->string);
+	ircd_sendto_chan_local (log->m, ":server NOTICE %s :%s", log->m->name,
+				req->string);
   }
   return REQ_OK;
 }
