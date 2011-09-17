@@ -104,8 +104,9 @@ static void _ircd_validate_channel_name (char *chname)
 #if IRCD_STRICT_NAMES
   conv = Get_Conversion (CHARSET_8BIT);
   os = namebuf;				/* convert to CHARSET_8BIT */
+  sc = sz;
   sp = Undo_Conversion (conv, &os, sizeof(namebuf), chname, &sz);
-  sz = Do_Conversion (conv, &ss, sz, os, &sp); /* convert it back */
+  sz = Do_Conversion (conv, &ss, sc, os, &sp); /* convert it back */
   ss[sz] = '\0';			/* terminate the string in any case */
   Free_Conversion (conv); /* ok, we got chname compatible with CHARSET_8BIT */
 #endif
