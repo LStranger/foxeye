@@ -21,6 +21,7 @@
 #include "foxeye.h"
 
 #include <fcntl.h>
+#include <errno.h>
 
 #include "list.h"
 #include "wtmp.h"
@@ -2984,6 +2985,15 @@ static int dc_chnick (struct peer_t *dcc, char *args)
 
   if (!(oldname = args) || !(newname = gettoken (args, &args)))
     return 0;
+  if (!(dcc->uf & U_OWNER) &&
+      (Get_Clientflags(newname, NULL) & (U_SPECIAL | U_MASTER))) {
+    New_Request(dcc->iface, F_T_NOTICE, _("Permission denied."));
+    Add_Request(I_LOG, "*", F_WARN,
+		"Attempt to change nick %s by %s failed: not permitted.",
+		oldname, dcc->iface->name);
+    *args = ' ';
+    return (-1);
+  }
   /* TODO: check permissions - only owner can change masters' Lnames */
   i = Change_Lname (newname, oldname);
   *args = ' ';
