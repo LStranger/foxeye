@@ -21,6 +21,7 @@ Fri Sep 16 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed server registration.
 	* modules/ircd/queries.c: fixed PING and PONG from servers.
 	* modules/ircd/ircd.c: fixed INUM handling.
+	* modules/ircd/ircd.c: fixed diagnostics on SQUIT.
 
 Thu Sep 15 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/list.*, doc/modules.api, modules/irc/*.c, modules/irc-channel/irc-channel.c, modules/irc-ctcp/dcc.c, modules/modes/modes.c:

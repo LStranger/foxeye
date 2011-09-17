@@ -1108,20 +1108,17 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	  *pp = peer->p.priv;
 	  break;
 	}
-      if (CLIENT_IS_SERVER (cl))
-	ll = &Ircd->servers;
-      else
-	ll = &ME.c.lients;
-      for ( ; *ll != NULL; ll = &(*ll)->prev)
-	if (*ll == peer->link)
-	  break;
-      if (*ll != NULL)
-	*ll = peer->link->prev;
-      else
-	ERROR("ircd:could not find %s in local client list", cl->nick);
-      free_LINK (peer->link);
-      if (CLIENT_IS_SERVER (cl))
+      if (!CLIENT_IS_SERVER (cl)) {
+	for (ll = &ME.c.lients; *ll != NULL; ll = &(*ll)->prev)
+	  if (*ll == peer->link)
+	    break;
+	if (*ll != NULL)
+	  *ll = peer->link->prev;
+	else
+	  ERROR("ircd:could not find %s in local client list", cl->nick);
+      } else
 	NoCheckFlood (&peer->corrections);
+      free_LINK (peer->link);
       free_peer_priv (peer);
 #if IRCD_MULTICONNECT
       if (cl->on_ack)		/* hold it until acks gone */
@@ -3865,6 +3862,8 @@ static inline void _ircd_send_squit (LINK *link, peer_priv *via, const char *msg
   /* notify local servers about squit */
   ircd_sendto_servers_all_ack (Ircd, link->cl, NULL, via, ":%s SQUIT %s :%s",
 			       link->where->lcnick, link->cl->lcnick, msg);
+  Add_Request(I_LOG, "*", F_SERV, "Received SQUIT %s from %s (%s)",
+	      link->cl->lcnick, link->where->lcnick, msg);
 }
 
 /* server is gone; notifies network recursively and clears link->cl
