@@ -25,6 +25,7 @@ Sat Sep 17 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/clients.c: fixed PART message prefix.
 	* modules/ircd/queries.c: fixed RPL_LUSERME servers count.
 	* modules/ircd/ircd.c: fixed INUM handling.
+	* modules/ircd/queries.c: fixed RPL_LINKS text.
 
 Fri Sep 16 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: reworked (and simplified) phantoms handling.

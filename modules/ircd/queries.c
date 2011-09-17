@@ -661,16 +661,16 @@ static inline int _ircd_query_links (IRCD *ircd, CLIENT *cl, struct peer_priv *v
 { /* [[<remote server> ]<server mask>] */
   const char *smask;
   LINK *tgt;
+  register CLIENT *s;
 
   if (argc > 1)
   {
-    register CLIENT *tgt = _ircd_find_by_mask (ircd, via, argv[0]);
-
-    if (!tgt)
+    s = _ircd_find_by_mask (ircd, via, argv[0]);
+    if (!s)
       return ircd_do_unumeric (cl, ERR_NOSUCHSERVER, cl, 0, argv[0]);
-    if (CLIENT_IS_ME(tgt) || !CLIENT_IS_SERVER(tgt))
+    if (CLIENT_IS_ME(s) || !CLIENT_IS_SERVER(s))
       return _ircd_query_links (ircd, cl, via, 1, &argv[1]);
-    New_Request (tgt->via->p.iface, 0, ":%s LINKS %s :%s", cl->nick, tgt->nick,
+    New_Request (s->via->p.iface, 0, ":%s LINKS %s :%s", cl->nick, s->nick,
 		 argv[1]);
     return 1;
   }
@@ -678,9 +678,11 @@ static inline int _ircd_query_links (IRCD *ircd, CLIENT *cl, struct peer_priv *v
     smask = "*";
   else
     smask = argv[0];
+  s = ircd->token[0]; /* ME */
+  ircd_do_unumeric (cl, RPL_LINKS, s, 0, s->lcnick);
   for (tgt = ircd->servers; tgt; tgt = tgt->prev)
     if (simple_match (smask, tgt->cl->lcnick) >= 0)
-      ircd_do_unumeric (cl, RPL_LINKS, tgt->cl, tgt->cl->hops, smask);
+      ircd_do_unumeric (cl, RPL_LINKS, tgt->cl, tgt->cl->hops, tgt->where->lcnick);
   return ircd_do_unumeric (cl, RPL_ENDOFLINKS, cl, 0, smask);
 }
 

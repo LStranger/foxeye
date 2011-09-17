@@ -99,7 +99,7 @@
 #define RPL_NAMREPLY		353, "%*"
 #define RPL_ENDOFNAMES		366, "%* :End of NAMES list"
 /* 361-363 reserved */
-#define RPL_LINKS		364, "%* %# :%?P%P?0? %@"
+#define RPL_LINKS		364, "%# %* :%?P%P?0? %@"
 #define RPL_ENDOFLINKS		365, "%* :End of LINKS list"
 #define RPL_BANLIST		367, "%# %@"
 #define RPL_ENDOFBANLIST	368, "%# :End of channel ban list"
