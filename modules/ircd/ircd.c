@@ -3268,7 +3268,7 @@ static int ircd_inum(INTERFACE *srv, struct peer_t *peer, unsigned short token,
   struct peer_priv *pp = peer->iface->data; /* it's peer really */
   int id;
 
-  if (argc < 5) {
+  if (argc < 4) {
     ERROR("ircd:incorrect number of arguments for INUM from %s: %d",
 	  peer->dname, argc);
     return ircd_recover_done(pp, "Invalid INUM arguments");
