@@ -244,7 +244,7 @@ static inline int _ircd_query_names (IRCD *ircd, CLIENT *cl, struct peer_priv *v
   do {
     if ((cnext = strchr (c, ',')))
       *cnext++ = 0;
-    if ((cm = ircd_find_member (ircd, c, NULL)))
+    if ((cm = ircd_find_member (ircd, c, NULL)) != NOSUCHCHANNEL)
       ircd_names_reply (me, cl, cm->chan, -1);
     ircd_do_unumeric (cl, RPL_ENDOFNAMES, cl, 0, c);
   } while ((c = cnext));
@@ -335,7 +335,7 @@ static inline int _ircd_query_list (IRCD *ircd, CLIENT *cl, struct peer_priv *vi
   do {
     if ((cnext = strchr (c, ',')))
       *cnext++ = 0;
-    if ((cm = ircd_find_member (ircd, c, NULL)))
+    if ((cm = ircd_find_member (ircd, c, NULL)) != NOSUCHCHANNEL)
       _ircd_list_reply (cl, cm->chan);
   } while ((c = cnext));
   return ircd_do_unumeric (cl, RPL_LISTEND, cl, 0, NULL);
