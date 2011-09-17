@@ -1346,9 +1346,12 @@ static void *_accept_port (void *input_data)
       dprint (5, "%s ident answer: %s", domain, buf);
       /* overflow is impossible: part of buf isn't greater than buf */
       sscanf (buf, "%*[^:]: %[^: ] :%*[^:]: %23[^ \n]", buf, ident);
-      if (strcmp (buf, "USERID"))		/* bad answer */
+      if (!strcmp(buf, "OTHER")) {
+	memmove(&ident[1], ident, 22);	/* get the room for one char */
+	ident[0] = '=';			/* prepend 'OTHER' ident with '=' */
+	ident[23] = '\0';		/* terminate it if was cut */
+      } else if (strcmp (buf, "USERID")) /* bad answer */
 	*ident = 0;
-      /* TODO: make support for OTHER ident prepending it with '=' */
     } /* ident is checked */
     DBG ("_accept_port: killing ident socket");
     KillSocket (&acptr->id);

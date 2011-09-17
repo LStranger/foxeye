@@ -15,6 +15,7 @@ Sat Sep 17 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  changed last argument of Do_Conversion() and Undo_Conversion() to
 	  be updated on return.
 	* core/help.c: added support for '##$charset <name>' at helpfile start.
+	* core/direct.c: added support for 'OTHER' type ident.
 
 Fri Sep 16 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: reworked (and simplified) phantoms handling.
