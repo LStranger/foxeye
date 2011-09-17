@@ -1296,22 +1296,24 @@ Charset conversions API:
 	Cancellation point: no
 
   size_t DDoo__CCoonnvveerrssiioonn (struct conversion_t *_c_o_n_v, char **_o_u_t,
-			size_t _o_u_t_s_z, const char *_i_n, size_t _i_n_s_z);
+			size_t _o_u_t_s_z, const char *_i_n, size_t *_i_n_s_z);
     Does conversion of text line _i_n of size _i_n_s_z from charset defined by
     conversion descriptor _c_o_n_v to internal charset. Puts converted text
     into buffer _o_u_t of size _o_u_t_s_z. If there is no conversion need then
     on return variable by _o_u_t will contain value of _i_n. Returns size of
-    converted line.
+    converted line and changes _i_n_s_z to size of data that still left
+    unconverted.
 	Reenterability: thread-safe
 	Cancellation point: no
 
   size_t UUnnddoo__CCoonnvveerrssiioonn (struct conversion_t *_c_o_n_v, char **_o_u_t,
-			  size_t _o_u_t_s_z, const char *_i_n, size_t _i_n_s_z);
+			  size_t _o_u_t_s_z, const char *_i_n, size_t *_i_n_s_z);
     Does conversion of text line _i_n of size _i_n_s_z from internal charset
     to charset defined by conversion descriptor _c_o_n_v. Puts converted
     text into buffer _o_u_t of size _o_u_t_s_z. If there is no conversion need
     then on return variable by _o_u_t will contain value of _i_n. Returns
-    size of converted line.
+    size of converted line and changes _i_n_s_z to size of data that still
+    left unconverted.
 	Reenterability: thread-safe
 	Cancellation point: no
 

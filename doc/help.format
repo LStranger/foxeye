@@ -1,6 +1,7 @@
 Help file structure.
 =====================
 Each help file contains number of strings, describes help topics.
+Help file can have encoding defined '##$charset <encoding>' as first line.
 
 Each line identified by its first character (not for motd file!):
 "#"	this line is comment.

@@ -140,7 +140,7 @@ static int _ircd_class_in (struct peer_t *peer, char *user, char *host, const ch
   int locnt, glcnt;
   register CLIENT *td;
 
-  snprintf (uh, sizeof(uh), "%s!%s@%s", NONULL(user), host);
+  snprintf (uh, sizeof(uh), "*!%s@%s", NONULL(user), host);
   dprint(4, "ircd:ircd.c: adding %s into class", uh);
   if (!Ircd->iface)			/* OOPS! */
   {
@@ -151,7 +151,7 @@ static int _ircd_class_in (struct peer_t *peer, char *user, char *host, const ch
   DBG("ircd:ircd.c: trying find %s", uh);
   cl = Find_Clientrecord (uh, &clname, NULL, NULL);
   if (!cl) {				/* do matching by IP too */
-    snprintf (uh, sizeof(uh), "%s!%s@%s", NONULL(user), SocketIP(peer->socket));
+    snprintf (uh, sizeof(uh), "*!%s@%s", NONULL(user), SocketIP(peer->socket));
     DBG("ircd:ircd.c: trying find %s", uh);
     cl = Find_Clientrecord (uh, &clname, NULL, NULL);
   }
@@ -1175,7 +1175,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	  c = buff;
 	  if (sw >= sizeof(sbuff))
 	    sw = sizeof(sbuff) - 1;
-	  sr = Undo_Conversion(cli->conv, &c, sizeof(buff) - 1, sbuff, sw);
+	  sr = Undo_Conversion(cli->conv, &c, sizeof(buff) - 1, sbuff, &sw);
 	  if (c == sbuff) {		/* null conversion */
 	    sw = snprintf(buff, sizeof(buff), "%s%s", sbuff, req->string);
 	    if (sw >= sizeof(buff))
@@ -1207,7 +1207,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
     peer->br += sr;
 #if IRCD_USES_ICONV
     c = sbuff;
-    sr = Do_Conversion (cli->conv, &c, sizeof(sbuff), buff, sr);
+    sr = Do_Conversion (cli->conv, &c, sizeof(sbuff), buff, &sr);
 #else
     c = buff;
     sr--;				/* skip ending '\0' */
@@ -2040,14 +2040,15 @@ static int _ircd_validate_nickname (char *d, const char *name, size_t s)
   /* check if name is compatible with CHARSET_8BIT */
   conv = Get_Conversion (CHARSET_8BIT);
   os = namebuf;
-  sp = Undo_Conversion (conv, &os, sizeof(namebuf), name, sz);
+  sp = sz;
+  sp = Undo_Conversion (conv, &os, sizeof(namebuf), name, &sp);
   if (sp > NICKLEN)			/* too long nickname */
   {
     Free_Conversion (conv);
     return 0;
   }
   ds = d;
-  sp = Do_Conversion (conv, &ds, s, os, sp);
+  sp = Do_Conversion (conv, &ds, s, os, &sp);
   if (sp == s)				/* output buffer exhausted */
   {
     if (d) *d = '\0';

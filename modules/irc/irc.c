@@ -934,7 +934,7 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
       sw--;		/* skip ending '\0' */
 #ifdef HAVE_ICONV
       p = sbuf;
-      sw = Do_Conversion (iface->conv, &p, sizeof(sbuf) - 1, inbuf, sw);
+      sw = Do_Conversion (iface->conv, &p, sizeof(sbuf) - 1, inbuf, &sw);
       p[sw] = 0;	/* end this line with '\0' anyway */
 #else
       p = inbuf;

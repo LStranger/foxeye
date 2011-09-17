@@ -5,13 +5,16 @@ TODO:
 	* core/journal.c: to implement transactions journal (for botnet, etc.).
 	* modules/irc*: to do something with ident masks?
 	* core/wtmp.c: to handle errors somehow?
-	* core/help.c: to add support for '##$charset utf-8' at helpfile start.
 	* core/direct.c: to add support for charset and comments in motd file.
 	* core/socket.c: to make socket limit extendible.
 
 --- [0.10.0]
 Sat Sep 17 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed source of messages on system channels.
+	* core/conversion.*, doc/modules.api, core/direct.c, core/dispatcher.c, modules/irc/irc.c, modules/ircd/ircd.c, modules/tcl/modtcl.c:
+	  changed last argument of Do_Conversion() and Undo_Conversion() to
+	  be updated on return.
+	* core/help.c: added support for '##$charset <name>' at helpfile start.
 
 Fri Sep 16 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: reworked (and simplified) phantoms handling.

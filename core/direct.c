@@ -563,7 +563,7 @@ static int dcc_request (INTERFACE *iface, REQUEST *req)
 #ifdef HAVE_ICONV
   /* do conversion now */
   cmd = sbuf;
-  sw = Do_Conversion (iface->conv, &cmd, sizeof(sbuf) - 1, buf, sw);
+  sw = Do_Conversion (iface->conv, &cmd, sizeof(sbuf) - 1, buf, &sw);
   cmd[sw] = 0;
 #else
   cmd = buf;

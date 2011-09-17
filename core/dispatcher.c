@@ -448,8 +448,9 @@ static void vsadd_request (ifi_t *to, iftype_t ift, const char *mask,
 	  req->a.from = &Current->a;
 	  req->a.flag = flag;		/* new request prepared, convert it */
 	  ch = req->a.string;
+	  s = strlen (cur->a.string);
 	  s = Undo_Conversion (conv, &ch, sizeof(req->a.string) - 1,
-			       cur->a.string, strlen (cur->a.string));
+			       cur->a.string, &s); /* ignore unconverted size */
 	  ch[s] = 0;
 	  if (lastdebuglog)
 	  {

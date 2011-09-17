@@ -197,7 +197,7 @@ const char *Conversion_Charset (struct conversion_t *conv)
  * returns size of converted string
  */
 static size_t _do_conversion (iconv_t cd, char **buf, size_t sz,
-			      const unsigned char *line, size_t sl)
+			      const unsigned char *line, size_t *sl)
 {
   char *sbuf;
   char replace_char = *text_replace_char;
@@ -206,16 +206,17 @@ static size_t _do_conversion (iconv_t cd, char **buf, size_t sz,
   if (cd == (iconv_t)(-1))
   {
     *buf = (char *)line;
-    if (sl > sz) /* input line is too long? */
-      return sz;
-    return sl;
+    if (*sl <= sz) /* input line is enough */
+      sz = *sl;
+    (*sl) -= sz;
+    return sz;
   }
   sbuf = *buf;
-  if (replace_char) while (sl && sz) /* do text replace */
+  if (replace_char) while (*sl && sz) /* do text replace */
   {
     size_t last = sz;
 
-    if (iconv (cd, (ICONV_CONST char **)&line, &sl, &sbuf, &sz) != (size_t)(-1) ||
+    if (iconv (cd, (ICONV_CONST char **)&line, sl, &sbuf, &sz) != (size_t)(-1) ||
 	errno != EILSEQ) /* success or unrecoverable error */
       break;
     /* replace char */
@@ -230,22 +231,22 @@ static size_t _do_conversion (iconv_t cd, char **buf, size_t sz,
     else
       seq++;
     line++;
-    sl--;
+    (*sl)--;
   }					/* do ignore unknown */
-  else if (iconv (cd, (ICONV_CONST char **)&line, &sl, &sbuf, &sz) == (size_t)(-1))
-    WARNING ("conversion error: %zu chars left unconverted", sz); /* error */
+  else if (iconv (cd, (ICONV_CONST char **)&line, sl, &sbuf, &sz) == (size_t)(-1))
+    WARNING ("conversion error: %zu chars left unconverted", *sl); /* error */
   return (sbuf - *buf);
 }
 
 size_t Do_Conversion (struct conversion_t *conv, char **buf, size_t bufsize,
-		      const char *str, size_t len)
+		      const char *str, size_t *len)
 {
   return _do_conversion (conv ? conv->cdin : (iconv_t)(-1), buf, bufsize,
 			 (const unsigned char *)str, len);
 }
 
 size_t Undo_Conversion (struct conversion_t *conv, char **buf, size_t bufsize,
-			const char *str, size_t len)
+			const char *str, size_t *len)
 {
   return _do_conversion (conv ? conv->cdout : (iconv_t)(-1), buf, bufsize,
 			 (const unsigned char *)str, len);

@@ -121,7 +121,7 @@ static inline void ResultString (Tcl_Interp *tcl, const char *res, size_t sz)
 
   ptr = var;
 #ifdef HAVE_TCL_SETSYSTEMENCODING
-  sz = Undo_Conversion(_Tcl_Conversion, &ptr, sizeof(var)-1, res, sz);
+  sz = Undo_Conversion(_Tcl_Conversion, &ptr, sizeof(var)-1, res, &sz);
   if (ptr == var)
     var[sz] = '\0';
 #endif
@@ -193,7 +193,7 @@ static int _tcl_call_function (ClientData func, Tcl_Interp *tcl, int argc, TCLAR
       ss -= 2;
 # ifdef HAVE_TCL_SETSYSTEMENCODING
       ptr = buf;
-      s = Do_Conversion(_Tcl_Conversion, &ptr, ss, c, s);
+      s = Do_Conversion(_Tcl_Conversion, &ptr, ss, c, &s);
 # else
       ptr = c;
       if (s > ss)
@@ -207,7 +207,7 @@ static int _tcl_call_function (ClientData func, Tcl_Interp *tcl, int argc, TCLAR
     {
 # ifdef HAVE_TCL_SETSYSTEMENCODING
       ptr = buf;
-      s = Do_Conversion(_Tcl_Conversion, &ptr, ss, c, s);
+      s = Do_Conversion(_Tcl_Conversion, &ptr, ss, c, &s);
 # else
       ptr = c;
       if (s > ss)
@@ -390,7 +390,7 @@ static int _tcl_send_request (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS 
   t = ArgString (argv[4], &s);		/* text of message */
 #ifdef HAVE_TCL_SETSYSTEMENCODING
   ptr = message;
-  s = Do_Conversion(_Tcl_Conversion, &ptr, sizeof(message)-1, t, s);
+  s = Do_Conversion(_Tcl_Conversion, &ptr, sizeof(message)-1, t, &s);
   if (ptr == message)
     message[s] = '\0';
   t = ptr;
@@ -399,7 +399,7 @@ static int _tcl_send_request (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS 
   DBG("_tcl_send_request:to=%s mode=%s msg=%s", to, c, t);
 #ifdef HAVE_TCL_SETSYSTEMENCODING
   ptr = target;
-  s = Do_Conversion(_Tcl_Conversion, &ptr, sizeof(target)-1, to, s);
+  s = Do_Conversion(_Tcl_Conversion, &ptr, sizeof(target)-1, to, &s);
   if (ptr == target)
     target[s] = '\0';
   to = ptr;
@@ -658,7 +658,7 @@ static char *_trace_bool (ClientData data, Tcl_Interp *tcl,
 static char *_trace_str (ClientData data, Tcl_Interp *tcl,
 			 char *name1, char *name2, int flags)
 {
-  int i;
+  size_t i;
   char *s;
 #ifdef HAVE_TCL_SETSYSTEMENCODING
   char buf[LONG_STRING];
@@ -681,7 +681,7 @@ static char *_trace_str (ClientData data, Tcl_Interp *tcl,
       return Tcl_GetStringResult (tcl);
 # ifdef HAVE_TCL_SETSYSTEMENCODING
     ptr = buf;
-    i = Do_Conversion(_Tcl_Conversion, &ptr, sizeof(buf), s, i);
+    i = Do_Conversion(_Tcl_Conversion, &ptr, sizeof(buf), s, &i);
     if (ptr == buf)
       buf[i] = '\0';
     s = ptr;
@@ -691,7 +691,7 @@ static char *_trace_str (ClientData data, Tcl_Interp *tcl,
       return tcl->result;
     i = safe_strlen (s);
 #endif
-    if (i >= 0 && (size_t)i < vardata->len)
+    if (i < vardata->len)
       strfcpy ((char *)vardata->data, s, i + 1);
     else
       strfcpy ((char *)vardata->data, s, vardata->len);
@@ -703,8 +703,8 @@ static char *_trace_str (ClientData data, Tcl_Interp *tcl,
 #ifdef HAVE_TCL8X
 # ifdef HAVE_TCL_SETSYSTEMENCODING
     ptr = buf;
-    i = Undo_Conversion(_Tcl_Conversion, &ptr, sizeof(buf), vardata->data,
-			safe_strlen (vardata->data));
+    i = safe_strlen (vardata->data);
+    i = Undo_Conversion(_Tcl_Conversion, &ptr, sizeof(buf), vardata->data, &i);
     if (ptr == buf)
       buf[i] = '\0';
 # else
@@ -930,7 +930,7 @@ static int dc_tcl (struct peer_t *from, char *args)
 #ifdef HAVE_TCL8X
 # ifdef HAVE_TCL_SETSYSTEMENCODING
     char *ptr;
-    register size_t s;
+    size_t s;
     char buf[MESSAGEMAX+1];
 
 # endif
@@ -938,7 +938,8 @@ static int dc_tcl (struct peer_t *from, char *args)
 # ifdef HAVE_TCL_SETSYSTEMENCODING
     if (c) {
       ptr = buf;
-      s = Do_Conversion(_Tcl_Conversion, &ptr, sizeof(buf), c, strlen(c));
+      s = strlen(c);
+      s = Do_Conversion(_Tcl_Conversion, &ptr, sizeof(buf), c, &s);
       if (ptr == buf)
 	buf[s] = '\0';
       c = ptr;
@@ -997,7 +998,7 @@ static int _tcl_interface (char *fname, int argc, const char *argv[])
     psize = safe_strlen (argv[i]);
 #ifdef HAVE_TCL_SETSYSTEMENCODING
     ptr = buf;
-    psize = Undo_Conversion(_Tcl_Conversion, &ptr, sizeof(buf), argv[i], psize);
+    psize = Undo_Conversion(_Tcl_Conversion, &ptr, sizeof(buf), argv[i], &psize);
     if (ptr == buf)
       buf[psize] = '\0';
 #else
@@ -1014,8 +1015,8 @@ static int _tcl_interface (char *fname, int argc, const char *argv[])
     /* casting (char *) below due to wrong prototypes in old tcl */
 #ifdef HAVE_TCL_SETSYSTEMENCODING
     ptr = buf;
-    psize = Undo_Conversion(_Tcl_Conversion, &ptr, sizeof(buf), argv[i],
-			    safe_strlen(argv[i]));
+    psize = safe_strlen(argv[i]);
+    psize = Undo_Conversion(_Tcl_Conversion, &ptr, sizeof(buf), argv[i], &psize);
     if (ptr == buf)
       buf[psize] = '\0';
 #else
@@ -1037,8 +1038,8 @@ static int _tcl_interface (char *fname, int argc, const char *argv[])
     BindResult = Tcl_GetStringResult (Interp);
     DBG("_tcl_interface:fname=%s result=%s", fname, NONULLP(BindResult));
 # ifdef HAVE_TCL_SETSYSTEMENCODING
-    s = Do_Conversion(_Tcl_Conversion, &ptr, sizeof(buf), BindResult,
-		      safe_strlen(BindResult));
+    s = safe_strlen(BindResult);
+    s = Do_Conversion(_Tcl_Conversion, &ptr, sizeof(buf), BindResult, &s);
     BindResult = Tcl_GetString(Tcl_NewStringObj(ptr, s));
 # endif
 #else

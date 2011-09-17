@@ -24,6 +24,7 @@
 
 #include "init.h"
 #include "tree.h"
+#include "conversion.h"
 
 #define HELPFILEMAXSIZE 131072	/* max size = 128k */
 
@@ -145,6 +146,52 @@ int Add_Help (const char *name)
   (*hf)->hfile[(size_t)size] = 0;
   ht = &(*hf)->help;
   data = (*hf)->hfile;
+  if (memcmp(data, "##$charset ", 11) == 0) {
+    struct conversion_t *conv;
+    char *newdata;
+    size_t convsz, leftsz;
+    register size_t ptr;
+
+    key = c = NextWord(&data[10]);
+    while (*c && *c != ' ' && *c != '\r' && *c != '\n') c++;
+    if (*c)
+      *c++ = '\0';
+    while (*c && *c != '\r' && *c != '\n') c++;
+    if (*c)
+      *c++ = '\0';
+    size -= (c - data);
+    data = c;
+    conv = Get_Conversion(key);
+    convsz = s = 0;
+    leftsz = (size_t)size;
+    newdata = NULL;
+    if (conv != NULL) {
+      while (leftsz) {
+	convsz += HUGE_STRING;
+	dprint(5, "help.c: converting help: preserving %zu memory", convsz);
+	safe_realloc((void **)&newdata, convsz);
+	key = &newdata[s];	/* it's changed on realloc */
+	ptr = (size_t)size - leftsz;
+	ptr = Do_Conversion(conv, &key, convsz - s - 1, &data[ptr], &leftsz);
+	if (ptr == 0) {
+	  ERROR("help.c: unrecoverable conversion error in %s", path);
+	  break;
+	} else if (key != &newdata[s]) { /* Get_Conversion failed? */
+	  ERROR("help.c: unknown conversion descriptor error");
+	  FREE(&newdata);
+	  break;
+	}
+	s += ptr;
+      }
+      if (newdata != NULL) {
+	FREE(&data);
+	(*hf)->hfile = data = newdata;
+	size = s;
+	data[s] = '\0';
+      }
+      Free_Conversion(conv);
+    }
+  }
   c = NULL;
   /* HELPGR "" must be first */
   _get_helpgr (NULL);
