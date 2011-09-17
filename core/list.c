@@ -2224,8 +2224,10 @@ static int _save_listfile (const char *filename, int quiet)
   {
     snprintf (buff, sizeof(buff), "%s~", filename);
     unlink (buff);
-    rename (filename, buff);			/* creating backup */
-    //TODO: check for errors here
+    if (rename (filename, buff) && !quiet) {	/* creating backup */
+      strerror_r(errno, buff, sizeof(buff));
+      ERROR("Cannot create backup of Listfile: %s", buff);
+    }
   }
   fd = open(filename, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP);
   _r = _s = _d = _i = 0;
@@ -2323,11 +2325,14 @@ static int _save_listfile (const char *filename, int quiet)
   }
   if (!i)
   {
+    if (!quiet)
+      ERROR ("Error on saving listfile, keeping old one.");
     unlink (filename);				/* error - file corrupted */
     snprintf (buff, sizeof(buff), "%s~", filename);
-    rename (buff, filename);			/* restoring from backup */
-    //TODO: check for errors here
-    ERROR ("Error on saving listfile, keeping old one.");
+    if (rename (buff, filename) && !quiet) {	/* restoring from backup */
+      strerror_r(errno, buff, sizeof(buff));
+      ERROR("Failed to restore Listfile from backup: %s", buff);
+    }
     return (-1);
   }
   Add_Request (I_LOG, "*", F_BOOT,

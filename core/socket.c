@@ -480,10 +480,9 @@ int SetupSocket(idx_t idx, const char *domain, unsigned short port,
   {
     Socket[idx].ipname = _make_socket_ipname(&addr, hname, sizeof(hname));
     i = getnameinfo (&addr.sa, len, hname, sizeof(hname), NULL, 0, 0);
-    /* TODO: work on errors? */
-    if (i == 0)
+    if (i == 0)			/* no errors */
       domain = hname;
-    else if (domain == NULL) /* make it not NULL */
+    else if (domain == NULL)	/* else make it not NULL */
       domain = Socket[idx].ipname;
   }
   if (callback != NULL)
