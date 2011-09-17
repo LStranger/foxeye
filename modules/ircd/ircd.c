@@ -1593,7 +1593,7 @@ static iftype_t _ircd_uplink_sig (INTERFACE *uli, ifsig_t sig)
       if (*ll != NULL)
 	*ll = uplink->link->prev;
       else
-	ERROR("ircd:autoconnect %s not found in local clients list",
+	ERROR("ircd:uplink %s not found in local clients list",
 	      uplink->link->cl->lcnick);
       free_CLIENT (uplink->link->cl);
       free_LINK (uplink->link);
@@ -1728,14 +1728,14 @@ static inline void _ircd_start_uplink2 (const char *name, char *host,
   uplink->lcnick[0] = '\0';		/* don't need it anymore */
   if (Connect_Host (host, atoi(port), &uplink->via->th,
 		    &uplink->via->p.socket, &_ircd_uplink_handler, uplink))
-    LOG_CONN ("ircd: starting autoconnect: %s/%s", host, port);
+    LOG_CONN ("ircd: starting connect: %s/%s", host, port);
   else
   {
     register peer_priv **pp;
     register LINK **ll;
 
     uplink->via->p.iface->ift = I_DIED; /* error on thread creating */
-    ERROR ("ircd:error on starting autoconnect to %s/%s", host, port);
+    ERROR ("ircd:error on starting connect to %s/%s", host, port);
 #if IRCD_MULTICONNECT
     _ircd_uplinks--;
 #endif
@@ -1836,6 +1836,7 @@ static void _ircd_init_uplinks (void)
 	char *ch = hl;
 
 	hl = gettoken (ch, NULL);
+	LOG_CONN("ircd: found autoconnect %s, starting it", ch);
 	_ircd_start_uplink (c, ch);	/* create a connection thread */
       }
       /* we do ignoring too long hosts list too! */
@@ -2387,7 +2388,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
     Unlock_Clientrecord (u);
     if (_ircd_uplink) /* there is autoconnected RFC2813 server already */
     {
-      _ircd_peer_kill (cl->via, "extra autoconnect, bye, sorry");
+      _ircd_peer_kill (cl->via, "extra uplink connect, bye, sorry");
       return 1;
     }
   }
