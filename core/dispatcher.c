@@ -813,7 +813,9 @@ static int StNum = 0;
 static INTERFACE *stack_iface (INTERFACE *newif, int set_current)
 {
   ifst_t *newst;
+  int cancelstate;
 
+  pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancelstate);
   if (!StCur)
   {
     if (!StAll)
@@ -826,7 +828,7 @@ static INTERFACE *stack_iface (INTERFACE *newif, int set_current)
       StCur->ci = newif;		/* or else try to "remember" last */
     if (set_current)
       Current = (ifi_t *)StCur->ci;
-    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &StCur->cancelstate);
+    StCur->cancelstate = cancelstate;
     return NULL;
   }
   if (!(newst = StCur->next))
@@ -843,7 +845,7 @@ static INTERFACE *stack_iface (INTERFACE *newif, int set_current)
   else
     newst->ci = newst->prev->ci;	/* inherit last */
   StCur = newst;
-  pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &StCur->cancelstate);
+  StCur->cancelstate = cancelstate;
   if (set_current)
     Current = (ifi_t *)StCur->ci;
   return newst->prev->ci;

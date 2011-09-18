@@ -1,16 +1,18 @@
-#!/usr/local/bin/foxeye
+#!/usr/local/bin/foxeye -q
 
 set nick test-ircd.irc.net
 
-set locale uk_UA
+set locale en_GB
 
 set charset utf-8
 
 module ircd
 
-set ircd-description "Test server for home usage"
+set ircd-description-string "Test server at home in center of EU"
 
-set ircd-admin "admin@irc.net"
+set ircd-admin-info "Test network"
+
+set ircd-admin-email "admin@irc.net"
 
 flood-type ircd-errors 10:60
 

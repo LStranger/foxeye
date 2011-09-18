@@ -158,7 +158,9 @@ typedef struct LINK
    of collision for this nick, and x.rto is 'renamed to' structure
    if collision isn't behind A_MULTI link then delay as in RFC2813
    in case of we sent back NICK or KILL for collided user away contains
-   server name where we sent that command (for tracking purpose) */
+   server name where we sent that command (for tracking purpose)
+   host contains host of client while client is alive and if client
+   is on hold due to network split then host contains name of server */
 struct CLIENT
 {
   CLIENT *pcl;				/* list in class */
@@ -291,7 +293,7 @@ int ircd_do_unumeric (CLIENT *, int, const char *, CLIENT *, unsigned short,
 int ircd_do_cnumeric (CLIENT *, int, const char *, CHANNEL *, unsigned short,
 		      const char *);
 /* manages lists, prepares to notify local users about that quit (I_PENDING),
-   and shedules kill of peer if it's local
+   resets away message, and shedules kill of peer if it's local
    caller should manage 'host' field after this for nick tracking purposes
    args: client, sender, reason */
 void ircd_prepare_quit (CLIENT *, struct peer_priv *, const char *);
@@ -378,6 +380,7 @@ int ircd_names_reply (CLIENT *, CLIENT *, CHANNEL *, int);
 	/* calls to ircd.c from queries.c */
 int ircd_try_connect (CLIENT *, const char *, const char *);
 int ircd_show_trace (CLIENT *, CLIENT *);
+int ircd_lusers_unknown (void);
 
 	/* channel.c bindings */
 void ircd_channel_proto_start (IRCD *);

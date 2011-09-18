@@ -9,6 +9,14 @@ TODO:
 	* core/socket.c: to make socket limit extendible.
 
 --- [0.10.0]
+Sun Sep 18 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/ircd.c: fixed matching of hostmasks.
+	* modules/ircd/ircd.*, modules/ircd/queries.c: added missing infos
+	  into LUSERS reply.
+	* modules/ircd/ircd.c, modules/ircd/clients.c, modules/ircd/servers.c:
+	  fixed QUIT messages to local clients.
+	* modules/ircd/ircd.c: revised and fixed CLIENT structures handling.
+
 Sat Sep 17 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed source of messages on system channels.
 	* core/conversion.*, doc/modules.api, core/direct.c, core/dispatcher.c, modules/irc/irc.c, modules/ircd/ircd.c, modules/tcl/modtcl.c:
@@ -26,6 +34,8 @@ Sat Sep 17 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/queries.c: fixed RPL_LUSERME servers count.
 	* modules/ircd/ircd.c: fixed INUM handling.
 	* modules/ircd/queries.c: fixed RPL_LINKS text.
+	* modules/ircd/ircd.c: added missing help file initialization.
+	* core/dispatcher.c: changed cancelling disabling point.
 
 Fri Sep 16 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: reworked (and simplified) phantoms handling.
@@ -40,7 +50,6 @@ Fri Sep 16 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed INUM handling.
 	* modules/ircd/ircd.c: fixed diagnostics on SQUIT.
 	* modules/ircd/ircd.h: fixed TRACE 'Class' output.
-	* modules/ircd/ircd.c: fixed matching of hostmasks.
 
 Thu Sep 15 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/list.*, doc/modules.api, modules/irc/*.c, modules/irc-channel/irc-channel.c, modules/irc-ctcp/dcc.c, modules/modes/modes.c:

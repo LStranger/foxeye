@@ -191,8 +191,8 @@ static int ircd_quit_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
   ircd_sendto_servers_all_ack ((IRCD *)srv->data, cl, NULL, NULL,
 			       ":%s QUIT :%s", peer->dname, msg);
   ircd_prepare_quit (cl, cl->via, msg);
-  Add_Request (I_PENDING, "*", 0, ":%s!%s@%s QUIT :%s", peer->dname, user,
-	       host, msg);
+  Add_Request (I_PENDING, "*", 0, ":%s QUIT :%s", peer->dname, msg);
+  cl->host[0] = '\0';			/* for collision check */
   return 1;
 }
 
@@ -629,8 +629,7 @@ static int ircd_kill_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
   ircd_prepare_quit(tcl, cl->via, "you are killed");
   tcl->hold_upto = Time + CHASETIMELIMIT; /* make 'nick delay' */
   for (c = NextWord(reason); c > reason && c[-1] != '!'; c--); /* find nick */
-  Add_Request(I_PENDING, "*", 0, ":%s!%s@%s QUIT :Killed by %s", tcl->nick,
-	      tcl->user, tcl->host, c);
+  Add_Request(I_PENDING, "*", 0, ":%s QUIT :Killed by %s", tcl->nick, c);
   tcl->host[0] = 0;		/* for collision check */
   return (1);
 }

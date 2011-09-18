@@ -453,6 +453,7 @@ static inline int _ircd_query_lusers (IRCD *ircd, CLIENT *cl, struct peer_priv *
 { /* args: [<mask>[ <target>]] */
   const char *smask;
   LINK *l;
+  LEAF *leaf;
   int lu = 0, ls = 0, ll = 0, gu = 0, gs = 0, gl = 0, op = 0, x = 0, i = 0;
   char buff[STRING];
 
@@ -498,12 +499,15 @@ static inline int _ircd_query_lusers (IRCD *ircd, CLIENT *cl, struct peer_priv *
   ircd_do_unumeric (cl, RPL_LUSERCLIENT, cl, 0, buff);
   if (op)
     ircd_do_unumeric (cl, RPL_LUSEROP, cl, op, NULL);
-//ask ircd.c (if > 0)
-//       253    RPL_LUSERUNKNOWN
-//              "<integer> :unknown connection(s)"
-//ask channels.c (if > 0)
-//       254    RPL_LUSERCHANNELS
-//              "<integer> :channels formed"
+  i = ircd_lusers_unknown();
+  if (i > 0)
+    ircd_do_unumeric (cl, RPL_LUSERUNKNOWN, cl, (unsigned short)i, NULL);
+  i = 0;
+  leaf = NULL;
+  while ((leaf = Next_Leaf (ircd->channels, leaf, NULL)))
+    i++;
+  if (i > 0)
+    ircd_do_unumeric (cl, RPL_LUSERCHANNELS, cl, (unsigned short)i, NULL);
   snprintf (buff, sizeof(buff), "I have %d clients and %d servers", lu, ll);
   return ircd_do_unumeric (cl, RPL_LUSERME, cl, 0, buff);
 }
