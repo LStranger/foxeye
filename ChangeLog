@@ -9,6 +9,9 @@ TODO:
 	* core/socket.c: to make socket limit extendible.
 
 --- [0.10.0]
+Mon Sep 19 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/ircd.c: fixed infinite cycle after wrong phantomization.
+
 Sun Sep 18 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed matching of hostmasks.
 	* modules/ircd/ircd.*, modules/ircd/queries.c: added missing infos

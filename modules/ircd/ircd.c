@@ -739,9 +739,9 @@ __attribute__((warn_unused_result)) static inline CLIENT *
 	}
 	cl2->pcl = NULL;
       } else				/* it's a nick holder already */
-	cl2->pcl = cl->pcl;
+	cl2->pcl = cl->rfr;
       cl->rfr = cl2;			/* set relation from keyholder */
-    } else {				/* ok, just insert it */
+    } else {				/* ok, phantom, just insert it */
       cl2->pcl = cl->pcl;
       cl->pcl = cl2;
     }
