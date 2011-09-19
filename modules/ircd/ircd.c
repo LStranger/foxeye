@@ -428,6 +428,10 @@ static inline void _ircd_peer_kill (peer_priv *peer, const char *msg)
     else
       _ircd_bt_lost_client(peer->link->cl, MY_NAME); /* "ircd-lost-client" */
   }
+  if (peer->t > 0) {
+    FREE(&peer->i.token);
+    peer->t = 0;
+  }
   peer->p.state = P_QUIT;		/* it will die eventually */
   Unset_Iface();
 }
@@ -3947,8 +3951,6 @@ static inline void _ircd_lserver_out (LINK *l)
   else
     ERROR ("ircd:_ircd_lserver_out: local server %s not found in list!",
 	   l->cl->lcnick);
-  FREE (&l->cl->via->i.token);
-  l->cl->via->t = 0;
 }
 
 /* remote link squitted */
