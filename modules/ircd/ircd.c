@@ -140,7 +140,7 @@ static int _ircd_class_in (struct peer_t *peer, char *user, char *host, const ch
   int locnt, glcnt;
   register CLIENT *td;
 
-  snprintf (uh, sizeof(uh), "*!%s@%s", NONULL(user), host);
+  snprintf (uh, sizeof(uh), "%s@%s", NONULL(user), host);
   dprint(4, "ircd:ircd.c: adding %s into class", uh);
   if (!Ircd->iface)			/* OOPS! */
   {
@@ -151,7 +151,7 @@ static int _ircd_class_in (struct peer_t *peer, char *user, char *host, const ch
   DBG("ircd:ircd.c: trying find %s", uh);
   cl = Find_Clientrecord (uh, &clname, NULL, NULL);
   if (!cl) {				/* do matching by IP too */
-    snprintf (uh, sizeof(uh), "*!%s@%s", NONULL(user), SocketIP(peer->socket));
+    snprintf (uh, sizeof(uh), "%s@%s", NONULL(user), SocketIP(peer->socket));
     DBG("ircd:ircd.c: trying find %s", uh);
     cl = Find_Clientrecord (uh, &clname, NULL, NULL);
   }
@@ -1318,7 +1318,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
  *   they cannot (and should not) be checked after connect but will be checked
  *   after we got SERVER message
  *   host record can be used for connect or for autoconnect
- *   pass and port[%flags] in it are used for autoconnect only
+ *   pass and port[%flags] in it are used for uplink connect only
  * hosts for classes should be in form x@y - there is no nick on check for it
  * passwd is encrypted password for incoming connect
  * info is description
@@ -1329,8 +1329,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
  * flags for restricted class are U_DEOP (_ircd_got_local_user)
  * flags for kill are U_DENY (_ircd_got_local_user)
  * content is:
- *   empty for autoconnect (only one server at the time, of course)
- *   empty for server (not usable for class anyway)
+ *   empty for server (not usable as there is no class anyway)
  *   not empty for any classes: ul/loc uh/glob u/class pingfreq sendq
  *
  * '.connect' is there: .connect server@network [port]
@@ -1682,7 +1681,7 @@ static int _ircd_uplink_req (INTERFACE *uli, REQUEST *req)
       _uplink->started = Time;
       _uplink->p.last_input = Time;
       _uplink->p.start[0] = 0;
-      _uplink->p.state = P_LOGIN;	/* we will wait for responce now */
+      _uplink->p.state = P_IDLE;	/* we will wait for responce now */
       uli->IFSignal = &_ircd_client_signal;   /* common client handlers */
       break;
     case P_LASTWAIT:	/* connection error or killed */
