@@ -57,8 +57,8 @@ IRCD_MULTICONNECT. See descriptions below.
 
    Example:
 
-           CHARSET utf-8           ; request to change connection encoding
-                                   to "utf-8"
+   CHARSET utf-8                   ; request to change connection encoding
+                                   to "utf-8".
 
  Command responses (numeric replies):
 
@@ -148,8 +148,9 @@ IRCD_MULTICONNECT. See descriptions below.
    server which is not capable to work with cyclic network scheme nor
    originated from some server which is not capable to work with cyclic
    network scheme nor from some service or user who is connected to such
-   kind of server.  The ITOPIC message SHOULD NOT be sent to a server
-   which is not capable to work with cyclic network scheme.
+   kind of server.  The ITOPIC message SHOULD NOT be sent neither to a
+   server which is not capable to work with cyclic network scheme nor to
+   any client.
 
    The ITOPIC command is used to change the topic of a channel.  If the
    <topic> parameter is not an empty string, the topic for that channel
@@ -159,8 +160,8 @@ IRCD_MULTICONNECT. See descriptions below.
 
    Examples:
 
-   :WiZ!jto@tolsun.oulu.fi ITOPIC 651238 #test :New topic ; User Wiz
-                                   setting the topic.
+   :WiZ ITOPIC 651238 #test :New topic
+                                   ; User Wiz setting the topic.
 
       Command: IMODE
    Parameters: <msgid> <nickname> *( ( "-" / "+" ) *<modes> )
@@ -170,19 +171,123 @@ IRCD_MULTICONNECT. See descriptions below.
    capable to work with cyclic network scheme nor originated from some
    server which is not capable to work with cyclic network scheme nor
    from some service or user who is connected to such kind of server.
-   The IMODE message SHOULD NOT be sent to a server which is not capable
-   to work with cyclic network scheme.
+   The IMODE message SHOULD NOT be sent neither to a server which is not
+   capable to work with cyclic network scheme nor to any client.
 
    The IMODE message is a dual-purpose command in IRC similar to RFC2813
    message MODE.  It allows both usernames and channels to have their
    mode changed.  In difference with the MODE message the IMODE message
    have one more parameter <msgid> which is unique message identifier.
 
+   Examples:
+
+   :WiZ IMODE 4527 WiZ -o          ; User WiZ removed oper status from
+                                   himself.
+
       Command: INUM
+   Parameters: <msgid> <numeric> <target> *( <text> )
+
+   The INUM message SHOULD NOT come neither from server which is not
+   capable to work with cyclic network scheme nor originated from some
+   server which is not capable to work with cyclic network scheme nor
+   from some service or user.  The INUM message SHOULD NOT be sent to
+   clients.
+
+   The INUM message is used to send numeric replies to users on another
+   servers in cyclic network scheme environment so numeric digits which
+   are keyword for the nymeric reply is the second parameter of INUM
+   message and there is also a parameter <msgid> which is unique message
+   identifier.
+
+   Examples:
+
+   :irc.net INUM 72301 422 Romis :MOTD File is missing
+
       Command: ACK
+   Parameters: <command> <target> ( <where> )
+
+   The ACK message SHOULD NOT come neither from server which is not
+   capable to work with cyclic network scheme nor originated from some
+   server which is not capable to work with cyclic network scheme nor
+   from some service or user.  The ACK message SHOULD NOT be sent to a
+   client.
+
+   The ACK message MUST be sent as reply to any QUIT, SQUIT, KILL, KICK,
+   or PART message or to any NICK message which introduces change of
+   client nickname.  Parameter <command> is type of message the ACK
+   message is replied to.  Parameter <target> is the target of <command>
+   (i.e. nick or server name).  Parameter <where> is present only in
+   reply to KICK and PART message and is channel name where <target> was
+   removed of.
+
+   Examples:
+
+   ACK SQUIT irc.jfi.org           ; ACK for SQUIT of irc.jfi.org.
+
       Command: IPRIVMSG
+   Parameters: <msgid> <msgtarget> <text to be sent>
+
+   The IPRIVMSG message MAY come only from link to server which is
+   capable to work with cyclic network scheme and SHOULD NOT come neither
+   from server which is not capable to work with cyclic network scheme
+   nor originated from some service or user who is connected to such kind
+   of server.  The IPRIVMSG message SHOULD NOT be sent neither to a
+   server which is not capable to work with cyclic network scheme nor to
+   any client.
+
+   The message IPRIVMSG is just alike PRIVMSG but used between servers
+   to send private messages between users, as well as to send messages to
+   channels.  <msgtarget> is usually the nickname of the recipient of the
+   message, or a channel name.  All recipient matching and numeric
+   replies are the same as those for PRIVMSG message but only difference
+   between those messages is the parameter <msgid> which is unique
+   message identifier.
+
+   Example:
+
+   :Angel IPRIVMSG 981 Wiz :Are you here?
+                                   ; Message from Angel to Wiz.
+
       Command: INOTICE
+   Parameters: <msgid> <msgtarget> <text to be sent>
+
+   The INOTICE message MAY come only from link to server which is capable
+   to work with cyclic network scheme and SHOULD NOT come neither from
+   server which is not capable to work with cyclic network scheme nor
+   originated from some server which is not capable to work with cyclic
+   network scheme nor from some service or user who is connected to such
+   kind of server.  The INOTICE message SHOULD NOT be sent neither to a
+   server which is not capable to work with cyclic network scheme nor to
+   any client.
+
+   The message INOTICE is just alike NOTICE but used between servers to
+   send private messages between users, as well as to send messages to
+   channels.  <msgtarget> is usually the nickname of the recipient of the
+   message, or a channel name.  <msgid> is an unique message identifier.
+   All recipient matching and numeric replies are the same as those for
+   PRIVMSG message.
+
       Command: ISQUERY
+   Parameters: <msgid> <servicename> <text>
+
+   The ISQUERY message MAY come only from link to server which is capable
+   to work with cyclic network scheme and SHOULD NOT come neither from
+   server which is not capable to work with cyclic network scheme nor
+   originated from some client who is connected to such kind of server.
+   The ISQUERY message SHOULD NOT be sent neither to a server which is
+   not capable to work with cyclic network scheme nor to any client.
+
+   The ISQUERY message is just alike SQUERY but used between servers to
+   send private messages from users to services.  <servicename> is the
+   name of the service recipient of the message.  <msgid> is an unique
+   message identifier.  All recipient matching and numeric replies are
+   the same as those for PRIVMSG message.
+
+   Examples:
+
+   :WiZ ISQUERY 2310 irchelp@irc.fr :HELP privmsg
+                                   ; User WiZ requested help from service
+                                   irchelp@irc.fr.
 
 
 Meaning of letters in VERSION reply:

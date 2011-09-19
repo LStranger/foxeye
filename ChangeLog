@@ -15,6 +15,7 @@ Mon Sep 19 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed memory leak by failed server registration.
 	* modules/ircd/ircd.c: fixed uplink handling.
 	* modules/ircd/ircd.c: fixed inspect-client binding for ircd.
+	* modules/ircd/ircd.ref: updated ircd documentation.
 
 Sun Sep 18 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed matching of hostmasks.
