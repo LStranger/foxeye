@@ -13,6 +13,7 @@ Mon Sep 19 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	infinite cycle after wrong phantomization.
 	* modules/ircd/queries.c, modules/ircd/ircd.ref: updated version reply.
 	* modules/ircd/ircd.c: fixed memory leak by failed server registration.
+	* modules/ircd/ircd.c: fixed uplink handling.
 
 Sun Sep 18 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed matching of hostmasks.

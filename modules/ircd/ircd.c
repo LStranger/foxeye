@@ -2371,14 +2371,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
     }
   }
   else /* P_IDLE */
-  {
     Unlock_Clientrecord (u);
-    if (_ircd_uplink) /* there is autoconnected RFC2813 server already */
-    {
-      _ircd_peer_kill (cl->via, "extra uplink connect, bye, sorry");
-      return 1;
-    }
-  }
   /* we used password we got so can use lcnick as it should be */
   unistrlower (cl->lcnick, argv[0], sizeof(cl->lcnick));
   clt = _ircd_find_client_lc (cl->lcnick);
@@ -2483,9 +2476,6 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
       return 1;
     }
   }
-  if ((peer->uf & U_AUTO) &&		/* we connected to uplink */
-      !_ircd_uplink)			/* and there is no uplink yet */
-    _ircd_uplink = cl->via;		/* so this may be our uplink now */
   if (cc != ftbf)			/* ok, we can redo connchain now */
   {
     char *ccur = ftbf;
@@ -2512,6 +2502,17 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
     else
       cc++;
   }
+  if (peer->uf & U_AUTO)		/* we connected to uplink */
+    if (!_ircd_uplink)			/* and there is no uplink yet */
+      _ircd_uplink = cl->via;		/* so this may be our uplink now */
+    else		/* there is autoconnected RFC2813 server already */
+#if IRCD_MULTICONNECT
+    if (!(cl->umode & A_MULTI))
+#endif
+    {
+      _ircd_peer_kill (cl->via, "extra uplink connect, bye, sorry");
+      return 1;
+    }
 #ifdef IRCD_P_FLAG
   if (!(cl->umode & A_ISON))		/* should be received 'P' flag */
   {
