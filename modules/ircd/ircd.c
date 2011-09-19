@@ -1057,7 +1057,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	dprint(3, "ircd:ircd.c:_ircd_client_request: del name %s", cl->lcnick);
       if (peer == _ircd_uplink)
 	_ircd_uplink = NULL;
-      if (CLIENT_IS_SERVER (cl)) { /* was it autoconnect who left? */
+      if (cl->umode & (A_SERVER | A_UPLINK)) { /* was it autoconnect who left? */
 	if (Get_Clientflags (cl->lcnick, Ircd->iface->name) & U_AUTO)
 	{
 #if IRCD_MULTICONNECT
@@ -1065,7 +1065,8 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 #endif
 	  _ircd_init_uplinks();	/* recheck uplinks list */
 	}
-	NoCheckFlood (&peer->corrections);
+	if (CLIENT_IS_SERVER(cl))
+	  NoCheckFlood (&peer->corrections);
       } else {			/* clear any collision relations */
 	/* cl->pcl is NULL at this point */
 	if (cl->rfr != NULL) {
@@ -1297,7 +1298,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
   }
   if (peer->p.state == P_QUIT)		/* died in execution! */
     return REQ_REJECTED;
-  else if (CLIENT_IS_SERVER (cl))
+  else if (cl->umode & (A_SERVER | A_UPLINK))
     i = _ircd_server_class_pingf;
   else
     i = cl->x.class->pingf;
@@ -1309,7 +1310,8 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
     cli->ift |= I_FINWAIT;		/* suicide */
   } else if (Time >= (peer->p.last_input + i) && !(cl->umode & A_PINGED)) {
     cl->umode |= A_PINGED;		/* ping our peer */
-    New_Request (cli, F_QUICK, ":%s PING %s", MY_NAME, MY_NAME);
+    if (peer->p.state == P_TALK)	/* but don't send while registering */
+      New_Request (cli, F_QUICK, ":%s PING %s", MY_NAME, MY_NAME);
   }
   if (req)
     return REQ_REJECTED;
@@ -2502,7 +2504,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
     else
       cc++;
   }
-  if (peer->uf & U_AUTO)		/* we connected to uplink */
+  if (peer->uf & U_AUTO) {		/* we connected to uplink */
     if (!_ircd_uplink)			/* and there is no uplink yet */
       _ircd_uplink = cl->via;		/* so this may be our uplink now */
     else		/* there is autoconnected RFC2813 server already */
@@ -2513,6 +2515,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
       _ircd_peer_kill (cl->via, "extra uplink connect, bye, sorry");
       return 1;
     }
+  }
 #ifdef IRCD_P_FLAG
   if (!(cl->umode & A_ISON))		/* should be received 'P' flag */
   {

@@ -10,12 +10,13 @@ TODO:
 
 --- [0.10.0]
 Mon Sep 19 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
-	infinite cycle after wrong phantomization.
+	* modules/ircd/ircd.c: fixed infinite cycle after wrong phantomization.
 	* modules/ircd/queries.c, modules/ircd/ircd.ref: updated version reply.
 	* modules/ircd/ircd.c: fixed memory leak by failed server registration.
 	* modules/ircd/ircd.c: fixed uplink handling.
 	* modules/ircd/ircd.c: fixed inspect-client binding for ircd.
 	* modules/ircd/ircd.ref: updated ircd documentation.
+	* modules/ircd/ircd.c: fixed SIGSEGV on requests handler of uplink.
 
 Sun Sep 18 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed matching of hostmasks.
