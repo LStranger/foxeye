@@ -558,6 +558,9 @@ const char ircd_version_flags[] = {
 #ifdef IDLE_FROM_MSG
 'M',
 #endif
+#ifndef NO_SPARE_INVITES
+'N',
+#endif
 #if IRCD_MULTICONNECT
 'o',
 #endif
@@ -578,6 +581,9 @@ const char ircd_version_flags[] = {
 //#endif
 #ifdef IRCD_ENABLE_USERS
 'U',
+#endif
+#ifdef ENABLE_IPV6
+'6',
 #endif
 #if ! IRCD_STRICT_NAMES
 '8',

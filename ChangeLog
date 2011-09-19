@@ -11,6 +11,7 @@ TODO:
 --- [0.10.0]
 Mon Sep 19 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed infinite cycle after wrong phantomization.
+	* modules/ircd/queries.c, modules/ircd/ircd.ref: updated version reply.
 
 Sun Sep 18 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed matching of hostmasks.
