@@ -3311,7 +3311,6 @@ static int ircd_service_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
   if (tgt != NULL && tgt->cs == on)
     //TODO: log duplicate
     return (1);
-  else
 #endif
   if (tgt != NULL) {
     ERROR("ircd:invalid SERVICE token %s via %s", argv[1], peer->dname);
@@ -3380,15 +3379,15 @@ static int ircd_service_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
 #define __TRANSIT__
 
 
-/* for composite names only! should be obsoleted in 0.10 ! */
+/* light version of case-insencitive search engine */
 static inline CHANNEL *_ircd_find_channel_c (const char *name)
 {
   char lcname[MB_LEN_MAX*CHANNAMELEN+1];
-  register char *c;
+//  register char *c;
 
   unistrlower (lcname, name, sizeof(lcname));
-  if ((c = strrchr (lcname, '@')))
-    *c = '\0';
+//  if ((c = strrchr (lcname, '@')))
+//    *c = '\0';
   return Find_Key (Ircd->channels, lcname);
 }
 
