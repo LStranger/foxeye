@@ -9,6 +9,9 @@ TODO:
 	* core/socket.c: to make socket limit extendible.
 
 --- [0.10.0]
+Tue Sep 20 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/ircd.c: fixed invalid squit processing.
+
 Mon Sep 19 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed infinite cycle after wrong phantomization.
 	* modules/ircd/queries.c, modules/ircd/ircd.ref: updated version reply.

@@ -402,6 +402,9 @@ static inline void _ircd_bt_lost_client(CLIENT *cl, const char *server)
 	      cl->fname, cl->umode, IrcdCli_num);
 }
 
+/* it's defined below */
+static inline void _ircd_lserver_out (LINK *);
+
 /*
  * puts message to peer and marks it to die after message is sent
  * any active user should be phantomized after call (i.e. have ->pcl
@@ -419,9 +422,12 @@ static inline void _ircd_peer_kill (peer_priv *peer, const char *msg)
 		 peer->link->cl->user, peer->link->cl->host, msg);
   }
   Set_Iface (peer->p.iface);		/* lock it for next call */
-  if (peer->p.state != P_DISCONNECTED &&
-      !(peer->link->cl->umode & (A_SERVER | A_UPLINK)))
-    _ircd_class_out (peer->link);
+  if (peer->p.state != P_DISCONNECTED) {
+    if (CLIENT_IS_SERVER(peer->link->cl))
+      _ircd_lserver_out (peer->link);
+    else
+      _ircd_class_out (peer->link);
+  }
   if (peer->p.state == P_TALK) {
     if (CLIENT_IS_SERVER(peer->link->cl))
       ;//TODO: BTIrcdUnlinked
@@ -3875,7 +3881,7 @@ static inline void _ircd_squit_one (LINK *link)
       if (l->cl != link->where)		/* don't remove server back */
 	free_CLIENT (l->cl);		/* see _ircd_do_squit */
       /* link is about to be destroyed so don't remove token of l */
-      free_LINK (l);
+      free_LINK (l);			/* see _ircd_do_squit */
       pthread_mutex_unlock (&IrcdLock);
       continue;
     }
@@ -3895,6 +3901,14 @@ static inline void _ircd_squit_one (LINK *link)
     strfcpy (l->cl->host, server->lcnick, sizeof(l->cl->host));
   }
   _ircd_free_token (server->x.token);	/* no token for gone server */
+  for (l = Ircd->servers; l; l = l->prev) { /* for each local server */
+    register peer_priv *pp = l->cl->via;
+    register unsigned short i;
+
+    for (i = 0; i < pp->t; i++)		/* check each its token */
+      if (pp->i.token[i] == server)
+	pp->i.token[i] = NULL;		/* and clear if found */
+  }
   //TODO: BTIrcdLostServer
 }
 
@@ -3940,7 +3954,7 @@ static void _ircd_do_squit (LINK *link, peer_priv *via, const char *msg)
       _ircd_move_acks(link->cl, phantom);
     }
 #endif
-    link->cl->lcnick[0] = '\0';
+    link->cl->lcnick[0] = '\0'; /* mark it to delete */
   }
 }
 
@@ -3972,22 +3986,11 @@ static inline void _ircd_rserver_out (LINK *l)
   else
     ERROR ("ircd:_ircd_rserver_out: server %s not found on %s!", l->cl->nick,
 	   l->where->lcnick);
-  if (CLIENT_IS_LOCAL(l->where))
-  {
-    register peer_priv *ppp = l->where->via;
-    register int i;
-
-    for (i = 0; i < ppp->t; i++)
-      if (ppp->i.token[i] == l->cl)
-	ppp->i.token[i] = NULL;
-  }
+  pthread_mutex_lock (&IrcdLock);
   if (l->cl->lcnick[0] == '\0')		/* see _ircd_do_squit() */
-  {
-    pthread_mutex_lock (&IrcdLock);
     free_CLIENT (l->cl);
-    free_LINK (l);
-    pthread_mutex_unlock (&IrcdLock);
-  }
+  free_LINK (l);
+  pthread_mutex_unlock (&IrcdLock);
 }
 
 /* if this server is multiconnected then we should only remove one instance
@@ -4029,7 +4032,6 @@ void ircd_do_squit (LINK *link, peer_priv *via, const char *msg)
     _ircd_do_squit (link, via, msg); /* notify everyone */
   if (link->where == &ME) /* it's local */
   {
-    _ircd_lserver_out (link); /* remove it from Ircd->servers list */
 #if IRCD_MULTICONNECT
     ircd_clear_acks (Ircd, link->cl->via); /* clear acks */
 #endif
