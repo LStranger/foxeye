@@ -3931,9 +3931,12 @@ static void _ircd_do_squit (LINK *link, peer_priv *via, const char *msg)
     {
       CLIENT *phantom;
 
-      phantom = alloc_CLIENT(); /* this is nowhere now, free by ircd_drop_ack */
+      phantom = alloc_CLIENT(); /* this is in middle of nowhere now */
       phantom->umode = A_SERVER;
-      phantom->on_ack = 0;
+      phantom->lcnick[0] = '\0';
+      strfcpy(phantom->nick, link->cl->lcnick, sizeof(phantom->nick));
+      phantom->hold_upto = 1;
+      phantom->on_ack = 0;	/* it will be freed by ircd_drop_ack */
       _ircd_move_acks(link->cl, phantom);
     }
 #endif
