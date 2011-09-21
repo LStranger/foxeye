@@ -679,8 +679,9 @@ void PollSockets(int check_out)
    */
   pthread_mutex_lock (&LockPoll);
   if (_pfdnum < _Salloc) {
+    safe_realloc((void **)&_pollfd, _Salloc * sizeof(struct pollfd));
+    memset(&_pollfd[_pfdnum], 0, (_Salloc - _pfdnum) * sizeof(struct pollfd));
     _pfdnum = _Salloc;
-    safe_realloc((void **)&_pollfd, _pfdnum * sizeof(struct pollfd));
   }
   for (i = 0; i < _Snum; i++) {
     if (SChanged) {
