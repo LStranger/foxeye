@@ -149,7 +149,7 @@ static inline CHANNEL *_ircd_new_channel (IRCD *ircd, const char *name,
   ch->users = ch->creator = ch->invited = NULL;
   ch->count = 0;
   ch->bans = ch->exempts = ch->invites = NULL;
-  ch->hold_upto = 0;
+  ch->hold_upto = ch->noop_since = 0;
   ch->limit = 0;
   ch->fc[0] = *name;
   ch->fc[1] = '\0';

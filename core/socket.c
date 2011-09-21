@@ -680,7 +680,7 @@ void PollSockets(int check_out)
   pthread_mutex_lock (&LockPoll);
   if (_pfdnum < _Salloc) {
     safe_realloc((void **)&_pollfd, _Salloc * sizeof(struct pollfd));
-    memset(&_pollfd[_pfdnum], 0, (_Salloc - _pfdnum) * sizeof(struct pollfd));
+    memset(&_pollfd[_pfdnum], 0xff, (_Salloc - _pfdnum) * sizeof(struct pollfd));
     _pfdnum = _Salloc;
   }
   for (i = 0; i < _Snum; i++) {
@@ -701,7 +701,8 @@ void PollSockets(int check_out)
   SChanged = 0;			/* we consumed changes */
   x = _Snum;
   pthread_mutex_unlock (&LockPoll);
-  x = poll(_pollfd, (unsigned int)x, check_out ? 10 : POLL_TIMEOUT);
+  if (x > 0)
+    x = poll(_pollfd, (unsigned int)x, check_out ? 10 : POLL_TIMEOUT);
   pthread_mutex_lock (&LockPoll);
   /* reset found events but callers will set it again when needs */
   for (i = 0; i < _Snum; i++)

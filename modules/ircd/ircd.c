@@ -1384,6 +1384,7 @@ static void _ircd_prehandler (pthread_t th, void **data, idx_t *as)
   peer->p.state = P_DISCONNECTED;
   peer->p.priv = IrcdPeers;
   IrcdPeers = peer;
+  peer->t = 0;
   pthread_mutex_unlock (&IrcdLock);
   peer->p.socket = *as;
   peer->p.connchain = NULL;
@@ -1399,6 +1400,7 @@ static void _ircd_prehandler (pthread_t th, void **data, idx_t *as)
 	KillSocket (&peer->p.socket);	/* filter failed and we own the socket */
   Connchain_Grow (&peer->p, 'x');	/* text parser is mandatory */
   peer->p.last_input = peer->started = Time;
+  peer->i.nvited = NULL;
   /* create interface */
   peer->p.state = P_INITIAL;
   peer->p.iface = Add_Iface (I_CLIENT | I_CONNECT, NULL, &_ircd_client_signal,
@@ -1727,6 +1729,9 @@ static inline void _ircd_start_uplink2 (const char *name, char *host,
   uplink->via->p.state = P_DISCONNECTED;
   uplink->via->p.socket = -1;
   uplink->via->p.connchain = NULL;
+  uplink->via->started = Time;
+  uplink->via->i.token = NULL;
+  uplink->via->t = 0;
   uplink->pcl = NULL;
   uplink->cs = uplink;
   uplink->x.class = NULL;
@@ -1760,7 +1765,7 @@ static inline void _ircd_start_uplink2 (const char *name, char *host,
 #if IRCD_MULTICONNECT
     _ircd_uplinks--;
 #endif
-    if (Connchain_Kill ((&uplink->via->p))) ll=ll; /* socket is still dead */
+    if (Connchain_Kill ((&uplink->via->p))) ll=NULL; /* socket is still dead */
     pthread_mutex_lock (&IrcdLock);
     for (pp = &IrcdPeers; *pp; pp = &(*pp)->p.priv)
       if (*pp == uplink->via)
