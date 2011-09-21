@@ -16,6 +16,7 @@ Wed Sep 21 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/socket.c: fixed wrong reallocation on sockets polling.
 	* modules/ircd/ircd.c: fixed fields left unitialized in struct CLIENT.
 	* modules/ircd/ircd.c: fixed fields left unitialized in peer_priv.
+	* modules/ircd/channels.c: fixed sending JOIN message to servers.
 
 Tue Sep 20 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed invalid squit processing.

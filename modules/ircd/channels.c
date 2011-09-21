@@ -1394,8 +1394,9 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 				    cl->nick, bufforservers);
 	    ptr = 0;
 	  }
-	  ptr += snprintf(bufforservers, sizeof(bufforservers) - ptr, "%s%s%s%s",
-			  ptr ? "," : "", ch->name, *smode ? "\007" : "", smode);
+	  ptr += snprintf(&bufforservers[ptr], sizeof(bufforservers) - ptr,
+			  "%s%s%s%s", ptr ? "," : "", ch->name,
+			  *smode ? "\007" : "", smode);
 	} else				/* there is a channel mask */
 	  ircd_sendto_servers_mask((IRCD *)srv->data, NULL, cmask,
 				   ":%s JOIN %s%c%s", cl->nick, ch->name,
