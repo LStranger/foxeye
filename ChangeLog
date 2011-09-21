@@ -9,6 +9,11 @@ TODO:
 	* core/socket.c: to make socket limit extendible.
 
 --- [0.10.0]
+Wed Sep 21 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/ircd.c, modules/ircd/clients.c, modules/ircd/servers.c:
+	  fixed usage of ircd_prepare_quit().
+	* modules/ircd/ircd.c: fixed deallocation of structures on (s)quit.
+
 Tue Sep 20 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed invalid squit processing.
 

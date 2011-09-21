@@ -192,6 +192,7 @@ static int ircd_quit_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 			       ":%s QUIT :%s", peer->dname, msg);
   ircd_prepare_quit (cl, cl->via, msg);
   Add_Request (I_PENDING, "*", 0, ":%s QUIT :%s", peer->dname, msg);
+  cl->hold_upto = Time;
   cl->host[0] = '\0';			/* for collision check */
   return 1;
 }

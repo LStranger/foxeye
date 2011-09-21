@@ -409,7 +409,7 @@ static inline void _ircd_lserver_out (LINK *);
  * puts message to peer and marks it to die after message is sent
  * any active user should be phantomized after call (i.e. have ->pcl
    and ->rfr pointers reset to collision list and 'renamed from')
- * does not remove it from server's list and server should be removed already
+ * does not remove it from server's list nor converts into phantom
  * this function should be thread-safe!
  */
 static inline void _ircd_peer_kill (peer_priv *peer, const char *msg)
@@ -920,10 +920,6 @@ static void _ircd_remote_user_gone(CLIENT *cl)
   /* converts active user into phantom on hold for this second */
   cl->hold_upto = Time;
   cl->away[0] = '\0';	/* it's used by nick change tracking */
-  if (cl->rfr != NULL && cl->rfr->cs == cl) { /* it was nick holder */
-    cl->pcl = cl->rfr;
-    cl->rfr = NULL;
-  }
   /* cl->via is already NULL for remotes */
   pthread_mutex_lock (&IrcdLock);
   if (l != NULL)	/* free structure */
@@ -989,6 +985,7 @@ static iftype_t _ircd_client_signal (INTERFACE *cli, ifsig_t sig)
 	    ircd_sendto_servers_all_ack (Ircd, peer->link->cl, NULL, NULL,
 					 ":%s QUIT :%s", peer->p.dname, reason);
 	    ircd_prepare_quit (peer->link->cl, peer, reason);
+	    peer->link->cl->hold_upto = Time;
 	    Add_Request (I_PENDING, "*", 0, ":%s QUIT :%s", peer->p.dname,
 			 reason);
 	  }
@@ -1059,7 +1056,8 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	  return REQ_REJECTED;	/* try again later */
       }
       Rename_Iface(cli, NULL);	/* delete it from everywhere before checks */
-      if (Delete_Key (Ircd->clients, cl->lcnick, cl) == 0)
+      /* note: server can be multiconnected and if so then cl->via != peer */
+      if (cl->via == peer && Delete_Key (Ircd->clients, cl->lcnick, cl) == 0)
 	dprint(3, "ircd:ircd.c:_ircd_client_request: del name %s", cl->lcnick);
       if (peer == _ircd_uplink)
 	_ircd_uplink = NULL;
@@ -1074,18 +1072,10 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	if (CLIENT_IS_SERVER(cl))
 	  NoCheckFlood (&peer->corrections);
       } else {			/* clear any collision relations */
-	/* cl->pcl is NULL at this point */
-	if (cl->rfr != NULL) {
-	  if (cl->rfr->cs == cl) { /* it was active keyholder */
-	    cl->pcl = cl->rfr;
-	    cl->rfr = NULL;	/* we reset our relation already */
-	  } else if (cl->rfr->x.rto != cl) {
-	    ERROR("ircd:_ircd_client_request: reference error: %s -> %s",
-		  cl->rfr->cs->lcnick, cl->lcnick);
-	    cl->rfr = NULL;	/* drop broken reference! */
-	  } else		/* it was renamed */
-	    _ircd_try_drop_collision(&cl->rfr);
-	}
+	/* it's either not logged or phantom at this point */
+	if (cl->rfr != NULL)
+	  _ircd_try_drop_collision(&cl->rfr);
+	/* cl->rfr is 'from' and cl->pcl is 'next holded' now */
 	if (cl->x.rto != NULL && cl->x.rto->rfr == cl)
 	  cl->x.rto->rfr = NULL; //TODO: make a debug notice on lost rel?
 	/* we have ->cs to itself for local client always, ->pcl is set above
@@ -1147,8 +1137,12 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	  break;
 	}
       free_LINK (peer->link);	/* free all structures */
+      if (cl->via == peer)
+	free_CLIENT (cl);
+      else
+	dprint(3, "ircd:ircd.c:_ircd_client_request: leaving client %s intact",
+	       cl->lcnick);
       free_peer_priv (peer);
-      free_CLIENT (cl);
       pthread_mutex_unlock (&IrcdLock);
       return REQ_OK;		/* interface will now die */
     case P_DISCONNECTED:	/* unused here, handled above */
@@ -1728,6 +1722,7 @@ static inline void _ircd_start_uplink2 (const char *name, char *host,
 #endif
   uplink->via->p.dname = uplink->lcnick;
   uplink->via->p.state = P_DISCONNECTED;
+  uplink->via->p.socket = -1;
   uplink->via->p.connchain = NULL;
   uplink->pcl = NULL;
   uplink->cs = uplink;
@@ -1761,6 +1756,7 @@ static inline void _ircd_start_uplink2 (const char *name, char *host,
 #if IRCD_MULTICONNECT
     _ircd_uplinks--;
 #endif
+    if (Connchain_Kill ((&uplink->via->p))) ll=ll; /* socket is still dead */
     pthread_mutex_lock (&IrcdLock);
     for (pp = &IrcdPeers; *pp; pp = &(*pp)->p.priv)
       if (*pp == uplink->via)
@@ -2384,7 +2380,10 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
   unistrlower (cl->lcnick, argv[0], sizeof(cl->lcnick));
   clt = _ircd_find_client_lc (cl->lcnick);
 #if IRCD_MULTICONNECT
-  if (clt && !clt->hold_upto && (!CLIENT_IS_SERVER(clt) || CLIENT_IS_LOCAL(clt)))
+  if (clt && clt->hold_upto) {
+    ERROR("ircd: internal error on %s", cl->lcnick);
+    clt = NULL;
+  } else if (clt && (!CLIENT_IS_SERVER(clt) || CLIENT_IS_LOCAL(clt)))
 #else
   if (clt)				/* it's already in our network */
 #endif
@@ -2536,8 +2535,8 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
   if (clt) /* see above! */
   {
     cl->via->link->cl = clt;
-    clt->alt = clt->via;
-    clt->via = cl->via;
+    clt->alt = clt->via;	/* shift shortest to alt */
+    clt->via = cl->via;		/* and set shortest to this */
     clt->hops = 1;
     strfcpy (clt->fname, cl->fname, sizeof(clt->fname)); /* rewrite! */
     pthread_mutex_lock (&IrcdLock);
@@ -2707,6 +2706,7 @@ static char *_ircd_validate_hub (peer_priv *pp, const char *nhn)
   return NULL;
 }
 
+/* creates a CLIENT, adds it to nicks list and adds tokens for it */
 static CLIENT *_ircd_got_new_remote_server (peer_priv *pp, CLIENT *src,
 					    long ntok, const char *nick,
 					    const char *lcn, const char *info)
@@ -3841,6 +3841,10 @@ void ircd_prepare_quit (CLIENT *client, peer_priv *via, const char *msg)
     _ircd_remote_user_gone(client);
   else
     _ircd_peer_kill (client->via, msg);
+  if (client->rfr != NULL && client->rfr->cs == client) { /* it was nick holder */
+    client->pcl = client->rfr;
+    client->rfr = NULL;
+  }
   client->away[0] = '\0';		/* caller may not fill it */
 }
 
@@ -4015,17 +4019,19 @@ void ircd_do_squit (LINK *link, peer_priv *via, const char *msg)
 	  if (s->cl == link->cl)
 	    break; /* that will break outer loop too */
   if (s != NULL) { /* it's multiconnected, just remove backlink and notify */
-    register LINK **ptr;
+    if (link->where != &ME) {
+      register LINK **ptr;
 
-    for (ptr = &link->cl->c.lients; ((s = *ptr)); ptr = &s->prev)
-      if (s->cl == link->where)
+      for (ptr = &link->cl->c.lients; ((s = *ptr)); ptr = &s->prev)
+	if (s->cl == link->where)
 	break;
-    if (s) {
-      *ptr = s->prev;
-      free_LINK(s);
-    } else
-      ERROR ("ircd:ircd_do_squit: server %s not found on %s!",
-	     link->where->lcnick, link->cl->lcnick);
+      if (s != NULL) {
+	*ptr = s->prev;
+	free_LINK(s);
+      } else
+	ERROR ("ircd:ircd_do_squit: server %s not found on %s!",
+	       link->where->lcnick, link->cl->lcnick);
+    }
     _ircd_send_squit (link, via, msg);
   } else /* it's completely gone from network */
 #endif /* always last one for RFC2813 server */
@@ -4040,8 +4046,7 @@ void ircd_do_squit (LINK *link, peer_priv *via, const char *msg)
   else
     _ircd_rserver_out (link); /* remove it from link->where list and free it */
 #if IRCD_MULTICONNECT
-  if (s != NULL) /* it was multiconnected */
-    _ircd_recalculate_hops(); /* recalculate all hops map */
+  _ircd_recalculate_hops(); /* recalculate all hops map */
 #endif
 }
 

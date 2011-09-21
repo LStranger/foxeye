@@ -294,6 +294,7 @@ int ircd_do_cnumeric (CLIENT *, int, const char *, CHANNEL *, unsigned short,
 		      const char *);
 /* manages lists, prepares to notify local users about that quit (I_PENDING),
    resets away message, and shedules kill of peer if it's local
+   converts collision list into phantom so caller have to set 'hold_upto'
    caller should manage 'host' field after this for nick tracking purposes
    args: client, sender, reason */
 void ircd_prepare_quit (CLIENT *, struct peer_priv *, const char *);

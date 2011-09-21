@@ -330,6 +330,7 @@ static int ircd_quit_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 			      ":%s QUIT :%s", cl->nick, msg);
   ircd_prepare_quit(cl, cl->via, msg);
   Add_Request(I_PENDING, "*", 0, ":%s QUIT :%s", cl->nick, msg);
+  cl->hold_upto = Time;
   cl->host[0] = 0;			/* for collision check */
   return 1;
 }
