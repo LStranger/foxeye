@@ -760,6 +760,7 @@ __attribute__((warn_unused_result)) static inline CLIENT *
     cl2->pcl = NULL;			/* it's alone now */
     if (lon)
       strfcpy(cl2->lcnick, lon, sizeof(cl2->lcnick));
+    strfcpy(cl2->nick, on, sizeof(cl2->nick));
     if (Insert_Key (&Ircd->clients, cl2->lcnick, cl2, 1) < 0)
       ERROR("ircd:_ircd_get_phantom: tree error on adding %s", cl2->lcnick);
       /* FIXME: isn't it something fatal? */
@@ -773,6 +774,7 @@ __attribute__((warn_unused_result)) static inline CLIENT *
 #if IRCD_MULTICONNECT
   cl2->on_ack = 0;
 #endif
+  /* fields c.hannels, hops, user, fname are irrelevant for phantoms */
   return (cl2);
 }
 
@@ -1446,6 +1448,7 @@ static void _ircd_handler (char *cln, char *ident, const char *host, void *data)
   cl->fname[0] = 0;
   cl->away[0] = 0;
   cl->hold_upto = 0;
+  cl->c.hannels = NULL;
   cl->rfr = NULL;			/* no collisions for it yet */
   cl->hops = 1;
 #if IRCD_MULTICONNECT
@@ -1727,6 +1730,7 @@ static inline void _ircd_start_uplink2 (const char *name, char *host,
   uplink->pcl = NULL;
   uplink->cs = uplink;
   uplink->x.class = NULL;
+  uplink->c.lients = NULL;
   uplink->hold_upto = 0;
   uplink->umode = A_UPLINK;
   uplink->nick[0] = 0;
@@ -3188,6 +3192,9 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   tgt->hold_upto = 0;
   tgt->rfr = NULL;
   tgt->umode = 0;
+  tgt->via = NULL;
+  tgt->c.hannels = NULL;
+  tgt->away[0] = '\0';
   ct = 0;
   if (!_ircd_validate_nickname(tgt->nick, argv[0], sizeof(tgt->nick))) {
     _ircd_transform_invalid_nick(tgt->nick, argv[0], sizeof(tgt->nick));
@@ -3350,6 +3357,7 @@ static int ircd_service_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
   }
   tgt->pcl = NULL;			/* service is out of classes */
   tgt->x.class = NULL;
+  tgt->via = NULL;
 #if IRCD_MULTICONNECT
   tgt->on_ack = 0;
 #endif
