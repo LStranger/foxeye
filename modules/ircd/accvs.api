@@ -183,7 +183,8 @@
     Used when some client with nick _r_q and user mode _r_u_m_o_d_e sent command
     for some mode change on themself in direction _a_d_d (which is 0 if it's
     an attempt to down mode or 1 if it's attempt to raise mode). Returns
-    modeflag change if it approved.
+    modeflag change if it approved. May return 1 if change is allowed but
+    should be ignored.
       Matching: modechar.  (userflags are ignored)
 
 -     "iirrccdd--wwhhoocchhaarr"   MASK

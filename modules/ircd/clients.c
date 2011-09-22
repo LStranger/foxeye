@@ -643,7 +643,7 @@ static int ircd_away_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl;
   register size_t len;
 
-  if (argc == 0) {			/* unaway */
+  if (argc == 0 || *argv[0] == '\0') { /* unaway */
     cl->away[0] = '\0';
     cl->umode &= ~A_AWAY;
     ircd_sendto_servers_new((IRCD *)srv->data, NULL, ":%s IMODE %d %s :-a",

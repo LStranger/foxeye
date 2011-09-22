@@ -720,7 +720,8 @@ BINDING_TYPE_ircd_umodechange(iumch_a);
 static modeflag iumch_a(INTERFACE *srv, const char *rq, modeflag rumode,
 			int add)
 {
-  if (!rumode) /* it's a test */
+  if (!rumode || /* it's a test */
+      (rumode & A_SERVER)) /* or servermode */
     return A_AWAY;
   return 0;
 }
@@ -774,7 +775,7 @@ BINDING_TYPE_ircd_umodechange(iumch_s);
 static modeflag iumch_s(INTERFACE *srv, const char *rq, modeflag rumode,
 			int add)
 {
-  return 0; /* not supported, obsolete flag */
+  return 1; /* not supported, obsolete flag */
 }
 
 
@@ -1116,6 +1117,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	      mf |= f (srv, peer->dname, cl->umode, add);
 	    b = Check_Bindtable (BTIrcdUmodechange, charstr, U_ALL, U_ANYCH, b);
 	  }
+	  mf &= ~(A_ISON | A_PINGED);
 	  while (mf && (b = Check_Bindtable (BTIrcdCheckModechange, peer->dname,
 					     U_ALL, U_ANYCH, b)))
 	    if (!b->name && !b->func (cl->umode, peer->dname, mf, add))
@@ -1702,6 +1704,12 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 				    tgt->nick, add ? '+' : '-', *c,
 				    pp->p.dname);
 	  }
+	  mf &= ~(A_ISON | A_PINGED);
+	  if (!mf) {
+	    Add_Request(I_LOG, "*", F_WARN, "ircd: umode change %c%c on %s ignored",
+			add ? '+' : '-', *c, tgt->nick);
+	    continue;
+	  }
 	  if (mf & A_HALFOP) {		/* remote cannot switch localop flag */
 	    CONTINUE_ON_MODE_ERROR ("impossible MODE", " %s %c%c via %s",
 				    tgt->nick, add ? '+' : '-', *c,
@@ -1751,13 +1759,13 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 #if IRCD_MULTICONNECT
       if (id >= 0) {
 	ircd_sendto_servers_new(((IRCD *)srv->data), NULL, ":%s IMODE %d %s %s",
-				sender, id, pp->p.dname, modepass);
+				sender, id, tgt->nick, modepass);
 	ircd_sendto_servers_old(((IRCD *)srv->data), NULL, ":%s MODE %s %s",
-				sender, pp->p.dname, modepass);
+				sender, tgt->nick, modepass);
       } else
 #endif
 	ircd_sendto_servers_all(((IRCD *)srv->data), NULL, ":%s MODE %s %s",
-				sender, pp->p.dname, modepass);
+				sender, tgt->nick, modepass);
     }
     for (i = 0; i < errors; i++)
       if (!ircd_recover_done (pp, (i >= MAXTRACKED_MODE_ERRORS) ?
@@ -2481,7 +2489,7 @@ modeflag ircd_char2umode(INTERFACE *srv, const char *sname, char c)
       mf |= (f = (modeflag (*)())b->func) (srv, sname, A_SERVER, 1);
     b = Check_Bindtable (BTIrcdUmodechange, charstr, U_ALL, U_ANYCH, b);
   }
-  return mf;
+  return (mf & ~(A_ISON | A_PINGED));
 }
 
 modeflag ircd_char2mode(INTERFACE *srv, const char *sname, const char *tar,
@@ -2521,7 +2529,7 @@ modeflag ircd_char2mode(INTERFACE *srv, const char *sname, const char *tar,
     }
     b = Check_Bindtable (BTIrcdModechange, chfc, U_ALL, U_ANYCH, b);
   }
-  return mf;
+  return (mf & ~(A_ISON | A_PINGED));
 }
 
 modeflag ircd_whochar2mode(char ch)
