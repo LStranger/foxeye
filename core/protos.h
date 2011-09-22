@@ -201,8 +201,8 @@ static type *alloc_##type (void) \
   cur = Free##tvar; \
   Free##tvar = (type *)cur->next; \
   tvar##num++; \
-  if (tvar##num > tvar##max) \
-    tvar##max = tvar##num; \
+  if (tvar##num >= tvar##max) \
+    tvar##max = tvar##num + 1; \
   return cur; \
 } \
 static inline void free_##type (type *cur) \

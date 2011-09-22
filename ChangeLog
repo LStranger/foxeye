@@ -9,6 +9,9 @@ TODO:
 	* core/socket.c: to make socket limit extendible.
 
 --- [0.10.0]
+Thu Sep 22 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/protos.h: fixed 'max' statistic in macro ALLOCATABLE_TYPE.
+
 Wed Sep 21 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c, modules/ircd/clients.c, modules/ircd/servers.c:
 	  fixed usage of ircd_prepare_quit().
