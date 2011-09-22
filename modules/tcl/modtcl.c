@@ -177,11 +177,11 @@ static int _tcl_call_function (ClientData func, Tcl_Interp *tcl, int argc, TCLAR
   char *c, *cs = string, *ptr;
   int (*f)(const char *) = (Function)func;
   size_t s, ss = sizeof(string) - 1;
-  int i = 1;				/* skip function name */
+  int i = 1, x;				/* skip function name */
 
   while (--argc && ss)			/* make a string from argv[] */
   {
-    c = ArgString (argv[i++], &i);
+    c = ArgString (argv[i++], &x);
     if (cs != string)
     {
       *cs++ = ' ';
@@ -297,7 +297,7 @@ static int _tcl_bind (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS argv[])
   {
     unistrlower (buf, c, 5);
     for (tbt = &tcl_bindtables[0]; tbt->intcl; tbt++)
-      if (strlen (tbt->intcl) == s && !memcmp (buf, tbt->intcl, 4))
+      if (strlen (tbt->intcl) == (size_t)s && !memcmp (buf, tbt->intcl, 4))
 	break;
   }
   else
@@ -345,7 +345,7 @@ static int _tcl_unbind (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS argv[]
   {
     unistrlower (buf, c, 5);
     for (tbt = &tcl_bindtables[0]; tbt->intcl; tbt++)
-      if (strlen (tbt->intcl) == s && !memcmp (buf, tbt->intcl, 4))
+      if (strlen (tbt->intcl) == (size_t)s && !memcmp (buf, tbt->intcl, 4))
 	break;
   }
   else
@@ -662,6 +662,7 @@ static char *_trace_str (ClientData data, Tcl_Interp *tcl,
 {
   size_t i;
   char *s;
+  int x;
 #ifdef HAVE_TCL_SETSYSTEMENCODING
   char buf[LONG_STRING];
   char *ptr;
@@ -679,8 +680,9 @@ static char *_trace_str (ClientData data, Tcl_Interp *tcl,
   {
 #ifdef HAVE_TCL8X
     if (!(s = Tcl_GetStringFromObj (Tcl_ObjGetVar2 (tcl,
-	vardata->name, NULL, TCL_GLOBAL_ONLY), &i)))
+	vardata->name, NULL, TCL_GLOBAL_ONLY), &x)))
       return Tcl_GetStringResult (tcl);
+    i = x; /* Tcl is crazy */
 # ifdef HAVE_TCL_SETSYSTEMENCODING
     ptr = buf;
     i = Do_Conversion(_Tcl_Conversion, &ptr, sizeof(buf), s, &i);
