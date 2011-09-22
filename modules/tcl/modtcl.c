@@ -181,7 +181,7 @@ static int _tcl_call_function (ClientData func, Tcl_Interp *tcl, int argc, TCLAR
 
   while (--argc && ss)			/* make a string from argv[] */
   {
-    c = ArgString (argv[i++], &s);
+    c = ArgString (argv[i++], &i);
     if (cs != string)
     {
       *cs++ = ' ';
@@ -286,7 +286,7 @@ static int _tcl_bind (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS argv[])
 {
   tcl_bindtable *tbt;
   char *c, *fn;
-  size_t s;
+  int s;
   userflag gf, cf;
   char buf[32];
 
@@ -335,7 +335,7 @@ static int _tcl_unbind (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS argv[]
 {
   tcl_bindtable *tbt;
   char *c;
-  size_t s;
+  int s;
   char buf[5];
 
   if (argc != 5)			/* check for number of params */
@@ -365,6 +365,7 @@ static int _tcl_send_request (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS 
   char *to, *c, *t;
   iftype_t ift;
   flag_t fl;
+  int x;
 #ifdef HAVE_TCL_SETSYSTEMENCODING
   char *ptr;
   char target[NAMEMAX+1];
@@ -379,26 +380,28 @@ static int _tcl_send_request (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS 
 
   if (argc != 5)
     return _tcl_errret (tcl, "bad number of parameters.");
-  c = ArgString (argv[2], &s);
-  for (ift = 0; s; s--)			/* get type from chars */
+  c = ArgString (argv[2], &x);
+  for (ift = 0; x; x--)			/* get type from chars */
     if ((t = strchr (typec, *c++)))
       ift |= typev[t - typec];
-  c = ArgString (argv[3], &s);
-  for (fl = 0; s; s--)			/* get flag from chars */
+  c = ArgString (argv[3], &x);
+  for (fl = 0; x; x--)			/* get flag from chars */
     if ((t = strchr (flagc, *c++)))
       fl |= flagv[t - flagc];
-  t = ArgString (argv[4], &s);		/* text of message */
+  t = ArgString (argv[4], &x);		/* text of message */
 #ifdef HAVE_TCL_SETSYSTEMENCODING
   ptr = message;
+  s = x; /* tcl is crazy! */
   s = Do_Conversion(_Tcl_Conversion, &ptr, sizeof(message)-1, t, &s);
   if (ptr == message)
     message[s] = '\0';
   t = ptr;
 #endif
-  to = ArgString (argv[1], &s);		/* target of message */
+  to = ArgString (argv[1], &x);		/* target of message */
   DBG("_tcl_send_request:to=%s mode=%s msg=%s", to, c, t);
 #ifdef HAVE_TCL_SETSYSTEMENCODING
   ptr = target;
+  s = x;
   s = Do_Conversion(_Tcl_Conversion, &ptr, sizeof(target)-1, to, &s);
   if (ptr == target)
     target[s] = '\0';
@@ -412,7 +415,7 @@ static int _tcl_send_request (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS 
 static int _tcl_ison (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS argv[])
 {
   const char *service, *lname;
-  size_t s;
+  int s;
 
   if (argc < 2 || argc > 3)		/* check for number of params */
     return _tcl_errret (tcl, "bad number of parameters.");
@@ -432,7 +435,7 @@ static int _tcl_ison (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS argv[])
 static int _tcl_check_flags (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS argv[])
 {
   char *lname, *c;
-  size_t s;
+  int s;
   userflag cf, rf;
 
   if (argc < 3 || argc > 4)		/* check for number of params */
@@ -476,8 +479,7 @@ static tcl_timer *Tcl_Last_Timer = NULL;
 static int _tcl_utimer (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS argv[])
 {
   char *c;
-  int n;
-  size_t s;
+  int n, s;
   tcl_timer *tt;
 
   if (argc != 3)			/* check for number of params */
