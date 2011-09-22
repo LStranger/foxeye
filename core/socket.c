@@ -43,6 +43,17 @@
 # include <sys/filio.h>
 #endif
 
+#ifndef SIGPOLL
+# warning non-POSIX-compliant system, no SIGPOLL in system headers!
+# define SIGPOLL 23
+#endif
+
+#ifndef SUN_LEN
+/* FreeBSD doesn't have it in c99 mode */
+#define SUN_LEN(su) \
+	(sizeof(*(su)) - sizeof((su)->sun_path) + strlen((su)->sun_path))
+#endif
+
 /* solaris have this name as macro so drop it now */
 #undef sun
 
@@ -257,7 +268,7 @@ int KillSocket (idx_t *idx)
   if (i >= _Snum)		/* it should be atomic ATM */
     return -1;			/* no such socket */
   dprint (4, "socket:KillSocket: fd=%d", Pollfd[i].fd);
-  pthread_kill(__main_thread, SIGIO); /* break poll() in main thread */
+  pthread_kill(__main_thread, SIGPOLL); /* break poll() in main thread */
   pthread_mutex_lock (&LockPoll);
   Socket[i].port = 0;
   FREE (&Socket[i].ipname);
@@ -284,7 +295,7 @@ idx_t GetSocket (unsigned short type)
     sockfd = socket (AF_INET, SOCK_STREAM, 0);
   if (sockfd < 0)
     return (E_NOSOCKET);
-  pthread_kill(__main_thread, SIGIO); /* break poll() in main thread */
+  pthread_kill(__main_thread, SIGPOLL); /* break poll() in main thread */
   pthread_mutex_lock (&LockPoll);
   idx = allocate_socket();
   if (idx >= 0)
@@ -728,10 +739,10 @@ int _fe_init_sockets (void)
     Pollfd = safe_malloc (SOCKETMAX * sizeof(struct pollfd));
     __main_thread = pthread_self();
   }
-  /* init SIGIO handler */
+  /* init SIGPOLL handler */
   _mypid = getpid();
   act.sa_handler = &sigio_handler;
   sigemptyset (&act.sa_mask);
   act.sa_flags = 0;
-  return (sigaction (SIGIO, &act, NULL));
+  return (sigaction (SIGPOLL, &act, NULL));
 }

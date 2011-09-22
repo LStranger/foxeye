@@ -11,7 +11,7 @@ SIGFPE	shutdowns the bot
 SIGHUP	flushes files/connections
 SIGILL	shutdowns the bot
 SIGINT	restarts the bot
-SIGIO	used by sockets API
+SIGPOLL	used by sockets API
 SIGPIPE	ignored
 SIGQUIT	shutdowns the bot
 SIGSEGV	shutdowns the bot

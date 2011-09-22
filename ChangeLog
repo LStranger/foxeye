@@ -11,6 +11,8 @@ TODO:
 --- [0.10.0]
 Thu Sep 22 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/protos.h: fixed 'max' statistic in macro ALLOCATABLE_TYPE.
+	* core/socket.h: replaced non-POSIX SIGIO with POSIX SIGPOLL.
+	* core/foxeye.h: fixed issue when string.h and strings.h both present.
 
 Wed Sep 21 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c, modules/ircd/clients.c, modules/ircd/servers.c:

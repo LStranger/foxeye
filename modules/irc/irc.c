@@ -712,7 +712,7 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
   register char *c;
   char thebuf[STRING];
   int i, isregistered = 0, reject = 1;
-  int sw = 0;		/* we don't need that 0 but to exclude warning... */
+  ssize_t sw = 0;		/* we don't need that 0 but to exclude warning... */
 
   /* there may be still an await structure, we cannot touch socket then! */
   if (serv->await)
@@ -939,7 +939,8 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
 #else
       p = inbuf;
 #endif
-      dprint (5, "_irc_request: got from %s: [%-*.*s]", iface->name, sw, sw, p);
+      dprint (5, "_irc_request: got from %s: [%-*.*s]", iface->name, (int)sw,
+	      (int)sw, p);
       if (serv->p.state == P_IDLE)
 	serv->p.state = P_TALK;
       serv->p.last_input = Time;
