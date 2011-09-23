@@ -338,9 +338,11 @@ static inline char *_make_socket_ipname(inet_addr_t *addr, char *buf,
 					size_t bufsize)
 {
   register const void *ptr;
+//  register sa_family_t fam = addr->sa.sa_family;
 
 #ifdef ENABLE_IPV6
   switch (addr->sa.sa_family) {	/* prepare ip textual representation */
+//  switch (fam) {	/* prepare ip textual representation */
   case AF_INET:
 #endif
     ptr = &addr->s_in.sin_addr;
@@ -349,6 +351,12 @@ static inline char *_make_socket_ipname(inet_addr_t *addr, char *buf,
   case AF_INET6:
     ptr = &addr->s_in6.sin6_addr;
 #if	0
+    if (*(uint32_t *)ptr == 0 && *(uint32_t *)&ptr[4] == 0 &&
+	*(uint16_t *)&ptr[8] == 0 &&
+	(*(uint16_t *)&ptr[10] == 0 || *(uint16_t *)&ptr[10] == 0xffff)) {
+      fam = AF_INET;
+      ptr = &ptr[12];
+    }
 			if ((ptr[0] == 0x0) && (ptr[1] == 0x0) &&
 				(ptr[2] == 0x0) && (ptr[3] == 0x0) &&
 				(ptr[4] == 0x0) && (ptr[5] == 0x0) &&
@@ -361,10 +369,12 @@ static inline char *_make_socket_ipname(inet_addr_t *addr, char *buf,
 #endif
     break;
   default:
+//    fam = AF_INET6;
     ptr = &in6addr_any;
   }
 #endif
   return safe_strdup(inet_ntop(addr->sa.sa_family, ptr, buf, bufsize));
+//  return safe_strdup(inet_ntop(fam, ptr, buf, bufsize));
 }
 
 /* For a listening process - we have to get ECONNREFUSED to own port :) */
@@ -696,8 +706,8 @@ void PollSockets(int check_out)
   }
   for (i = 0; i < _Snum; i++) {
     if (SChanged) {
-//      if (Pollfd[i].fd != _pollfd[i].fd) /* it changed, clear */
-//	_pollfd[i].events = 0;
+      if (Pollfd[i].fd != _pollfd[i].fd) /* it changed, clear */
+	_pollfd[i].events = 0;
       _pollfd[i].fd = Pollfd[i].fd;
       _pollfd[i].events |= Pollfd[i].events;
       Pollfd[i].events = 0;

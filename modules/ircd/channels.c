@@ -1204,6 +1204,8 @@ static inline MEMBER *_ircd_do_join(IRCD *ircd, CLIENT *cl, CHANNEL **chptr,
   if (mm)
     _ircd_del_from_invited (mm);
   r = ircd_add_to_channel (ircd, NULL, ch, cl, mf); /* this way cannot get errors */
+  if (r == NULL)			/* ignored due to acks or already joined */
+    return (NULL);
   if (ch->topic[0])
     ircd_do_cnumeric (cl, RPL_TOPIC, ch, 0, ch->topic);
   ircd_names_reply (ircd_find_client(NULL, NULL), cl, ch, 0); /* RPL_NAMREPLY */
@@ -1386,7 +1388,9 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
       ircd_do_unumeric (cl, ERR_TOOMANYCHANNELS, cl, 0, NULL);
     else if (i > 0) {			/* so user can join, do it then */
       mm = _ircd_do_join ((IRCD *)srv->data, cl, &ch, nchn, mf);
-      if (!(ch->mode & A_INVISIBLE)) {	/* it is not a local channel */
+      if (mm == NULL) {
+	DBG("refused to add %s into %s", cl->nick, ch->name);
+      } else if (!(ch->mode & A_INVISIBLE)) { /* it is not a local channel */
 	char smode[sizeof(Ircd_modechar_list)+1];
 
 	_ircd_make_wmode(smode, mm->mode, sizeof(smode));
