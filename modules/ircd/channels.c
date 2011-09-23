@@ -2191,7 +2191,7 @@ void ircd_quit_all_channels (IRCD *ircd, CLIENT *cl, int tohold, int isquit)
   /* do it with anonymous channels at first and send PART to local users */
   if (isquit)
     for (ch = cl->c.hannels; ch; ch = ch->prevchan)
-      if (ch->chan->mode & A_ANONYMOUS)
+      if ((ch->chan->mode & (A_ANONYMOUS | A_QUIET)) == A_ANONYMOUS)
       {
 	for (td = ch->chan->users; td; td = td->prevnick) /* ignore cl and me */
 	  if (td != ch && !CLIENT_IS_ME(td->who) && !CLIENT_IS_REMOTE (td->who))
