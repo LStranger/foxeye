@@ -2385,19 +2385,21 @@ void ircd_burst_channels (INTERFACE *to, NODE *channels)
     while (m)				/* do NJOIN */
     {
       register char c;
-      l = snprintf (buff, sizeof(buff), "NJOIN %s", ch->name); /* start size */
+      l = snprintf (buff, sizeof(buff), "NJOIN %s :", ch->name); /* start size */
       while (m)
       {
 	t = strlen (m->who->nick) + 3;	/* projected max size */
 	s = unistrcut (buff, sizeof(buff) - t - 1, IRCMSGLEN - 2 - t); /* a room */
 	if (s < l)			/* insufficient space */
 	  break;
+	if (buff[l-1] != ':')
+	  buff[l++] = ',';
 	if (m->mode & A_ADMIN)		/* creator */
-	  s = snprintf (&buff[l], sizeof(buff) - l, " @@%s", m->who->nick);
+	  s = snprintf (&buff[l], sizeof(buff) - l, "@@%s", m->who->nick);
 	else if ((c = ircd_mode2whochar (m->mode)))
-	  s = snprintf (&buff[l], sizeof(buff) - l, " %c%s", c, m->who->nick);
+	  s = snprintf (&buff[l], sizeof(buff) - l, "%c%s", c, m->who->nick);
 	else
-	  s = snprintf (&buff[l], sizeof(buff) - l, " %s", m->who->nick);
+	  s = snprintf (&buff[l], sizeof(buff) - l, "%s", m->who->nick);
 	l += s;
 	m = m->prevnick;
       }
