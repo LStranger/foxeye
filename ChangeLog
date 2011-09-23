@@ -18,6 +18,7 @@ Fri Sep 23 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed wrong calls order in ircd_prepare_quit().
 	* modules/ircd/channels.c: fixed remote user mode change.
 	* modules/ircd/ircd.c: fixed user class recognizing.
+	* modules/ircd/channels.c: fixed deleting non-empty channel after hold.
 
 Thu Sep 22 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/protos.h: fixed 'max' statistic in macro ALLOCATABLE_TYPE.
