@@ -25,7 +25,7 @@
 #define A_AWAY		(1<<1)	/* +a	user is away */
 #define A_WALLOP	(1<<2)	/* +w	can get wallop messages */
 	/* server-only internal modes */
-#define A_UPLINK	(1<<1)	/*	we initiated connect */
+#define A_UPLINK	(1<<1)	/*	valid on registering or for server */
 #if IRCD_MULTICONNECT
 #define A_MULTI		(1<<2)	/*	I option granted (new mode) */
 #endif

@@ -415,12 +415,16 @@ static inline void _ircd_lserver_out (LINK *);
 static inline void _ircd_peer_kill (peer_priv *peer, const char *msg)
 {
   dprint(4, "ircd:ircd.c:_ircd_peer_kill: %p state=%#x", peer, (int)peer->p.state);
-  if (peer->p.state != P_DISCONNECTED) { /* link might be not initialized yet */
-    LOG_CONN ("ircd: killing peer %s@%s: %s", peer->link->cl->user,
-	      peer->link->cl->host, msg);
-    New_Request (peer->p.iface, F_AHEAD, "ERROR :closing link to %s@%s: %s",
-		 peer->link->cl->user, peer->link->cl->host, msg);
+  if (peer->link == NULL) {		/* link might be not initialized yet */
+    LOG_CONN ("ircd: killing unknown connection: %s", msg);
+    peer->p.state = P_QUIT;
+    return;
   }
+  LOG_CONN ("ircd: killing peer %s@%s: %s", peer->link->cl->user,
+	    peer->link->cl->host, msg);
+  New_Request (peer->p.iface, F_AHEAD, "ERROR :closing link to %s@%s: %s",
+	       peer->link->cl->user, peer->link->cl->host, msg);
+  peer->link->cl->umode &= ~A_UPLINK;	/* don't mix it with A_AWAY */
   Set_Iface (peer->p.iface);		/* lock it for next call */
   if (peer->p.state != P_DISCONNECTED) {
     if (CLIENT_IS_SERVER(peer->link->cl))
@@ -433,7 +437,8 @@ static inline void _ircd_peer_kill (peer_priv *peer, const char *msg)
       ;//TODO: BTIrcdUnlinked
     else
       _ircd_bt_lost_client(peer->link->cl, MY_NAME); /* "ircd-lost-client" */
-  }
+  } else if (peer->p.state == P_IDLE)
+    peer->link->cl->umode |= A_UPLINK;	/* only for registering uplink */
   if (peer->t > 0) {
     FREE(&peer->i.token);
     peer->t = 0;
@@ -1010,7 +1015,7 @@ static void _ircd_init_uplinks (void); /* declaration; definitoon is below */
 
 #define IRCDMAXARGS 16		/* maximum number of arguments in protocol */
 
-#define _ircd_start_timeout 30
+#define _ircd_start_timeout 90
 				//FIXME: it should be config variable!
 
 /* adds prefix to message if there is none */
@@ -1041,6 +1046,21 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
       LOG_CONN("ircd: timeout on connection start from %s", NONULLP(c));
       _ircd_client_signal(cli, S_TERMINATE);
     }
+    return REQ_OK;
+  }
+  if (peer->link == NULL) {	/* it's P_QUIT after timeout or emergency */
+    if (Connchain_Kill ((&peer->p)))
+      KillSocket(&peer->p.socket);
+    pthread_mutex_lock (&IrcdLock);
+    for (pp = &IrcdPeers; *pp; pp = &(*pp)->p.priv)
+      if ((*pp) == peer) {
+	*pp = peer->p.priv;
+	break;
+      }
+    free_peer_priv (peer);
+    pthread_mutex_unlock (&IrcdLock);
+    cli->data = NULL;		/* disown data */
+    cli->ift |= I_DIED;
     return REQ_OK;
   }
   cl = peer->link->cl;
@@ -1111,6 +1131,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	cl->rfr = NULL;
 	cl->pcl = NULL;		/* for safe module termination */
 	cl->hold_upto = 0;	/* it's 0 since no collisions on it */
+	DBG("ircd client: unshifting %p prev %p", peer->link, peer->link->prev);
 	pthread_mutex_lock (&IrcdLock);
 	for (ll = &ME.c.lients; *ll != NULL; ll = &(*ll)->prev)
 	  if (*ll == peer->link)
@@ -1139,6 +1160,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	  break;
 	}
       free_LINK (peer->link);	/* free all structures */
+      DBG("link %p freed", peer->link);
       if (cl->via == peer)
 	free_CLIENT (cl);
       else
@@ -1300,7 +1322,9 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
   }
   if (peer->p.state == P_QUIT)		/* died in execution! */
     return REQ_REJECTED;
-  else if (cl->umode & (A_SERVER | A_UPLINK))
+  else if (peer->p.state != P_TALK)
+    i = _ircd_start_timeout;		/* don't send PING at registering */
+  else if (CLIENT_IS_SERVER(cl))
     i = _ircd_server_class_pingf;
   else
     i = cl->x.class->pingf;
@@ -1385,6 +1409,7 @@ static void _ircd_prehandler (pthread_t th, void **data, idx_t *as)
   peer->p.priv = IrcdPeers;
   IrcdPeers = peer;
   peer->t = 0;
+  peer->link = NULL;
   pthread_mutex_unlock (&IrcdLock);
   peer->p.socket = *as;
   peer->p.connchain = NULL;
@@ -1402,7 +1427,6 @@ static void _ircd_prehandler (pthread_t th, void **data, idx_t *as)
   peer->p.last_input = peer->started = Time;
   peer->i.nvited = NULL;
   /* create interface */
-  peer->p.state = P_INITIAL;
   peer->p.iface = Add_Iface (I_CLIENT | I_CONNECT, NULL, &_ircd_client_signal,
 			     &_ircd_client_request, peer);
 #if IRCD_USES_ICONV
@@ -1434,11 +1458,13 @@ static void _ircd_handler (char *cln, char *ident, const char *host, void *data)
   peer->link = alloc_LINK();
   peer->link->cl = cl = alloc_CLIENT();
   peer->link->where = &ME;
+  DBG("ircd client: adding %p prev %p", peer->link, ME.c.lients);
   peer->link->prev = ME.c.lients;
   peer->link->flags = 0;
   ME.c.lients = peer->link;
   cl->via = peer;
   cl->x.class = NULL;
+  peer->p.state = P_INITIAL;
   pthread_mutex_unlock (&IrcdLock);
   strfcpy (cl->user, NONULL(ident), sizeof(cl->user));
   unistrlower (cl->host, host, sizeof(cl->host));
@@ -1607,6 +1633,7 @@ static iftype_t _ircd_uplink_sig (INTERFACE *uli, ifsig_t sig)
 	  *ull = uplink->p.priv;	/* remove it from list */
 	  break;
 	}
+      DBG("ircd uplink: unshifting %p prev %p", uplink->link, uplink->link->prev);
       for (ll = &ME.c.lients; *ll != NULL; ll = &(*ll)->prev)
 	if (*ll == uplink->link)
 	  break;
@@ -1714,6 +1741,7 @@ static inline void _ircd_start_uplink2 (const char *name, char *host,
   uplink->via->link = alloc_LINK();
   uplink->via->link->cl = uplink;
   uplink->via->link->where = &ME;
+  DBG("ircd uplink: adding %p prev %p", uplink->via->link, ME.c.lients);
   uplink->via->link->prev = ME.c.lients;
   uplink->via->link->flags = 0;
   ME.c.lients = uplink->via->link;
@@ -1773,6 +1801,7 @@ static inline void _ircd_start_uplink2 (const char *name, char *host,
 	*pp = uplink->via->p.priv;
 	break;
       }
+    DBG("ircd uplink: unshifting %p prev %p", uplink->via->link, uplink->via->link->prev);
     for (ll = &ME.c.lients; *ll != NULL; ll = &(*ll)->prev)
       if (*ll == uplink->via->link)
 	break;
@@ -2564,6 +2593,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
 #if IRCD_MULTICONNECT
   }
 #endif
+  DBG("ircd client: unshifting %p prev %p", cl->via->link, cl->via->link->prev);
   for (lnk = &ME.c.lients; *lnk; lnk = &(*lnk)->prev) /* remove from the list */
     if (*lnk == cl->via->link)
       break;
