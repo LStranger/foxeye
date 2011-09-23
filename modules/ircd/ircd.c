@@ -158,15 +158,17 @@ static int _ircd_class_in (struct peer_t *peer, char *user, char *host, const ch
   if (cl)
   {
     DBG("ircd:ircd.c: found matched");
-    clparms = Get_Field (cl, Ircd->iface->name, NULL);
+    uh[0] = '@';
+    strfcpy(&uh[1], Ircd->iface->name, sizeof(uh)-1);
+    clparms = Get_Field (cl, uh, NULL);
     uf = Get_Flags (cl, Ircd->iface->name);
   }
   if (clparms);
   else if (cl && clname && (clparms == NULL || clparms[0] == 0) &&
 	   (uf & U_ACCESS)) /* ok, it's service */
   {
+    DBG("ircd:ircd.c: user %s is server", clname);
     Unlock_Clientrecord (cl);
-    DBG("ircd:ircd.c: user %s is server", uh);
     Unset_Iface();
     return 1;				/* it's passed with server class */
   }
@@ -253,8 +255,11 @@ static void _ircd_class_rin (LINK *l)
   dprint(4, "ircd:ircd.c: adding %s (remote) into class", uh);
   cl = Find_Clientrecord (uh, &clname, NULL, NULL);
   /* host is reported by remote server so no other matching is possible */
-  if (cl)
-    clparms = Get_Field (cl, Ircd->iface->name, NULL);
+  if (cl) {
+    uh[0] = '@';
+    strfcpy(&uh[1], Ircd->iface->name, sizeof(uh)-1);
+    clparms = Get_Field (cl, uh, NULL);
+  }
   if (!clparms || !*clparms)
   {
     clname = DEFCLASSNAME;
@@ -307,6 +312,7 @@ static void _ircd_class_update (void)
 {
   CLASS *cls, *cld = NULL, **clp;
   char *clparms;
+  char netname[NAMEMAX+2];
 
   for (cls = Ircd->users; cls; cls = cls->next)
     if (!strcmp (cls->name, DEFCLASSNAME))
@@ -314,6 +320,8 @@ static void _ircd_class_update (void)
       cld = cls;
       break;
     }
+  netname[0] = '@';
+  strfcpy(&netname[1], Ircd->iface->name, sizeof(netname)-1);
   for (clp = &Ircd->users; (cls = *clp); )
   {
     struct clrec_t *clu;
@@ -321,7 +329,7 @@ static void _ircd_class_update (void)
     if (cls == cld)			/* default class */
       clparms = _ircd_default_class;
     else if ((clu = Lock_Clientrecord (cls->name))) /* it's still there */
-      clparms = Get_Field (clu, Ircd->iface->name, NULL);
+      clparms = Get_Field (clu, netname, NULL);
     else				/* class was removed, join to default */
     {
       register CLIENT **y;
