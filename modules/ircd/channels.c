@@ -1729,6 +1729,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	      New_Request (tgt->via->p.iface, 0, "MODE %s +%c", tgt->nick, *c);
 	    toadd |= mf;
 	    todel &= ~mf;
+	    tgt->umode |= mf;
 	    continue;
 	  }
 	  mf &= tgt->umode;		/* reset modes that we don't have */
@@ -1739,6 +1740,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	    New_Request (tgt->via->p.iface, 0, "MODE %s -%c", tgt->nick, *c);
 	  todel |= mf;
 	  toadd &= ~mf;
+	  tgt->umode &= ~mf;
 	}
       }
     }
