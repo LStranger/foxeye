@@ -918,7 +918,7 @@ static int ircd_kill_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   if (!CLIENT_IS_REMOTE(tcl))
     New_Request(tcl->via->p.iface, 0, ":%s KILL %s :%s", cl->nick, tcl->nick,
 		reason);		/* notify the victim */
-  ircd_sendto_servers_all_ack((IRCD *)srv->data, tcl, NULL, NULL,
+  ircd_sendto_servers_all_ack((IRCD *)srv->data, tcl, NULL, pp,
 			      ":%s KILL %s :%s", cl->nick, tcl->nick, reason);
 			      /* broadcast KILL */
   ircd_prepare_quit(tcl, cl->via, "you are killed"); /* to notify local users */

@@ -793,8 +793,11 @@ static int ichmch_r(modeflag umode, modeflag mmode, int add, modeflag chg, char 
  * Data manipulation bindtables.
  */
 
+#undef __TRANSIT__
+#define __TRANSIT__ __CHECK_TRANSIT__(token)
 static inline void _ircd_mode_broadcast (IRCD *ircd, int id, CLIENT *sender,
 					 CHANNEL *ch, char *imp,
+					 struct peer_priv *pp, unsigned short token,
 					 char *modepass, const char **passed,
 					 int x)
 {
@@ -831,27 +834,29 @@ static inline void _ircd_mode_broadcast (IRCD *ircd, int id, CLIENT *sender,
     imp++;
 #if IRCD_MULTICONNECT
     if (id >= 0) {
-      ircd_sendto_servers_mask_new(ircd, NULL, imp, ":%s IMODE %d %s %s%s",
+      ircd_sendto_servers_mask_new(ircd, pp, imp, ":%s IMODE %d %s %s%s",
 				   sender->nick, id, ch->name, modepass, buff);
-      ircd_sendto_servers_mask_old(ircd, NULL, imp, ":%s MODE %s %s%s",
+      ircd_sendto_servers_mask_old(ircd, pp, imp, ":%s MODE %s %s%s",
 				   sender->nick, ch->name, modepass, buff);
     } else
 #endif
-      ircd_sendto_servers_mask(ircd, NULL, imp, ":%s MODE %s %s%s",
+      ircd_sendto_servers_mask(ircd, pp, imp, ":%s MODE %s %s%s",
 			       sender->nick, ch->name, modepass, buff);
   }
   else
 #if IRCD_MULTICONNECT
     if (id >= 0) {
-      ircd_sendto_servers_new(ircd, NULL, ":%s IMODE %d %s %s%s",
+      ircd_sendto_servers_new(ircd, pp, ":%s IMODE %d %s %s%s",
 			      sender->nick, id, ch->name, modepass, buff);
-      ircd_sendto_servers_old(ircd, NULL, ":%s MODE %s %s%s",
+      ircd_sendto_servers_old(ircd, pp, ":%s MODE %s %s%s",
 			      sender->nick, ch->name, modepass, buff);
     } else
 #endif
-      ircd_sendto_servers_all(ircd, NULL, ":%s MODE %s %s%s",
+      ircd_sendto_servers_all(ircd, pp, ":%s MODE %s %s%s",
 			      sender->nick, ch->name, modepass, buff);
 }
+#undef __TRANSIT__
+#define __TRANSIT__
 
 /* few MODE specific sub-functions */
 static inline int _ircd_mode_query_reply (CLIENT *cl, CHANNEL *ch)
@@ -1060,7 +1065,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
     }
     if (n)				/* there were some changes */
       _ircd_mode_broadcast((IRCD *)srv->data, ircd_new_id(), cl, ch, imp,
-			   modepass, passed, x);
+			   NULL, 0, modepass, passed, x);
   }
   else					/* umode request */
   {
@@ -1588,8 +1593,8 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	      break;
 	    }
 #endif
-	    _ircd_mode_broadcast ((IRCD *)srv->data, -1, src, ch, imp, modepass,
-				  passed, x);
+	    _ircd_mode_broadcast ((IRCD *)srv->data, -1, src, ch, imp, pp,
+				  token, modepass, passed, x);
 	    n = x = 0;
 	    imp = modepass;
 	    if (add)
@@ -1637,8 +1642,8 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
       }
     }
     if (n)				/* there were some changes */
-      _ircd_mode_broadcast ((IRCD *)srv->data, id, src, ch, imp, modepass,
-			    passed, x);
+      _ircd_mode_broadcast ((IRCD *)srv->data, id, src, ch, imp, pp, token,
+			    modepass, passed, x);
 #if IRCD_MULTICONNECT
     if (errors < 0)
       ircd_do_squit(pp->link, pp, "MODE protocol error");
@@ -1764,13 +1769,13 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 #endif
 #if IRCD_MULTICONNECT
       if (id >= 0) {
-	ircd_sendto_servers_new(((IRCD *)srv->data), NULL, ":%s IMODE %d %s %s",
+	ircd_sendto_servers_new(((IRCD *)srv->data), pp, ":%s IMODE %d %s %s",
 				sender, id, tgt->nick, modepass);
-	ircd_sendto_servers_old(((IRCD *)srv->data), NULL, ":%s MODE %s %s",
+	ircd_sendto_servers_old(((IRCD *)srv->data), pp, ":%s MODE %s %s",
 				sender, tgt->nick, modepass);
       } else
 #endif
-	ircd_sendto_servers_all(((IRCD *)srv->data), NULL, ":%s MODE %s %s",
+	ircd_sendto_servers_all(((IRCD *)srv->data), pp, ":%s MODE %s %s",
 				sender, tgt->nick, modepass);
     }
     for (i = 0; i < errors; i++)
