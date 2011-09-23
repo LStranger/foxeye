@@ -44,8 +44,7 @@
 #endif
 
 #ifndef SIGPOLL
-# warning non-POSIX-compliant system, no SIGPOLL in system headers!
-# define SIGPOLL 23
+# define SIGPOLL SIGURG
 #endif
 
 #ifndef SUN_LEN
