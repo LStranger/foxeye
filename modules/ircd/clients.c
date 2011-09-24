@@ -653,7 +653,7 @@ static int ircd_away_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
     return ircd_do_unumeric(cl, RPL_UNAWAY, cl, 0, NULL);
   }
   len = unistrcut(argv[0], sizeof(cl->away), AWAYLEN);
-  strfcpy(cl->away, argv[0], len);
+  strfcpy(cl->away, argv[0], len + 1); /* unistrcut includes '\0' */
   cl->umode |= A_AWAY;
   ircd_sendto_servers_new((IRCD *)srv->data, NULL, ":%s IMODE %d %s :+a",
 			  peer->dname, ircd_new_id(), peer->dname);
