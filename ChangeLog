@@ -24,6 +24,8 @@ Fri Sep 23 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/queries.c, modules/ircd/clients.c: corrected away reply
 	  on WHOIS query.
 	* core/main.c: fixed 100% CPU eating by console.
+	* core/direct.c, modules/irc-ctcp/dcc.c: fixed crash on FreeBSD 8.x
+	  as implicit pthread_cleanup_pop call after return get SIGSEGV;
 
 Thu Sep 22 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/protos.h: fixed 'max' statistic in macro ALLOCATABLE_TYPE.

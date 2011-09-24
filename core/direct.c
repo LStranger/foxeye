@@ -1453,7 +1453,7 @@ static void *_listen_port (void *input_data)
     SocketError(n, errstr, sizeof(errstr));
     dprint(2, "_listen_port: could not start listener [%s]: %s",
 	   NONULL(acptr->confline), errstr);
-    return NULL;
+    goto end;
   }
   SocketDomain(acptr->socket, &port);	/* update with real one */
   acptr->lport = port;
@@ -1506,6 +1506,8 @@ static void *_listen_port (void *input_data)
     }
     pthread_setcancelstate (cancelstate, NULL);
   }
+end:
+  i = 0; /* empty statement to satisfy compiler */
   pthread_cleanup_pop(1);
   return NULL;
 }
@@ -2721,9 +2723,10 @@ static void _dport_handler (char *cname, char *ident, const char *host, void *d)
 	    NULL, host, client, NULL, 0, p, 0, msg);
     Unset_Iface();
     LOG_CONN ("%s", buf);
-    return;			/* implisit pthread_cleanup_pop(1) applied */
-  }
-  pthread_cleanup_pop(0);
+    flag = 1;				/* do pthread_cleanup_pop(1) */
+  } else
+    flag = 0;				/* do pthread_cleanup_pop(0) */
+  pthread_cleanup_pop(flag);
 }
 
 static iftype_t _port_retrier_s (INTERFACE *iface, ifsig_t signal)

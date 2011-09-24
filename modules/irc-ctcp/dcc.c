@@ -351,15 +351,17 @@ static void chat_handler (char *lname, char *ident, const char *host, void *data
     Set_Iface (NULL);
     printl (buf, sizeof(buf), format_dcc_closed, 0,
 	    NULL, host, lname, NULL, 0, p, 0, msg);
-    Unset_Iface();
     LOG_CONN ("%s", buf);
-    return;			/* implisit pthread_cleanup_pop(1) applied */
+    sp = 1;			/* do pthread_cleanup_pop(1) */
+    goto end;
   }
   dcc->socket = -1;		/* socket might be inherited by login */
   Set_Iface (NULL);		/* ask dispatcher to kill thread 2 */
   dcc->l.iface->ift |= I_FINWAIT; /* all rest will be done by _dcc_sig_2() */
+  sp = 0;			/* do pthread_cleanup_pop(0) */
+end:
   Unset_Iface();
-  pthread_cleanup_pop(0);
+  pthread_cleanup_pop((int)sp);
 }
 
 /* thread 2 (incoming connection) */
