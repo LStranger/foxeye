@@ -91,11 +91,16 @@ static ssize_t _pipe_find_line (void)
 static ssize_t _read_pipe (char *buf, size_t sr)
 {
   ssize_t sg;
+  struct pollfd pollfd;
 
   buf[0] = 0;				/* line terminator if EAGAIN */
   if ((sg = _pipe_find_line()) < 0)
   {
     sg = _bufpos + _inbuf;
+    pollfd.fd = Fifo_Inp[0];
+    pollfd.events = POLLIN | POLLPRI;
+    if (poll (&pollfd, 1, 100) == 0)	/* wait for data or signal */
+      return (0);			/* timeout */
     sg = read (Fifo_Inp[0], &_inp_buf[sg], sizeof(_inp_buf) - sg);
     if (sg <= 0)
     {

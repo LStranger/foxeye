@@ -23,6 +23,7 @@ Fri Sep 23 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/servers.c: fixed backfired KILL message.
 	* modules/ircd/queries.c, modules/ircd/clients.c: corrected away reply
 	  on WHOIS query.
+	* core/main.c: fixed 100% CPU eating by console.
 
 Thu Sep 22 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/protos.h: fixed 'max' statistic in macro ALLOCATABLE_TYPE.

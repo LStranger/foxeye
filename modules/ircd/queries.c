@@ -931,6 +931,7 @@ static void _ircd_do_whois (CLIENT *cl, CLIENT *tgt, CLIENT *me)
   ircd_do_unumeric (cl, RPL_WHOISUSER, tgt, 0, tgt->fname);
   if (!CLIENT_IS_REMOTE (tgt)) {
     ircd_do_unumeric (cl, RPL_WHOISSERVER, me, 0, tgt->nick);
+    //TODO: ifdef WHOIS_SIGNON_TIME => tgt->via->started
     snprintf (buf, sizeof(buf), "%u", (unsigned int)(Time - tgt->via->noidle));
     ircd_do_unumeric (cl, RPL_WHOISIDLE, tgt, 0, buf);
   } else
@@ -938,7 +939,7 @@ static void _ircd_do_whois (CLIENT *cl, CLIENT *tgt, CLIENT *me)
   if (tgt->umode & (A_OP | A_HALFOP))
     //TODO: notify target about whois on them
     ircd_do_unumeric (cl, RPL_WHOISOPERATOR, tgt, 0, NULL);
-  if (tgt->umode & A_AWAY)
+  if (tgt->umode & A_AWAY) /* FIXME: make a message "Use /WHOIS %s %s" ? */
     ircd_do_unumeric (cl, RPL_AWAY, tgt, 0, tgt->away[0] ? tgt->away : "Gone");
   ptr = 0;
   for (m = tgt->c.hannels; m; m = m->prevchan)
