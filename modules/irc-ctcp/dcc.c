@@ -352,16 +352,13 @@ static void chat_handler (char *lname, char *ident, const char *host, void *data
     printl (buf, sizeof(buf), format_dcc_closed, 0,
 	    NULL, host, lname, NULL, 0, p, 0, msg);
     LOG_CONN ("%s", buf);
-    sp = 1;			/* do pthread_cleanup_pop(1) */
-    goto end;
-  }
+    _chat_handler_cleanup(peer);
+  } else
+    Set_Iface (NULL);		/* ask dispatcher to kill thread 2 */
   dcc->socket = -1;		/* socket might be inherited by login */
-  Set_Iface (NULL);		/* ask dispatcher to kill thread 2 */
   dcc->l.iface->ift |= I_FINWAIT; /* all rest will be done by _dcc_sig_2() */
-  sp = 0;			/* do pthread_cleanup_pop(0) */
-end:
   Unset_Iface();
-  pthread_cleanup_pop((int)sp);
+  pthread_cleanup_pop(0);
 }
 
 /* thread 2 (incoming connection) */
@@ -1158,7 +1155,7 @@ static void *_dcc_stage_1 (void *input_data)
     dcc->state = P_QUIT;
     dcc->l.iface->ift |= I_FINWAIT;	/* finished */
     Unset_Iface();
-    return ("not confirmed");
+    pthread_exit("not confirmed");
   }
   if (fname && dcc->startptr > 1)
   {
@@ -1177,14 +1174,14 @@ static void *_dcc_stage_1 (void *input_data)
     dcc->tid = NewTimer (I_CONNECT, dcc->l.iface->name, S_TIMEOUT,
 			 ircdcc_resume_timeout, 0, 0, 0); /* timeout for ACCEPT */
     Unset_Iface();
-    return NULL;
+    pthread_exit(NULL);
   }
   Set_Iface (NULL);
   dcc->startptr = 0;
   dcc->state = P_TALK;
   dcc->l.iface->ift |= I_FINWAIT;		/* ask dispatcher to kill thread 1 */
   Unset_Iface();
-  return NULL;
+  pthread_exit(NULL);
 }
 #undef dcc
 

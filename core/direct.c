@@ -1271,7 +1271,7 @@ static void *_ask_ident (void *input_data)
     while (!(WriteSocket (acptr->id, buf, &sp, (size_t *)&sz)));
   }
   pthread_cleanup_pop(1);
-  return (NULL);
+  pthread_exit(NULL);
 }
 
 static void _accept_port_cleanup (void *input_data)
@@ -1367,7 +1367,7 @@ static void *_accept_port (void *input_data)
     acptr->data = &acptr->socket;
   acptr->handler (acptr->client, ident, domain, acptr->data);
   pthread_cleanup_pop (1);
-  return NULL;
+  pthread_exit (NULL);
 }
 
 static void _direct_listener_callback_cleanup(void *ptr)
@@ -1453,7 +1453,7 @@ static void *_listen_port (void *input_data)
     SocketError(n, errstr, sizeof(errstr));
     dprint(2, "_listen_port: could not start listener [%s]: %s",
 	   NONULL(acptr->confline), errstr);
-    goto end;
+    pthread_exit(NULL);
   }
   SocketDomain(acptr->socket, &port);	/* update with real one */
   acptr->lport = port;
@@ -1506,10 +1506,8 @@ static void *_listen_port (void *input_data)
     }
     pthread_setcancelstate (cancelstate, NULL);
   }
-end:
-  i = 0; /* empty statement to satisfy compiler */
   pthread_cleanup_pop(1);
-  return NULL;
+  pthread_exit(NULL);
 }
 #undef acptr
 
@@ -1613,7 +1611,7 @@ static void *_connect_host (void *input_data)
     KillSocket (cptr->idx);
   }
   pthread_cleanup_pop (1);
-  return NULL;
+  pthread_exit (NULL);
 }
 #undef cptr
 
