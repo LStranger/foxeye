@@ -938,8 +938,8 @@ static void _ircd_do_whois (CLIENT *cl, CLIENT *tgt, CLIENT *me)
   if (tgt->umode & (A_OP | A_HALFOP))
     //TODO: notify target about whois on them
     ircd_do_unumeric (cl, RPL_WHOISOPERATOR, tgt, 0, NULL);
-  if ((tgt->umode & A_AWAY) && tgt->away)
-    ircd_do_unumeric (cl, RPL_AWAY, tgt, 0, tgt->away);
+  if (tgt->umode & A_AWAY)
+    ircd_do_unumeric (cl, RPL_AWAY, tgt, 0, tgt->away[0] ? tgt->away : "Gone");
   ptr = 0;
   for (m = tgt->c.hannels; m; m = m->prevchan)
   {
