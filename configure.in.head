@@ -77,17 +77,6 @@ AC_CHECK_LDFLAG(fe_cv_add_wall, -Wall, CFLAGS)
 AC_CHECK_LDFLAG(fe_cv_add_pipe, -pipe, CFLAGS)
 AC_CHECK_LDFLAG(fe_cv_add_fshortenums, -fshort-enums, CFLAGS)
 
-dnl GCC 3.x guess wrong about strict aliasing
-fe_save_CFLAGS="$CFLAGS"
-CFLAGS="$CFLAGS -Werror"
-AC_TRY_COMPILE([struct atest {
-char *s; };], [struct atest *a;
-void **v = (void **)&a;
-*v = (void *)a;
-    ], [CFLAGS="$fe_save_CFLAGS"], [CFLAGS="$fe_save_CFLAGS"
-    AC_CHECK_LDFLAG(fe_cv_add_fnostrictaliasing, -fno-strict-aliasing, CFLAGS)
-])
-
 dnl Do we want profiling?
 AC_ARG_ENABLE([profile],
     [  --enable-profile        enable profiling statistics generation for GCC],
@@ -129,6 +118,17 @@ if test $ac_cv_add_optimization = yes; then
 	    ;;
 	*)
 	    AC_CHECK_LDFLAG(fe_cv_add_oo, -O2, CFLAGS)
+	    dnl GCC 3.x guess wrong about strict aliasing
+	    fe_save_CFLAGS="$CFLAGS"
+	    CFLAGS="$CFLAGS -Werror"
+	    AC_TRY_COMPILE([struct atest {
+char *s; };], [struct atest *a;
+void **v = (void **)&a;
+*v = (void *)a;
+], [CFLAGS="$fe_save_CFLAGS"], [CFLAGS="$fe_save_CFLAGS"
+		AC_CHECK_LDFLAG(fe_cv_add_fnostrictaliasing, -fno-strict-aliasing, CFLAGS)
+	    ])
+
 	    ;;
     esac
 fi

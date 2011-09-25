@@ -12,6 +12,7 @@ TODO:
 Sun Sep 24 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c: fixed duplicated messages in console.
 	* *.c: done revision of debug messages.
+	* configure: fixed -fno-strict-aliasing addition.
 
 Fri Sep 23 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.*: fixed a mess out of A_AWAY with A_UPLINK.
