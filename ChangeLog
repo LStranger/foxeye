@@ -15,6 +15,7 @@ Sun Sep 24 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* configure: fixed -fno-strict-aliasing addition.
 	* modules/ircd/ircd.c, modules/ircd/clients.c, modules/ircd/servers.c:
 	  added KILLS logging.
+	* modules/ircd/ircd.c: increased number of digits in ircd version.
 
 Fri Sep 23 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.*: fixed a mess out of A_AWAY with A_UPLINK.
