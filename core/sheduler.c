@@ -257,7 +257,7 @@ tid_t NewTimer (iftype_t ift, const char *name, ifsig_t sig, unsigned int sec,
     _STid = 0;				/* never under zero! */
   _STnum++;
   pthread_mutex_unlock (&LockShed);
-  dprint (4, "NewTimer: added for %s +%u sec (id %d)", name, j, id);
+  dprint (3, "NewTimer: added for %s +%u sec (id %d)", name, j, id);
   return id;
 }
 
@@ -323,7 +323,7 @@ static int Sheduler (INTERFACE *ifc, REQUEST *req)
       }
     }
     if (j)
-      dprint (4, "Sheduler: removed %u flood timer(s), remained %u/%u",
+      dprint (3, "Sheduler: removed %u flood timer(s), remained %u/%u",
 	      j, _SFnum, MAXTABLESIZE);
     pthread_mutex_lock (&LockShed);
     /* update time variables */
@@ -391,12 +391,12 @@ static int Sheduler (INTERFACE *ifc, REQUEST *req)
     }
     pthread_mutex_unlock (&LockShed);
     if (j)
-      dprint (4, "Sheduler: sent %u timer signal(s), remained %u/%u",
+      dprint (3, "Sheduler: sent %u timer signal(s), remained %u/%u",
 	      j, i, MAXTABLESIZE);
     /* check if we need Wtmp rotation and do it */
     if (ifc && tm.tm_mon != tm0.tm_mon)
     {
-      dprint (4, "Sheduler: attempt of rotating Wtmp.");
+      dprint (3, "Sheduler: attempt of rotating Wtmp.");
       RotateWtmp();
     }
   }

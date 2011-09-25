@@ -16,13 +16,15 @@ debug levels (direct sessions may has debug log only if level<3):
 0	unknown recoverable errors
 1	warnings (unusual situations)
 2	data changes
-3	search results
-4	any other functions calls
-5	any transfers but debug itself
+3	extra notices
+4	search results
+5	any other functions calls
+6	any transfers but debug itself
+7,8	reserved
 
 listfile (<name> means it can be get via GetField(x,"name")):
 record	lname:<passwd>:uid:flags:<info>:<charset>:<.login>:<.logout>:createtime
-host	+[[nick[!ident]][:passwd]@]host[/port][%connflags]
+host	+[[nick!][ident][:passwd]@]host[/port][%connflags]
 special	 @servicename:flags:expiretime text
 other	 name value
 

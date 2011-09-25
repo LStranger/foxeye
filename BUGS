@@ -68,5 +68,5 @@
 #00069	25.08.2011  26.08.2011	'port X' isn't saved in config on regeneration.
 #00070	31.08.2011  04.09.2011	poll() restores fd on Solaris!
 #00071	04.09.2011  04.09.2011	Connection messages aren't always shown
-#00072	04.09.2011		boot messages are duplicated in console
+#00072	04.09.2011  25.09.2011	boot messages are duplicated in console
 #00073	08.09.2011  08.09.2011	SIGSEGV after nick/channel temp.unavailable

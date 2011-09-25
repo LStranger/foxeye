@@ -76,7 +76,7 @@ static HELPGR *_get_helpgr (char *name)
     h->next = gr;
   else
     Help = gr;
-  dprint(4, "added set \"%s\" to help", name);
+  dprint(5, "added set \"%s\" to help", name);
   return gr;
 }
 
@@ -437,7 +437,7 @@ int Get_Help (const char *fst, const char *sec, INTERFACE *iface, userflag gf,
   HELPGR *h = Help;
   HELP *t;
 
-  dprint (4, "help:Get_Help: call \"%s %s\"", NONULL(fst), NONULL(sec));
+  dprint (5, "help:Get_Help: call \"%s %s\"", NONULL(fst), NONULL(sec));
   if (!h)
     return _no_such_help (iface, mode);		/* no help loaded */
   else if (!table)
@@ -483,6 +483,6 @@ int Get_Help (const char *fst, const char *sec, INTERFACE *iface, userflag gf,
       return _help_all_topics (h, iface, gf, cf, table, mode);
     return _no_such_help (iface, mode);
   }
-  dprint (3, "help: found entry for \"%s\" in set \"%s\"", topic, NONULL(h->key));
+  dprint (4, "help: found entry for \"%s\" in set \"%s\"", topic, NONULL(h->key));
   return _help_one_topic (t->data, iface, NONULL(prefix), h->key, topic, mode);
 }

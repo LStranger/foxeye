@@ -107,7 +107,7 @@ int ircch_add_mask (LIST **list, char *by, size_t sby, char *what)
   topic->what = &topic->by[sby+1];
   strcpy (topic->what, what);
   *list = topic;
-  dprint (4, "ircch_add_mask: {%lu %s} %s", (unsigned long int)topic->since, topic->by, topic->what);
+  dprint (2, "ircch_add_mask: {%lu %s} %s", (unsigned long int)topic->since, topic->by, topic->what);
   return 1;
 }
 
@@ -133,7 +133,7 @@ void ircch_remove_mask (LIST **list, LIST *mask)
   if (*list)
     *list = mask->next;
   if (mask)
-    dprint (4, "ircch_remove_mask: {%lu %s} %s", (unsigned long int)mask->since, mask->by, mask->what);
+    dprint (2, "ircch_remove_mask: {%lu %s} %s", (unsigned long int)mask->since, mask->by, mask->what);
   FREE (&mask);
 }
 
@@ -150,14 +150,14 @@ static void _ircch_add_lname (NICK *nick, char *lname)
     nick->prev_TSL = leaf->s.data;
     leaf->s.data = nick;
     nick->lname = nick->prev_TSL->lname;
-    dprint (4, "_ircch_add_lname: %s: %s <- %s", nick->lname,
+    dprint (2, "_ircch_add_lname: %s: %s <- %s", nick->lname,
 	    nick->prev_TSL->name, nick->name);
   }
   else
   {
     nick->prev_TSL = NULL;		/* to prevent errors */
     nick->lname = safe_strdup (lname);
-    dprint (4, "_ircch_add_lname: adding %s: %s", nick->lname, nick->name);
+    dprint (2, "_ircch_add_lname: adding %s: %s", nick->lname, nick->name);
     if (Insert_Key (&nick->net->lnames, nick->lname, nick, 1))
       ERROR ("_ircch_add_lname: tree error!");
   }
@@ -176,7 +176,7 @@ static void _ircch_del_lname (NICK *nick)
   {
     if (!nick->prev_TSL)		/* last one so delete it */
     {
-      dprint (4, "_ircch_del_lname: removing %s", nick->lname);
+      dprint (2, "_ircch_del_lname: removing %s", nick->lname);
       if (Delete_Key (nick->net->lnames, nick->lname, nick))
 	ERROR ("_ircch_del_lname: tree error");
       FREE (&nick->lname);
@@ -184,7 +184,7 @@ static void _ircch_del_lname (NICK *nick)
     }
     else
     {
-      dprint (4, "_ircch_del_lname: %s: %s", nick->lname, nick->name);
+      dprint (5, "_ircch_del_lname: %s: %s", nick->lname, nick->name);
       leaf->s.data = nick->prev_TSL;	/* key is the same so just replace */
     }
   }
@@ -192,7 +192,7 @@ static void _ircch_del_lname (NICK *nick)
   {
     NICK *next_TSL;
 
-    dprint (4, "_ircch_del_lname: %s: %s", nick->lname, nick->name);
+    dprint (5, "_ircch_del_lname: %s: %s", nick->lname, nick->name);
     for (next_TSL = leaf->s.data; next_TSL && next_TSL->prev_TSL != nick; )
     {
       DBG ("_ircch_del_lname: skipping %s", next_TSL->name);
@@ -299,7 +299,7 @@ static IRC *_ircch_get_network (const char *network, int create,
   if (Insert_Key (&IRCNetworks, net->name, net, 1))
     ERROR ("_ircch_get_network: tree error on adding %s!", net->name);
   else
-    dprint (4, "_ircch_get_network: added %s", net->name);
+    dprint (2, "_ircch_get_network: added %s", net->name);
   return net;
 }
 
@@ -313,7 +313,7 @@ static IRC *_ircch_get_network2 (const char *network)
     return Find_Key (IRCNetworks, network);
   netname[0] = '@';
   strfcpy (&netname[1], network, sizeof(netname) - 1);
-  dprint (4, "_ircch_get_network2: trying %s", netname);
+  dprint (5, "_ircch_get_network2: trying %s", netname);
   return Find_Key (IRCNetworks, netname);
 }
 
@@ -396,11 +396,11 @@ static void _ircch_destroy_channel (void *cht)
   NICK *nt;
 
   _ircch_shutdown_channel (cht); /* wtmp for all nicks */
-  dprint (4, "ircch: destroying channel %s", ((CHANNEL *)cht)->chi->name);
+  dprint (2, "ircch: destroying channel %s", ((CHANNEL *)cht)->chi->name);
   while (((CHANNEL *)cht)->nicks)
     if ((nt = _ircch_destroy_link (((CHANNEL *)cht)->nicks)))
     {
-      dprint (4, "ircch: deleting %s%s", nt->name, nt->net->name);
+      dprint (5, "ircch: deleting %s%s", nt->name, nt->net->name);
       if (Delete_Key (nt->net->nicks, nt->name, nt))
 	ERROR ("_ircch_destroy_channel: tree error");
       _ircch_destroy_nick (nt);
@@ -434,7 +434,7 @@ static NICK *_ircch_get_nick (IRC *net, const char *lcn, int create)
     memset (nt, 0, sizeof(NICK));		/* empty it now */
     nt->name = safe_strdup (lcn);
     nt->net = net;
-    dprint (4, "_ircch_get_nick: adding %s%s [%p]", nt->name, net->name, nt);
+    dprint (2, "_ircch_get_nick: adding %s%s [%p]", nt->name, net->name, nt);
     if (Insert_Key (&net->nicks, nt->name, nt, 1))
       ERROR ("_ircch_get_nick: tree error!");
   }
@@ -485,7 +485,7 @@ static char *_ircch_get_lname (char *nuh, userflag *sf, userflag *cf, lid_t *id,
  */
 static void _ircch_destroy_nick (void *nt)		/* definition */
 {
-  dprint (4, "ircch: destroying nick %s [%p]", ((NICK *)nt)->name, nt);
+  dprint (2, "ircch: destroying nick %s [%p]", ((NICK *)nt)->name, nt);
   while (((NICK *)nt)->channels)
     _ircch_destroy_link (((NICK *)nt)->channels);
   if (((NICK *)nt)->lname)
@@ -502,7 +502,7 @@ static void _ircch_destroy_network (IRC *net)
   netsplit *split;
   SplitMember *sm;
 
-  dprint (4, "ircch: destroying network %s", net->name);
+  dprint (2, "ircch: destroying network %s", net->name);
   if (net->invited)
   {
     pthread_cancel (net->invited->th);
@@ -578,7 +578,7 @@ static LINK *_ircch_get_link (IRC *net, char *lcn, CHANNEL *ch)
     if (link->chan == ch)		/* they might return from netsplit */
       return link;
   link = alloc_LINK();
-  dprint (4, "ircch: adding %s to %s [%p]", lcn, ch->chi->name, link);
+  dprint (2, "ircch: adding %s to %s [%p]", lcn, ch->chi->name, link);
   link->chan = ch;
   link->prevnick = ch->nicks;
   link->nick = nt;
@@ -599,7 +599,7 @@ static NICK *_ircch_destroy_link (LINK *link)	/* definition */
 
   chan = link->chan;
   nick = link->nick;
-  dprint (4, "ircch: removing %s from %s [%p]", nick->name, chan->chi->name, link);
+  dprint (2, "ircch: removing %s from %s [%p]", nick->name, chan->chi->name, link);
   for (l = &chan->nicks; *l && *l != link; l = &(*l)->prevnick);
   if (*l)
     *l = link->prevnick;
@@ -649,7 +649,7 @@ static void _ircch_update_link (NICK *nick, LINK *link, char *lname, lid_t lid)
       nl->count = 0;
     }
   }
-  dprint (4, "_ircch_update_link: success on nick %s", nick->name);
+  dprint (5, "_ircch_update_link: success on nick %s", nick->name);
 }
 
 static void _ircch_recheck_link (IRC *net, LINK *link, char *lname,
@@ -680,7 +680,7 @@ static void _ircch_recheck_link (IRC *net, LINK *link, char *lname,
       NewEvent (W_START, link->chan->id, id,
 		Get_Hosthash (lname, link->nick->host));
   }
-  dprint (4, "_ircch_recheck_link: success on %s[%hd]", NONULLP(lname),
+  dprint (5, "_ircch_recheck_link: success on %s[%hd]", NONULLP(lname),
 	  link->nick->id);
   link->activity = Time;
 }
@@ -732,7 +732,7 @@ static void _ircch_joined (LINK *link, char *nuh, char *atuh, userflag uf,
     chan = link->chan->chi->name;
     c = strrchr (chan, '@');
   }
-  dprint (4, "_ircch_joined: %s to %s", link->nick->name, chan);
+  dprint (5, "_ircch_joined: %s to %s", link->nick->name, chan);
   snprintf (str, sizeof(str), "%s %s", link->chan->chi->name, nuh);
   for (bind = NULL; (bind = Check_Bindtable (BT_IrcJoin, str, uf, cf, bind)); )
   {
@@ -787,7 +787,7 @@ static void _ircch_quited (NICK *nick, char *lname, userflag uf,
 {
   LINK *link;
 
-  dprint (4, "_ircch_quited: %s (%s)%s", nick->name, NONULL(lname),
+  dprint (5, "_ircch_quited: %s (%s)%s", nick->name, NONULL(lname),
 	  (nick->umode & A_ISON) ? "" : " at netsplit");
   for (link = nick->channels; link; link = link->prevchan)
     _ircch_quited_log (nick, lname, uf, link, who, msg);
@@ -984,7 +984,7 @@ static void _ircch_netsplit_lost_report (IRC *net, SplitMember **sm, char *msg)
   NICK *nick, *n = NULL;
 
   nick = (*sm)->member->nick;
-  dprint (4, "_ircch_netsplit_lost_report: %s (%s)", nick->name,
+  dprint (5, "_ircch_netsplit_lost_report: %s (%s)", nick->name,
 	  NONULLP(nick->lname));
   nick->split = NULL;				/* remove it ASAP */
   while ((s = *sm))
@@ -1023,7 +1023,7 @@ static void _ircch_netsplit_terminate (IRC *net, netsplit **ptr)
 
   split = *ptr;
   *ptr = split->prev;
-  dprint (4, "_ircch_netsplit_terminate: %s", split->servers);
+  dprint (5, "_ircch_netsplit_terminate: %s", split->servers);
   /* report all channels if got netsplit right now */
   if (split->stage == 0)
     _ircch_netsplit_report (net, split);
@@ -1096,7 +1096,7 @@ static void _ircch_netsplit_add (IRC *net, char *servers, NICK *nick)
   SplitMember **sm;
   LINK *link;
 
-  dprint (4, "_ircch_netsplit_add for %s: %s", nick->name, servers);
+  dprint (5, "_ircch_netsplit_add for %s: %s", nick->name, servers);
   if ((tmp = _ircch_netsplit_find (net, NextWord(servers))) &&
       strcmp (servers, (*tmp)->servers))
   {
@@ -1149,7 +1149,7 @@ static void _ircch_netjoin_add (IRC *net, LINK *link)
   SplitMember *sm;
   netsplit *split = link->nick->split;
 
-  dprint (4, "_ircch_netjoin_add: %s@%s", link->nick->name, link->chan->chi->name);
+  dprint (5, "_ircch_netjoin_add: %s@%s", link->nick->name, link->chan->chi->name);
   if (split->stage == 1)
   {
     New_Request (net->neti, F_QUICK, "LINKS %s", NextWord(split->servers));
@@ -1242,7 +1242,7 @@ static void _ircch_its_rejoin (IRC *net, netsplit *split)
 	     Get_Clientflags (nick->lname, &net->name[1]);
       else
 	uf = 0;
-      dprint (4, "_ircch_its_rejoin: have %s", nick->name);
+      dprint (5, "_ircch_its_rejoin: have %s", nick->name);
       for (link = nick->channels; link; link = link2)
       {
 	link2 = link->prevchan;
@@ -1749,7 +1749,7 @@ static int irc_join (INTERFACE *iface, char *svname, char *me, unsigned char *pr
 
   if (!prefix || parc == 0 || !(net = _ircch_get_network (iface->name, 0, lc)))
     return -1;
-  dprint (4, "got JOIN %s for %s", parv[0], prefix);
+  dprint (5, "got JOIN %s for %s", parv[0], prefix);
   if ((ch = safe_strchr (prefix, '!')))
     *ch = 0;
   if (lc)
@@ -1879,7 +1879,7 @@ static int irc_kick (INTERFACE *iface, char *svname, char *me, unsigned char *pr
     lc (str, prefix, sizeof(str));
   else
     strfcpy (str, prefix, sizeof(str));
-  dprint (4, "ircch: got KICK %s from %s on %s", parv[1], str, parv[0]);
+  dprint (5, "ircch: got KICK %s from %s on %s", parv[1], str, parv[0]);
   link = ircch_find_link (net, str, ch);
   if (link)
     CHECKHOSTSET (link->nick, prefix);	/* we might got KICK from alien? */
@@ -1968,7 +1968,7 @@ static int irc_kick (INTERFACE *iface, char *svname, char *me, unsigned char *pr
   }
   if (tlink->nick == net->me)	/* they kicked me, unfortunately */
   {
-    dprint (4, "irc_kick: deleting %s%s", net->me->name, net->name);
+    dprint (5, "irc_kick: deleting %s%s", net->me->name, net->name);
     if (Delete_Key (net->channels, ch->chi->name, ch))
       ERROR ("irc_kick: tree error");
     Set_Iface (ch->chi);
@@ -1994,7 +1994,7 @@ static int irc_kick (INTERFACE *iface, char *svname, char *me, unsigned char *pr
   /* destroy nick if no channels left */
   if (nt)
   {
-    dprint (4, "irc_kick: deleting %s%s", nt->name, net->name);
+    dprint (5, "irc_kick: deleting %s%s", nt->name, net->name);
     if (Delete_Key (net->nicks, nt->name, nt))
       ERROR ("irc_kick: tree error");
     _ircch_destroy_nick (nt);
@@ -2057,7 +2057,7 @@ static int irc_mode (INTERFACE *iface, char *svname, char *me, unsigned char *pr
 
   if (parc < 2 || !(net = _ircch_get_network (iface->name, 0, lc)))
     return -1;
-  dprint (4, "ircch: got MODE for %s", parv[0]);
+  dprint (5, "ircch: got MODE for %s", parv[0]);
   if (!prefix || !strcmp (prefix, me))	/* it seems it's my own mode */
   {
     int i = 0;
@@ -2151,7 +2151,7 @@ static int irc_part (INTERFACE *iface, char *svname, char *me, unsigned char *pr
       !(net = _ircch_get_network (iface->name, 0, lc)) ||
       !(ch = _ircch_get_channel (net, parv[0], 0)))
     return -1;
-  dprint (4, "ircch: %s PART from %s", prefix, parv[0]);
+  dprint (5, "ircch: %s PART from %s", prefix, parv[0]);
   if ((c = safe_strchr (prefix, '!')))
     *c = 0;
   if (lc)
@@ -2198,7 +2198,7 @@ static int irc_part (INTERFACE *iface, char *svname, char *me, unsigned char *pr
   Add_Request (I_LOG, ch->chi->name, F_JOIN, "%s", str);
   if (link->nick == net->me)	/* I left channel, clean up */
   {
-    dprint (4, "irc_part: deleting %s%s", net->me->name, net->name);
+    dprint (2, "irc_part: deleting %s%s", net->me->name, net->name);
     if (Delete_Key (net->channels, ch->chi->name, ch))
       ERROR ("irc_part: tree error");
     Set_Iface (ch->chi);
@@ -2224,7 +2224,7 @@ static int irc_part (INTERFACE *iface, char *svname, char *me, unsigned char *pr
   /* destroy nick if no channels left */
   if (nt)
   {
-    dprint (4, "irc_part: deleting %s%s", nt->name, net->name);
+    dprint (5, "irc_part: deleting %s%s", nt->name, net->name);
     if (Delete_Key (net->nicks, nt->name, nt))
       ERROR ("irc_part: tree error");
     _ircch_destroy_nick (nt);
@@ -2256,7 +2256,7 @@ static int irc_topic (INTERFACE *iface, char *svname, char *me, unsigned char *p
       !(net = _ircch_get_network (iface->name, 0, lc)) ||
       !(ch = _ircch_get_channel (net, parv[0], 0)))
     return -1;		/* it's impossible! */
-  dprint (4, "ircch: got TOPIC for %s", parv[0]);
+  dprint (5, "ircch: got TOPIC for %s", parv[0]);
   if ((c = safe_strchr (prefix, '!')))
     *c = 0;
   if (lc)
@@ -2302,14 +2302,14 @@ static int irc_topic (INTERFACE *iface, char *svname, char *me, unsigned char *p
 
     if (nt)			/* it's even on no channels */
     {
-      dprint (4, "ircch: TOPIC by alien on %s, deleting %s", ch->chi->name,
+      dprint (5, "ircch: TOPIC by alien on %s, deleting %s", ch->chi->name,
 	      nt->name);
       if (Delete_Key (net->nicks, nt->name, nt))
 	ERROR ("irc_topic: tree error");
       _ircch_destroy_nick (nt);
     }
     else
-      dprint (4, "ircch: TOPIC by alien on %s", ch->chi->name);
+      dprint (5, "ircch: TOPIC by alien on %s", ch->chi->name);
   }
   FREE (&lname);
   FREE (&r);
@@ -2505,7 +2505,7 @@ static int irc_rpl_topic (INTERFACE *iface, char *svname, char *me,
 
   if (!net || parc != 3)
     return -1;		/* impossible... */
-  dprint (4, "ircch: got TOPIC for %s", parv[1]);
+  dprint (5, "ircch: got TOPIC for %s", parv[1]);
   ch = _ircch_get_channel (net, parv[1], 0);
   if (ch)
   {
@@ -2611,7 +2611,7 @@ static int irc_rpl_whoreply (INTERFACE *iface, char *svname, char *me,
     snprintf (userhost, sizeof(userhost), "%s!%s@%s", parv[5], parv[2], parv[3]);
     if (nick->host)
     {
-      dprint (4, "irc_rpl_whoreply: replacing host %s with %s", nick->host,
+      dprint (5, "irc_rpl_whoreply: replacing host %s with %s", nick->host,
 	      userhost);
       FREE (&nick->host);
     }
@@ -2769,7 +2769,7 @@ static int irc_rpl_links (INTERFACE *iface, char *svname, char *me,
     return -1;		/* impossible... */
   else if (!(split = _ircch_netsplit_find (net, parv[1])))
     return 0;		/* server isn't in split */
-  dprint (4, "ircch: got reply for splitted server %s", parv[1]);
+  dprint (5, "ircch: got reply for splitted server %s", parv[1]);
   (*split)->stage = 3;
   _ircch_net_got_activity (net, NULL);
   return 1;
@@ -3025,13 +3025,13 @@ static void ircch_nick (INTERFACE *iface, char *lname, unsigned char *who,
   if (!(net = _ircch_get_network2 (iface->name)) ||
       !(nick = _ircch_get_nick (net, lcon, 0)))
     return;		/* it's impossible anyway */
-  dprint (4, "ircch: nickchange for %s", who);
+  dprint (5, "ircch: nickchange for %s", who);
   nick->umode &= ~A_REGISTERED;	/* identification isn't valid anymore */
   _ircch_net_got_activity (net, NULL);
   if ((nnick = _ircch_get_nick (net, lcnn, 0)) /* it might be lost in netsplit */
       && nick != nnick)		/* but it might be alike nIcK -> NiCk too */
   {
-    dprint (4, "ircch: nick change to %s that might be in netsplit", newnick);
+    dprint (5, "ircch: nick change to %s that might be in netsplit", newnick);
     nnick->umode &= ~A_ISON;	/* for _ircch_quited() */
     if (nnick->split)		/* remove from split structure ASAP */
     {
@@ -3087,7 +3087,7 @@ static void ircch_nick (INTERFACE *iface, char *lname, unsigned char *who,
     _ircch_recheck_link (net, link, lname, uf, cf, NULL, id);
     if (cc)	/* if lname was changed */
     {
-      dprint (4, "ircch_nick: lname switched to %s, updating join time: %s => %s %s",
+      dprint (5, "ircch_nick: lname switched to %s, updating join time: %s => %s %s",
 	      NONULLP(nick->lname), link->joined, DateString, TimeString);
       snprintf (link->joined, sizeof(link->joined), "%s %s", DateString,
 		TimeString);
@@ -3103,12 +3103,12 @@ static void ircch_nick (INTERFACE *iface, char *lname, unsigned char *who,
     Add_Request (I_MODULE, "ui", F_JOIN, "%s", newnick);
     Unset_Iface();
   }
-  dprint (4, "ircch_nick: deleting %s%s", nick->name, net->name);
+  dprint (5, "ircch_nick: deleting %s%s", nick->name, net->name);
   if (Delete_Key (net->nicks, nick->name, nick))
     ERROR ("ircch_nick: tree error!");
   FREE (&nick->name);
   nick->name = safe_strdup (lcnn);
-  dprint (4, "ircch_nick: adding %s%s", nick->name, net->name);
+  dprint (5, "ircch_nick: adding %s%s", nick->name, net->name);
   if (Insert_Key (&net->nicks, nick->name, nick, 1))
     ERROR ("ircch_nick: tree error!");
 }
@@ -3127,7 +3127,7 @@ static void ircch_quit (INTERFACE *iface, char *lname, unsigned char *who,
     ERROR ("ircch_quit: %s not found in network %s!", lcnick, iface->name);
     return;					/* what???!!! who???!!! */
   }
-  dprint (4, "ircch: quit for %s", who);
+  dprint (5, "ircch: quit for %s", who);
   if (lname)
     uf = Get_Clientflags (lname, NULL) | Get_Clientflags (lname, iface->name);
   else
@@ -3246,7 +3246,7 @@ static void ipam_ircch (INTERFACE *client, unsigned char *from, char *lname,
   {
     netsplit *split = nick->split; /* the same as _ircch_netjoin_add() does */
 
-    dprint (4, "ipam_ircch on %s: check split %s", nick->name, split->servers);
+    dprint (5, "ipam_ircch on %s: check split %s", nick->name, split->servers);
     if (split->stage == 1)
     {
       New_Request (net->neti, F_QUICK, "LINKS %s", NextWord(split->servers));
@@ -3299,7 +3299,7 @@ static int ison_irc (const char *netn, const char *channel, const char *lname,
   CHANNEL *ch;
   LINK *link = NULL;		/* make compiler happy */
 
-  dprint (4, "ircch: ison request for %s on \"%s%s\"", NONULL(lname),
+  dprint (5, "ircch: ison request for %s on \"%s%s\"", NONULL(lname),
 	  NONULL(channel), channel ? "" : NONULL(netn));
   if (netn && (net = _ircch_get_network2 (netn)))
   {
@@ -3353,7 +3353,7 @@ static modeflag incl_irc (const char *netn, const char *channel, const char *nam
   int n;
   char lcname[HOSTMASKLEN+1];
 
-  dprint (4, "ircch: ispect-client request for %s on \"%s%s%s\"", NONULL(name),
+  dprint (5, "ircch: ispect-client request for %s on \"%s%s%s\"", NONULL(name),
 	  NONULL(channel), channel ? "@" : "", NONULL(netn));
   /* check all at first */
   if (netn && (net = _ircch_get_network2 (netn)))

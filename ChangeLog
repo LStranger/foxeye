@@ -9,6 +9,10 @@ TODO:
 	* core/socket.c: to make socket limit extendible.
 
 --- [0.10.0]
+Sun Sep 24 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/dispatcher.c: fixed duplicated messages in console.
+	* *.c: done revision of debug messages.
+
 Fri Sep 23 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.*: fixed a mess out of A_AWAY with A_UPLINK.
 	* core/socket.c: fixed bad initialization of poll array.
@@ -25,7 +29,7 @@ Fri Sep 23 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  on WHOIS query.
 	* core/main.c: fixed 100% CPU eating by console.
 	* core/direct.c, modules/irc-ctcp/dcc.c: fixed crash on FreeBSD 8.x
-	  as implicit pthread_cleanup_pop call after return get SIGSEGV;
+	  as implicit pthread_cleanup_pop does not work after return operator.
 
 Thu Sep 22 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/protos.h: fixed 'max' statistic in macro ALLOCATABLE_TYPE.

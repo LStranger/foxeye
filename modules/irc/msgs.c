@@ -203,7 +203,7 @@ static INTERFACE *_pmsgout_stack_insert (pmsgout_stack **stack, char *to)
   INTERFACE *client;
   pmsgout_stack *cur = alloc_pmsgout_stack();
 
-  dprint (4, "_pmsgout_stack_insert: adding %s", to);
+  dprint (5, "_pmsgout_stack_insert: adding %s", to);
   client = Add_Iface (I_CLIENT, to, &_pmsgout_sig, &_pmsgout_run, NULL);
   if (*stack)
   {
@@ -224,9 +224,9 @@ static INTERFACE *_pmsgout_stack_insert (pmsgout_stack **stack, char *to)
 static void _pmsgout_stack_remove (pmsgout_stack **stack, pmsgout_stack *cur)
 {
   if (cur->client != NULL)
-    dprint (4, "_pmsgout_stack_remove: removing %s", cur->client->name);
+    dprint (5, "_pmsgout_stack_remove: removing %s", cur->client->name);
   else
-    dprint (4, "_pmsgout_stack_remove: cleaning died one");
+    dprint (5, "_pmsgout_stack_remove: cleaning died one");
   if (cur->prev == cur)
     *stack = NULL;
   else if (*stack == cur)
@@ -250,7 +250,7 @@ static INTERFACE *_pmsgout_get_client (char *net, char *to)
 
   s = strfcpy (lcto, to, sizeof(lcto));
   strfcpy (&lcto[s], net, sizeof(lcto) - s);
-  dprint (4, "_pmsgout_get_client: search %s", lcto);
+  dprint (5, "_pmsgout_get_client: search %s", lcto);
   return Find_Iface (I_CLIENT, lcto); 
 }
 
@@ -320,7 +320,7 @@ void irc_privmsgout_cancel (INTERFACE *pmsgout, char *to)
 
   if (!pmsgout)
     return;
-  dprint (4, "_privmsgout_cancel: cancel %s%s", to ? to : "*", pmsgout->name);
+  dprint (5, "_privmsgout_cancel: cancel %s%s", to ? to : "*", pmsgout->name);
   if (pmsgout->data && !to)
   {
     while (pmsgout->data)
@@ -421,7 +421,7 @@ int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
       msg_type = 4;
     msglen--;
   }
-  dprint (4, "irc_privmsgin: got message from %s to %s of type %d", from,
+  dprint (5, "irc_privmsgin: got message from %s to %s of type %d", from,
 	  NONULL(to), msg_type);
   /* find/create pmsgout for sender, pmsgout has to be nick@net */
   if ((client = _pmsgout_get_client (pmsgout->name, from)))

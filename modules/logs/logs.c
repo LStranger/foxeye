@@ -78,7 +78,7 @@ static int flush_log (logfile_t *log, int force, int needsync)
     return EBADF;
   if (!force && Time - log->timestamp < cache_time)
     return 0;
-  dprint (4, "logs/logs:flush_log: logfile %s: %zd bytes after %d seconds",
+  dprint (5, "logs/logs:flush_log: logfile %s: %zd bytes after %d seconds",
 	  log->path, log->inbuf, (int)(Time - log->timestamp));
   memset (&lck, 0, sizeof (struct flock));
   lck.l_type = F_WRLCK;
@@ -673,7 +673,7 @@ static void do_rotate (logfile_t *log)
   struct tm tm;
 
   x = flush_log (log, 1, 0);
-  dprint (4, "logs/logs:do_rotate: start for %s", log->path);
+  dprint (5, "logs/logs.c:do_rotate: start for %s", log->path);
   if (x)
   {
     strerror_r (x, path, sizeof(path));
@@ -682,7 +682,7 @@ static void do_rotate (logfile_t *log)
   }
   if (lseek (log->fd, 0, SEEK_END) == 0) /* we will not rotate empty file */
   {
-    dprint (2, "logs/logs.c:do_rotate: nothing to do on %s", log->path);
+    dprint (3, "logs/logs.c:do_rotate: nothing to do on %s", log->path);
     log->rotatetime = get_rotatetime (-1, log->rmode);
     return;
   }
@@ -729,7 +729,7 @@ static void do_rotate (logfile_t *log)
     DBG ("logs:do_rotate: +subpath \"%%$\" = \"%s\"", path);
   }
   path[s] = 0;
-  dprint (4, "logs/logs:do_rotate: made path %s", path);
+  dprint (5, "logs/logs.c:do_rotate: made path %s", path);
   /* check if we must make directory */
   if (unlink (path) < 0 && errno == ENOTDIR)
   {
@@ -791,7 +791,7 @@ static void do_rotate (logfile_t *log)
       return;				/* reopen log, don't update time */
     }
   }
-  dprint (2, "logs/logs.c:do_rotate: finished on %s", log->path);
+  dprint (3, "logs/logs.c:do_rotate: finished on %s", log->path);
   log->rotatetime = get_rotatetime (-1, log->rmode);
   log->fd = open_log_file (log->path);
 }
@@ -935,7 +935,7 @@ static ScriptFunction (cfg_logfile)
       strcpy(mask, "*");
     if (safe_strcmp(mask, log->iface->name)) /* update mask */
       Rename_Iface(log->iface, mask);
-    dprint(2, "log:cgf_logfile: successed reconfig on %s", log->path);
+    dprint(3, "log:cgf_logfile: successed reconfig on %s", log->path);
     return 1;
   }
   /* create new logfile with interface */
@@ -970,7 +970,7 @@ static ScriptFunction (cfg_logfile)
   log->rotatetime = get_rotatetime (log->fd, log->rmode);
   if (log->rotatetime <= lastrotated)
     do_rotate (log);
-  dprint (2, "log:cgf_logfile: success on %s", log->path);
+  dprint (3, "log:cgf_logfile: success on %s", log->path);
   return 1;
 }
 

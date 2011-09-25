@@ -65,7 +65,7 @@ static ssize_t _connchain_send (struct connchain_i **chain, idx_t idx,
   if (i < 0)
     DBG ("connchain: send: socket error %d", (int)i);
   else if (i)
-    dprint (5, "put to peer %d:[%-*.*s]", (int)idx, (int)i, (int)i, data);
+    dprint (6, "put to peer %d:[%-*.*s]", (int)idx, (int)i, (int)i, data);
   return i;
 }
 
@@ -85,7 +85,7 @@ static ssize_t _connchain_recv (struct connchain_i **chain, idx_t idx,
   if (i < 0)
     DBG ("connchain: recv: socket error %d", (int)i);
   else if (i)
-    dprint (5, "got from peer %d:[%-*.*s]", (int)idx, (int)i, (int)i, data);
+    dprint (6, "got from peer %d:[%-*.*s]", (int)idx, (int)i, (int)i, data);
   return i;
 }
 

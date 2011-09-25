@@ -385,7 +385,7 @@ static lid_t __addlid (lid_t id, lid_t start, lid_t end)
       return ID_ME;
   }
   LidsBitmap[i] |= ((uint32_t)1<<j);
-  dprint (4, "users:__addlid: %d %d %d --> %d:%d",
+  dprint (5, "users:__addlid: %d %d %d --> %d:%d",
 	  (int)id, (int)start, (int)end, i, j);
   return (i*32 + j + LID_MIN);
 }
@@ -396,7 +396,7 @@ static lid_t __addlid (lid_t id, lid_t start, lid_t end)
 static void __dellid (lid_t id)
 {
   LidsBitmap[(id-LID_MIN)/32] &= ~((uint32_t)1<<((id-LID_MIN)%32));
-  dprint (4, "users:__dellid: %d", (int)id);
+  dprint (5, "users:__dellid: %d", (int)id);
 }
 
 /*--- W --- UFLock write ---*/
@@ -781,7 +781,7 @@ lid_t FindLID (const char *lname)
   else
     id = ID_REM;
   rw_unlock (&UFLock);
-  dprint (4, "users:FindLID: %s -> %d", lname, (int)id);
+  dprint (5, "users:FindLID: %s -> %d", lname, (int)id);
   return id;
 }
 
@@ -796,7 +796,7 @@ static int _add_to_list (INTERFACE *iface, char *buf, size_t *len, char *msg)
   int n = 0;
   size_t l = strlen(msg);
 
-  dprint (4, "_add_to_list: %s", msg);
+  dprint (5, "_add_to_list: %s", msg);
   if (*len + l > MESSAGEMAX-2)	/* reserved for ' ' and '\0' */
   {
     n++;
@@ -815,7 +815,7 @@ static int _add_to_list2 (INTERFACE *iface, char *buf, size_t *len, char *msg)
   int n = 0;
   size_t l = strlen(msg);
 
-  dprint (4, "_add_to_list: @%s", msg);
+  dprint (5, "_add_to_list: @%s", msg);
   if (*len + l > MESSAGEMAX-3)	/* reserved for ' ', '@', and '\0' */
   {
     n++;
@@ -894,7 +894,7 @@ int Get_Hostlist (INTERFACE *iface, lid_t id)
   user_hr *h;
   int n = 0;
 
-  dprint (4, "Get_Hostlist: check for %hd", id);
+  dprint (5, "Get_Hostlist: check for %hd", id);
   if (!(u = UList[id-LID_MIN]))	/* no need write lock here, func is read only */
     return 0;
   if (u->flag & U_ALIAS)	/* unaliasing */
@@ -919,7 +919,7 @@ int Get_Fieldlist (INTERFACE *iface, lid_t id)
   user_chr *chr;
   user_fr *fr;
 
-  dprint (4, "Get_Fieldlist: check for %hd", id);
+  dprint (5, "Get_Fieldlist: check for %hd", id);
   if (!(u = UList[id-LID_MIN]))	/* no need write lock here, func is read only */
     return 0;
   if (u->flag & U_ALIAS)	/* unaliasing */
@@ -1330,7 +1330,7 @@ int Set_Field (struct clrec_t *user, const char *field, const char *val,
       }
       Field[_Fnum] = safe_strdup (field);
       /* Set_Field() should be called when dispatcher is locked so OK to send */
-      dprint (3, "list.c:Set_Field: added \"%s\" to list of known fields.",
+      dprint (2, "list.c:Set_Field: added \"%s\" to list of known fields.",
 	      field);
       _R_f += strlena (field);
       i = _Fnum++;
@@ -1464,7 +1464,7 @@ userflag Match_Client (const char *domain, const char *ident, const char *lname)
   rw_unlock (&HLock);
   rw_unlock (&UFLock);
   pthread_setcancelstate(cancelstate, NULL);
-  dprint (3, "users:Match_User: %s!%s@%s%s, found flags %#x", NONULL(lname),
+  dprint (4, "users:Match_User: %s!%s@%s%s, found flags %#x", NONULL(lname),
 	  NONULL(ident), domain, ur ? " (records found)" : "", uf);
   return uf;
 }
@@ -2135,7 +2135,7 @@ static int _load_listfile (const char *filename, int update)
 	  _next_field (&c);
 	}
 	ur->created = (time_t) strtol (c, NULL, 10);		/* 9 */
-	dprint (4, "Got info for %s user %s:%s%s info=%s created=%lu",
+	dprint (5, "Got info for %s user %s:%s%s info=%s created=%lu",
 		(ur->flag & U_SPECIAL) ? "special" : "normal",
 		NONULLP(ur->lname), (ur->flag & U_SPECIAL) ? " network=" : "",
 		(ur->flag & U_SPECIAL) ? (NONULL(ur->logout)) : "",

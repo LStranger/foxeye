@@ -562,13 +562,13 @@ struct binding_t *Check_Bindtable (struct bindtable_t *bt, const char *str,
     b = bind;			/* completion */
   if (b)
   {
-    dprint (3, "binds: bindtable \"%s\" string \"%s\", flags %#x/%#x, found mask \"%s\"",
+    dprint (4, "binds: bindtable \"%s\" string \"%s\", flags %#x/%#x, found mask \"%s\"",
 	    NONULL(bt->name), NONULL(str), gf, cf, NONULL(b->key));
     b->hits++;
   }
   else if (bt->type == B_UNIQ && bt->lr)
   {
-    dprint (3, "binds: bindtable \"%s\" string \"%s\", using last resort",
+    dprint (4, "binds: bindtable \"%s\" string \"%s\", using last resort",
 	    NONULL(bt->name), NONULL(str));
     bt->lr->hits++;
     return bt->lr;
@@ -598,7 +598,7 @@ int RunBinding (struct binding_t *bind, const uchar *uh, const char *fst,
 
   if (!bind || !bind->name || !bind->func)	/* checking... */
     return 0;
-  dprint (4, "init:RunBinding: %s\t%s\t%s\t%s\t%s\t%d\t%s", bind->name,
+  dprint (5, "init:RunBinding: %s\t%s\t%s\t%s\t%s\t%d\t%s", bind->name,
 	  NONULL((char *)uh), NONULL(fst), NONULL(sec), NONULL(third), num,
 	  last ? last : "(nil)");
   BindResult = NULL;				/* clear result */
@@ -1006,7 +1006,7 @@ static int _add_var (const char *name, void *var, size_t *s)
       WARNING ("init: another data is already bound to variable \"%s\"", name);
     else
     {
-      dprint (4, "init:_add_var: retry on %s", name);
+      dprint (5, "init:_add_var: retry on %s", name);
       if (i) data->changed = TRUE;
       *s = data->len;				/* a little trick for locked */
     }
@@ -1108,7 +1108,7 @@ _add_fn (const char *name, int (*func)(const char *), const char *msg)
     if (data->f.n != func)
       WARNING ("init: another ptr already bound to function \"%s\"", name);
     else
-      dprint (4, "init:_add_fn: retry on %s", name);
+      dprint (5, "init:_add_fn: retry on %s", name);
     return 0;
   }
   data = calloc (1, sizeof(VarData2) + safe_strlen(name));
@@ -1364,7 +1364,7 @@ int Config_Exec (const char *cmd, const char *args)
     return 0;					/* silent ignore */
   if (!args)
     args = "";
-  dprint (4, "init:Config_Exec: %s %s", cmd, args);
+  dprint (5, "init:Config_Exec: %s %s", cmd, args);
   return data->f.n (args);
 }
 

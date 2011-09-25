@@ -266,7 +266,7 @@ int KillSocket (idx_t *idx)
   *idx = -1;			/* no more access to that socket */
   if (i >= _Snum)		/* it should be atomic ATM */
     return -1;			/* no such socket */
-  dprint (4, "socket:KillSocket: fd=%d", Pollfd[i].fd);
+  dprint (5, "socket:KillSocket: fd=%d", Pollfd[i].fd);
   pthread_kill(__main_thread, SIGPOLL); /* break poll() in main thread */
   pthread_mutex_lock (&LockPoll);
   Socket[i].port = 0;

@@ -137,7 +137,7 @@ int ircd_test_id(CLIENT *cl, int id)
     ERROR("ircd:ircd_test_id: called not for server");
     return (-1);
   }
-  dprint(4, "ircd:ircd_test_id:server %s id %d", cl->lcnick, id);
+  dprint(5, "ircd:ircd_test_id:server %s id %d", cl->lcnick, id);
   id &= IRCD_ID_MAXVAL;		/* get it to template */
   if (cl->last_id[0] < 0) {
     cl->last_id[0] = id;

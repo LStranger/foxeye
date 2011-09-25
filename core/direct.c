@@ -102,7 +102,7 @@ static void _chat_join (peer_t *dcc)
     on_bot = Nick;
   snprintf (ch, sizeof(ch), ":*:%d %c", dcc->priv->botnet, _userdccflag (dcc->uf));
   cc = strchr (ch, ' ');		/* between botch and flag */
-  dprint (4, "dcc:_chat_join: %s joining %d", name, dcc->priv->botnet);
+  dprint (5, "dcc:_chat_join: %s joining %d", name, dcc->priv->botnet);
   /* run bindtable */
   h = SocketDomain (dcc->socket, NULL);
   Set_Iface (dcc->iface);
@@ -137,7 +137,7 @@ static void _chat_part (peer_t *dcc, char *quit)
     on_bot++;
   else
     on_bot = Nick;
-  dprint (4, "dcc:_chat_part: %s parting %d", name, dcc->priv->botnet);
+  dprint (5, "dcc:_chat_part: %s parting %d", name, dcc->priv->botnet);
   snprintf (ch, sizeof(ch), ":*:%d", dcc->priv->botnet);
   /* notify the botnet! */
   /* if quit - send the formed notice */
@@ -317,7 +317,7 @@ static void _died_iface (INTERFACE *iface, char *buf, size_t s)
   dcc->state = P_LASTWAIT;
   if (s == 0)					/* is this shutdown call? */
     return;
-  dprint (4, "dcc:_died_iface: %s", iface->name);
+  dprint (5, "dcc:_died_iface: %s", iface->name);
   if (Connchain_Kill (dcc))			/* always true */
     KillSocket (&dcc->socket);
   /* %L - login nick, %@ - hostname */
@@ -357,7 +357,7 @@ void Dcc_Parse (peer_t *dcc, char *name, char *cmd, userflag gf, userflag cf,
   INTERFACE *sif;
   int res;
 
-  dprint (4, "dcc:Dcc_Parse: \"%s\"", cmd);
+  dprint (5, "dcc:Dcc_Parse: \"%s\"", cmd);
   if (cmd[0] == '.')
   {
     StrTrim (++cmd);
@@ -1343,7 +1343,7 @@ static void *_accept_port (void *input_data)
     }
     if (sz > 0)
     {
-      dprint (5, "%s ident answer: %s", domain, buf);
+      dprint (3, "%s ident answer: %s", domain, buf);
       /* overflow is impossible: part of buf isn't greater than buf */
       sscanf (buf, "%*[^:]: %[^: ] :%*[^:]: %23[^ \n]", buf, ident);
       if (!strcmp(buf, "OTHER")) {
@@ -1451,8 +1451,8 @@ static void *_listen_port (void *input_data)
     char errstr[SHORT_STRING];
 
     SocketError(n, errstr, sizeof(errstr));
-    dprint(2, "_listen_port: could not start listener [%s]: %s",
-	   NONULL(acptr->confline), errstr);
+    WARNING("_listen_port: could not start listener [%s]: %s",
+	    NONULL(acptr->confline), errstr);
     pthread_exit(NULL);
   }
   SocketDomain(acptr->socket, &port);	/* update with real one */
@@ -1482,7 +1482,7 @@ static void *_listen_port (void *input_data)
     child->handler = acptr->handler;
     child->data = acptr->data;
     child->tst = 0;			/* use it to wait for prehandler */
-    dprint (4, "direct:_listen_port: socket %d answered, %s: new socket %d",
+    dprint (5, "direct:_listen_port: socket %d answered, %s: new socket %d",
 	    (int)acptr->socket, acptr->client ? "terminated" : "continue",
 	    (int)new_idx);
     if (pthread_create (&child->th, NULL, &_accept_port, child))
@@ -1599,7 +1599,7 @@ static void *_connect_host (void *input_data)
   if ((*cptr->idx = GetSocket (M_RAW)) >= 0)
     cptr->rc = SetupSocket (*cptr->idx, cptr->host, cptr->port, NULL, NULL);
   if (cptr->rc == 0)
-    dprint (4, "direct:_connect_host: connected to %s at port %hu: new socket %d",
+    dprint (5, "direct:_connect_host: connected to %s at port %hu: new socket %d",
 	    cptr->host, cptr->port, (int)*cptr->idx);
   else
   {
@@ -1752,7 +1752,7 @@ _set_console_parms (peer_t *dcc, struct clrec_t *user, char *fl, char *chan, int
   }
   Unlock_Clientrecord (user);
   setconsole (dcc);
-  dprint (4, "dcc:_set_console_parms: %s", cons);
+  dprint (5, "dcc:_set_console_parms: %s", cons);
 }
 
 #ifdef HAVE_ICONV
@@ -1852,7 +1852,7 @@ static void _console_fl (peer_t *dcc, char *plus, char *minus, char *ch)
   register int it = 0;
 
   minus = NONULL(minus);
-  dprint (4, "dcc:_console_fl: %s %s %s %s", dcc->iface->name, plus, minus, NONULL(ch));
+  dprint (5, "dcc:_console_fl: %s %s %s %s", dcc->iface->name, plus, minus, NONULL(ch));
   user = Lock_Clientrecord (dcc->iface->name);
   if (!user)
     return;				/* hmm, could it be? */

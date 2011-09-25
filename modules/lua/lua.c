@@ -58,7 +58,7 @@ static inline int _lua_getbindtableslist (lua_State *L) /* -> BB */
 
 static inline int _lua_getbindlist (lua_State *L, const char *bt) /* -> B */
 {
-  dprint (4, "lua:_lua_getbindlist on %s.", bt);
+  dprint (5, "lua:_lua_getbindlist on %s.", bt);
   if (!_lua_getbindtableslist (L))
     return 0;
   lua_pushstring (L, bt); /* BB n */
@@ -117,7 +117,7 @@ static int _lua_scanbindlists (lua_State *L, int t) /* -> */
 
 static inline int _lua_getbinding (lua_State *L, int n, const char *name) /* -> n f */
 {
-  dprint (4, "lua:_lua_getbinding on %s.", name);
+  dprint (5, "lua:_lua_getbinding on %s.", name);
   lua_pushstring (L, name); /* n */
   lua_pushvalue (L, -1); /* n n */
   lua_gettable (L, n); /* n f */
@@ -133,7 +133,7 @@ static int binding_lua (char *name, int argc, const char *argv[])
 {
   int i = 0;
 
-  dprint (4, "lua:binding_lua call for %s.", name);
+  dprint (5, "lua:binding_lua call for %s.", name);
   if (!safe_strcmp (name, "-"))
   {
     BindResult = "Lua";
@@ -342,7 +342,7 @@ static int _lua_unbind (lua_State *L) /* foxeye.unbind(table[,func]) */
     if (!dbg.name || !_lua_getbindlist (L, table)) /* t f B */
       return luaL_error (L, "incorrectable binding error");
     lua_insert (L, 2); /* t B f */
-    dprint (4, "lua:_lua_unbind: deleting binding %s.", dbg.name);
+    dprint (5, "lua:_lua_unbind: deleting binding %s.", dbg.name);
     if (_lua_find_binding (L, 2, dbg.name)) /* t B f n f */
       Delete_Binding (table, &binding_lua, lua_tostring (L, 4));
     lua_pop (L, 1); /* t B f n */
@@ -402,7 +402,7 @@ static int _lua_nick (lua_State *L) /* nick = foxeye.client.nick(client) */
     lua_pushlstring (L, c, e - c);
   else
     lua_pushstring (L, c);
-  dprint (4, "lua:_lua_nick(%s)", c);
+  dprint (5, "lua:_lua_nick(%s)", c);
   return 1;
 }
 
@@ -474,7 +474,7 @@ static int _lua_event (lua_State *L) /* foxeye.event(type,lname[,value]) */
 
   if (lua_gettop (L) < 2 || lua_gettop (L) > 3)
     return luaL_error (L, "bad number of parameters");
-  dprint (4, "lua:_lua_event.");
+  dprint (5, "lua:_lua_event.");
   luaL_argcheck (L, lua_isstring (L, 1), 1, NULL);
   luaL_argcheck (L, lua_isstring (L, 2), 2, NULL);
   id = FindLID (lua_tostring (L, 2));
@@ -761,7 +761,7 @@ static int _lua_chave (lua_State *L) /* x = have(lname[,serv[,flag]]) */
   userflag uf;
   char buff[64];
 
-  dprint (4, "lua:_lua_chave()");
+  dprint (5, "lua:_lua_chave()");
   uf = (userflag)lua_gettop (L);	/* use it temporary */
   if (uf < 1 || uf > 3)
     return luaL_error (L, "bad number of parameters");
@@ -801,7 +801,7 @@ static int _lua_cset (lua_State *L) /* set(lname,field[,value]) */
   const char *field, *val;
   int n;
 
-  dprint (4, "lua:_lua_cset()");
+  dprint (5, "lua:_lua_cset()");
   n = lua_gettop (L);
   if (n < 2 || n > 3)
     return luaL_error (L, "bad number of parameters");
@@ -836,7 +836,7 @@ static int _lua_cget (lua_State *L) /* val,flag,time = get(lname,field) */
   userflag uf;
   char buff[64];
 
-  dprint (4, "lua:_lua_cget()");
+  dprint (5, "lua:_lua_cget()");
   if (lua_gettop (L) != 2)  
     return luaL_error (L, "bad number of parameters");
   luaL_argcheck (L, lua_isstring (L, 1), 1, NULL);
@@ -957,7 +957,7 @@ static int lua_register_function (const char *name, int (*fn) (const char *))
   _lua_fe_name (name); /* T k */		/* convert name /-/_/ */
   lua_pushlightuserdata (Lua, (void *)fn); /* T k f */
   lua_pushcclosure (Lua, &lua_call_function, 1); /* T k d */
-  dprint (4, "lua:lua_register_function: registering \"%s\"",
+  dprint (5, "lua:lua_register_function: registering \"%s\"",
 	  lua_tostring (Lua, 2));
   lua_rawset (Lua, 1); /* T */
   lua_pop (Lua, 1);
@@ -978,7 +978,7 @@ static int lua_unregister_function (const char *name)
   }
   lua_pop (Lua, 1); /* T k */
   lua_pushnil (Lua); /* T k nil */
-  dprint (4, "lua:lua_unregister_function: unregistering \"%s\"",
+  dprint (5, "lua:lua_unregister_function: unregistering \"%s\"",
 	  lua_tostring (Lua, 2));
   lua_rawset (Lua, 1); /* T */
   lua_pop (Lua, 1);
@@ -1071,7 +1071,7 @@ static int lua_register_variable (const char *name, void *var, size_t size)
   data = lua_newuserdata (Lua, sizeof(lua_fedata_t)); /* T D k v */
   data->ptr = var;
   data->s = size;
-  dprint (4, "lua:lua_register_variable: registering \"%s\" (%p[%d]) into %p",
+  dprint (5, "lua:lua_register_variable: registering \"%s\" (%p[%d]) into %p",
 	  lua_tostring (Lua, 3), var, (int)size, data);
   lua_rawset (Lua, 2); /* T D */
   lua_pop (Lua, 2); /* */
@@ -1096,7 +1096,7 @@ static int lua_unregister_variable (const char *name)
   data = lua_touserdata (Lua, -1);
   lua_pop (Lua, 1); /* T D k */
   lua_pushnil (Lua); /* T D k nil */
-  dprint (4, "lua:lua_unregister_variable: unregistering \"%s\"",
+  dprint (5, "lua:lua_unregister_variable: unregistering \"%s\"",
 	  lua_tostring (Lua, 3));
   lua_rawset (Lua, 2); /* T D */
   lua_pop (Lua, 2);

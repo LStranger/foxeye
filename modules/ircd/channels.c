@@ -2230,7 +2230,7 @@ void ircd_drop_channel (IRCD *ircd, CHANNEL *ch)
 {
   register MASK *x;
 
-  dprint (4, "ircd:ircd_drop_channel %s", ch->lcname); /* ch->name undefined */
+  dprint (5, "ircd:ircd_drop_channel %s", ch->lcname); /* ch->name undefined */
   if (ch->count || ch->users)
     ERROR ("ircd:ircd_drop_channel: count=%d, users=%p", ch->count, ch->users);
   CLEAR_MASKS (ch->bans);
@@ -2388,7 +2388,7 @@ void ircd_burst_channels (INTERFACE *to, NODE *channels)
       continue;
     if (ch->mode & A_INVISIBLE)		/* local channel */
       continue;
-    dprint(4, "ircd:channels.c:ircd_burst_channels: send channel %s", ch->name);
+    dprint(5, "ircd:channels.c:ircd_burst_channels: send channel %s", ch->name);
     m = ch->users;
     while (m)				/* do NJOIN */
     {

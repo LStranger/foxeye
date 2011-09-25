@@ -111,7 +111,7 @@ static dcc_priv_t *new_dcc (void)
   dcc->state = P_DISCONNECTED;
   dcc->socket = -1;
   dcc->tid = -1;
-  dprint (4, "dcc:new_dcc: %p", dcc);
+  dprint (2, "dcc:new_dcc: %p", dcc);
   return dcc;
 }
 
@@ -120,7 +120,7 @@ static void free_dcc (dcc_priv_t *dcc)
   register dcc_priv_t *last;
   register dcc_priv_t **p = &ActDCC;
 
-  dprint (4, "dcc:free_dcc: %p", dcc);
+  dprint (2, "dcc:free_dcc: %p", dcc);
   while ((last = *p) && last != dcc)
     p = &last->next;
   if (last)
@@ -170,7 +170,7 @@ static iftype_t _dcc_sig_2 (INTERFACE *iface, ifsig_t signal)
   char buf[SHORT_STRING];
   char *txt;
 
-  dprint(4, "irc-ctcp:dcc.c:_dcc_sig_2: got %u on %p(%p)", signal, iface, dcc);
+  dprint(5, "irc-ctcp:dcc.c:_dcc_sig_2: got %u on %p(%p)", signal, iface, dcc);
   if (!dcc)				/* already killed? */
     return I_DIED;
   switch (signal)
@@ -302,7 +302,7 @@ static void chat_handler (char *lname, char *ident, const char *host, void *data
   unsigned short p;
   register ssize_t got;
 
-  dprint (4, "dcc:chat_handler for %s", lname);
+  dprint (5, "dcc:chat_handler for %s", lname);
   /* check for allowance */
   if (dcc == NULL)
   {
@@ -445,7 +445,7 @@ static void isend_handler (char *lname, char *ident, const char *host, void *dat
   //int rsm;				/* read socket mode */
   bool wantack;
 
-  dprint (4, "dcc:isend_handler for %s to \"%s\".", lname, dcc->lname);
+  dprint (5, "dcc:isend_handler for %s to \"%s\".", lname, dcc->lname);
   scd = safe_calloc(1, sizeof(struct send_cleanup));
   scd->socket = dcc->socket;
   scd->buff = buff = safe_malloc (MAXBLOCKSIZE);
@@ -607,7 +607,7 @@ done:
     .mutex	initialized, unlocked */
 static void _isend_phandler (int res, void *input_data)
 {
-  dprint (4, "dcc:_isend_phandler: %d", res);
+  dprint (5, "dcc:_isend_phandler: %d", res);
   if (res == 0)
     isend_handler (NULL, NULL, NULL, input_data);
   else
@@ -640,7 +640,7 @@ static void _dcc_chat_handler (int res, void *input_data)
   register char *host = safe_strchr (dcc->uh, '@');
   register char *ident = safe_strchr (dcc->uh, '!');
 
-  dprint (4, "dcc:_dcc_chat_handler: %d", res);
+  dprint (5, "dcc:_dcc_chat_handler: %d", res);
   if (host)
     *host++ = 0;
   if (ident)
@@ -701,7 +701,7 @@ static void _dcc_send_handler (int res, void *input_data)
   struct send_cleanup *scd;
   bool wait_accept;
 
-  dprint (4, "dcc:_dcc_send_handler: %d", res);
+  dprint (5, "dcc:_dcc_send_handler: %d", res);
   if (res != 0)					/* some error catched */
   {
     Set_Iface (NULL);
@@ -926,7 +926,7 @@ static void _dcc_send_phandler (char *lname, char *ident, const char *host,
 {
   /* don't check ident and host - we can be wrong on that */
   /* unlocked now but dispatcher will wait this thread to join before freeing */
-  dprint (4, "dcc:_dcc_send_phandler: %s", lname);
+  dprint (5, "dcc:_dcc_send_phandler: %s", lname);
   if (!input_data)
     /* error! is it possible? */
     return;
@@ -1049,7 +1049,7 @@ static int _dcc_connect (dcc_priv_t *dcc)
   uint32_t ip;
 
   port = dcc->ptr;
-  dprint (4, "dcc:_dcc_connect to port %hu.", port);
+  dprint (5, "dcc:_dcc_connect to port %hu.", port);
   dcc->socket = -1;
   dcc->ahead = ircdcc_ahead_size;	/* we have full access now */
   if (dcc->ahead < 0)			/* correct it if need */
@@ -1198,7 +1198,7 @@ static iftype_t _dcc_sig_1 (INTERFACE *iface, ifsig_t signal)
   char buf[SHORT_STRING];
   char *txt;
 
-  dprint(4, "irc-ctcp:dcc.c:_dcc_sig_1: got %u on %p(%p)", signal, iface, dcc);
+  dprint(5, "irc-ctcp:dcc.c:_dcc_sig_1: got %u on %p(%p)", signal, iface, dcc);
   if (!dcc)				/* already killed? */
     return I_DIED;
   switch (signal)
@@ -1326,7 +1326,7 @@ static int _dcc_start (dcc_priv_t *dcc, unsigned long ip, unsigned short port,
     strfcpy (dcc->uh, who, sizeof(dcc->uh));
   strfcpy (dcc->lname, NONULL(lname), sizeof(dcc->lname));
   dcc->l.iface = Add_Iface (I_CONNECT, tgt, &_dcc_sig_1, NULL, dcc);
-  dprint (4, "dcc:_dcc_start at port %hu for %s.", port, tgt);
+  dprint (5, "dcc:_dcc_start at port %hu for %s.", port, tgt);
   if (pthread_create (&dcc->th, NULL, &_dcc_stage_1, dcc))
   {
     LOG_CONN (_("DCC: Cannot create thread!"));
@@ -1569,7 +1569,7 @@ static int dcc_resume (INTERFACE *w, uchar *who, char *lname, char *cw)
   if (sscanf (NextWord_Unquoted (NULL, NextWord (cw), 0), "%hu %llu %u",
       &port, &ptr, &token) < 2)		/* skipping RESUME <file> */
     return 0;				/* bad parameters! */
-  dprint(4, "irc-ctcp:dcc.c:dcc_resume: request OK: lname=%s", NONULLP(lname));
+  dprint(5, "irc-ctcp:dcc.c:dcc_resume: request OK: lname=%s", NONULLP(lname));
   if (port == 0) /* it's passive */
   {
     BindResult = cw;
@@ -1617,7 +1617,7 @@ static int ctcp_dcc (INTERFACE *client, unsigned char *who, char *lname,
   userflag uf;
   struct binding_t *bind = NULL;
 
-  dprint (4, "irc-ctcp:ctcp_dcc:got request from \"%s\"", NONULL(lname));
+  dprint (5, "irc-ctcp:ctcp_dcc:got request from \"%s\"", NONULL(lname));
   uf = Get_Clientflags (lname, "");
   while ((bind = Check_Bindtable (BT_IDcc, msg, uf, 0, bind))) /* run bindtable */
   {
@@ -1707,7 +1707,7 @@ static int ctcp_help (INTERFACE *client, unsigned char *who, char *lname,
   StrTrim (msg);			/* is it really wise? :) */
   if (msg && !*msg)
     msg = NULL;				/* no args */
-  dprint (4, "got CTCP HELP %s", NONULL(msg));
+  dprint (5, "got CTCP HELP %s", NONULL(msg));
   c = strrchr (client->name, '@');	/* trying to get network name */
   if (c)				/* will use global + network flags */
     c++;
@@ -1730,7 +1730,7 @@ static iftype_t _isend_sig_w (INTERFACE *iface, ifsig_t signal)
   unsigned long long size;
   unsigned int token;
 
-  dprint(4, "irc-ctcp:dcc.c:_isend_sig_w: got %u on %p(%p)", signal, iface, dcc);
+  dprint(5, "irc-ctcp:dcc.c:_isend_sig_w: got %u on %p(%p)", signal, iface, dcc);
   if (!dcc)
     return I_DIED;
   switch (signal)

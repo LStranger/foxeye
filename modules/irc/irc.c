@@ -215,7 +215,7 @@ static const char *_irc_parse_hostline (const char *hostline, char **parsed)
   if ((ch = strchr(*parsed, '@')))
     *ch = 0;
   while (*c == ' ') c++;
-  dprint (4, "_irc_parse_hostline: \"%s\" -> \"%s\"", hostline, nn);
+  dprint (5, "_irc_parse_hostline: \"%s\" -> \"%s\"", hostline, nn);
   return c;
 }
 
@@ -257,7 +257,7 @@ static char *_irc_getnext_server (irc_server *serv, const char *add,
 
     /* load servers list from userrecord */
     i = Get_Hostlist (tmp, FindLID (&serv->pmsgout->name[1]));
-    dprint (4, "_irc_getnext_server: got %d", i);
+    dprint (5, "_irc_getnext_server: got %d", i);
     if (i)
     {
       Set_Iface (tmp);
@@ -304,7 +304,7 @@ static char *_irc_getnext_server (irc_server *serv, const char *add,
     return "";
   if (!*ccn && Time - serv->last_output < irc_retry_timeout)
     return "";
-  dprint (4, "_irc_getnext_server: next server:%s, timer=%d",
+  dprint (5, "_irc_getnext_server: next server:%s, timer=%d",
 	  *ccn ? *ccn : " [none]", (int)(Time - serv->last_output));
   serv->last_output = Time;
   if (*cc && (*cc)[0] == '=') /* don't reenable disabled server */
@@ -312,7 +312,7 @@ static char *_irc_getnext_server (irc_server *serv, const char *add,
   if (!*ccn)
   {
     for (ccn = serv->servlist; *ccn && (*ccn)[0] == '-'; ccn++); /* skip bad */
-    dprint (4, "_irc_getnext_server: first server:%s", *ccn ? *ccn : " [none]");
+    dprint (5, "_irc_getnext_server: first server:%s", *ccn ? *ccn : " [none]");
   }
   if (*ccn)
   {
@@ -322,7 +322,7 @@ static char *_irc_getnext_server (irc_server *serv, const char *add,
     else
       return (*ccn + 1);
   }
-  dprint (4, "_irc_getnext_server: no server");
+  dprint (5, "_irc_getnext_server: no server");
   return NULL;
 }
 
@@ -498,7 +498,7 @@ static char *_irc_try_nick (irc_server *serv, struct clrec_t *clr)
     *c = 0;
     serv->mynick = safe_strdup (nn);
   }
-  dprint (4, "_irc_try_nick: trying %s", serv->mynick);
+  dprint (5, "_irc_try_nick: trying %s", serv->mynick);
   return serv->mynick;
 }
 
@@ -548,7 +548,7 @@ static int _irc_send (irc_server *serv, char *line)
   sw = cc - buf;
   if (sw == 0)
     return 1;				/* nothing to do */
-  dprint (4, "_irc_send: buffer filled for %s: %zd bytes",
+  dprint (5, "_irc_send: buffer filled for %s: %zd bytes",
 	  serv->p.iface->name, sw);
   /* try to send buffer */
   sd = Peer_Put ((&serv->p), buf, &sw);
@@ -737,7 +737,7 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
       else
 	msg = NULL;
       FREE (&serv->await);
-      dprint (4, "_irc_request: await terminated");
+      dprint (5, "_irc_request: await terminated");
       if (serv->p.socket == E_UNDEFDOMAIN || serv->p.socket == E_NOSUCHDOMAIN)
 	return _irc_try_server (serv, NULL, 1, msg);	/* remove if invalid */
       else if (serv->p.socket < 0)
@@ -828,7 +828,7 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
       }
       else if (serv->p.socket < 0 || sw != E_AGAIN)
       {
-	dprint (4, "_irc_request: no connection: %s",
+	dprint (5, "_irc_request: no connection: %s",
 		SocketError ((serv->p.socket >= 0) ? sw : serv->p.socket,
 			     thebuf, sizeof(thebuf)));
 	return _irc_try_server (serv, NULL, 0, NULL);
@@ -841,7 +841,7 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
       /* connection timeout? - disconnect and check if we may retry */
       if (Time - serv->p.last_input > irc_connect_timeout)
       {
-	dprint (4, "_irc_request: connection timeout");
+	dprint (5, "_irc_request: connection timeout");
 	return _irc_try_server (serv, NULL, 0, _("connection timeout"));
       }
       /* delay request for now since we aren't ready */
@@ -939,7 +939,7 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
 #else
       p = inbuf;
 #endif
-      dprint (5, "_irc_request: got from %s: [%-*.*s]", iface->name, (int)sw,
+      dprint (6, "_irc_request: got from %s: [%-*.*s]", iface->name, (int)sw,
 	      (int)sw, p);
       if (serv->p.state == P_IDLE)
 	serv->p.state = P_TALK;
@@ -1089,7 +1089,7 @@ static int irc__nextnick (INTERFACE *net, char *sv, char *me, unsigned char *src
   irc_server *serv = net->data;
   struct clrec_t *clr;
 
-  dprint (4, "irc__nextnick: %s: nickname %s juped", net->name, serv->mynick);
+  dprint (5, "irc__nextnick: %s: nickname %s juped", net->name, serv->mynick);
   clr = Lock_Clientrecord (net->name);
   if (clr)
   {
@@ -1343,7 +1343,7 @@ static int irc_err_unavailable (INTERFACE *net, char *sv, char *me, unsigned cha
     return -1;
   if (!strcmp (serv->mynick, parv[1]))
   {
-    dprint (4, "irc_err_unavailable: %s: nickname %s juped", net->name, serv->mynick);
+    dprint (5, "irc_err_unavailable: %s: nickname %s juped", net->name, serv->mynick);
     clr = Lock_Clientrecord (net->name);
     if (clr)
     {
@@ -1495,7 +1495,7 @@ static void _irc_update_isupport (INTERFACE *net, int parc, char **parv)
   char umodes[32];
   char value[LONG_STRING];
 
-  dprint (4, "irc_update_isupport: %d params, first one is %s.", parc, parv[0]);
+  dprint (5, "irc_update_isupport: %d params, first one is %s.", parc, parv[0]);
   nicklen = topiclen = maxbans = maxchannels = modes = maxtargets = 0;
   lc = &unistrlower; /* assume it's default for me */
   clr = Lock_Clientrecord (net->name);
@@ -1622,7 +1622,7 @@ static int irc_rpl_isupport (INTERFACE *net, char *sv, char *me, unsigned char *
 { /* Parameters: me param=value ... "are supported by this server" */
   char *c;
 
-  dprint (4, "irc_rpl_isupport: %d params, first one is %s.", parc-2, parv[1]);
+  dprint (5, "irc_rpl_isupport: %d params, first one is %s.", parc-2, parv[1]);
   if (parc < 3)
     return 0;		/* something other than ISUPPORT */
   for (c = parv[1]; *c; c++)
@@ -1699,7 +1699,7 @@ static void ic_default (INTERFACE *iface, char *server, char *nick,
   if (clr)
   {
     msg = Get_Field (clr, "umode", NULL);
-    dprint (4, "ic_default: sending default commands for %s...", iface->name);
+    dprint (5, "ic_default: sending default commands for %s...", iface->name);
     if (msg)
       New_Request (iface, 0, "MODE %s :%s", nick, msg);
     msg = Get_Field (clr, ".login", NULL);

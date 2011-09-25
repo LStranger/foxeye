@@ -390,7 +390,7 @@ static void vsadd_request (ifi_t *to, iftype_t ift, const char *mask,
   vsnprintf (cur->a.string, sizeof(cur->a.string), fmt, ap);
   if (!(flag & F_DEBUG))
   {
-    dprint (5, "dispatcher:vsadd_request: to=\"%s\" (%#lx) flags=%#lx message=\"%s\"",
+    dprint (6, "dispatcher:vsadd_request: to=\"%s\" (%#lx) flags=%#lx message=\"%s\"",
 	    cur->a.to, (long)ift, (long)flag, cur->a.string);
   }
   /* check for flags and matching */
@@ -430,7 +430,7 @@ static void vsadd_request (ifi_t *to, iftype_t ift, const char *mask,
   cur->a.mask_if = ift;		/* reset it anyway */
   ii = _Inum;
   if (!(flag & F_DEBUG))
-    dprint (5, "dispatcher:vsadd_request: matching finished: %u targets", n);
+    dprint (6, "dispatcher:vsadd_request: matching finished: %u targets", n);
   for (i = 0; n && i < _Inum; )		/* check for pending reqs */
   {
     if (Interface[i]->pq && Interface[i]->pq->request == cur)
@@ -651,7 +651,7 @@ int Relay_Request (iftype_t ift, char *name, REQUEST *req)
   cur->a.flag = req->flag;
   memcpy (cur->a.string, req->string, sizeof(cur->a.string));
   if (!(req->flag & F_DEBUG))
-    dprint (5, "Relay_Request: to=\"%s\" (%#x) flags=%#x message=\"%s\"",
+    dprint (6, "Relay_Request: to=\"%s\" (%#x) flags=%#x message=\"%s\"",
 	    cur->a.to, ift, req->flag, cur->a.string);
   /* check for flags and matching */
   n = 0;
@@ -1091,7 +1091,7 @@ INTERFACE *Find_Iface (iftype_t ift, const char *name)
     if ((((ifi_t *)l->s.data)->a.ift & ift) == ift &&
 	!(((ifi_t *)l->s.data)->a.ift & I_DIED))
     i = l->s.data;
-  dprint (3, "search for iface %#x name \"%s\": %s", ift, NONULL(name),
+  dprint (4, "search for iface %#x name \"%s\": %s", ift, NONULL(name),
 	  i ? (char *)i->a.name : "<none>");
   if (i)
   {
@@ -1188,7 +1188,7 @@ static void start_boot (void)
 /* bounce boot requests to interfaces with F_BOOT */
 static void end_boot (void)
 {
-  INTERFACE *con = Find_Iface (I_CONSOLE, "");	/* locked now! */
+  INTERFACE *con = Find_Iface (I_CONSOLE, NULL); /* locked now! */
   unsigned int i;
 
   if_or = 0;
@@ -1197,7 +1197,7 @@ static void end_boot (void)
   else
     Set_Iface(NULL);
   Current = _Boot;
-  dprint (4, "end_boot: unlock %u interfaces (but console and init)", _Inum);
+  dprint (5, "end_boot: unlock %u interfaces (but console and init)", _Inum);
   for (i = 0; i < _Inum; i++)
     if (!(Interface[i]->a.ift & (I_CONSOLE | I_INIT)))
       Interface[i]->a.ift &= ~I_LOCKED;
@@ -1375,7 +1375,7 @@ int dispatcher (INTERFACE *start_if)
     }
     /* OK, this is parent */
     if (write_pid (pidfd, pid) == 0) { /* no errors */
-      if (chdir("/tmp")) /* let profiler write out only child info */
+      if (chdir("/")) /* let profiler write out only child info */
 	return 1; /* is it possible? */
       return 0;
     }
@@ -1388,7 +1388,9 @@ int dispatcher (INTERFACE *start_if)
     close(pidfd);
   if (freopen ("/dev/null", "r", stdin)) i=i;	/* IFs for compiler happiness */
   if (freopen ("/dev/null", "w", stdout)) i=i;
+  if (freopen ("/dev/null", "w", stderr)) i=i;
   setsid();
+  umask(0);
   /* catch the signals */
   act.sa_handler = &normal_handler;
   sigemptyset (&act.sa_mask);

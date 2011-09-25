@@ -972,7 +972,7 @@ int ircch_parse_modeline (IRC *net, CHANNEL *chan, LINK *origin, char *prefix,
 	  }
 	  if (target->nick->split)
 	  {
-	    dprint (4, "ircch_parse_modeline: possible netjoined %s(%s)",
+	    dprint (3, "ircch_parse_modeline: possible netjoined %s(%s)",
 		    prefix, target->nick->split->servers);
 	    if (!strcmp (NextWord(target->nick->split->servers), prefix))
 	      nignpar--;		/* target is returning from netsplit */

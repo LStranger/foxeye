@@ -564,7 +564,7 @@ static char *_trace_int (ClientData data, Tcl_Interp *tcl,
 
   if (flags & TCL_TRACE_UNSETS)	/* deleting it */
   {
-    dprint (4, "tcl:_trace_int: deleted %s.%s", name1, NONULL(name2));
+    dprint (5, "tcl:_trace_int: deleted %s.%s", name1, NONULL(name2));
 #ifdef HAVE_TCL8X
     Tcl_DecrRefCount (vardata->name);
 #endif
@@ -578,18 +578,18 @@ static char *_trace_int (ClientData data, Tcl_Interp *tcl,
 		&l) == TCL_ERROR)
       return Tcl_GetStringResult (tcl);
     *(long int *)vardata->data = l;
-    dprint (4, "tcl:_trace_int: changed %s.%s to %ld", name1, NONULL(name2), l);
+    dprint (5, "tcl:_trace_int: changed %s.%s to %ld", name1, NONULL(name2), l);
 #else
     if (Tcl_GetInt (tcl, Tcl_GetVar2 (tcl, name1, name2, TCL_GLOBAL_ONLY),
 		    &i) == TCL_ERROR)
       return tcl->result;
     *(long int *)vardata->data = (long int)i;
-    dprint (4, "tcl:_trace_int: changed %s.%s to %d", name1, NONULL(name2), i);
+    dprint (5, "tcl:_trace_int: changed %s.%s to %d", name1, NONULL(name2), i);
 #endif
   }
   else if (flags & TCL_TRACE_READS)
   {
-    dprint (4, "tcl:_trace_int: read %s.%s", name1, NONULL(name2));
+    dprint (5, "tcl:_trace_int: read %s.%s", name1, NONULL(name2));
 #ifdef HAVE_TCL8X
     Tcl_ObjSetVar2 (tcl, vardata->name, NULL,
 		    Tcl_NewLongObj (*(long int *)vardata->data),
@@ -613,7 +613,7 @@ static char *_trace_bool (ClientData data, Tcl_Interp *tcl,
 
   if (flags & TCL_TRACE_UNSETS)	/* deleting it */
   {
-    dprint (4, "tcl:_trace_bool: deleted %s.%s", name1, NONULL(name2));
+    dprint (5, "tcl:_trace_bool: deleted %s.%s", name1, NONULL(name2));
 #ifdef HAVE_TCL8X
     Tcl_DecrRefCount (vardata->name);
 #endif
@@ -634,12 +634,12 @@ static char *_trace_bool (ClientData data, Tcl_Interp *tcl,
     /* changing only flag TRUE, don't touch ASK and CAN_ASK */
     *(bool *)vardata->data &= ~TRUE;		/* reset it */
     *(bool *)vardata->data |= (bool)(i & TRUE);	/* update it */
-    dprint (4, "tcl:_trace_bool: changed %s.%s to %s", name1, NONULL(name2),
+    dprint (5, "tcl:_trace_bool: changed %s.%s to %s", name1, NONULL(name2),
 	    (i & TRUE) ? "TRUE" : "FALSE");
   }
   else if (flags & TCL_TRACE_READS)
   {
-    dprint (4, "tcl:_trace_bool:read %s.%s", name1, NONULL(name2));
+    dprint (5, "tcl:_trace_bool:read %s.%s", name1, NONULL(name2));
 #ifdef HAVE_TCL8X
     Tcl_ObjSetVar2 (tcl, vardata->name, NULL,
 		    Tcl_NewBooleanObj ((int)(*(bool *)vardata->data & TRUE)),
@@ -670,7 +670,7 @@ static char *_trace_str (ClientData data, Tcl_Interp *tcl,
 
   if (flags & TCL_TRACE_UNSETS)	/* deleting it */
   {
-    dprint (4, "tcl:_trace_str: deleted %s.%s", name1, NONULL(name2));
+    dprint (5, "tcl:_trace_str: deleted %s.%s", name1, NONULL(name2));
 #ifdef HAVE_TCL8X
     Tcl_DecrRefCount (vardata->name);
 #endif
@@ -699,11 +699,11 @@ static char *_trace_str (ClientData data, Tcl_Interp *tcl,
       strfcpy ((char *)vardata->data, s, i + 1);
     else
       strfcpy ((char *)vardata->data, s, vardata->len);
-    dprint (4, "tcl:_trace_str: changed %s.%s to %s", name1, NONULL(name2), s);
+    dprint (5, "tcl:_trace_str: changed %s.%s to %s", name1, NONULL(name2), s);
   }
   else if (flags & TCL_TRACE_READS)
   {
-    dprint (4, "tcl:_trace_str: read %s.%s", name1, NONULL(name2));
+    dprint (5, "tcl:_trace_str: read %s.%s", name1, NONULL(name2));
 #ifdef HAVE_TCL8X
 # ifdef HAVE_TCL_SETSYSTEMENCODING
     ptr = buf;
@@ -731,7 +731,7 @@ static char *_trace_stat (ClientData data, Tcl_Interp *tcl,
 {
   if (flags & TCL_TRACE_UNSETS)	/* deleting it */
   {
-    dprint (4, "tcl:_trace_stat: deleted %s.%s", name1, NONULL(name2));
+    dprint (5, "tcl:_trace_stat: deleted %s.%s", name1, NONULL(name2));
 #ifdef HAVE_TCL8X
     Tcl_DecrRefCount (vardata->name);
 #endif
@@ -739,7 +739,7 @@ static char *_trace_stat (ClientData data, Tcl_Interp *tcl,
   }
   else if (flags & TCL_TRACE_WRITES)	/* reset it in TCL */
   {
-    dprint (4, "tcl:_trace_stat: tried to change %s.%s", name1, NONULL(name2));
+    dprint (5, "tcl:_trace_stat: tried to change %s.%s", name1, NONULL(name2));
 #ifdef HAVE_TCL8X
     /* TODO: use Undo_Conversion here? */
     Tcl_ObjSetVar2 (tcl, vardata->name, NULL,
@@ -839,7 +839,7 @@ static int tcl_register_var (const char *name, void *ptr, size_t s)
 		    TCL_TRACE_READS | TCL_TRACE_WRITES | TCL_TRACE_UNSETS,
 		    &_trace_str, (ClientData)data);
   }
-  dprint (4, "tcl:registered variable %s/%d. (hope prev instance is deleted)",
+  dprint (5, "tcl:registered variable %s/%d. (hope prev instance is deleted)",
 	  tn, (int)s);
   return 1;
 }
@@ -1127,7 +1127,7 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
 	ERROR ("tcl:timer:not found timer for %lu.", (unsigned long int)Time);
 	break;
       }
-      dprint (4, "tcl:timer:found sheduled (%lu->%lu) cmd: %s",
+      dprint (5, "tcl:timer:found sheduled (%lu->%lu) cmd: %s",
 	      (unsigned long int)tt->when, (unsigned long int)Time, tt->cmd);
       if (Tcl_Eval (Interp, tt->cmd) != TCL_OK)
       {
