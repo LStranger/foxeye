@@ -24,6 +24,7 @@ Sun Sep 24 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  recognizing channels on hold.
 	* modules/ircd/ircd.c: fixed attempt to clear class for uplink.
 	* modules/ircd/channels.c: fixed who sets mode in JOIN message on NJOIN.
+	* modules/ircd/servers.c: fixed remote quit message.
 
 Fri Sep 23 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.*: fixed a mess out of A_AWAY with A_UPLINK.

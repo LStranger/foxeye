@@ -314,7 +314,7 @@ static int ircd_quit_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   CLIENT *cl;
   const char *msg;
 
-  if (argc)
+  if (argc == 0)
     msg = sender;
   else
     msg = argv[0];
