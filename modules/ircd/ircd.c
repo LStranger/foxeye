@@ -895,7 +895,7 @@ static CLIENT *_ircd_check_nick_collision(char *nick, size_t nsz, peer_priv *pp)
     ircd_prepare_quit(collided, pp, "nick collision");
     collided->hold_upto = Time + CHASETIMELIMIT;
     Add_Request(I_PENDING, "*", 0, ":%s QUIT :Nick collision from %s",
-		collided->nick, pp->p.dname);
+		collided->nick, pp->p.dname); //FIXME: want add user@host there?
     collided->host[0] = '\0';		/* for collision check */
     Add_Request(I_LOG, "*", F_MODES, "KILL %s :Nick collision from %s",
 		collided->nick, pp->p.dname);
@@ -1004,7 +1004,7 @@ static iftype_t _ircd_client_signal (INTERFACE *cli, ifsig_t sig)
 	    ircd_prepare_quit (peer->link->cl, peer, reason);
 	    peer->link->cl->hold_upto = Time;
 	    Add_Request (I_PENDING, "*", 0, ":%s QUIT :%s", peer->p.dname,
-			 reason);
+			 reason); //FIXME: want add user@host there?
 	  }
       }
       break;
@@ -3186,7 +3186,7 @@ static int _ircd_remote_nickchange(CLIENT *tgt, peer_priv *pp,
       phantom->rfr = tgt;
       phantom->x.rto = NULL;
       Add_Request(I_PENDING, "*", 0, ":%s QUIT :Nick collision from %s",
-		  tgt->nick, pp->p.dname);
+		  tgt->nick, pp->p.dname); //FIXME: want add user@host there?
       tgt->host[0] = 0;			/* for collision check */
       Add_Request(I_LOG, "*", F_MODES, "KILL %s :Nick collision from %s",
 		  tgt->nick, pp->p.dname);
@@ -3953,8 +3953,9 @@ static inline void _ircd_squit_one (LINK *link)
       continue;
     }
     ircd_quit_all_channels (Ircd, l->cl, 1, 1); /* it's user, remove it */
-    Add_Request (I_PENDING, "*", 0, ":%s QUIT :%s %s",  /* send split message */
-		 l->cl->nick, link->where->lcnick, server->lcnick);
+    Add_Request (I_PENDING, "*", 0, ":%s!%s@%s QUIT :%s %s", l->cl->nick,
+		 l->cl->user, l->cl->host, link->where->lcnick, server->lcnick);
+		 /* send split message */
     _ircd_class_out (l);		/* remove from global class list */
     _ircd_bt_lost_client(l->cl, server->lcnick); /* "ircd-lost-client" */
     l->cl->hold_upto = Time + _ircd_hold_period; /* put it in temp. unavailable list */

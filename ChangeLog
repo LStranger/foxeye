@@ -19,6 +19,7 @@ Sun Sep 24 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: changed log level on RFC1459-style SERVER
 	  message from error to notice.
 	* modules/ircd/ircd.c: fixed deadcycle after incomplete uplink connect.
+	* modules/ircd/ircd.c: fixed QUIT message on network split.
 
 Fri Sep 23 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.*: fixed a mess out of A_AWAY with A_UPLINK.
