@@ -2001,7 +2001,6 @@ MEMBER *ircd_add_to_channel (IRCD *ircd, struct peer_priv *bysrv, CHANNEL *ch,
   ch->mode |= A_ISON | (mf & ~Ircd_modechar_mask);
   if (memb->mode & A_OP)		/* operator added so reset this */
     ch->noop_since = 0;
-  ch->hold_upto = 0;			/* it could be on hold before */
   if (!(ch->mode & A_QUIET))		/* notify users */
   {
     if(ch->mode & A_ANONYMOUS)
@@ -2384,7 +2383,7 @@ void ircd_burst_channels (INTERFACE *to, NODE *channels)
   while ((leaf = Next_Leaf (channels, leaf, NULL)))
   {
     ch = leaf->s.data;
-    if (ch->hold_upto)			/* it's unavailable */
+    if (ch->hold_upto && ch->count == 0) /* it's unavailable */
       continue;
     if (ch->mode & A_INVISIBLE)		/* local channel */
       continue;
