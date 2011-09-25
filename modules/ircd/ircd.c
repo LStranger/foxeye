@@ -897,6 +897,8 @@ static CLIENT *_ircd_check_nick_collision(char *nick, size_t nsz, peer_priv *pp)
     Add_Request(I_PENDING, "*", 0, ":%s QUIT :Nick collision from %s",
 		collided->nick, pp->p.dname);
     collided->host[0] = '\0';		/* for collision check */
+    Add_Request(I_LOG, "*", F_MODES, "KILL %s :Nick collision from %s",
+		collided->nick, pp->p.dname);
   } else if (collnick != collided->nick) { /* binding asked to change collided */
     _ircd_do_nickchange(collided, NULL, 0, collnick);
     if (_ircd_find_client(nick)) { /* ouch! we got the same for both collided! */
@@ -3183,6 +3185,8 @@ static int _ircd_remote_nickchange(CLIENT *tgt, peer_priv *pp,
       Add_Request(I_PENDING, "*", 0, ":%s QUIT :Nick collision from %s",
 		  tgt->nick, pp->p.dname);
       tgt->host[0] = 0;			/* for collision check */
+      Add_Request(I_LOG, "*", F_MODES, "KILL %s :Nick collision from %s",
+		  tgt->nick, pp->p.dname);
       return 1;
     }
     /* relations will be fixed after rename below */
@@ -3224,6 +3228,7 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   if (ct < 0 || ct >= (int)pp->t || (on = pp->i.token[ct]) == NULL)
   {
     New_Request(peer->iface, 0, ":%s KILL %s :Invalid server", MY_NAME, argv[0]);
+    Add_Request(I_LOG, "*", F_MODES, "KILL %s :Invalid server %hu", argv[0], ct);
 #if IRCD_MULTICONNECT
     if (pp->link->cl->umode & A_MULTI)
       ircd_add_ack(pp, NULL, NULL);
@@ -3265,6 +3270,7 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     if (tgt->nick[0] == '\0')
     {
       New_Request(peer->iface, 0, ":%s KILL %s :Nick collision", MY_NAME, argv[0]);
+      Add_Request(I_LOG, "*", F_MODES, "KILL %s :Nick collission", argv[0]);
       phantom->x.rto = NULL;
       free_CLIENT(tgt);
       return 1;
@@ -3358,6 +3364,7 @@ static int ircd_service_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
   {
     ERROR("ircd:invalid SERVICE token %s via %s", argv[1], peer->dname);
     New_Request(peer->iface, 0, ":%s KILL %s :Invalid server", MY_NAME, argv[0]);
+    Add_Request(I_LOG, "*", F_MODES, "KILL %s :Invalid server %hu", argv[0], ct);
 #if IRCD_MULTICONNECT
     if (pp->link->cl->umode & A_MULTI)
       ircd_add_ack(pp, NULL, NULL);
@@ -3375,6 +3382,7 @@ static int ircd_service_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
     ERROR("ircd:invalid SERVICE token %s via %s", argv[1], peer->dname);
     New_Request(peer->iface, 0, ":%s KILL %s :Service name collision",
 		MY_NAME, argv[0]);
+    Add_Request(I_LOG, "*", F_MODES, "KILL %s :Service name collision", argv[0]);
 #if IRCD_MULTICONNECT
     if (pp->link->cl->umode & A_MULTI)
       ircd_add_ack(pp, NULL, NULL);
@@ -3392,6 +3400,7 @@ static int ircd_service_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
     free_CLIENT(tgt);
     New_Request(peer->iface, 0, ":%s KILL %s :Invalid SERVICE name", MY_NAME,
 		argv[0]);
+    Add_Request(I_LOG, "*", F_MODES, "KILL %s :Invalid SERVICE name", argv[0]);
 #if IRCD_MULTICONNECT
     if (pp->link->cl->umode & A_MULTI)
       ircd_add_ack(pp, NULL, NULL);

@@ -926,6 +926,7 @@ static int ircd_kill_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   for (c = NextWord(reason); c > reason && c[-1] != '!'; c--); /* find nick */
   Add_Request(I_PENDING, "*", 0, ":%s QUIT :Killed by %s", tcl->nick, c);
   tcl->host[0] = 0;			/* for collision check */
+  Add_Request(I_LOG, "*", F_MODES, "KILL %s :%s", tcl->nick, reason);
   return (1);
 }
 
