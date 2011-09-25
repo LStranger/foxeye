@@ -437,7 +437,7 @@ static inline void _ircd_peer_kill (peer_priv *peer, const char *msg)
   if (peer->p.state != P_DISCONNECTED) {
     if (CLIENT_IS_SERVER(peer->link->cl))
       _ircd_lserver_out (peer->link);
-    else
+    else if (peer->p.state != P_IDLE)	/* no class on broken uplink attempt */
       _ircd_class_out (peer->link);
   }
   if (peer->p.state == P_TALK) {

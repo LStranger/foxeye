@@ -22,6 +22,7 @@ Sun Sep 24 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed QUIT message on network split.
 	* modules/ircd/channels.c, modules/ircd/servers.c: fixed marking and
 	  recognizing channels on hold.
+	* modules/ircd/ircd.c: fixed attempt to clear class for uplink.
 
 Fri Sep 23 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.*: fixed a mess out of A_AWAY with A_UPLINK.
