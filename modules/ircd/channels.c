@@ -1954,7 +1954,6 @@ MEMBER *ircd_add_to_channel (IRCD *ircd, struct peer_priv *bysrv, CHANNEL *ch,
 			     CLIENT *cl, modeflag mf)
 {
   MEMBER *memb;
-  CLIENT *server;
   size_t sz;
   int i, n;
   modeflag modeadd;
@@ -2021,19 +2020,26 @@ MEMBER *ircd_add_to_channel (IRCD *ircd, struct peer_priv *bysrv, CHANNEL *ch,
       }
       ircd_sendto_chan_local (ch, ":%s!%s@%s JOIN %s", cl->nick, cl->user,
 			      cl->host, ch->name); /* broadcast for users */
-      if (bysrv)
-	server = bysrv->link->cl;
-      else
-	server = ircd_find_client(NULL, NULL);
-      if (*smode)			/* we have a mode provided */
-	ircd_sendto_chan_local(ch, ":%s!%s@%s MODE %s +%s%s", cl->nick,
-			       cl->user, cl->host, ch->name, smode, madd);
+      if (*smode) {			/* we have a mode provided */
+	if (bysrv)
+	  ircd_sendto_chan_local(ch, ":%s MODE %s +%s%s",
+				 bysrv->link->cl->lcnick, ch->name, smode,
+				 madd);
+	else
+	  ircd_sendto_chan_local(ch, ":%s!%s@%s MODE %s +%s%s", cl->nick,
+				 cl->user, cl->host, ch->name, smode, madd);
+      }
       madd[0] = 0;
       if (modeadd)			/* it is a fresh channel or updated */
 	_ircd_mode2cmode (madd, modeadd, sizeof(madd)); /* make channel mode */
-      if (madd[0])
-	ircd_sendto_chan_local(ch, ":%s!%s@%s MODE %s +%s", cl->nick,
-			       cl->user, cl->host, ch->name, madd);
+      if (madd[0]) {
+	if (bysrv)
+	  ircd_sendto_chan_local(ch, ":%s MODE %s +%s", bysrv->link->cl->lcnick,
+				 ch->name, madd);
+	else
+	  ircd_sendto_chan_local(ch, ":%s!%s@%s MODE %s +%s", cl->nick,
+				 cl->user, cl->host, ch->name, madd);
+      }
     }
 #ifdef USE_SERVICES
     //inform services!
