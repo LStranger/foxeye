@@ -1142,6 +1142,8 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	cl->pcl = NULL;		/* for safe module termination */
 	cl->hold_upto = 0;	/* it's 0 since no collisions on it */
 	DBG("ircd client: unshifting %p prev %p", peer->link, peer->link->prev);
+      }
+      if (!CLIENT_IS_SERVER(cl)) { /* should be done for incomplete uplink too */
 	pthread_mutex_lock (&IrcdLock);
 	for (ll = &ME.c.lients; *ll != NULL; ll = &(*ll)->prev)
 	  if (*ll == peer->link)

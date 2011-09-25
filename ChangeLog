@@ -18,6 +18,7 @@ Sun Sep 24 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: increased number of digits in ircd version.
 	* modules/ircd/ircd.c: changed log level on RFC1459-style SERVER
 	  message from error to notice.
+	* modules/ircd/ircd.c: fixed deadcycle after incomplete uplink connect.
 
 Fri Sep 23 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.*: fixed a mess out of A_AWAY with A_UPLINK.
