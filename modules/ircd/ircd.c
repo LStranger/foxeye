@@ -2340,7 +2340,8 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
   cc = "";
   if (argc < 4 || (token = strtol (argv[2], &cc, 10)) < 0 || *cc)
   {
-    ERROR("ircd: invalid token %ld%s in SERVER %s", token, cc, argv[0]);
+    Add_Request(I_LOG, "*", F_WARN, "ircd: invalid token %ld%s in SERVER %s",
+		token, cc, argv[0]);
     strfcpy (cl->fname, argv[2], sizeof(cl->fname));
     token = 0;
   }
