@@ -666,6 +666,21 @@ static int ircd_stats_sb(INTERFACE *srv, struct peer_t *peer, unsigned short tok
   DO_SERVER_QUERY (_ircd_query_stats);
 }
 
+static void _ircd_tell_links(CLIENT *cl, CLIENT *server, char *where,
+			     const char *smask, struct peer_priv *via)
+{
+  LINK *tgt;
+
+  ircd_do_unumeric (cl, RPL_LINKS, server, server->hops, where);
+  for (tgt = server->c.lients; tgt; tgt = tgt->prev)
+    if (CLIENT_IS_SERVER(tgt->cl) &&
+#if IRCD_MULTICONNECT
+	(tgt->cl != server) && (tgt->cl->via == via) && /* ignore backlink */
+#endif
+	simple_match (smask, tgt->cl->lcnick) >= 0)
+      _ircd_tell_links(cl, tgt->cl, server->lcnick, smask, via);
+}
+
 static inline int _ircd_query_links (IRCD *ircd, CLIENT *cl, struct peer_priv *via,
 				     int argc, const char **argv)
 { /* [[<remote server> ]<server mask>] */
@@ -692,7 +707,7 @@ static inline int _ircd_query_links (IRCD *ircd, CLIENT *cl, struct peer_priv *v
   ircd_do_unumeric (cl, RPL_LINKS, s, 0, s->lcnick);
   for (tgt = ircd->servers; tgt; tgt = tgt->prev)
     if (simple_match (smask, tgt->cl->lcnick) >= 0)
-      ircd_do_unumeric (cl, RPL_LINKS, tgt->cl, tgt->cl->hops, tgt->where->lcnick);
+      _ircd_tell_links(cl, tgt->cl, tgt->where->lcnick, smask, tgt->cl->via);
   return ircd_do_unumeric (cl, RPL_ENDOFLINKS, cl, 0, smask);
 }
 
