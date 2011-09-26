@@ -894,8 +894,8 @@ static CLIENT *_ircd_check_nick_collision(char *nick, size_t nsz, peer_priv *pp)
 				collided->nick, pp->p.dname); /* broadcast KILL */
     ircd_prepare_quit(collided, pp, "nick collision");
     collided->hold_upto = Time + CHASETIMELIMIT;
-    Add_Request(I_PENDING, "*", 0, ":%s QUIT :Nick collision from %s",
-		collided->nick, pp->p.dname); //FIXME: want add user@host there?
+    Add_Request(I_PENDING, "*", 0, ":%s!%s@%s QUIT :Nick collision from %s",
+		collided->nick, collided->user, collided->host, pp->p.dname);
     collided->host[0] = '\0';		/* for collision check */
     Add_Request(I_LOG, "*", F_MODES, "KILL %s :Nick collision from %s",
 		collided->nick, pp->p.dname);
@@ -1003,8 +1003,8 @@ static iftype_t _ircd_client_signal (INTERFACE *cli, ifsig_t sig)
 					 ":%s QUIT :%s", peer->p.dname, reason);
 	    ircd_prepare_quit (peer->link->cl, peer, reason);
 	    peer->link->cl->hold_upto = Time;
-	    Add_Request (I_PENDING, "*", 0, ":%s QUIT :%s", peer->p.dname,
-			 reason); //FIXME: want add user@host there?
+	    Add_Request (I_PENDING, "*", 0, ":%s!%s@%s QUIT :%s", peer->p.dname,
+			 peer->link->cl->user, peer->link->cl->host, reason);
 	  }
       }
       break;
@@ -3202,8 +3202,8 @@ static int _ircd_remote_nickchange(CLIENT *tgt, peer_priv *pp,
       tgt->x.rto = phantom;		/* set relations */
       phantom->rfr = tgt;
       phantom->x.rto = NULL;
-      Add_Request(I_PENDING, "*", 0, ":%s QUIT :Nick collision from %s",
-		  tgt->nick, pp->p.dname); //FIXME: want add user@host there?
+      Add_Request(I_PENDING, "*", 0, ":%s!%s@%s QUIT :Nick collision from %s",
+		  tgt->nick, tgt->user, tgt->host, pp->p.dname);
       tgt->host[0] = 0;			/* for collision check */
       Add_Request(I_LOG, "*", F_MODES, "KILL %s :Nick collision from %s",
 		  tgt->nick, pp->p.dname);
