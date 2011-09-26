@@ -4259,6 +4259,7 @@ int ircd_show_trace (CLIENT *rq, CLIENT *tgt)
   peer_priv *t;
   LINK *l;
   int sc, ss;
+  unsigned short i;
 #ifdef IRCD_TRACE_USERS
   CLASS *c;
 #endif
@@ -4278,11 +4279,16 @@ int ircd_show_trace (CLIENT *rq, CLIENT *tgt)
 	return ircd_do_unumeric (rq, RPL_TRACEUNKNOWN, &ME, 0, "-");
       case P_TALK:
 	if (CLIENT_IS_SERVER (tgt)) {
-	  for (ss = 0, sc = 0, l = tgt->c.lients; l; l = l->prev)
-	    if (CLIENT_IS_SERVER(l->cl))
-	      ss++;
-	    else
-	      sc++;
+	  for (ss = 0, sc = 0, i = 1; i < Ircd->s; i++)
+	    if (Ircd->token[i] != NULL && Ircd->token[i]->via == tgt->via)
+	      for (l = Ircd->token[i]->c.lients; l; l = l->prev)
+		if (!CLIENT_IS_SERVER(l->cl))
+		  sc++;
+		else
+#if IRCD_MULTICONNECT
+		     if (l->cl != tgt) /* don't count backlinks */
+#endif
+		  ss++;
 	  snprintf (buf, sizeof(buf), "- %dS %dC %s *!*@%s V%.4s", ss, sc,
 		    tgt->nick, tgt->host, tgt->away);
 	  return ircd_do_unumeric (rq, RPL_TRACESERVER, tgt, 0, buf);
