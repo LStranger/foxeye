@@ -807,7 +807,9 @@ static inline int _ircd_query_trace (IRCD *ircd, CLIENT *cl, struct peer_priv *v
 { /* args: [<target>] */
   if (argc > 0)				/* transit trace */
   {
-    CLIENT *tgt = ircd_find_client (argv[0], via);
+    CLIENT *tgt = ircd_find_client (argv[0], via), *next;
+    size_t p;
+    char flags[8];
     char tstr[IRCMSGLEN];
 
     if (!tgt)
@@ -821,9 +823,22 @@ static inline int _ircd_query_trace (IRCD *ircd, CLIENT *cl, struct peer_priv *v
       ircd_show_trace (cl, tgt);
       return ircd_do_unumeric (cl, RPL_TRACEEND, cl, O_DLEVEL, NULL);
     }
-    snprintf (tstr, sizeof(tstr), "%s V%.4s %d %d %d",
-	      tgt->cs->via->link->cl->nick, tgt->cs->via->link->cl->away,
-	      (int)(Time - tgt->cs->via->started), via->p.iface->qsize,
+    next = tgt->cs->via->link->cl;
+    p = 0;
+    if (next->umode & A_UPLINK)
+      flags[p++] = 'c';
+#if IRCD_MULTICONNECT
+    if (next->umode & A_MULTI)
+      flags[p++] = 'm';
+#endif
+#if IRCD_USES_ICONV
+    if (!strcasecmp(Conversion_Charset(tgt->cs->via->p.iface->conv),
+		    CHARSET_UNICODE))
+      flags[p++] = 'u';
+#endif
+    flags[p] = '\0';
+    snprintf (tstr, sizeof(tstr), "%s V%.4s%s %d %d %d", next->nick, next->away,
+	      flags, (int)(Time - tgt->cs->via->started), via->p.iface->qsize,
 	      tgt->cs->via->p.iface->qsize);
     ircd_do_unumeric (cl, RPL_TRACELINK, tgt, O_DLEVEL, tstr);
     New_Request (tgt->cs->via->p.iface, 0, ":%s TRACE :%s", cl->nick, argv[0]);

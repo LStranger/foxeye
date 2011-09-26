@@ -4263,6 +4263,7 @@ int ircd_show_trace (CLIENT *rq, CLIENT *tgt)
 #ifdef IRCD_TRACE_USERS
   CLASS *c;
 #endif
+  char flags[8];
   char buf[MESSAGEMAX];
 
   if (tgt != NULL)
@@ -4279,6 +4280,19 @@ int ircd_show_trace (CLIENT *rq, CLIENT *tgt)
 	return ircd_do_unumeric (rq, RPL_TRACEUNKNOWN, &ME, 0, "-");
       case P_TALK:
 	if (CLIENT_IS_SERVER (tgt)) {
+	  sc = 0;
+	  if (tgt->umode & A_UPLINK)
+	    flags[sc++] = 'c';
+#if IRCD_MULTICONNECT
+	  if (tgt->umode & A_MULTI)
+	    flags[sc++] = 'm';
+#endif
+#if IRCD_USES_ICONV
+	  if (!strcasecmp(Conversion_Charset(tgt->via->p.iface->conv),
+			  CHARSET_UNICODE))
+	    flags[sc++] = 'u';
+#endif
+	  flags[sc] = '\0';
 	  for (ss = 0, sc = 0, i = 1; i < Ircd->s; i++)
 	    if (Ircd->token[i] != NULL && Ircd->token[i]->via == tgt->via)
 	      for (l = Ircd->token[i]->c.lients; l; l = l->prev)
@@ -4289,8 +4303,8 @@ int ircd_show_trace (CLIENT *rq, CLIENT *tgt)
 		     if (l->cl != tgt) /* don't count backlinks */
 #endif
 		  ss++;
-	  snprintf (buf, sizeof(buf), "- %dS %dC %s *!*@%s V%.4s", ss, sc,
-		    tgt->nick, tgt->host, tgt->away);
+	  snprintf (buf, sizeof(buf), "- %dS %dC %s *!*@%s V%.4s%s", ss, sc,
+		    tgt->nick, tgt->host, tgt->away, flags);
 	  return ircd_do_unumeric (rq, RPL_TRACESERVER, tgt, 0, buf);
 #ifdef USE_SERVICES
 	} else if (CLIENT_IS_SERVICE (tgt)) {

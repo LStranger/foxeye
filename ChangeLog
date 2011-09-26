@@ -20,6 +20,8 @@ Mon Sep 26 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed SERVER log message.
 	* modules/ircd/messages.c: fixed duplicating messages to RFC2813
 	  servers through A_MULTI servers.
+	* modules/ircd/ircd.c, modules/ircd/queries.c: added connection flags
+	  into RPL_TRACELINKS and RPL_TRACESERVER.
 
 Sun Sep 25 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c: fixed duplicated messages in console (bug#72).
