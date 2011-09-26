@@ -2927,7 +2927,7 @@ static int ircd_server_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
   ircd_sendto_servers_all (Ircd, pp, ":%s SERVER %s %hd %hd :%s", sender,
 			   argv[0], cl->hops + 1, cl->x.token + 1, info);
   Add_Request(I_LOG, "*", F_SERV, "Received SERVER %s from %s (%hd %s)",
-	      argv[0], cl->lcnick, cl->hops, cl->fname);
+	      argv[0], sender, cl->hops, cl->fname);
   return 1;
 }
 
@@ -3033,7 +3033,7 @@ static int ircd_iserver(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   ircd_sendto_servers_new (Ircd, pp, ":%s ISERVER %s %hd %hd :%s", sender,
 			   argv[0], cl->hops + 1, cl->x.token + 1, argv[3]);
   Add_Request(I_LOG, "*", F_SERV, "Received ISERVER %s from %s (%hd %s)",
-	      argv[0], cl->lcnick, cl->hops, cl->fname);
+	      argv[0], sender, cl->hops, cl->fname);
   return 1;
 }
 #endif /* IRCD_MULTICONNECT */
