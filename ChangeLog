@@ -18,6 +18,8 @@ Mon Sep 26 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: changed tokens to be sent counting from 1.
 	* modules/ircd/ircd.c: fixed RPL_TRACESERVER to count all behind link.
 	* modules/ircd/ircd.c: fixed SERVER log message.
+	* modules/ircd/messages.c: fixed duplicating messages to RFC2813
+	  servers through A_MULTI servers.
 
 Sun Sep 25 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c: fixed duplicated messages in console (bug#72).
@@ -36,6 +38,11 @@ Sun Sep 25 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed who sets mode in JOIN message on NJOIN.
 	* modules/ircd/servers.c: fixed remote quit message.
 
+Sat Sep 24 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/main.c: fixed 100% CPU eating by console.
+	* core/direct.c, modules/irc-ctcp/dcc.c: fixed crash on FreeBSD 8.x
+	  as implicit pthread_cleanup_pop does not work after return operator.
+
 Fri Sep 23 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.*: fixed a mess out of A_AWAY with A_UPLINK.
 	* core/socket.c: fixed bad initialization of poll array.
@@ -50,9 +57,6 @@ Fri Sep 23 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/servers.c: fixed backfired KILL message.
 	* modules/ircd/queries.c, modules/ircd/clients.c: corrected away reply
 	  on WHOIS query.
-	* core/main.c: fixed 100% CPU eating by console.
-	* core/direct.c, modules/irc-ctcp/dcc.c: fixed crash on FreeBSD 8.x
-	  as implicit pthread_cleanup_pop does not work after return operator.
 
 Thu Sep 22 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/protos.h: fixed 'max' statistic in macro ALLOCATABLE_TYPE.

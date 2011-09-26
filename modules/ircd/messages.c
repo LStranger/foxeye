@@ -244,7 +244,7 @@ static void _ircd_broadcast_msglist_old (IRCD *ircd, struct peer_priv *via,
 	  if (CLIENT_IS_REMOTE(mm->who) && mm->who->cs->via != via &&
 	      mm->who->cs->x.token != token &&
 #if IRCD_MULTICONNECT
-	      (all || !(mm->who->cs->umode & A_MULTI)) &&
+	      (all || !(mm->who->cs->via->link->cl->umode & A_MULTI)) &&
 #endif
 	      !(mm->who->cs->via->p.iface->ift & I_PENDING) &&
 	      simple_match (c, mm->who->cs->lcnick) > 0)
@@ -255,7 +255,7 @@ static void _ircd_broadcast_msglist_old (IRCD *ircd, struct peer_priv *via,
 	for (mm = tch->users; mm; mm = mm->prevnick)
 	  if (CLIENT_IS_REMOTE(mm->who) && mm->who->cs->via != via &&
 #if IRCD_MULTICONNECT
-	      (all || !(mm->who->cs->umode & A_MULTI)) &&
+	      (all || !(mm->who->cs->via->link->cl->umode & A_MULTI)) &&
 #endif
 	      mm->who->cs->x.token != token)
 	    mm->who->cs->via->p.iface->ift |= I_PENDING;
