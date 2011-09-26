@@ -24,6 +24,7 @@ Mon Sep 26 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  into RPL_TRACELINKS and RPL_TRACESERVER.
 	* modules/ircd/ircd.c, modules/ircd/clients.c, modules/ircd/servers.c:
 	  modified QUIT messages to be sent always with user@host.
+	* modules/ircd/servers.c: fixed broken NJOIN message in transit.
 
 Sun Sep 25 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c: fixed duplicated messages in console (bug#72).

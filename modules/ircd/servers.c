@@ -597,7 +597,8 @@ static int ircd_njoin(INTERFACE *srv, struct peer_t *peer, unsigned short token,
       continue;
     if (mptr != 0)
       msg[mptr++] = ',';
-    mptr++;			/* it already took the char, see above */
+    if (mf != 0)
+      mptr++;			/* it already took the char, see above */
     if (mf & A_ADMIN)
       msg[mptr++] = '@';
     mptr += strfcpy(&msg[mptr], clname, sizeof(msg) - mptr);
