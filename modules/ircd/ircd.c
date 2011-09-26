@@ -2434,7 +2434,8 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
   if (clt && clt->hold_upto) {
     ERROR("ircd: internal error on %s", cl->lcnick);
     clt = NULL;
-  } else if (clt && (!CLIENT_IS_SERVER(clt) || CLIENT_IS_LOCAL(clt)))
+  } else if (clt && (!CLIENT_IS_SERVER(clt) || CLIENT_IS_LOCAL(clt) ||
+	     !(clt->umode & A_MULTI)))
 #else
   if (clt)				/* it's already in our network */
 #endif
@@ -2579,6 +2580,14 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
     return 1;
   }
 #endif
+#if IRCD_MULTICONNECT
+  /* check if it's another connect of already known server */
+  if (clt && !(cl->umode & A_MULTI)) { /* another connect with another flags */
+    _ircd_peer_kill (cl->via, "duplicate connection not allowed");
+    //FIXME: SQUIT another one too?
+    return 1;
+  }
+#endif
   if (!(cl->umode & A_UPLINK))
     _ircd_class_out (cl->via->link); /* it's still !A_SERVER if not uplink */
 #if IRCD_MULTICONNECT
@@ -2589,6 +2598,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
     clt->alt = clt->via;	/* shift shortest to alt */
     clt->via = cl->via;		/* and set shortest to this */
     clt->hops = 1;
+    clt->umode |= cl->umode;	/* copy A_UPLINK there */
     strfcpy (clt->fname, cl->fname, sizeof(clt->fname)); /* rewrite! */
     pthread_mutex_lock (&IrcdLock);
     free_CLIENT (cl);
@@ -2636,6 +2646,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
   else
     ircd_sendto_servers_new (Ircd, cl->via, "SERVER %s 2 %hu :%s", argv[0],
 			     cl->x.token, cl->fname); //!
+  if (clt == NULL)			/* don't send duplicates to RFC2813 */
 #endif
   ircd_sendto_servers_old (Ircd, cl->via, "SERVER %s 2 %hu :%s", argv[0],
 			   cl->x.token, cl->fname); //!
@@ -2776,7 +2787,7 @@ static CLIENT *_ircd_got_new_remote_server (peer_priv *pp, CLIENT *src,
 
       if (add < TOKEN_ALLOC_SIZE)
 	add = TOKEN_ALLOC_SIZE;
-      safe_realloc ((void **)pp->i.token, (pp->t + add) * sizeof(CLIENT *));
+      safe_realloc ((void **)&pp->i.token, (pp->t + add) * sizeof(CLIENT *));
       while (add--)
 	pp->i.token[pp->t++] = NULL;
     }
@@ -2924,7 +2935,7 @@ static int ircd_iserver(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 			int argc, const char **argv)
 { /* args: <servername> <hopcount> <token> <info> */
   peer_priv *pp = peer->iface->data; /* it's peer really */
-  CLIENT *src, *cl;
+  CLIENT *src, *cl, *clo;
   long ntok;
   LINK *link;
   register char *c;
@@ -2982,6 +2993,7 @@ static int ircd_iserver(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     return 1;
   }
   /* ok, we got and checked everything, create data and announce */
+  clo = cl;
   if (!cl)
     cl = _ircd_got_new_remote_server (pp, src, ntok, argv[0], nhn, argv[3]);
   if (!cl) /* peer was squited */
@@ -3011,8 +3023,9 @@ static int ircd_iserver(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   if (atoi(argv[1]) != (int)cl->hops)
     dprint(5, "ircd: hops count for %s from %s: got %s, have %hd", argv[0],
 	   cl->lcnick, argv[1], cl->hops);
-  ircd_sendto_servers_old (Ircd, pp, ":%s SERVER %s %hd %hd :%s", sender,
-			   argv[0], cl->hops + 1, cl->x.token, argv[3]);
+  if (clo == NULL)		/* don't send duplicate to RFC2813 servers */
+    ircd_sendto_servers_old (Ircd, pp, ":%s SERVER %s %hd %hd :%s", sender,
+			     argv[0], cl->hops + 1, cl->x.token, argv[3]);
   ircd_sendto_servers_new (Ircd, pp, ":%s ISERVER %s %hd %hd :%s", sender,
 			   argv[0], cl->hops + 1, cl->x.token, argv[3]);
   Add_Request(I_LOG, "*", F_SERV, "Received ISERVER %s from %s (%hd %s)",
@@ -4039,6 +4052,7 @@ static inline void _ircd_lserver_out (LINK *l)
   else
     ERROR ("ircd:_ircd_lserver_out: local server %s not found in list!",
 	   l->cl->lcnick);
+  l->cl->umode &= ~A_UPLINK;	/* it's valid only for local connects */
 }
 
 /* remote link squitted */
