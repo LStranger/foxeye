@@ -2700,7 +2700,7 @@ static inline int _ircd_is_server_name (const char *lcc)
 {
   if (!strchr (lcc, '.'))		/* it should have at least one dot */
     return 0;
-  while (*lcc)
+  for ( ; *lcc; lcc++)
     switch (*lcc)
     {
       case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g':

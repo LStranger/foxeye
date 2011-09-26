@@ -9,8 +9,11 @@ TODO:
 	* core/socket.c: to make socket limit extendible.
 
 --- [0.10.0]
-Sun Sep 24 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
-	* core/dispatcher.c: fixed duplicated messages in console.
+Mon Sep 26 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/ircd.c: fixed infinite cycle in _ircd_is_server_name().
+
+Sun Sep 25 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/dispatcher.c: fixed duplicated messages in console (bug#72).
 	* *.c: done revision of debug messages.
 	* configure: fixed -fno-strict-aliasing addition.
 	* modules/ircd/ircd.c, modules/ircd/clients.c, modules/ircd/servers.c:
