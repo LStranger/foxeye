@@ -9,6 +9,9 @@ TODO:
 	* core/socket.c: to make socket limit extendible.
 
 --- [0.10.0]
+Tue Sep 27 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/channels.c: fixed wrong channel mode parameters parsing.
+
 Mon Sep 26 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed infinite cycle in _ircd_is_server_name().
 	* modules/ircd/ircd.c: fixed sending duplicates to RFC2813 servers.

@@ -116,7 +116,9 @@ Which modules are available?
    getops	- automatic getting privileges from other bots
    icq		- client for ICQ network
    irc-protection - antiflood, antispam and other
+   ircd-console - "consolecmd" command for IRC operators
    ircd-rusnet	- RusNet ircd IRC server extensions
+   ircd-tkserv	- "temporary kill" support for ircd
    jabber	- client for Jabber network
    login	- "login", "logoff", and "cron" scripts for each chat user
    md5		- support for md5 encryption

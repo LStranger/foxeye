@@ -206,6 +206,7 @@ struct CLIENT
   char host[HOSTLEN+1];			/* host ; LC ; split server if on hold
 						       empty if hold by acks */
 					/* and it's used for service distrib. */
+  //char vhost[HOSTLEN+1];		/* TODO: "visible host" to show to users */
 };
 
 /* channel's member data */
