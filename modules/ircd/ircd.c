@@ -1333,7 +1333,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 #endif
   }
   if (peer->p.state == P_QUIT)		/* died in execution! */
-    return REQ_REJECTED;
+    return REQ_OK;
   else if (peer->p.state != P_TALK)
     i = _ircd_start_timeout;		/* don't send PING at registering */
   else if (CLIENT_IS_SERVER(cl))
@@ -1352,7 +1352,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
       New_Request (cli, F_QUICK, ":%s PING %s", MY_NAME, MY_NAME);
   }
   if (req)
-    return REQ_REJECTED;
+    return REQ_REJECTED;		/* retry it later */
   return REQ_OK;
 }
 
