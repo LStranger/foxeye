@@ -1261,7 +1261,8 @@ static void *_ask_ident (void *input_data)
   char buf[SHORT_STRING];
 
   pthread_cleanup_push (&_ident_cleanup, input_data);
-  domain = SocketDomain (acptr->socket, &p);
+  SocketDomain (acptr->socket, &p);
+  domain = SocketIP(acptr->socket);
   if (SetupSocket (acptr->id, domain, 113, NULL, NULL) == 0)
   {
     snprintf (buf, sizeof(buf), "%hu, %hu\n", p, acptr->lport);
@@ -1310,9 +1311,8 @@ static void *_accept_port (void *input_data)
   acptr->id = GetSocket (M_RAW);
   if (acptr->id >= 0 && pthread_create(&ith, NULL, &_ask_ident, input_data) == 0)
   {
-    time (&t);
     Set_Iface (NULL);
-    t += ident_timeout;
+    t = Time + ident_timeout;
     Unset_Iface();
     while (acptr->tst != 0) {
       nanosleep (&ts1, &ts2);		/* wait for prehandler */
