@@ -13,6 +13,7 @@ Tue Sep 27 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed wrong channel mode parameters parsing.
 	* core/direct.c: fixed ident requesting.
 	* modules/ircd/messages.c: fixed missing messages.
+	* modules/ircd/servers.c: fixed SIGSEGV on INVITE outside of channel.
 
 Mon Sep 26 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed infinite cycle in _ircd_is_server_name().

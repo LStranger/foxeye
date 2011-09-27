@@ -741,7 +741,7 @@ static int ircd_invite_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
 			  int argc, const char **argv)
 { /* args: <nickname> <channel> */
   CLIENT *cl, *tgt;
-  MEMBER *memb;
+  MEMBER *me, *memb;
   struct peer_priv *pp = peer->iface->data; /* it's really peer */
 
   if (argc != 2) {
@@ -753,9 +753,10 @@ static int ircd_invite_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
   if (!tgt || (tgt->umode & (A_SERVER|A_SERVICE)))
     return ircd_do_unumeric (cl, ERR_NOSUCHNICK, cl, 0, argv[0]);
     //TODO: what if cl is a server?
-  memb = ircd_find_member ((IRCD *)srv->data, argv[1], cl);
-  if (memb != NOSUCHCHANNEL)
+  me = ircd_find_member ((IRCD *)srv->data, argv[1], NULL);
+  if (me != NOSUCHCHANNEL)
   {
+    memb = _ircd_is_on_channel (cl, me->chan);
     if (!memb)
       Add_Request(I_LOG, "*", F_WARN, "ircd:got INVITE via %s from %s to %s "
 		  "which is not on that channel", peer->dname, sender, argv[1]);
@@ -766,10 +767,10 @@ static int ircd_invite_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
 		  "overriding channel modes", peer->dname, sender, argv[1]);
     else if (_ircd_is_on_channel (tgt, memb->chan))
       return ircd_do_unumeric (cl, ERR_USERONCHANNEL, tgt, 0, argv[1]);
+    if (!CLIENT_IS_REMOTE(tgt))
+      ircd_add_invited (tgt, me->chan);
   }
   ircd_sendto_one (tgt, "INVITE %s %s", argv[0], argv[1]);
-  if (!CLIENT_IS_REMOTE(tgt) && memb != NOSUCHCHANNEL)
-    ircd_add_invited (tgt, memb->chan);
   if (!(cl->umode & (A_SERVER|A_SERVICE)) && tgt->away[0])
     ircd_do_unumeric (cl, RPL_AWAY, tgt, 0, tgt->away);
   return (1);
