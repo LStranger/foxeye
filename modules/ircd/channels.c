@@ -578,18 +578,17 @@ static int _imch_add_mask (MASK **list, const char *mask)
   /* note: it might exceed field size? */
   mask = nm->what;
   while (*list)
-    if (simple_match (mask, (*list)->what) > 0) /* it eats that one */
-    {
+    if (strcmp(mask, (*list)->what) == 0) { /* duplicate mask */
+      free_MASK(nm);
+      return (-1);
+    } else if (simple_match (mask, (*list)->what) > 0) { /* it eats that one */
       mm = *list;
       *list = mm->next;
       free_MASK (mm);
-    }
-    else if (simple_match ((*list)->what, mask) > 0) /* that one eats it */
-    {
+    } else if (simple_match ((*list)->what, mask) > 0) { /* that one eats it */
       free_MASK (nm);
       return 0;
-    }
-    else
+    } else
       list = &(*list)->next;
   *list = nm;
   nm->next = NULL;
@@ -970,6 +969,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	  modeflag mf = 0;
 	  char charstr[2];
 	  register _mch_func_t f;
+	  register int ec;
 	  int (*ma)(INTERFACE *, const char *, const char *, int, const char *);
 	  const char *par;
 	  MEMBER *tar;
@@ -1033,11 +1033,18 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	      if (mf & A_OP)		/* operator added so reset this */
 		ch->noop_since = 0;
 	    } else if (par) {		/* it has a parameter */
-	      if (ma (srv, peer->dname, ch->name, add, par))
+	      ec = ma (srv, peer->dname, ch->name, add, par);
+	      if (ec <= 0) {
+		if (ec < 0)
+		  dprint(4, "ircd:channels.c: mode +%c %s already present on %s",
+			 *c, par, ch->name);
+		else
+		  WARNING ("ircd: error on setting MODE %s +%c %s", ch->name,
+			   *c, par);
+		n--;			/* it discarded */
+		continue;
+	      } else
 		ch->mode |= mf;
-	      else
-		WARNING ("ircd: error on setting MODE %s +%c %s", ch->name, *c,
-			 par);
 	    } else			/* just modechange */
 	      ch->mode |= mf;
 	    *++imp = *c;		/* it has '+' or last */
@@ -1050,11 +1057,18 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	    //TODO: need we set noop_since on MODE #chan -o nick ?
 	  else if (par)			/* it has a parameter */
 	  {
-	    if (ma (srv, peer->dname, ch->name, add, par))
+	    ec = ma (srv, peer->dname, ch->name, add, par);
+	    if (ec <= 0) {
+	      if (ec < 0)
+		dprint(4, "ircd:channels.c: there isn't +%c %s on %s to remove",
+		       *c, par, ch->name);
+	      else
+		WARNING ("ircd: error on setting MODE %s -%c %s", ch->name, *c,
+			 par);
+	      n--;			/* it discarded */
+	      continue;
+	    } else
 	      ch->mode &= ~mf;
-	    else
-	      WARNING ("ircd: error on setting MODE %s -%c %s", ch->name, *c,
-		       par);
 	  }
 	  else				/* just modechange */
 	    ch->mode &= ~mf;
@@ -1518,6 +1532,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	  modeflag mf = 0;
 	  char charstr[2];
 	  register _mch_func_t f;
+	  register int ec;
 	  int (*ma)(INTERFACE *, const char *, const char *, int, const char *);
 	  const char *par;
 	  MEMBER *tar;
@@ -1612,11 +1627,18 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	      if (mf & A_OP)		/* operator added so reset this */
 		ch->noop_since = 0;
 	    } else if (par) {		/* it has a parameter */
-	      if (ma (srv, pp->p.dname, ch->name, add, par))
+	      ec = ma (srv, pp->p.dname, ch->name, add, par);
+	      if (ec <= 0) {
+		if (ec < 0)
+		  dprint(4, "ircd:channels.c: mode +%c %s already present on %s",
+			 *c, par, ch->name);
+		else
+		  WARNING ("ircd: error on setting MODE %s +%c %s", ch->name,
+			   *c, par);
+		n--;			/* it discarded */
+		continue;
+	      } else
 		ch->mode |= mf;
-	      else
-		WARNING ("ircd: error on setting MODE %s +%c %s", ch->name, *c,
-			 par);
 	    } else			/* just modechange */
 	      ch->mode |= mf;
 	    *++imp = *c;		/* it has '+' or last */
@@ -1629,11 +1651,18 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	    //TODO: need we set noop_since on MODE #chan -o nick ?
 	  else if (par)			/* it has a parameter */
 	  {
-	    if (ma (srv, pp->p.dname, ch->name, add, par))
+	    ec = ma (srv, pp->p.dname, ch->name, add, par);
+	    if (ec <= 0) {
+	      if (ec < 0)
+		dprint(4, "ircd:channels.c: there isn't +%c %s on %s to remove",
+		       *c, par, ch->name);
+	      else
+		WARNING ("ircd: error on setting MODE %s -%c %s", ch->name, *c,
+			 par);
+	      n--;			/* it discarded */
+	      continue;
+	    } else
 	      ch->mode &= ~mf;
-	    else
-	      WARNING ("ircd: error on setting MODE %s -%c %s", ch->name, *c,
-		       par);
 	  }
 	  else				/* just modechange */
 	    ch->mode &= ~mf;

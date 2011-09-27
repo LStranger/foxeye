@@ -162,7 +162,8 @@
     filled with pointer to function to set/clear/query the mode (which
     may get _a_d_d equal to -1 for mode query and will get also channel name
     _c_h and parameter _p_a_r_a_m for that modechange). The function _m_a should
-    return 1 on success or 0 on fail. Returns modeflag change for target
+    return 1 on success, 0 on fail, or -1 if change was ignored (if ban
+    was already existed for example). Returns modeflag change for target
     if it's approved combined with lowest bit set to 1 if that modechange
     should consume a parameter (even if it isn't approved). Since it is
     required to do backward conversion on server connection burst so to

@@ -15,6 +15,7 @@ Tue Sep 27 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/messages.c: fixed missing messages.
 	* modules/ircd/servers.c: fixed SIGSEGV on INVITE outside of channel.
 	* modules/ircd/channels.c: fixed RPL_BANLIST reply.
+	* modules/ircd/channels.c: removed broadcasting duplicate modes.
 
 Mon Sep 26 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed infinite cycle in _ircd_is_server_name().
