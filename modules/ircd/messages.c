@@ -174,7 +174,8 @@ static void _ircd_broadcast_msglist_new (IRCD *ircd, struct peer_priv *via,
 	c++;
 	for (mm = tch->users; mm; mm = mm->prevnick)
 	  if (CLIENT_IS_REMOTE(mm->who) && mm->who->cs->via != via &&
-	      mm->who->cs->x.token != token && (mm->who->cs->umode & A_MULTI) &&
+	      mm->who->cs->x.token != token &&
+	      (mm->who->cs->via->link->cl->umode & A_MULTI) &&
 	      !(mm->who->cs->via->p.iface->ift & I_PENDING) &&
 	      simple_match (c, mm->who->cs->lcnick) > 0)
 	    mm->who->cs->via->p.iface->ift |= I_PENDING;
@@ -183,7 +184,8 @@ static void _ircd_broadcast_msglist_new (IRCD *ircd, struct peer_priv *via,
       {
 	for (mm = tch->users; mm; mm = mm->prevnick)
 	  if (CLIENT_IS_REMOTE(mm->who) && mm->who->cs->via != via &&
-	      mm->who->cs->x.token != token && (mm->who->cs->umode & A_MULTI))
+	      mm->who->cs->x.token != token &&
+	      (mm->who->cs->via->link->cl->umode & A_MULTI))
 	    mm->who->cs->via->p.iface->ift |= I_PENDING;
       }
     }
