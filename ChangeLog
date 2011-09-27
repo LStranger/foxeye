@@ -17,6 +17,8 @@ Tue Sep 27 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed RPL_BANLIST reply.
 	* modules/ircd/channels.c: removed broadcasting duplicate modes.
 	* modules/ircd/ircd.c: fixed not ignoring incomplete connections.
+	* core/dispatcher.c: added try to empty queue at once; that may speed
+	  up dispatcher but it may be risky as well.
 
 Mon Sep 26 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed infinite cycle in _ircd_is_server_name().

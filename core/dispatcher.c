@@ -899,8 +899,12 @@ static void iface_run (unsigned int i)
   }
   else if (!(Interface[i]->a.ift & I_LOCKED))
   {
+    register int gc;
+
     stack_iface (&Interface[i]->a, 1);
-    _get_current();			/* run with LockIface only */
+    gc = _get_current();		/* run with LockIface only */
+    while (gc > 0 && Interface[i]->a.qsize > 0)
+      gc = _get_current();		/* try to empty queue at once */
     if (unstack_iface())
       bot_shutdown ("OOPS! extra locks of interface, exiting...", 7);
   }
