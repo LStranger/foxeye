@@ -2283,9 +2283,13 @@ static inline void _ircd_burst_clients (INTERFACE *cl, unsigned short t,
   if (s == NULL)
     return;
   dprint(5, "ircd:ircd.c:_ircd_burst_clients: %s to %s", s->cl->nick, cl->name);
-  while (s)
+  for ( ; s; s = s->prev)
   {
-    if (CLIENT_IS_SERVER (s->cl))	/* recursion */
+    if ((t == 0) && (s->cl->via->p.state != P_TALK)) { /* not ready */
+      dprint(5, "ircd: ignoring incomplete connection %s@%s", s->cl->user,
+	     s->cl->host);
+      continue;
+    } else if (CLIENT_IS_SERVER (s->cl)) /* recursion */
       _ircd_burst_clients (cl, s->cl->x.token, s->cl->c.lients, umode);
     else if (CLIENT_IS_SERVICE (s->cl))
       /* <servicename> <servertoken> <distribution> <type> <hopcount> <info> */
@@ -2296,7 +2300,6 @@ static inline void _ircd_burst_clients (INTERFACE *cl, unsigned short t,
       New_Request (cl, 0, "NICK %s %hu %s %s %hu +%s :%s", s->cl->nick,
 		   s->cl->hops, s->cl->user, s->cl->host, t + 1,
 		   ircd_make_umode (umode, s->cl->umode, 16), s->cl->fname);
-    s = s->prev;
   }
 }
 
