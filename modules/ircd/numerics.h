@@ -90,9 +90,9 @@
 #define RPL_INVITING		341, "%# %*"
 #define RPL_SUMMONING		342, "%# :Summoning user to IRC"
 /* 344-345 reserved */
-#define RPL_INVITELIST		346, "%# %@"
+#define RPL_INVITELIST		346, "%# %*"
 #define RPL_ENDOFINVITELIST	347, "%# :End of channel invite list"
-#define RPL_EXCEPTLIST		348, "%# %@"
+#define RPL_EXCEPTLIST		348, "%# %*"
 #define RPL_ENDOFEXCEPTLIST	349, "%# :End of channel exception list"
 #define RPL_VERSION		351, "%V%?P.d%P?? %= :%*"
 #define RPL_WHOREPLY		352, "%*"
@@ -101,7 +101,7 @@
 /* 361-363 reserved */
 #define RPL_LINKS		364, "%# %* :%?P%P?0? %@"
 #define RPL_ENDOFLINKS		365, "%* :End of LINKS list"
-#define RPL_BANLIST		367, "%# %@"
+#define RPL_BANLIST		367, "%# %*"
 #define RPL_ENDOFBANLIST	368, "%# :End of channel ban list"
 #define RPL_ENDOFWHOWAS		369, "%* :End of WHOWAS"
 #define RPL_INFO		371, ":%*"
