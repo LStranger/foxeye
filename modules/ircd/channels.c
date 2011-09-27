@@ -979,6 +979,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	  b = Check_Bindtable (BTIrcdModechange, charstr, U_ALL, U_ANYCH, NULL);
 	  if (!b)
 	    CONTINUE_ON_MODE_ERROR (ERR_UNKNOWNMODE, charstr);
+	  tar = NULL;
 	  if ((par = strchr (Ircd_modechar_list, *c)) /* check for compliance */
 	      && Ircd_whochar_list[par-Ircd_modechar_list] != ' ')
 	  {
@@ -989,7 +990,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	    if (!tar)
 	      CONTINUE_ON_MODE_ERROR (ERR_USERNOTINCHANNEL, NULL);
 	  } else
-	    tar = NULL;
+	    par = NULL;
 	  while (b)			/* cycle thru all */
 	  {
 	    if (!b->name)
@@ -1010,8 +1011,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	      CONTINUE_ON_MODE_ERROR (ERR_NEEDMOREPARAMS, NULL);
 	    par = argv[++i];		/* parameter is next one */
 	    mf--;			/* reset the flag */
-	  } else
-	    par = NULL;
+	  }
 	  if (mf & A_PINGED)		/* check if A_ADMIN required but not */
 	    CONTINUE_ON_MODE_ERROR (ERR_UNIQOPPRIVSNEEDED, NULL);
 	  while (mf && (b = Check_Bindtable (BTIrcdCheckModechange, peer->dname,
@@ -1531,6 +1531,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	    CONTINUE_ON_MODE_ERROR ("unknown MODE char", " %c via %s", *c,
 				    pp->p.dname);
 	  }
+	  tar = NULL;
 	  if ((par = strchr (Ircd_modechar_list, *c)) /* check for compliance */
 	      && Ircd_whochar_list[par-Ircd_modechar_list] != ' ')
 	  {
@@ -1547,7 +1548,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 				      par, ch->name, pp->p.dname);
 	    }
 	  } else
-	    tar = NULL;
+	    par = NULL;
 	  while (b)			/* cycle thru all */
 	  {
 	    if (!b->name)
@@ -1570,8 +1571,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	    }
 	    par = argv[++i];		/* parameter is next one */
 	    mf--;			/* reset the flag */
-	  } else
-	    par = NULL;
+	  }
 	  mf &= ~A_PINGED;		/* reset extra flag */
 	  while (mf && (b = Check_Bindtable (BTIrcdCheckModechange, pp->p.dname,
 					     U_ALL, U_ANYCH, b)))
