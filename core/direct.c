@@ -837,6 +837,8 @@ static ssize_t _ccfilter_y_recv (struct connchain_i **ch, idx_t id, char *str,
     return E_NOSOCKET;
   }
   sr = Connchain_Get (ch, id, str, sz);
+  if (id < 0)				/* pulling buffers */
+    return (sr);
   if (sr < 0)				/* got an error */
     FREE (b);
   if (sr <= 0)				/* error or no data */
@@ -926,7 +928,7 @@ static ssize_t _ccfilter_b_recv (struct connchain_i **ch, idx_t id, char *str,
   if (str == NULL)			/* they killed me */
     return E_NOSOCKET;
   sr = Connchain_Get (ch, id, str, sz);
-  if (sr <= 0)				/* error or no data */
+  if (id < 0 || sr <= 0)		/* pulling or error or no data */
     return sr;
   if (str[0] != 0)
   {

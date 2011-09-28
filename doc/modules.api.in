@@ -1243,9 +1243,10 @@ Connection chain API:
     on receiving data then chain will return data that still left in
     buffers and if no data left then chain will be destroyed. If socket
     is still waiting for connection then it counts as error too. This
-    function should never close or destroy the socket. It will use N_POLL
-    socket reading mode if peer state is P_DISCONNECTED or P_INITIAL.
-    Returns either error code or size of data that was received into _b_u_f.
+    function should never close or destroy the socket. In case if _i_d_x is
+    -1 then chain will return raw unprocessed data if there is something
+    left in buffers and if no data left then return error. Returns either
+    error code or size of data that was received into _b_u_f.
 	Reenterability: thread-safe
 	Cancellation point: maybe
 

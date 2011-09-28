@@ -15,6 +15,9 @@ Wed Sep 28 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed handling nickname casechange.
 	* modules/ircd/ircd.c: fixed mess with collisions with phantoms.
 	* modules/ircd/ircd.c: changed autoconnects to be on timer.
+	* core/connchain.c, core/direct.c, doc/modules.api: changed connchain
+	  link receiver function to accept -1 as socket identifier to make a
+	  raw pull of chain buffers.
 
 Tue Sep 27 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed wrong channel mode parameters parsing.

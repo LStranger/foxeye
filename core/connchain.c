@@ -359,6 +359,33 @@ static ssize_t _ccfilter_x_recv (connchain_i **ch, idx_t id, char *str,
     FREE (b);				/* free the buffer struct */
     return E_NOSOCKET;
   }
+  if (id == -1) {			/* pulling buffers */
+    if (bb->inbuf > 0) {
+      register size_t x;
+
+      x = sizeof(bb->buf) - bb->bufpos;
+      if (x > bb->inbuf)
+	x = bb->inbuf;
+      if (x > sz)
+	x = sz;
+      i = x;
+      memcpy(str, &bb->buf[bb->bufpos], x);
+      bb->inbuf -= i;
+      if (bb->inbuf == 0 || sz == i)
+	return (i);
+      sz -= i;
+      str += i;
+      x = bb->inbuf;
+      if (x > sz)
+	x = sz;
+      bb->bufpos = x;
+      bb->inbuf -= x;
+      i += x;
+      memcpy(str, bb->buf, x);
+      return (i);
+    } else
+      return Connchain_Get (ch, id, str, sz);
+  }
   if (bb->inbuf && (i = _ccfx_find_line (bb)) >= 0)
     return _ccfx_get_line (bb, i, str, sz); /* pull all lines from buffer */
   if (bb->inbuf == 0)
