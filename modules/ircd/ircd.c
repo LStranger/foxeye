@@ -813,7 +813,7 @@ static inline void _ircd_move_acks (CLIENT *tgt, CLIENT *clone)
 
 /* declaration, args: client, server-sender, sender token, new nick
    returns phantom client structure on hold by CHASETIMELIMIT */
-static CLIENT *_ircd_do_nickchange(CLIENT *, peer_priv *, unsigned short, const char *);
+static CLIENT *_ircd_do_nickchange(CLIENT *, peer_priv *, unsigned short, const char *, int);
 
 /* checks nick for collision and if collision not found then returns NULL
    else may try to make a new nick for this one and rename collided
@@ -900,7 +900,7 @@ static CLIENT *_ircd_check_nick_collision(char *nick, size_t nsz, peer_priv *pp)
     Add_Request(I_LOG, "*", F_MODES, "KILL %s :Nick collision from %s",
 		collided->nick, pp->p.dname);
   } else if (collnick != collided->nick) { /* binding asked to change collided */
-    _ircd_do_nickchange(collided, NULL, 0, collnick);
+    _ircd_do_nickchange(collided, NULL, 0, collnick, 0);
     if (_ircd_find_client(nick)) { /* ouch! we got the same for both collided! */
       ERROR("ircd:collision resolving conflict for nick %s", nick);
       nick[0] = '\0';
@@ -2225,18 +2225,26 @@ static int ircd_nick_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 			char *host, int argc, const char **argv)
 { /* args: <new nick> */
   CLIENT *cl = ((peer_priv *)peer->iface->data)->link->cl; /* it's really peer->link->cl */
+  int is_casechange;
   char checknick[MB_LEN_MAX*NICKLEN+NAMEMAX+2];
 
   if (argc == 0)
     return ircd_do_unumeric (cl, ERR_NONICKNAMEGIVEN, cl, 0, NULL);
-  if (!_ircd_check_nick_cmd (cl, checknick, argv[0], sizeof(checknick)))
+  unistrlower(checknick, argv[0], sizeof(checknick));
+  if (strcmp(checknick, cl->lcnick) == 0)
+    is_casechange = 1;
+  else if (!_ircd_check_nick_cmd (cl, checknick, argv[0], sizeof(checknick)))
     return 1;
+  else
+    is_casechange = 0;
 #ifdef USE_SERVICES
   //TODO: forbidden for services!
 #endif
   if (cl->umode & A_RESTRICTED)
     return ircd_do_unumeric (cl, ERR_RESTRICTED, cl, 0, NULL);
-  _ircd_do_nickchange(cl, NULL, 0, checknick);
+  _ircd_do_nickchange(cl, NULL, 0, checknick, is_casechange);
+  if (is_casechange)		/* no iface rename required */
+    return (1);
   snprintf (checknick, sizeof(checknick), "%s@%s", cl->lcnick, Ircd->iface->name);
   Rename_Iface (peer->iface, checknick); /* rename iface to newnick@net */
   return 1;
@@ -3055,11 +3063,12 @@ static inline void _ircd_transform_invalid_nick(char *buf, const char *nick,
   *buf = '\0';
 }
 
-/* args: live client, server-sender, sender token, new nick
+/* args: live client, server-sender, sender token, new nick, casechange flag
    returns: phantom (on hold) old nick
    new nick should be checked to not collide! */
 static CLIENT *_ircd_do_nickchange(CLIENT *tgt, peer_priv *pp,
-				   unsigned short token, const char *nn)
+				   unsigned short token, const char *nn,
+				   int casechange)
 {
   CLIENT *phantom;
 
@@ -3073,6 +3082,10 @@ static CLIENT *_ircd_do_nickchange(CLIENT *tgt, peer_priv *pp,
   Add_Request(I_PENDING, "*", 0, ":%s!%s@%s NICK %s", tgt->nick, tgt->user,
 	      tgt->host, nn);
   /* change our data now */
+  if (casechange) {
+    strfcpy(tgt->nick, nn, sizeof(tgt->nick));
+    return (NULL);
+  }
   if (Delete_Key(Ircd->clients, tgt->lcnick, tgt) < 0)
     ERROR("ircd:_ircd_do_nickchange: tree error on removing %s", tgt->lcnick);
     //TODO: isn't it fatal?
@@ -3163,6 +3176,11 @@ static int _ircd_remote_nickchange(CLIENT *tgt, peer_priv *pp,
     ERROR("ircd:got NICK from nonexistent user %s via %s", sender, pp->p.dname);
     return ircd_recover_done(pp, "Bogus NICK sender");
   }
+  unistrlower(checknick, nn, sizeof(checknick));
+  if (strcmp(tgt->lcnick, checknick) == 0) { /* this is just case change */
+    _ircd_do_nickchange(tgt, pp, token, nn, 1);
+    return (1);
+  }
   changed = 1;
   if (!_ircd_validate_nickname(checknick, nn, sizeof(checknick))) {
     _ircd_transform_invalid_nick(checknick, nn, sizeof(checknick));
@@ -3215,7 +3233,7 @@ static int _ircd_remote_nickchange(CLIENT *tgt, peer_priv *pp,
     /* relations will be fixed after rename below */
     New_Request(pp->p.iface, 0, ":%s NICK :%s", nn, checknick);
   }
-  collision = _ircd_do_nickchange(tgt, pp, token, checknick);
+  collision = _ircd_do_nickchange(tgt, pp, token, checknick, 0);
   /* order is now: ? -> collision=old -> (?phantom?) -> tgt=new */
   if (phantom != NULL) {		/* fix relations now */
     collision->x.rto = phantom;
