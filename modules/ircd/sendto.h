@@ -44,7 +44,7 @@
     a->cs->alt->p.iface->ift |= I_PENDING; \
   Add_Request (I_PENDING, "*", 0, __VA_ARGS__); } while(0)
 #define ircd_sendto_one(a,...) do {\
-  if (CLIENT_IS_LOCAL(a)) \
+  if (!CLIENT_IS_REMOTE(a)) \
     New_Request (a->via->p.iface, 0, __VA_ARGS__); \
   else ircd_sendto_remote (a, __VA_ARGS__); } while(0)
 /* sends to remote user when using different syntax for new and old server types */

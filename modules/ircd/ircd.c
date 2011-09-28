@@ -3889,8 +3889,10 @@ CLIENT *ircd_find_client (const char *name, peer_priv *via)
     return &ME;
   dprint(5, "ircd:ircd.c:ircd_find_client: %s", name);
   c = _ircd_find_client (name);
-  if (c == NULL || via == NULL || (c->hold_upto == 0))
+  if (c == NULL || (c->hold_upto == 0))
     return (c);
+  if (via == NULL)
+    return (NULL);
   c = _ircd_find_phantom(c, via);
   while (c != NULL && c->hold_upto != 0)
     c = c->x.rto;

@@ -9,6 +9,9 @@ TODO:
 	* core/socket.c: to make socket limit extendible.
 
 --- [0.10.0]
+Wed Sep 28 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/ircd.c: fixed bug in ircd_find_client().
+
 Tue Sep 27 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed wrong channel mode parameters parsing.
 	* core/direct.c: fixed ident requesting.
