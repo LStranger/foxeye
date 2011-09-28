@@ -1200,6 +1200,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
       sr = Peer_Put ((&peer->p), NULL, &sw);
       if (sr == 0)
 	return REQ_OK;		/* still something left, OK, will try later */
+      //TODO: read 'message of death' from connchain and log it
       if (Connchain_Kill ((&peer->p)))
 	KillSocket(&peer->p.socket);
       cli->data = NULL;		/* disown it */

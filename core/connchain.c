@@ -211,7 +211,7 @@ ssize_t Connchain_Get (connchain_i **chain, idx_t idx, char *buf, size_t sz)
     return E_NOSOCKET;
   /* ok, it seems we got something to run */
   i = (*chain)->recv (&(*chain)->next, idx, buf, sz, &(*chain)->buf);
-  if (i >= 0)					/* everything seems OK */
+  if (i >= 0 || (idx < 0 && buf != NULL))	/* everything seems OK */
     return i;
   if(Connchain_Get (&(*chain)->next, idx, NULL, 0))i=i; /* it's dead, kill next */
   dprint (2, "connchain.c: destroying link %p", *chain);
