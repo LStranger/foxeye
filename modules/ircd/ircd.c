@@ -92,10 +92,12 @@ static peer_priv *_ircd_uplink = NULL;	/* RFC2813 autoconnected server */
 static int _ircd_uplinks = 0;		/* number of autoconnects active */
 #endif
 
+static sig_atomic_t __ircd_have_started = 0;
+
+static tid_t _uplinks_timer = -1;
+
 static CLIENT ME = { .umode = A_SERVER, .via = NULL, .x.token = 0, .cs = NULL,
 		     .c.lients = NULL };
-
-static sig_atomic_t __ircd_have_started = 0;
 
 #define MY_NAME ME.lcnick
 
@@ -1894,18 +1896,28 @@ static void _ircd_start_uplink (char *name, char *host)
 /* called when uplink is invalid (absent or died) */
 static void _ircd_init_uplinks (void)
 {
+  if (_uplinks_timer == -1)
+    /* start autoconnect each 30 seconds until got some uplink */
+    _uplinks_timer = NewTimer(I_SERVICE, Ircd->iface->name, S_TIMEOUT, 30, 0, 0, 0);
+}
+
+/* called when timer is expired */
+static void _ircd_do_init_uplinks (void)
+{
   INTERFACE *tmp;
-  int i;
   char *c;
+  int i;
+  char buff[MESSAGEMAX];
 
   if (_ircd_uplink)			/* got RFC2813 server autoconnected*/
     return;				/* so nothing to do */
+  buff[0] = '@';
+  strfcpy(&buff[1], Ircd->iface->name, sizeof(buff));
   tmp = Add_Iface (I_TEMP, NULL, NULL, &_ircd_sublist_receiver, NULL);
-  i = Get_Clientlist (tmp, U_AUTO, Ircd->iface->name, "*");
+  i = Get_Clientlist (tmp, U_AUTO, buff, "*");
   if (i)
   {
     lid_t lid;
-    char buff[MESSAGEMAX];
     char hosts[MESSAGEMAX];
 
     c = _ircd_sublist_buffer = buff;
@@ -1915,10 +1927,11 @@ static void _ircd_init_uplinks (void)
     /* side effect: autoconnect list should be not longer that one message */
     while (*c)				/* for each autoconnect */
     {
-      char *cc = c, *hl;
+      char *cc, *hl;
 
-      c = gettoken (cc, NULL);
+      cc = gettoken (c, NULL);
       lid = FindLID (c);
+      c = cc;
       while (Get_Request());		/* we need queue to be empty */
       _ircd_sublist_buffer = hosts;
       i = Get_Hostlist (tmp, lid);
@@ -1932,7 +1945,6 @@ static void _ircd_init_uplinks (void)
 	uf &= ~U_AUTO;
 	Set_Flags (u, Ircd->iface->name, uf);
 	Unlock_Clientrecord (u);
-	Unset_Iface();
 	ERROR ("ircd:uplink %s has no host record, reset autoconnect flag!", c);
 	continue;
       }
@@ -2613,13 +2625,13 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
     else
       cc++;
   }
+#if IRCD_MULTICONNECT
+  if (!(cl->umode & A_MULTI))
+#endif
   if (peer->uf & U_AUTO) {		/* we connected to uplink */
     if (!_ircd_uplink)			/* and there is no uplink yet */
       _ircd_uplink = cl->via;		/* so this may be our uplink now */
     else		/* there is autoconnected RFC2813 server already */
-#if IRCD_MULTICONNECT
-    if (!(cl->umode & A_MULTI))
-#endif
     {
       _ircd_peer_kill (cl->via, "extra uplink connect, bye, sorry");
       return 1;
@@ -3883,6 +3895,7 @@ static iftype_t _ircd_signal (INTERFACE *iface, ifsig_t sig)
   LINK *s;
   size_t i;
 
+  DBG("_ircd_signal: got sig=%d", (int)sig);
   switch (sig)
   {
     case S_TERMINATE:
@@ -3928,6 +3941,10 @@ static iftype_t _ircd_signal (INTERFACE *iface, ifsig_t sig)
 	iface->ift |= I_DIED; /* it will free Ircd */
 	iface->data = NULL; /* module owns it */
       }
+      break;
+    case S_TIMEOUT:
+      _ircd_do_init_uplinks();
+      _uplinks_timer = -1;
       break;
     default: ;
   }
@@ -4535,6 +4552,8 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
       _forget_(CLIENT);
       _forget_(LINK);
       iface->ift |= I_DIED;
+      KillTimer(_uplinks_timer);
+      _uplinks_timer = -1;
       Add_Request(I_LOG, "*", F_BOOT, "module ircd terminated succesfully");
       return I_DIED;
     case S_SHUTDOWN:

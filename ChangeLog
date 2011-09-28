@@ -14,6 +14,7 @@ Wed Sep 28 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed bug in ircd_find_client().
 	* modules/ircd/ircd.c: fixed handling nickname casechange.
 	* modules/ircd/ircd.c: fixed mess with collisions with phantoms.
+	* modules/ircd/ircd.c: changed autoconnects to be on timer.
 
 Tue Sep 27 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed wrong channel mode parameters parsing.
