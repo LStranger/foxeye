@@ -573,10 +573,12 @@ static int _imch_add_mask (MASK **list, const char *mask)
   register MASK *mm;
   MASK *nm;
 
-  if (simple_match ("*!*@*", mask) < 2) /* sanity check */
-    return 0;
   nm = alloc_MASK();
-  unistrlower (nm->what, mask, sizeof(nm->what));
+  if (!strchr(mask, '!') && !strchr(mask, '@')) { /* it's just nick */
+    unistrlower (nm->what, mask, (sizeof(nm->what) - 2));
+    strfcat(nm->what, "!*", sizeof(nm->what));
+  } else
+    unistrlower (nm->what, mask, sizeof(nm->what));
   /* note: it might exceed field size? */
   mask = nm->what;
   while (*list)

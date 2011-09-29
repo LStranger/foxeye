@@ -17,6 +17,8 @@ Thu Sep 29 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed handling negative channel limit.
 	* modules/ircd/channels.c: implemented implicit adding '+' to first
 	  MODE message argument from users.
+	* modules/ircd/channels.c: added adding "!*" to mask in MODE if user
+	  gives only nickname in argument.
 
 Wed Sep 28 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed bug in ircd_find_client().
