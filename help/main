@@ -240,15 +240,16 @@ function module
 :Loads an installed unloaded module by it's name with optional arguments.\
  If module does not accept arguments then argumens will be ignored.\
  Currently available modules are:
-   logs         - customisable saving and rotating of log files.
    autolog      - automatic saving of private and public conversations.
-   lua          - support for scripts in Lua language.
-   irc          - common support of connection to IRC network.
-   irc-channel  - base support for channels of IRC network.
+   irc          - common support of client connection to IRC network.
+   irc-channel  - basic client support for channels of IRC network.
    irc-ctcp     - support for basic CTCP DCC commands.
    ircd         - basic IRC server (RFC2810...RFC2813).
+   logs         - customisable saving and rotating of log files.
+   lua          - support for scripts in Lua language.
    modes        - implementation of commands +ban, -ban, and few more.
    tcl          - support for scripts in Tcl language.
+   ziplink      - support for compressed (Zlib) connections.
  See also %yhelp module%n.
 
 # -----------------------

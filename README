@@ -104,6 +104,7 @@ Which modules are available?
    modes	- implementation of commands +ban, -ban, and others
    tcl		- support for scripts in Tcl language
    ircd		- standard (RFC2813) IRC server
+   ziplink	- support for compressed connections
     Were planned to implement some other modules but they are either pending
     or unrequested. Feel free to write them or ask someone to implement:
    botnet	- implementation of network of bots
@@ -132,4 +133,3 @@ Which modules are available?
    syslog	- support for logging some messages to syslog
    ui		- support for generic user interface (text or GUI)
    upnp		- support for UPnP listening port forwarding
-   ziplink	- support for compressed connections

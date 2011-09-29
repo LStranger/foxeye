@@ -1,6 +1,6 @@
 dnl Checks for Tcl.
 AC_ARG_WITH(tcl,
-    [  --with-tcl=PATH         where the root of Tcl is installed],
+    [  --with-tcl[[=PATH]]       where the root of Tcl is installed],
     [  fe_tcl_with="$withval"
     ], [fe_tcl_with=yes
     ])

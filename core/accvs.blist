@@ -223,12 +223,12 @@ UNLD  "uunnllooaadd"         MASK
     Arguments for _r_e_c_v() are: pointer for passing to Connchain_Get();
     socket identifier; pointer to receiving buffer; size of that buffer;
     pointer to this instance's own buffer. If _r_e_c_v() got NULL pointer to
-    receiving buffer then it have to destroy own buffer. If _r_e_c_v() got -1
-    as socket identifier then it have to return raw data from own buffer
-    and if that buffer is empty then pass call to next link. If it get an
+    receiving buffer then it have to destroy own buffer. If it get an
     error from next link it should do the same and in both cases return
     error and after that neither _r_e_c_v() nor _s_e_n_d() ever will be called
-    again. Else should return number of received bytes.
+    again. Else should return number of received bytes. If _r_e_c_v() got -1
+    as socket identifier then it have to return raw data from own buffer
+    and if that buffer is empty then pass call to next link.
     Arguments for _s_e_n_d() are: pointer for passing to Connchain_Put();
     socket identifier; pointer to sending buffer; pointer to counter of
     bytes to send; pointer to instance's own buffer. If _s_e_n_d() got NULL

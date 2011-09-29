@@ -1,0 +1,15 @@
+# first section is usage
+# second section is that config maker will put into config
+# third section is full help
+
+module ziplink
+:%*
+:
+:This module provides connection chain link that applies compression using\
+ Zlib to incoming and outgoing stream. The link will send data that left\
+ in outgoing stream before adding it into connection chain and then destroy\
+ connection chain that was existed before adding. Any data that came from\
+ socket after adding the link will be uncompressed and data that came to\
+ connection chain for sending will be compressed before sending into socket.
+ 
+ Zlib uses compressed data format described in RFC1950...RFC1952.

@@ -5,6 +5,9 @@ Changes in version 0.10 since 0.9:
 - New module 'ircd' which is IRC protocol server (the RFC2810...RFC2813
     compliant). See included documentation for more info.
 
+- New module 'ziplink' which adds connection chain 'Z' used for creating
+    compressed links (Zlib, also used for gzip files).
+
 - New IRC CTCP commands: OP for getting +o; HOP for getting +h; VOICE for
     getting +v on controlled channels; INVITE for inviting on invite only
     channels - all with syntax identical to Eggdrop's PRIVMSG commands.
