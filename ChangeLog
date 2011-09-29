@@ -27,6 +27,8 @@ Thu Sep 29 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: removed unneeded sending client mode to
 	  client on joining channel as client will get them with RPL_NAMES.
 	* modules/ircd/channels.c: fixed missing A_ADMIN mode in ircd_char2mode.
+	* modules/ircd/servers.c, modules/ircd/sendto.h, modules/ircd/clients.c:
+	  added support for server WALLOPS messages.
 
 Wed Sep 28 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed bug in ircd_find_client().

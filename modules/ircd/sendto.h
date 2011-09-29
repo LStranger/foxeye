@@ -180,9 +180,9 @@
 #define __TRANSIT__ /* no transit by default */
 
 //TODO: implement IWALLOPS too
-/* broadcasts WALLOPS; args: ircd, text, ... */
-#define ircd_sendto_wallops(i,a,...) do { \
+/* broadcasts WALLOPS; args: ircd, from peer, text, ... */
+#define ircd_sendto_wallops(i,a,b,...) do { \
   const char *me = ircd_mark_wallops(); \
-  ircd_sendto_servers_all(i, NULL, ":%s WALLOPS :" a, me, __VA_ARGS__); } while(0)
+  ircd_sendto_servers_all(i, a, ":%s WALLOPS :" b, me, __VA_ARGS__); } while(0)
 
 #endif

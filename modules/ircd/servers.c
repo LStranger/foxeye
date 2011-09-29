@@ -390,8 +390,8 @@ static int ircd_squit_sb(INTERFACE *srv, struct peer_t *peer, unsigned short tok
   } else {
     /* we doing squit only for shortest way despite of possible multiconnect! */
     if (CLIENT_IS_LOCAL(tgt)) {		/* squit if it's local link */
-      ircd_sendto_wallops((IRCD *)srv->data, "SQUIT %s from %s: %s", argv[0],
-			  cl->nick, argv[1]);
+      ircd_sendto_wallops((IRCD *)srv->data, NULL, "SQUIT %s from %s: %s",
+			  argv[0], cl->nick, argv[1]);
       ircd_do_squit(tgt->via->link, pp, argv[1]); /* do job */
     } else				/* or else forward it to it's links */
       ircd_sendto_remote(tgt, ":%s SQUIT %s :%s", cl->nick, argv[0], argv[1]);
@@ -952,6 +952,27 @@ static int ircd_error_sb(INTERFACE *srv, struct peer_t *peer, unsigned short tok
   return (1);
 }
 
+BINDING_TYPE_ircd_server_cmd(ircd_wallops_sb);
+static int ircd_wallops_sb(INTERFACE *srv, struct peer_t *peer, unsigned short token,
+			   const char *sender, const char *lcsender, char *cmd,
+			   int argc, const char **argv)
+{ /* args: <wallops message> */
+  struct peer_priv *pp = peer->iface->data; /* it's really peer */
+  register CLIENT *cl;
+
+  if (argc == 0) {
+    ERROR("ircd:got empty WALLOPS from %s", peer->dname);
+    return ircd_recover_done(pp, "Invalid number of parameters");
+  }
+  /* reject if it came not shortest way */
+  cl = _ircd_find_client_lc((IRCD *)srv->data, lcsender);
+  if (cl->cs->via != pp)
+    return (1); //TODO: log as duplicate
+  /* just broadcast it to everyone */
+  ircd_sendto_wallops((IRCD *)srv->data, pp, "%s", argv[0]);
+  return (1);
+}
+
 /* this one is used by ircd_topic_sb too but should use token so is put here */
 static int _ircd_do_stopic(IRCD *ircd, const char *via, const char *sender,
 			   struct peer_priv *pp, unsigned short token, int id,
@@ -1083,7 +1104,7 @@ void ircd_server_proto_end (void)
   Delete_Binding ("ircd-server-cmd", (Function)&ircd_kick_sb, NULL);
   Delete_Binding ("ircd-server-cmd", (Function)&ircd_kill_sb, NULL);
   Delete_Binding ("ircd-server-cmd", (Function)&ircd_error_sb, NULL);
-//  Delete_Binding ("ircd-server-cmd", (Function)&ircd_wallops_sb, NULL);
+  Delete_Binding ("ircd-server-cmd", (Function)&ircd_wallops_sb, NULL);
 #if IRCD_MULTICONNECT
   Delete_Binding ("ircd-server-cmd", (Function)&ircd_itopic, NULL);
 //  Delete_Binding ("ircd-server-cmd", (Function)&ircd_iwallops, NULL);
@@ -1105,7 +1126,7 @@ void ircd_server_proto_start (void)
   Add_Binding ("ircd-server-cmd", "kick", 0, 0, (Function)&ircd_kick_sb, NULL);
   Add_Binding ("ircd-server-cmd", "kill", 0, 0, (Function)&ircd_kill_sb, NULL);
   Add_Binding ("ircd-server-cmd", "error", 0, 0, (Function)&ircd_error_sb, NULL);
-//  Add_Binding ("ircd-server-cmd", "wallops", 0, 0, (Function)&ircd_wallops_sb, NULL);
+  Add_Binding ("ircd-server-cmd", "wallops", 0, 0, (Function)&ircd_wallops_sb, NULL);
 #if IRCD_MULTICONNECT
   Add_Binding ("ircd-server-cmd", "itopic", 0, 0, (Function)&ircd_itopic, NULL);
 //  Add_Binding ("ircd-server-cmd", "iwallops", 0, 0, (Function)&ircd_iwallops, NULL);

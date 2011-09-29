@@ -222,8 +222,8 @@ static int ircd_squit_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char
     return ircd_do_unumeric (cl, ERR_NOSUCHSERVER, cl, 0, argv[0]);
   /* we doing squit only for shortest way despite of possible multiconnect! */
   if (CLIENT_IS_LOCAL(tgt)) {		/* squit if it's local link */
-    ircd_sendto_wallops((IRCD *)srv->data, "SQUIT %s from %s: %s", argv[0],
-			cl->nick, argv[1]);
+    ircd_sendto_wallops((IRCD *)srv->data, NULL, "SQUIT %s from %s: %s",
+			argv[0], cl->nick, argv[1]);
     ircd_do_squit (tgt->via->link, NULL, argv[1]); /* do job */
   } else				/* or else forward it to it's links */
     ircd_sendto_remote (tgt, ":%s SQUIT %s :%s", peer->dname, argv[0], argv[1]);
