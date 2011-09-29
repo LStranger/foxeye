@@ -24,6 +24,8 @@ Thu Sep 29 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed broadcasting of A_ADMIN channel mode.
 	* modules/ircd/channels.c: fixed unsetting key/limit/etc. on channel.
 	* modules/ircd/channels.c: fixed diagnostics about A_REOP mode.
+	* modules/ircd/channels.c: removed unneeded sending client mode to
+	  client on joining channel as client will get them with RPL_NAMES.
 
 Wed Sep 28 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed bug in ircd_find_client().

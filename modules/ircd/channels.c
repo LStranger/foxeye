@@ -2073,15 +2073,15 @@ MEMBER *ircd_add_to_channel (IRCD *ircd, struct peer_priv *bysrv, CHANNEL *ch,
 				 cl->user, cl->host, ch->name, smode, madd);
       }
       madd[0] = 0;
-      if (modeadd)			/* it is a fresh channel or updated */
+      if (modeadd && ch->count > 1)	/* it is a fresh channel or updated */
 	_ircd_mode2cmode (madd, modeadd, sizeof(madd)); /* make channel mode */
-      if (madd[0]) {
+      if (madd[0]) { /* don't send client mode to client as NAMES will do it */
 	if (bysrv)
-	  ircd_sendto_chan_local(ch, ":%s MODE %s +%s", bysrv->link->cl->lcnick,
-				 ch->name, madd);
+	  ircd_sendto_chan_butone(ch, cl, ":%s MODE %s +%s",
+				  bysrv->link->cl->lcnick, ch->name, madd);
 	else
-	  ircd_sendto_chan_local(ch, ":%s!%s@%s MODE %s +%s", cl->nick,
-				 cl->user, cl->host, ch->name, madd);
+	  ircd_sendto_chan_butone(ch, cl, ":%s!%s@%s MODE %s +%s", cl->nick,
+				  cl->user, cl->host, ch->name, madd);
       }
     }
 #ifdef USE_SERVICES
