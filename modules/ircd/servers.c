@@ -684,8 +684,8 @@ static int ircd_part_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 			     ":anonymous!anonymous@anonymous. PART %s :anonymous",
 			     memb->chan->name);
     else
-      ircd_sendto_chan_local(memb->chan, ":%s PART %s :%s", cl->nick,
-			     memb->chan->name, msg);
+      ircd_sendto_chan_local(memb->chan, ":%s!%s@%s PART %s :%s", cl->nick,
+			     cl->user, cl->host, memb->chan->name, msg);
 #ifdef USE_SERVICES
     //TODO: notify services
 #endif
