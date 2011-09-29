@@ -1001,16 +1001,17 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	      CONTINUE_ON_MODE_ERROR (ERR_USERNOTINCHANNEL, NULL);
 	  } else
 	    par = NULL;
-	  while (b)			/* cycle thru all */
+	  ma = NULL;
+	  while (b && !(mf & ~(1|A_PINGED))) /* cycle until approved */
 	  {
 	    if (!b->name)
 	    {
 	      f = (_mch_func_t)b->func;
 	      if (tar)			/* modechange for target */
-		mf |= f (srv, peer->dname, memb->mode, tar->who->nick,
+		mf = f (srv, peer->dname, memb->mode, tar->who->nick,
 			 tar->mode, add, ch->name[0], &ma);
 	      else
-		mf |= f (srv, peer->dname, memb->mode, NULL, ch->mode, add,
+		mf = f (srv, peer->dname, memb->mode, NULL, ch->mode, add,
 			 ch->name[0], &ma);
 	    }
 	    b = Check_Bindtable (BTIrcdModechange, charstr, U_ALL, U_ANYCH, b);
@@ -1042,7 +1043,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	      tar->mode |= mf;
 	      if (mf & A_OP)		/* operator added so reset this */
 		ch->noop_since = 0;
-	    } else if (par) {		/* it has a parameter */
+	    } else if (ma) {		/* it has an handler */
 	      ec = ma (srv, peer->dname, ch->name, add, par);
 	      if (ec <= 0) {
 		if (ec < 0)
@@ -1065,7 +1066,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	  if (tar)			/* it has a target */
 	    tar->mode &= ~mf;
 	    //TODO: need we set noop_since on MODE #chan -o nick ?
-	  else if (par)			/* it has a parameter */
+	  else if (ma)			/* it has a parameter */
 	  {
 	    ec = ma (srv, peer->dname, ch->name, add, par);
 	    if (ec <= 0) {
@@ -1574,16 +1575,17 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	    }
 	  } else
 	    par = NULL;
-	  while (b)			/* cycle thru all */
+	  ma = NULL;
+	  while (b && !(mf & ~(1|A_PINGED))) /* cycle until approved */
 	  {
 	    if (!b->name)
 	    {
 	      f = (_mch_func_t)b->func;
 	      if (tar)			/* modechange for target */
-		mf |= f (srv, pp->p.dname, whof, tar->who->nick,
+		mf = f (srv, pp->p.dname, whof, tar->who->nick,
 			 tar->mode, add, ch->name[0], &ma);
 	      else
-		mf |= f (srv, pp->p.dname, whof, NULL, ch->mode, add,
+		mf = f (srv, pp->p.dname, whof, NULL, ch->mode, add,
 			 ch->name[0], &ma);
 	    }
 	    b = Check_Bindtable (BTIrcdModechange, charstr, U_ALL, U_ANYCH, b);
@@ -1636,7 +1638,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	      tar->mode |= mf;
 	      if (mf & A_OP)		/* operator added so reset this */
 		ch->noop_since = 0;
-	    } else if (par) {		/* it has a parameter */
+	    } else if (ma) {		/* it has a parameter */
 	      ec = ma (srv, pp->p.dname, ch->name, add, par);
 	      if (ec <= 0) {
 		if (ec < 0)
@@ -1659,7 +1661,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	  if (tar)			/* it has a target */
 	    tar->mode &= ~mf;
 	    //TODO: need we set noop_since on MODE #chan -o nick ?
-	  else if (par)			/* it has a parameter */
+	  else if (ma)			/* it has a parameter */
 	  {
 	    ec = ma (srv, pp->p.dname, ch->name, add, par);
 	    if (ec <= 0) {

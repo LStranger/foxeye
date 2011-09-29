@@ -165,7 +165,10 @@
     return 1 on success, 0 on fail, or -1 if change was ignored (if ban
     was already existed for example). Returns modeflag change for target
     if it's approved combined with lowest bit set to 1 if that modechange
-    should consume a parameter (even if it isn't approved). Since it is
+    should consume a parameter (even if it isn't approved). If change is
+    not approved then binding doesn't set _m_a and also binding may set bit
+    A_PINGED in returned value if that change requires missing original
+    channel creator privileges and therefore isn't approved. Since it is
     required to do backward conversion on server connection burst so to
     make it possible each binding on mode which doesn't require parameter
     or which is modechange on user in channel should return appropriate
