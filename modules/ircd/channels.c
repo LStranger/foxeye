@@ -493,7 +493,7 @@ static modeflag imch_r(INTERFACE *srv, const char *rq, modeflag rchmode,
     return A_REOP;
   if (!target && chtype == '!' && (rchmode & A_ADMIN)) /* creator on ! channel */
     return A_REOP;
-  return A_PINGED; /* mark of ERR_UNIQOPPRIVSNEEDED */
+  return 0;
 }
 
 BINDING_TYPE_ircd_modechange(imch_t);

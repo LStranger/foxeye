@@ -23,6 +23,7 @@ Thu Sep 29 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/servers.c: fixed broadcasting local channel mode.
 	* modules/ircd/channels.c: fixed broadcasting of A_ADMIN channel mode.
 	* modules/ircd/channels.c: fixed unsetting key/limit/etc. on channel.
+	* modules/ircd/channels.c: fixed diagnostics about A_REOP mode.
 
 Wed Sep 28 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed bug in ircd_find_client().
