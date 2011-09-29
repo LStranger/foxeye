@@ -491,9 +491,11 @@ static modeflag imch_r(INTERFACE *srv, const char *rq, modeflag rchmode,
 {
   if (!target && !rchmode) /* it's testing */
     return A_REOP;
-  if (!target && chtype == '!' && (rchmode & A_ADMIN)) /* creator on ! channel */
+  if (target || chtype != '!')
+    return (0);
+  if (rchmode & A_ADMIN)		/* creator on ! channel */
     return A_REOP;
-  return 0;
+  return A_PINGED; /* mark of ERR_UNIQOPPRIVSNEEDED */
 }
 
 BINDING_TYPE_ircd_modechange(imch_t);
@@ -547,9 +549,12 @@ static int _imch_do_limit (INTERFACE *srv, const char *rq, const char *ch,
 
   if (add < 0)
     return 0; /* invalid query */
-  else if (add && (i = atoi (param)) > 0)
+  else if (add) {
+    i = atoi (param);
+    if (i < 1)
+      i = 1;				/* 1 means nobody else can join */
     _imch_channel->limit = i;
-  else
+  } else
     _imch_channel->limit = 0;
   return 1;
 }
