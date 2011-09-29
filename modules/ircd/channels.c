@@ -2382,6 +2382,7 @@ void ircd_channels_flush (IRCD *ircd, char *modestring, size_t s)
   Ircd_modechar_mask = A_ADMIN;		/* 'O' is present */
   if (c < e)
     *c++ = ' '; /* space between user modes and channel modes */
+  IRCD_SET_MODECHAR (A_ADMIN, _ircd_wmodes, 'O');
   if (c <= e) for (ch = 'a'; ch <= 'z'; ch++) /* do channel modes */
   {
     *c = ch;
