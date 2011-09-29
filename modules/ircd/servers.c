@@ -969,7 +969,9 @@ static int ircd_wallops_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
   if (cl->cs->via != pp)
     return (1); //TODO: log as duplicate
   /* just broadcast it to everyone */
-  ircd_sendto_wallops((IRCD *)srv->data, pp, "%s", argv[0]);
+  ircd_mark_wallops();
+  ircd_sendto_servers_all((IRCD *)srv->data, pp, ":%s WALLOPS :%s", sender,
+			  argv[0]);
   return (1);
 }
 
