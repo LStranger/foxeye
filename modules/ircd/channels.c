@@ -2580,7 +2580,7 @@ modeflag ircd_char2mode(INTERFACE *srv, const char *sname, const char *tar,
   chfc[0] = c;
   if (!(p = strchr (Ircd_modechar_list, c)) /* check for compliance */
       || Ircd_whochar_list[p-Ircd_modechar_list] == ' ')
-    return (0);
+    return ((c == 'O') ? A_ADMIN : 0); /* 'O' is creator by default */
   mf = 0;
   b = Check_Bindtable (BTIrcdModechange, chfc, U_ALL, U_ANYCH, NULL);
   while (b != NULL)		/* cycle thru all */
