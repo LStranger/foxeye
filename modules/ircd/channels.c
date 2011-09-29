@@ -543,10 +543,12 @@ static modeflag imch_k(INTERFACE *srv, const char *rq, modeflag rchmode,
 static int _imch_do_limit (INTERFACE *srv, const char *rq, const char *ch,
 			   int add, const char *param)
 {
+  register int i;
+
   if (add < 0)
     return 0; /* invalid query */
-  else if (add)
-    _imch_channel->limit = atoi (param);
+  else if (add && (i = atoi (param)) > 0)
+    _imch_channel->limit = i;
   else
     _imch_channel->limit = 0;
   return 1;
