@@ -582,6 +582,9 @@ const char ircd_version_flags[] = {
 #ifdef IRCD_ENABLE_USERS
 'U',
 #endif
+#ifdef IRCD_STRICT_MODECMD
+'+',
+#endif
 #ifdef ENABLE_IPV6
 '6',
 #endif

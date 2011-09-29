@@ -919,7 +919,8 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
     MEMBER *memb;
     char *imp;
     const char *passed[MAXMODES];
-    int x;
+    const char *c;
+    int x, add;
 
     if (argc == 1)			/* channel mode query */
       return _ircd_mode_query_reply (cl, ch);
@@ -938,9 +939,12 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
     *imp = 0;
     for (i = 1; i < argc; i++)		/* parse modes */
     {
-      const char *c;
-      int add = -1;
-
+#ifndef IRCD_STRICT_MODECMD
+      if (i == 1)
+	add = 1;			/* implicit '+' before first arg */
+      else
+#endif
+      add = -1;				/* next args should have + or - */
       for (c = argv[i]; *c; c++)
       {
 	if (*c == '+')			/* adding mode */

@@ -309,6 +309,7 @@ Meaning of letters in VERSION reply:
    s  - Using local services is enabled
    S  - Local /summon is enabled
    U  - Local /users is enabled
+   +  - Users should always use '+' or '-' for MODE changing.
    6  - IPv6 supported
    8  - Any unicode chars in nick/channel are allowed
 
