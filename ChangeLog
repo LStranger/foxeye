@@ -20,6 +20,7 @@ Thu Sep 29 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: added adding "!*" to mask in MODE if user
 	  gives only nickname in argument.
 	* modules/ircd/servers.c: fixed PART message from remote to local users.
+	* modules/ircd/servers.c: fixed broadcasting local channel mode.
 
 Wed Sep 28 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed bug in ircd_find_client().

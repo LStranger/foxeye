@@ -831,6 +831,8 @@ static inline void _ircd_mode_broadcast (IRCD *ircd, int id, CLIENT *sender,
   //TODO: notify local services too
 #endif
   /* every server should know channel state too */
+  if (ch->mode & A_INVISIBLE)	/* don't broadcast local channel mode */
+    return;
   imp = strchr (ch->name, ':');	/* use it as mask ptr storage */
   if (imp)
   {
