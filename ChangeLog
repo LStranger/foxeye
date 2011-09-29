@@ -12,6 +12,7 @@ TODO:
 --- [0.10.0]
 Thu Sep 29 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ziplink: added new module for compressed links.
+	* modules/ircd/clients.c, modules/ircd/servers.c: fixed INVITE message.
 
 Wed Sep 28 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed bug in ircd_find_client().

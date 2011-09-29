@@ -749,6 +749,10 @@ static int ircd_invite_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
     return ircd_recover_done(pp, "Invalid number of parameters");
   }
   cl = _ircd_find_client_lc((IRCD *)srv->data, lcsender);
+  if (CLIENT_IS_SERVER(cl)) {
+    ERROR("ircd:got INVITE from non-client %s", peer->dname);
+    return ircd_recover_done(pp, "Invalid INVITE sender");
+  }
   tgt = ircd_find_client (argv[0], pp);
   if (!tgt || (tgt->umode & (A_SERVER|A_SERVICE)))
     return ircd_do_unumeric (cl, ERR_NOSUCHNICK, cl, 0, argv[0]);
@@ -770,8 +774,12 @@ static int ircd_invite_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
     if (!CLIENT_IS_REMOTE(tgt))
       ircd_add_invited (tgt, me->chan);
   }
-  ircd_sendto_one (tgt, "INVITE %s %s", argv[0], argv[1]);
-  if (!(cl->umode & (A_SERVER|A_SERVICE)) && tgt->away[0])
+  if (CLIENT_IS_REMOTE(tgt))
+    ircd_sendto_one (tgt, ":%s INVITE %s %s", sender, argv[0], argv[1]);
+  else
+    ircd_sendto_one (tgt, ":%s!%s@%s INVITE %s %s", sender, cl->user, cl->host,
+		     argv[0], argv[1]);
+  if (!(cl->umode & A_SERVICE) && tgt->away[0])
     ircd_do_unumeric (cl, RPL_AWAY, tgt, 0, tgt->away);
   return (1);
 }

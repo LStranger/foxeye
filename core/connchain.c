@@ -364,14 +364,14 @@ static ssize_t _ccfilter_x_recv (connchain_i **ch, idx_t id, char *str,
       register size_t x;
 
       x = sizeof(bb->buf) - bb->bufpos;
-      if (x > bb->inbuf)
+      if ((ssize_t)x > bb->inbuf)
 	x = bb->inbuf;
       if (x > sz)
 	x = sz;
       i = x;
       memcpy(str, &bb->buf[bb->bufpos], x);
       bb->inbuf -= i;
-      if (bb->inbuf == 0 || sz == i)
+      if (bb->inbuf == 0 || sz == (size_t)i)
 	return (i);
       sz -= i;
       str += i;

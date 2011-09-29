@@ -388,7 +388,11 @@ static int ircd_invite_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, cha
   }
   if (!tgt)
     return 1;
-  ircd_sendto_one (tgt, "INVITE %s %s", argv[0], argv[1]);
+  if (CLIENT_IS_REMOTE(tgt))
+    ircd_sendto_one (tgt, ":%s INVITE %s %s", peer->dname, argv[0], argv[1]);
+  else
+    ircd_sendto_one (tgt, ":%s!%s@%s INVITE %s %s", peer->dname, user, host,
+		     argv[0], argv[1]);
   if (!CLIENT_IS_REMOTE(tgt) && memb != NOSUCHCHANNEL)
     ircd_add_invited (tgt, memb->chan);
   if (tgt->away[0])
