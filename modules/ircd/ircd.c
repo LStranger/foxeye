@@ -1953,9 +1953,15 @@ static void _ircd_do_init_uplinks (void)
       while (*hl)			/* for each host */
       {
 	char *ch = hl;
+	register char *ch2;
 
 	hl = gettoken (ch, NULL);
-	LOG_CONN("ircd: found autoconnect %s, starting it", ch);
+	ch2 = strchr(ch, '@');		/* don't show password in log */
+	if (ch2)
+	  ch2++;
+	else
+	  ch2 = ch;
+	LOG_CONN("ircd: found autoconnect %s, starting it", ch2);
 	_ircd_start_uplink (c, ch);	/* create a connection thread */
       }
       /* we do ignoring too long hosts list too! */
