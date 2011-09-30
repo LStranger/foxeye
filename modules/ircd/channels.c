@@ -953,9 +953,10 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
     for (i = 1; i < argc; i++)		/* parse modes */
     {
 #ifndef IRCD_STRICT_MODECMD
-      if (i == 1)
-	add = 1;			/* implicit '+' before first arg */
-      else
+      if (i == 1) {
+	*imp = '+';			/* implicit '+' before first arg */
+	add = 1;
+      } else
 #endif
       add = -1;				/* next args should have + or - */
       for (c = argv[i]; *c; c++)
