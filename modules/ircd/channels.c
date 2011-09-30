@@ -537,9 +537,9 @@ static modeflag imch_k(INTERFACE *srv, const char *rq, modeflag rchmode,
   if (!target && (rchmode & A_OP))
   {
     *ma = &_imch_do_keyset;
-    return (A_KEYSET | (add ? 1 : 0));
+    return (A_KEYSET | 1);
   }
-  return (add ? 1 : 0);
+  return (1);
 }
 
 static int _imch_do_limit (INTERFACE *srv, const char *rq, const char *ch,
