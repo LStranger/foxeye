@@ -70,3 +70,4 @@
 #00071	04.09.2011  04.09.2011	Connection messages aren't always shown
 #00072	04.09.2011  25.09.2011	boot messages are duplicated in console
 #00073	08.09.2011  08.09.2011	SIGSEGV after nick/channel temp.unavailable
+#00074	30.09.2011  30.09.2011	deadcycle in 'x' filter after socket error

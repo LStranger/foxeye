@@ -836,6 +836,8 @@ static ssize_t _ccfilter_y_recv (struct connchain_i **ch, idx_t id, char *str,
     FREE (b);
     return E_NOSOCKET;
   }
+  if (*b == NULL)
+    return E_NOSOCKET;
   sr = Connchain_Get (ch, id, str, sz);
   if (id < 0)				/* pulling buffers */
     return (sr);

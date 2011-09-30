@@ -16,6 +16,8 @@ Fri Sep 30 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: removed invalid broadcast 'MODE +chan +t'.
 	* modules/ircd/channels.c: changed last parameter of function which
 	  is set by "ircd-modechange" bindings.
+	* core/connchain.c: fixed deadcycle on binary stream in 'x' filter and
+	  added some diagnostics to it (bug#74).
 
 Thu Sep 29 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ziplink: added new module for compressed links.

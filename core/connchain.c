@@ -244,18 +244,21 @@ struct connchain_buffer			/* local buffer type for filter 'x' */
 static ssize_t _ccfilter_x_send (connchain_i **ch, idx_t id, const char *str,
 				 size_t *sz, struct connchain_buffer **b)
 {
-  connchain_b *bb = &(*b)->out;
+  connchain_b *bb;
   ssize_t i;
 
-  if (bb->inbuf < 0)			/* it's already ended */
+  if (*b == NULL)			/* already terminated */
     return E_NOSOCKET;
+  bb = &(*b)->out;
+  if (bb->inbuf < 0)			/* it's already ended */
+    return (bb->inbuf);
   if (bb->inbuf > 0)			/* there is something to send */
   {
     DBG("connchain.c:_ccfilter_x_send: sending buffer =%zu +%zd", bb->bufpos, bb->inbuf);
     i = Connchain_Put (ch, id, &bb->buf[bb->bufpos], &bb->inbuf);
     if (i < 0)				/* some error, end us */
     {
-      bb->inbuf = -1;			/* forget the buffer */
+      bb->inbuf = i;			/* forget the buffer */
       return i;				/* return error */
     }
     if (bb->inbuf != 0)			/* trying to send line by line */
@@ -291,15 +294,15 @@ static ssize_t _ccfx_find_line (connchain_b *bb)
   {
     if ((c = memchr (&bb->buf[bb->bufpos], '\n', bb->inbuf)))
       return (c - &bb->buf[bb->bufpos]);	/* found it */
-    else if (bb->inbuf >= (ssize_t)sizeof(bb->buf) - 1)	/* buffer is full */
+    else if (bb->inbuf > (ssize_t)sizeof(bb->buf) - 1)	/* buffer is full */
       return (sizeof(bb->buf) - 1);
     return -1;					/* try it later */
   }
   if ((c = memchr (&bb->buf[bb->bufpos], '\n', sizeof(bb->buf) - bb->bufpos)))
     return (c - &bb->buf[bb->bufpos]);		/* found in end of buf */
   if ((c = memchr (bb->buf, '\n', bb->bufpos + bb->inbuf - sizeof(bb->buf))))
-    return (c - bb->buf);			/* found at start of buf */
-  else if (bb->inbuf >= (ssize_t)sizeof(bb->buf) - 1) /* all buffer is filled */
+    return (c - &bb->buf[bb->bufpos] + sizeof(bb->buf)); /* found at start of buf */
+  else if (bb->inbuf > (ssize_t)sizeof(bb->buf) - 1) /* all buffer is filled */
     return (sizeof(bb->buf) - 1);
   return -1;					/* try it later */
 }
@@ -311,6 +314,7 @@ static ssize_t _ccfx_get_line (connchain_b *bb, ssize_t i, char *str, size_t sz)
 {
   register ssize_t x, d;
 
+  DBG("connchain.c:_ccfx_get_line: getting %zd bytes from buffer", i);
   if (bb->bufpos + i <= sizeof(bb->buf))	/* it's in one piece */
   {
     d = i + 1;					/* size with LF */
@@ -351,14 +355,17 @@ static ssize_t _ccfx_get_line (connchain_b *bb, ssize_t i, char *str, size_t sz)
 static ssize_t _ccfilter_x_recv (connchain_i **ch, idx_t id, char *str,
 				 size_t sz, struct connchain_buffer **b)
 {
-  connchain_b *bb = &(*b)->in;
+  connchain_b *bb;
   ssize_t i;
 
+  if (*b == NULL)			/* already terminated */
+    return E_NOSOCKET;
   if (str == NULL)			/* termination requested */
   {
     FREE (b);				/* free the buffer struct */
     return E_NOSOCKET;
   }
+  bb = &(*b)->in;
   if (id == -1) {			/* pulling buffers */
     if (bb->inbuf > 0) {
       register size_t x;
@@ -386,64 +393,73 @@ static ssize_t _ccfilter_x_recv (connchain_i **ch, idx_t id, char *str,
     } else
       return Connchain_Get (ch, id, str, sz);
   }
-  if (bb->inbuf && (i = _ccfx_find_line (bb)) >= 0)
+  if (bb->inbuf > 0 && (i = _ccfx_find_line (bb)) >= 0)
     return _ccfx_get_line (bb, i, str, sz); /* pull all lines from buffer */
   if (bb->inbuf == 0)
     bb->bufpos = 0;			/* restart the pointer */
   if ((i = bb->bufpos + bb->inbuf) < (ssize_t)sizeof(bb->buf))
   {
-    i = Connchain_Get (ch, id, &bb->buf[i], sizeof(bb->buf) - i);
-    if (i < 0)				/* got error */
+    if (((*b)->out.inbuf < 0) ||	/* got error */
+        ((i = Connchain_Get (ch, id, &bb->buf[i], sizeof(bb->buf) - i)) < 0))
     {
-      if (bb->inbuf)			/* there is something left in buffer */
+      DBG("connchain.c:_ccfilter_x_recv: socket dead, +%zd left", bb->inbuf);
+      if ((*b)->out.inbuf >= 0)		/* remember error */
+	(*b)->out.inbuf = i;
+      if (bb->inbuf > 0)		/* there is something left in buffer */
       {
-	if (bb->inbuf >= (ssize_t)sz)
-	  i = strfcpy (str, &bb->buf[bb->bufpos], sz);
-	else
-	  i = strfcpy (str, &bb->buf[bb->bufpos], bb->inbuf + 1);
+	i = bb->inbuf;
+	if (i >= (ssize_t)sz)
+	  i = sz - 1;
+	strfcpy(str, &bb->buf[bb->bufpos], i + 1);
 	bb->inbuf -= i;
 	bb->bufpos += i;
 	return i + 1;
       }
+      i = (*b)->out.inbuf;
       FREE (b);				/* terminating */
       return i;
     }
     if (i == 0)				/* no data received yet */
       return 0;
+    DBG("connchain.c:_ccfilter_x_recv: got +%zd", i);
     bb->inbuf += i;			/* update counter */
     return _ccfilter_x_recv (ch, id, str, sz, b);
     /* if we filled rest of buffer then go to next line by return */
   }
   i -= sizeof(bb->buf);			/* buffer is cycled, go to start */
-  i = Connchain_Get (ch, id, &bb->buf[i], bb->bufpos - i);
-  if (i < 0)				/* got error */
+  if (((*b)->out.inbuf < 0) ||		/* got error */
+      ((i = Connchain_Get (ch, id, &bb->buf[i], bb->bufpos - i)) < 0))
   {
-    if (bb->inbuf)			/* there is something left in buffer */
+    if ((*b)->out.inbuf >= 0)		/* remember error */
+      (*b)->out.inbuf = i;
+    DBG("connchain.c:_ccfilter_x_recv: socket dead, +%zd left", bb->inbuf);
+    if (bb->inbuf > 0)			/* there is something left in buffer */
     {
-      if ((sizeof(bb->buf) - bb->bufpos) >= sz)
-	i = strfcpy (str, &bb->buf[bb->bufpos], sz);
-      else
-	i = strfcpy (str, &bb->buf[bb->bufpos],
-		     sizeof(bb->buf) + 1 - bb->bufpos);
+      i = sizeof(bb->buf) - bb->bufpos; /* size at end of buffer */
+      if (i >= (ssize_t)sz)
+	i = sz - 1;
+      strfcpy(str, &bb->buf[bb->bufpos], i + 1);
       bb->inbuf -= i;			/* copied from end of buffer */
-      if (bb->inbuf)
+      if (bb->inbuf > 0)
       {
-	register ssize_t sg;
+	ssize_t sg;
 
 	sz -= i;
-	if (bb->inbuf >= (ssize_t)sz)
-	  sg = strfcpy (str, bb->buf, sz);
-	else
-	  sg = strfcpy (str, bb->buf, bb->inbuf + 1);
+	sg = bb->inbuf;
+	if (sg >= (ssize_t)sz)
+	  sg = sz - 1;
+	strfcpy(&str[i], bb->buf, sg + 1);
 	bb->inbuf -= sg;
 	i += sg;
 	bb->bufpos = sg;		/* copied from start of buffer */
       }
       return i + 1;
     }
+    i = (*b)->out.inbuf;
     FREE (b);				/* terminating */
     return i;
   }
+  DBG("connchain.c:_ccfilter_x_recv: got +%zd", i);
   bb->inbuf += i;			/* update counter */
   if (i != 0 && (i = _ccfx_find_line (bb)) >= 0)
     return _ccfx_get_line (bb, i, str, sz); /* pull line from buffer */
