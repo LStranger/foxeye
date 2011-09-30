@@ -524,8 +524,10 @@ static int _imch_do_keyset (INTERFACE *srv, const char *rq, const char *ch,
     //TODO: ERR_KEYSET
     strfcpy (_imch_channel->key, param, sizeof(_imch_channel->key));
 #ifndef IRCD_IGNORE_MKEY_ARG
-  else if (safe_strcmp(_imch_channel->key, param))
+  else if (safe_strcmp(_imch_channel->key, param)) {
     ircd_do_cnumeric (_imch_client, ERR_KEYSET, _imch_channel, 0, NULL);
+    return 0;
+  }
 #endif
   else
     _imch_channel->key[0] = '\0';
@@ -840,7 +842,8 @@ static inline void _ircd_mode_broadcast (IRCD *ircd, int id, CLIENT *sender,
   //TODO: notify local services too
 #endif
   /* every server should know channel state too */
-  if (ch->mode & A_INVISIBLE)	/* don't broadcast local channel mode */
+  if (ch->mode & A_INVISIBLE ||	/* don't broadcast local channel mode */
+      ch->name[0] == '+')	/* nor mode +t for modeless channel */
     return;
   imp = strchr (ch->name, ':');	/* use it as mask ptr storage */
   if (imp)
@@ -1046,10 +1049,11 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	      CONTINUE_ON_MODE_ERROR (ERR_UNKNOWNMODE, charstr);
 	  } else if (n == MAXMODES)
 	    continue; //TODO: silently ignore or what?
-	  n++;				/* one more accepted */
 	  if (add)
 	  {
 	    if (tar) {			/* it has a target */
+	      if (tar->mode & mf)
+		continue;
 	      tar->mode |= mf;
 	      if (mf & A_OP)		/* operator added so reset this */
 		ch->noop_since = 0;
@@ -1062,22 +1066,23 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 		else
 		  WARNING ("ircd: error on setting MODE %s +%c %s", ch->name,
 			   *c, par);
-		n--;			/* it discarded */
 		continue;
-	      } else
-		ch->mode |= mf;
+	      } /* else */
+	      ch->mode |= mf;
 	    } else			/* just modechange */
 	      ch->mode |= mf;
+	    n++;			/* one more accepted */
 	    *++imp = *c;		/* it has '+' or last */
 	    if (par)
 	      passed[x++] = par;	/* one more param accepted */
 	    continue;
 	  }
-	  if (tar)			/* it has a target */
+	  if (tar) {			/* it has a target */
+	    if (!(tar->mode & mf))
+	      continue;
 	    tar->mode &= ~mf;
 	    //TODO: need we set noop_since on MODE #chan -o nick ?
-	  else if (ma)			/* it has a parameter */
-	  {
+	  } else if (ma) {		/* it has a parameter */
 	    ec = ma (srv, peer->dname, ch->name, add, par);
 	    if (ec <= 0) {
 	      if (ec < 0)
@@ -1086,13 +1091,12 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	      else
 		WARNING ("ircd: error on setting MODE %s -%c %s", ch->name, *c,
 			 par);
-	      n--;			/* it discarded */
 	      continue;
-	    } else
-	      ch->mode &= ~mf;
-	  }
-	  else				/* just modechange */
+	    } /* else */
 	    ch->mode &= ~mf;
+	  } else			/* just modechange */
+	    ch->mode &= ~mf;
+	  n++;				/* one more accepted */
 	  *++imp = *c;			/* it has '-' or last */
 	  if (par)
 	    passed[x++] = par;		/* one more param accepted */
@@ -2074,24 +2078,25 @@ MEMBER *ircd_add_to_channel (IRCD *ircd, struct peer_priv *bysrv, CHANNEL *ch,
       ircd_sendto_chan_local (ch, ":%s!%s@%s JOIN %s", cl->nick, cl->user,
 			      cl->host, ch->name); /* broadcast for users */
       if (*smode) {			/* we have a mode provided */
+	/* don't send client mode to client as NAMES will do it */
 	if (bysrv)
-	  ircd_sendto_chan_local(ch, ":%s MODE %s +%s%s",
-				 bysrv->link->cl->lcnick, ch->name, smode,
-				 madd);
+	  ircd_sendto_chan_butone(ch, cl, ":%s MODE %s +%s%s",
+				  bysrv->link->cl->lcnick, ch->name, smode,
+				  madd);
 	else
-	  ircd_sendto_chan_local(ch, ":%s!%s@%s MODE %s +%s%s", cl->nick,
-				 cl->user, cl->host, ch->name, smode, madd);
+	  ircd_sendto_chan_butone(ch, cl, ":%s!%s@%s MODE %s +%s%s", cl->nick,
+				  cl->user, cl->host, ch->name, smode, madd);
       }
       madd[0] = 0;
-      if (modeadd && ch->count > 1)	/* it is a fresh channel or updated */
+      if (modeadd)			/* it is a fresh channel or updated */
 	_ircd_mode2cmode (madd, modeadd, sizeof(madd)); /* make channel mode */
-      if (madd[0]) { /* don't send client mode to client as NAMES will do it */
+      if (madd[0]) {
 	if (bysrv)
-	  ircd_sendto_chan_butone(ch, cl, ":%s MODE %s +%s",
-				  bysrv->link->cl->lcnick, ch->name, madd);
+	  ircd_sendto_chan_local(ch, ":%s MODE %s +%s",
+				 bysrv->link->cl->lcnick, ch->name, madd);
 	else
-	  ircd_sendto_chan_butone(ch, cl, ":%s!%s@%s MODE %s +%s", cl->nick,
-				  cl->user, cl->host, ch->name, madd);
+	  ircd_sendto_chan_local(ch, ":%s!%s@%s MODE %s +%s", cl->nick,
+				 cl->user, cl->host, ch->name, madd);
       }
     }
 #ifdef USE_SERVICES
