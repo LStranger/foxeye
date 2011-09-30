@@ -3975,6 +3975,7 @@ void ircd_drop_nick (CLIENT *cl)
     ERROR("ircd:ircd_drop_nick() reference error: %s -> %s", cl->nick, cl->cs->nick);
 }
 
+/* finds alive client which probably known for server pp */
 CLIENT *ircd_find_client (const char *name, peer_priv *via)
 {
   register CLIENT *c;
@@ -3993,6 +3994,7 @@ CLIENT *ircd_find_client (const char *name, peer_priv *via)
   return (c);
 }
 
+/* finds alive or phantom client which probably known for server via */
 CLIENT *ircd_find_client_nt(const char *name, peer_priv *via)
 {
   register CLIENT *c;

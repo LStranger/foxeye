@@ -580,13 +580,23 @@ static int ircd_njoin(INTERFACE *srv, struct peer_t *peer, unsigned short token,
       clname[i++] = *c;
     while (*c != '\0' && *c++ != ',');	/* skip ',' if any */
     clname[i] = '\0';
-    cl = ircd_find_client(clname, pp);
+    cl = ircd_find_client_nt(clname, pp);
     if (cl == NULL) {
       ERROR("ircd:invalid NJOIN member from %s: %s", peer->dname, clname);
       if (!ircd_recover_done(pp, "invalid NJOIN member"))
 	return (0);
       continue;
     }
+    while (cl != NULL && cl->hold_upto != 0)
+      cl = cl->x.rto;
+    if (cl == NULL) {		/* seems we killed him already */
+      Add_Request(I_LOG, "*", F_WARN,
+		  "ircd: got NJOIN member from %s which is dead yet: %s",
+		  peer->dname, clname);
+      continue;
+    }
+    if (argv[0][0] == '+')	/* special support for modeless channel */
+      mf |= A_TOPICLOCK;
     if (tgt == NULL)		/* adding will check acks too */
       tgt = t = ircd_new_to_channel(srv->data, pp, argv[0], cl, mf);
     else

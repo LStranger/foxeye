@@ -2481,7 +2481,7 @@ void ircd_burst_channels (INTERFACE *to, NODE *channels)
       }
       New_Request (to, 0, "%s", buff);
     }
-    if (ch->name[0] == '+');		/* modeless channel */
+    if (ch->name[0] == '+')		/* modeless channel */
       continue;
     if (ch->mode != A_ISON || ch->limit || ch->key[0]) /* do not-mask modes */
     {
