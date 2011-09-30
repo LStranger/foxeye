@@ -310,6 +310,7 @@ Meaning of letters in VERSION reply:
    S  - Local /summon is enabled
    U  - Local /users is enabled
    +  - Users should always use '+' or '-' for MODE changing.
+   -  - Don't check argument of MODE #chan -k with key for #chan
    6  - IPv6 supported
    8  - Any unicode chars in nick/channel are allowed
 

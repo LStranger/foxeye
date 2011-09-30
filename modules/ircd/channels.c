@@ -523,6 +523,10 @@ static int _imch_do_keyset (INTERFACE *srv, const char *rq, const char *ch,
     //TODO: limit its length?
     //TODO: ERR_KEYSET
     strfcpy (_imch_channel->key, param, sizeof(_imch_channel->key));
+#ifndef IRCD_IGNORE_MKEY_ARG
+  else if (safe_strcmp(_imch_channel->key, param))
+    ircd_do_cnumeric (_imch_client, ERR_KEYSET, _imch_channel, 0, NULL);
+#endif
   else
     _imch_channel->key[0] = '\0';
   return 1;
