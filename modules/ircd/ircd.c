@@ -2118,8 +2118,14 @@ static int ircd_user (INTERFACE *srv, struct peer_t *peer, int argc, const char 
     return ircd_do_unumeric (cl, ERR_ALREADYREGISTRED, cl, 0, NULL);
   if (!cl->user[0])			/* got no ident */
   {
+    register unsigned char *cc;
+
     cl->user[0] = ' ';			/* marker */
     strfcpy (&cl->user[1], argv[0], sizeof(cl->user) - 1);
+    for (cc = &cl->user[1]; *cc; cc++)	/* restrict ident to ASCII printable */
+      if (*cc <= ' ' || *cc >= 0x80)
+	break;
+    *cc = '\0';
   }
   umode = atoi (argv[1]);
   if (umode & 4)
