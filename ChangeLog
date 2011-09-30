@@ -20,6 +20,7 @@ Fri Sep 30 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  added some diagnostics to it (bug#74).
 	* modules/ircd/servers.c: removed error generation on NJOIN member
 	  which we already killed.
+	* modules/ircd/channels.c: fixed onjoin messages to not send modes.
 
 Thu Sep 29 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ziplink: added new module for compressed links.
