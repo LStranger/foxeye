@@ -26,6 +26,8 @@
 #include "numerics.h"
 
 static struct bindtable_t *BTIrcdCheckMessage;
+//static struct bindtable_t *BTIrcdSetMessageTargetsLocal;
+//static struct bindtable_t *BTIrcdSetMessageTargetsRemote;
 
 /* ---------------------------------------------------------------------------
  * Common internal functions.
@@ -100,14 +102,13 @@ static void _ircd_bmsgl_mask (IRCD *ircd, const char *t, char *mask,
   }
 }
 
-static int _ircd_check_server_clients_hosts (LINK *tgt, unsigned short token,
-					     const char *mask)
+static int _ircd_check_server_clients_hosts (LINK *tgt, const char *mask)
 {
-  if (tgt->cl->x.token == token)
+  if (tgt->cl->via->p.iface->ift & I_PENDING)
     return 0;
   for (tgt = tgt->cl->c.lients; tgt; tgt = tgt->prev)
     if (CLIENT_IS_SERVER(tgt->cl)) {
-      if (_ircd_check_server_clients_hosts (tgt, token, mask))
+      if (_ircd_check_server_clients_hosts (tgt, mask))
 	return 1;
     } else if (!(tgt->cl->umode & A_SERVICE) && !tgt->cl->hold_upto)
       if (simple_match (mask, tgt->cl->host) > 0)
@@ -153,11 +154,7 @@ static int _ircd_can_send_to_chan (CLIENT *cl, CHANNEL *ch, const char *msg)
 /* since this is too hard to do matching, we don't send messages by alternate
    way here so this is rare ocasion when they might be lost in netsplit but
    even so there is still a chance they will come by another way due to mask */
-#if IRCD_MULTICONNECT
-static void _ircd_broadcast_msglist_new (IRCD *ircd, struct peer_priv *via,
-			unsigned short token, int id, const char *nick,
-			const char *targets, const char **tlist, size_t s,
-			const char *mode, const char *msg)
+static void _ircd_broadcast_msglist_mark(IRCD *ircd, const char **tlist, size_t s)
 {
   size_t i;
   CHANNEL *tch;
@@ -173,9 +170,7 @@ static void _ircd_broadcast_msglist_new (IRCD *ircd, struct peer_priv *via,
       {
 	c++;
 	for (mm = tch->users; mm; mm = mm->prevnick)
-	  if (CLIENT_IS_REMOTE(mm->who) && mm->who->cs->via != via &&
-	      mm->who->cs->x.token != token &&
-	      (mm->who->cs->via->link->cl->umode & A_MULTI) &&
+	  if (CLIENT_IS_REMOTE(mm->who) &&
 	      !(mm->who->cs->via->p.iface->ift & I_PENDING) &&
 	      simple_match (c, mm->who->cs->lcnick) > 0)
 	    mm->who->cs->via->p.iface->ift |= I_PENDING;
@@ -183,9 +178,7 @@ static void _ircd_broadcast_msglist_new (IRCD *ircd, struct peer_priv *via,
       else
       {
 	for (mm = tch->users; mm; mm = mm->prevnick)
-	  if (CLIENT_IS_REMOTE(mm->who) && mm->who->cs->via != via &&
-	      mm->who->cs->x.token != token &&
-	      (mm->who->cs->via->link->cl->umode & A_MULTI))
+	  if (CLIENT_IS_REMOTE(mm->who))
 	    mm->who->cs->via->p.iface->ift |= I_PENDING;
       }
     }
@@ -194,8 +187,7 @@ static void _ircd_broadcast_msglist_new (IRCD *ircd, struct peer_priv *via,
       LINK *srv;
 
       for (srv = ircd->servers; srv; srv = srv->prev)
-	if ((srv->cl->umode & A_MULTI) && srv->cl->via != via &&
-	    _ircd_check_server_clients_hosts (srv, token, tlist[i]+1))
+	if (_ircd_check_server_clients_hosts (srv, tlist[i]+1))
 	  srv->cl->via->p.iface->ift |= I_PENDING;
     }
     else if (*tlist[i] == '$') /* to servermask */
@@ -204,8 +196,8 @@ static void _ircd_broadcast_msglist_new (IRCD *ircd, struct peer_priv *via,
 
       c = tlist[i] + 1;
       for (t = 1; t < ircd->s; t++)
-	if (t != token && ircd->token[t] && ircd->token[t]->via != via &&
-	    (ircd->token[t]->via->link->cl->umode & A_MULTI) &&
+	if (ircd->token[t] &&
+	    !(ircd->token[t]->via->p.iface->ift & I_PENDING) &&
 	    simple_match (c, ircd->token[t]->lcnick) > 0)
 	  ircd->token[t]->via->p.iface->ift |= I_PENDING;
     }
@@ -213,93 +205,70 @@ static void _ircd_broadcast_msglist_new (IRCD *ircd, struct peer_priv *via,
     {
       CLIENT *tcl = _ircd_find_client_lc (ircd, tlist[i]);
 
-      if (tcl->cs->via->link->cl->umode & A_MULTI)
-	tcl->cs->via->p.iface->ift |= I_PENDING;
+      tcl->cs->via->p.iface->ift |= I_PENDING;
     }
   }
-  Add_Request (I_PENDING, "*", 0, ":%s I%s %d %s :%s", nick, mode, id,
-	       targets, msg);
+}
+
+#if IRCD_MULTICONNECT
+static int _ircd_broadcast_msglist_new (IRCD *ircd, struct peer_priv *via,
+			unsigned short token, int id, const char *nick,
+			const char *targets, const char **tlist, size_t s,
+			const char *mode, const char *msg)
+{
+  register LINK *srv;
+  int rc;
+
+  for (srv = ircd->servers; srv; srv = srv->prev) /* preset to ignore later */
+    if (!(srv->cl->umode & A_MULTI) || srv->cl->via == via ||
+	srv->cl->x.token == token)
+      srv->cl->via->p.iface->ift |= I_PENDING;
+  _ircd_broadcast_msglist_mark(ircd, tlist, s);
+  rc = 0;
+  for (srv = ircd->servers; srv; srv = srv->prev) /* reset them now */
+    if (!(srv->cl->umode & A_MULTI) || srv->cl->via == via ||
+	srv->cl->x.token == token)
+      srv->cl->via->p.iface->ift &= ~I_PENDING;
+    else if (srv->cl->via->p.iface->ift & I_PENDING) /* it's targetted */
+      rc = 1;
+  if (rc)
+    Add_Request (I_PENDING, "*", 0, ":%s I%s %d %s :%s", nick, mode, id,
+		 targets, msg);
+  return (rc);
 }
 #else
 # define _ircd_broadcast_msglist_new(a,b,c,d,e,f,g,h,i,j)
 #endif
 
-static void _ircd_broadcast_msglist_old (IRCD *ircd, struct peer_priv *via,
+static int _ircd_broadcast_msglist_old (IRCD *ircd, struct peer_priv *via,
 			unsigned short token, const char *nick, int all,
 			const char *targets, const char **tlist, size_t s,
 			const char *mode, const char *msg)
 {
-  size_t i;
-  CHANNEL *tch;
-  const char *c;
+  register LINK *srv;
+  int rc;
 
-  for (i = 0; i < s; i++)
-  {
-    if ((tch = _ircd_find_channel_lc (ircd, tlist[i]))) /* to channel */
-    {
-      MEMBER *mm;
-
-      if ((c = strchr (tch->lcname, ':')))
-      {
-	c++;
-	for (mm = tch->users; mm; mm = mm->prevnick)
-	  if (CLIENT_IS_REMOTE(mm->who) && mm->who->cs->via != via &&
-	      mm->who->cs->x.token != token &&
+  for (srv = ircd->servers; srv; srv = srv->prev) /* preset to ignore later */
+    if (srv->cl->via == via ||
 #if IRCD_MULTICONNECT
-	      (all || !(mm->who->cs->via->link->cl->umode & A_MULTI)) &&
+	(!all && (srv->cl->umode & A_MULTI)) ||
 #endif
-	      !(mm->who->cs->via->p.iface->ift & I_PENDING) &&
-	      simple_match (c, mm->who->cs->lcnick) > 0)
-	    mm->who->cs->via->p.iface->ift |= I_PENDING;
-      }
-      else
-      {
-	for (mm = tch->users; mm; mm = mm->prevnick)
-	  if (CLIENT_IS_REMOTE(mm->who) && mm->who->cs->via != via &&
+	srv->cl->x.token == token)
+      srv->cl->via->p.iface->ift |= I_PENDING;
+  _ircd_broadcast_msglist_mark(ircd, tlist, s);
+  rc = 0;
+  for (srv = ircd->servers; srv; srv = srv->prev) /* reset them now */
+    if (srv->cl->via == via ||
 #if IRCD_MULTICONNECT
-	      (all || !(mm->who->cs->via->link->cl->umode & A_MULTI)) &&
+	(!all && (srv->cl->umode & A_MULTI)) ||
 #endif
-	      mm->who->cs->x.token != token)
-	    mm->who->cs->via->p.iface->ift |= I_PENDING;
-      }
-    }
-    else if (*tlist[i] == '#') /* to hostmask */
-    {
-      LINK *srv;
-
-      c = tlist[i] + 1;
-      for (srv = ircd->servers; srv; srv = srv->prev)
-	if (srv->cl->via != via &&
-#if IRCD_MULTICONNECT
-	    (all || !(srv->cl->umode & A_MULTI)) &&
-#endif
-	    _ircd_check_server_clients_hosts (srv, token, c))
-	  srv->cl->via->p.iface->ift |= I_PENDING;
-    }
-    else if (*tlist[i] == '$') /* to servermask */
-    {
-      unsigned short t;
-
-      c = tlist[i] + 1;
-      for (t = 1; t < ircd->s; t++)
-	if (t != token && ircd->token[t] && ircd->token[t]->via != via &&
-#if IRCD_MULTICONNECT
-	    (all || !(ircd->token[t]->via->link->cl->umode & A_MULTI)) &&
-#endif
-	    simple_match (c, ircd->token[t]->lcnick) > 0)
-	  ircd->token[t]->via->p.iface->ift |= I_PENDING;
-    }
-    else /* to client */
-    {
-      CLIENT *tcl = _ircd_find_client_lc (ircd, tlist[i]);
-
-#if IRCD_MULTICONNECT
-      if (all || !(tcl->cs->via->link->cl->umode & A_MULTI))
-#endif
-	tcl->cs->via->p.iface->ift |= I_PENDING;
-    }
-  }
-  Add_Request (I_PENDING, "*", 0, ":%s %s %s :%s", nick, mode, targets, msg);
+	srv->cl->x.token == token)
+      srv->cl->via->p.iface->ift &= ~I_PENDING;
+    else if (srv->cl->via->p.iface->ift & I_PENDING) /* it's targetted */
+      rc = 1;
+  if (rc)
+    Add_Request (I_PENDING, "*", 0, ":%s %s %s :%s", nick, mode, targets, msg);
+  return (rc);
 }
 
 static inline CLIENT *_ircd_find_msg_target (IRCD *i, const char *target,

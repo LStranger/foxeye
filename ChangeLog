@@ -23,6 +23,7 @@ Fri Sep 30 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed onjoin messages to not send modes.
 	* modules/ircd/ircd.c: added restriction for "ident" in USER message
 	  to have printable ASCII chars only.
+	* modules/ircd/messages.c: simplified message broadcast functions.
 
 Thu Sep 29 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ziplink: added new module for compressed links.

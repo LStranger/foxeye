@@ -78,6 +78,7 @@ static struct bindtable_t *BTIrcdClientCmd;
 static struct bindtable_t *BTIrcdRegisterCmd;
 static struct bindtable_t *BTIrcdClientFilter;
 static struct bindtable_t *BTIrcdGotClient;
+//static struct bindtable_t *BTIrcdSetClient;
 static struct bindtable_t *BTIrcdLostClient;
 static struct bindtable_t *BTIrcdDoNumeric;
 static struct bindtable_t *BTIrcdCollision;
@@ -2123,9 +2124,8 @@ static int ircd_user (INTERFACE *srv, struct peer_t *peer, int argc, const char 
     cl->user[0] = ' ';			/* marker */
     strfcpy (&cl->user[1], argv[0], sizeof(cl->user) - 1);
     for (cc = &cl->user[1]; *cc; cc++)	/* restrict ident to ASCII printable */
-      if (*cc <= ' ' || *cc >= 0x80)
-	break;
-    *cc = '\0';
+      if (*cc <= ' ' || *cc >= 0x80 || *cc == '*')
+	*cc = 'x';
   }
   umode = atoi (argv[1]);
   if (umode & 4)

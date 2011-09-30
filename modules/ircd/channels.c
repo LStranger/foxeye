@@ -36,6 +36,8 @@ static struct bindtable_t *BTIrcdChannel;
 static struct bindtable_t *BTIrcdModechange;
 static struct bindtable_t *BTIrcdUmodechange;
 static struct bindtable_t *BTIrcdCheckModechange;
+//static struct bindtable_t *BTIrcdSetMember;
+//static struct bindtable_t *BTIrcdLostMember;
 
 ALLOCATABLE_TYPE (CHANNEL, IrcdChan_, users)
 ALLOCATABLE_TYPE (MEMBER, IrcdMemb_, prevnick)
