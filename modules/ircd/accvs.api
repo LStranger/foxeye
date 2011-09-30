@@ -151,7 +151,7 @@
 		      char _c_h_t_y_p_e,
 		      int (**_m_a)(INTERFACE *_s_r_v, const char *_r_q,
 				 const char *_c_h, int _a_d_d,
-				 const char *_p_a_r_a_m));
+				 const char **_p_a_r_a_m));
     Used when some client which has nick _r_q and channel mode _r_c_h_m_o_d_e sent
     command for some mode change on channel of type _c_h_t_y_p_e in direction
     _a_d_d (which is 0 if it's an attempt to down mode or 1 if it's attempt
@@ -159,11 +159,13 @@
     _t_m_o_d_e. In case if it's attempt of changing mode for whole channel
     (channel itself) then _t_a_r_g_e_t is NULL, _t_m_o_d_e is channel mode, and in
     case if that mode may require a parameter then _m_a on return should be
-    filled with pointer to function to set/clear/query the mode (which
+    filled with pointer to function to set/clear/query the mode which
     may get _a_d_d equal to -1 for mode query and will get also channel name
-    _c_h and parameter _p_a_r_a_m for that modechange). The function _m_a should
+    _c_h and parameter _p_a_r_a_m (and if it was a mode query then no parameter
+    _p_a_r_a_m is supplied) for requested modechange. The function _m_a should
     return 1 on success, 0 on fail, or -1 if change was ignored (if ban
-    was already existed for example). Returns modeflag change for target
+    was already existed for example). The function _m_a can replace pointer
+    to _p_a_r_a_m if it must be rewritten. Returns modeflag change for target
     if it's approved combined with lowest bit set to 1 if that modechange
     should consume a parameter (even if it isn't approved). If change is
     not approved then binding doesn't set _m_a and also binding may set bit

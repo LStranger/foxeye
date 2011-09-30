@@ -376,7 +376,7 @@ BINDING_TYPE_ircd_modechange(imch_o);
 static modeflag imch_o(INTERFACE *srv, const char *rq, modeflag rchmode,
 		       const char *target, modeflag tmode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
-				  const char *))
+				  const char **))
 {
   if (target && ((rchmode & A_OP) || !rchmode))
     return A_OP;
@@ -387,7 +387,7 @@ BINDING_TYPE_ircd_modechange(imch_v);
 static modeflag imch_v(INTERFACE *srv, const char *rq, modeflag rchmode,
 		       const char *target, modeflag tmode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
-				  const char *))
+				  const char **))
 {
   if (target && ((rchmode & A_OP) || !rchmode))
     return A_VOICE;
@@ -398,7 +398,7 @@ BINDING_TYPE_ircd_modechange(imch_a);
 static modeflag imch_a(INTERFACE *srv, const char *rq, modeflag rchmode,
 		       const char *target, modeflag tmode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
-				  const char *))
+				  const char **))
 {
   if (!target && !rchmode) /* it's testing */
     return A_ANONYMOUS;
@@ -417,7 +417,7 @@ BINDING_TYPE_ircd_modechange(imch_i);
 static modeflag imch_i(INTERFACE *srv, const char *rq, modeflag rchmode,
 		       const char *target, modeflag tmode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
-				  const char *))
+				  const char **))
 {
   if (!target && ((rchmode & A_OP) || !rchmode))
     return A_INVITEONLY;
@@ -428,7 +428,7 @@ BINDING_TYPE_ircd_modechange(imch_m);
 static modeflag imch_m(INTERFACE *srv, const char *rq, modeflag rchmode,
 		       const char *target, modeflag tmode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
-				  const char *))
+				  const char **))
 {
   if (!target && ((rchmode & A_OP) || !rchmode))
     return A_MODERATED;
@@ -439,7 +439,7 @@ BINDING_TYPE_ircd_modechange(imch_n);
 static modeflag imch_n(INTERFACE *srv, const char *rq, modeflag rchmode,
 		       const char *target, modeflag tmode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
-				  const char *))
+				  const char **))
 {
   if (!target && ((rchmode & A_OP) || !rchmode))
     return A_NOOUTSIDE;
@@ -450,7 +450,7 @@ BINDING_TYPE_ircd_modechange(imch_q);
 static modeflag imch_q(INTERFACE *srv, const char *rq, modeflag rchmode,
 		       const char *target, modeflag tmode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
-				  const char *))
+				  const char **))
 {
   if (!target && !rchmode) /* it's testing */
     return A_QUIET;
@@ -461,7 +461,7 @@ BINDING_TYPE_ircd_modechange(imch_p);
 static modeflag imch_p(INTERFACE *srv, const char *rq, modeflag rchmode,
 		       const char *target, modeflag tmode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
-				  const char *))
+				  const char **))
 {
   if (!target && !rchmode) /* it's testing */
     return A_PRIVATE;
@@ -474,7 +474,7 @@ BINDING_TYPE_ircd_modechange(imch_s);
 static modeflag imch_s(INTERFACE *srv, const char *rq, modeflag rchmode,
 		       const char *target, modeflag tmode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
-				  const char *))
+				  const char **))
 {
   if (!target && !rchmode) /* it's testing */
     return A_SECRET;
@@ -487,7 +487,7 @@ BINDING_TYPE_ircd_modechange(imch_r);
 static modeflag imch_r(INTERFACE *srv, const char *rq, modeflag rchmode,
 		       const char *target, modeflag tmode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
-				  const char *))
+				  const char **))
 {
   if (!target && !rchmode) /* it's testing */
     return A_REOP;
@@ -502,7 +502,7 @@ BINDING_TYPE_ircd_modechange(imch_t);
 static modeflag imch_t(INTERFACE *srv, const char *rq, modeflag rchmode,
 		       const char *target, modeflag tmode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
-				  const char *))
+				  const char **))
 {
   if (!target && ((rchmode & A_OP) || !rchmode))
     return A_TOPICLOCK;
@@ -515,16 +515,16 @@ static CHANNEL *_imch_channel;
 static CLIENT *_imch_client;
 
 static int _imch_do_keyset (INTERFACE *srv, const char *rq, const char *ch,
-			    int add, const char *param)
+			    int add, const char **param)
 {
   if (add < 0)
     return 0; /* invalid query */
   else if (add)
     //TODO: limit its length?
     //TODO: ERR_KEYSET
-    strfcpy (_imch_channel->key, param, sizeof(_imch_channel->key));
+    strfcpy (_imch_channel->key, *param, sizeof(_imch_channel->key));
 #ifndef IRCD_IGNORE_MKEY_ARG
-  else if (safe_strcmp(_imch_channel->key, param)) {
+  else if (safe_strcmp(_imch_channel->key, *param)) {
     ircd_do_cnumeric (_imch_client, ERR_KEYSET, _imch_channel, 0, NULL);
     return 0;
   }
@@ -538,7 +538,7 @@ BINDING_TYPE_ircd_modechange(imch_k);
 static modeflag imch_k(INTERFACE *srv, const char *rq, modeflag rchmode,
 		       const char *target, modeflag tmode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
-				  const char *))
+				  const char **))
 {
   if (!target && (rchmode & A_OP))
   {
@@ -549,16 +549,18 @@ static modeflag imch_k(INTERFACE *srv, const char *rq, modeflag rchmode,
 }
 
 static int _imch_do_limit (INTERFACE *srv, const char *rq, const char *ch,
-			   int add, const char *param)
+			   int add, const char **param)
 {
   register int i;
 
   if (add < 0)
     return 0; /* invalid query */
   else if (add) {
-    i = atoi (param);
-    if (i < 1)
+    i = atoi (*param);
+    if (i < 1) {
       i = 1;				/* 1 means nobody else can join */
+      *param = "1";
+    }
     _imch_channel->limit = i;
   } else
     _imch_channel->limit = 0;
@@ -569,7 +571,7 @@ BINDING_TYPE_ircd_modechange(imch_l);
 static modeflag imch_l(INTERFACE *srv, const char *rq, modeflag rchmode,
 		       const char *target, modeflag tmode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
-				  const char *))
+				  const char **))
 {
   if (!target && (rchmode & A_OP))
   {
@@ -579,15 +581,17 @@ static modeflag imch_l(INTERFACE *srv, const char *rq, modeflag rchmode,
   return (add ? 1 : 0);
 }
 
-static int _imch_add_mask (MASK **list, const char *mask)
+static int _imch_add_mask (MASK **list, const char **ptr)
 {
   register MASK *mm;
+  const char *mask = *ptr;
   MASK *nm;
 
   nm = alloc_MASK();
   if (!strchr(mask, '!') && !strchr(mask, '@')) { /* it's just nick */
     unistrlower (nm->what, mask, (sizeof(nm->what) - 2));
     strfcat(nm->what, "!*", sizeof(nm->what));
+    *ptr = nm->what;
   } else
     unistrlower (nm->what, mask, sizeof(nm->what));
   /* note: it might exceed field size? */
@@ -610,12 +614,12 @@ static int _imch_add_mask (MASK **list, const char *mask)
   return 1; /* done */
 }
 
-static int _imch_del_mask (MASK **list, const char *mask)
+static int _imch_del_mask (MASK **list, const char **mask)
 {
   register MASK *mm;
   char what[HOSTMASKLEN+1];
 
-  unistrlower (what, mask, sizeof(what));
+  unistrlower (what, *mask, sizeof(what));
   while ((mm = *list))
     if (!strcmp (mm->what, what))
     {
@@ -629,7 +633,7 @@ static int _imch_del_mask (MASK **list, const char *mask)
 }
 
 static int _imch_do_banset (INTERFACE *srv, const char *rq, const char *ch,
-			    int add, const char *param)
+			    int add, const char **param)
 {
   if (add < 0)				/* query ban list */
   {
@@ -650,7 +654,7 @@ BINDING_TYPE_ircd_modechange(imch_b);
 static modeflag imch_b(INTERFACE *srv, const char *rq, modeflag rchmode,
 		       const char *target, modeflag tmode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
-				  const char *))
+				  const char **))
 {
   if (!target && ((rchmode & A_OP) || add < 0))
   {
@@ -661,7 +665,7 @@ static modeflag imch_b(INTERFACE *srv, const char *rq, modeflag rchmode,
 }
 
 static int _imch_do_exemptset (INTERFACE *srv, const char *rq, const char *ch,
-			       int add, const char *param)
+			       int add, const char **param)
 {
   if (add < 0)				/* query exempts list */
   {
@@ -682,7 +686,7 @@ BINDING_TYPE_ircd_modechange(imch_e);
 static modeflag imch_e(INTERFACE *srv, const char *rq, modeflag rchmode,
 		       const char *target, modeflag tmode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
-				  const char *))
+				  const char **))
 {
   if (!target && ((rchmode & A_OP) || add < 0))
   {
@@ -693,7 +697,7 @@ static modeflag imch_e(INTERFACE *srv, const char *rq, modeflag rchmode,
 }
 
 static int _imch_do_inviteset (INTERFACE *srv, const char *rq, const char *ch,
-			       int add, const char *param)
+			       int add, const char **param)
 {
   if (add < 0)				/* query invite list */
   {
@@ -714,7 +718,7 @@ BINDING_TYPE_ircd_modechange(imch_I);
 static modeflag imch_I(INTERFACE *srv, const char *rq, modeflag rchmode,
 		       const char *target, modeflag tmode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
-				  const char *))
+				  const char **))
 {
 #ifdef NO_SPARE_INVITES
   if (!target && (rchmode & A_OP) && (tmode & A_INVITEONLY))
@@ -897,7 +901,7 @@ static inline int _ircd_mode_mask_query_reply (INTERFACE *srv, CLIENT *cl,
 {
   modeflag mf;
   register _mch_func_t f;
-  int (*ma)(INTERFACE *, const char *, const char *, int, const char *);
+  int (*ma)(INTERFACE *, const char *, const char *, int, const char **);
   register struct binding_t *b;
 
   if (ch->name[0] == '+')		/* nomode channel */
@@ -993,7 +997,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	  char charstr[2];
 	  register _mch_func_t f;
 	  register int ec;
-	  int (*ma)(INTERFACE *, const char *, const char *, int, const char *);
+	  int (*ma)(INTERFACE *, const char *, const char *, int, const char **);
 	  const char *par;
 	  MEMBER *tar;
 
@@ -1058,7 +1062,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	      if (mf & A_OP)		/* operator added so reset this */
 		ch->noop_since = 0;
 	    } else if (ma) {		/* it has an handler */
-	      ec = ma (srv, peer->dname, ch->name, add, par);
+	      ec = ma (srv, peer->dname, ch->name, add, &par);
 	      if (ec <= 0) {
 		if (ec < 0)
 		  dprint(4, "ircd:channels.c: mode +%c %s already present on %s",
@@ -1083,7 +1087,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	    tar->mode &= ~mf;
 	    //TODO: need we set noop_since on MODE #chan -o nick ?
 	  } else if (ma) {		/* it has a parameter */
-	    ec = ma (srv, peer->dname, ch->name, add, par);
+	    ec = ma (srv, peer->dname, ch->name, add, &par);
 	    if (ec <= 0) {
 	      if (ec < 0)
 		dprint(4, "ircd:channels.c: there isn't +%c %s on %s to remove",
@@ -1558,7 +1562,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	  char charstr[2];
 	  register _mch_func_t f;
 	  register int ec;
-	  int (*ma)(INTERFACE *, const char *, const char *, int, const char *);
+	  int (*ma)(INTERFACE *, const char *, const char *, int, const char **);
 	  const char *par;
 	  MEMBER *tar;
 
@@ -1653,7 +1657,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	      if (mf & A_OP)		/* operator added so reset this */
 		ch->noop_since = 0;
 	    } else if (ma) {		/* it has a parameter */
-	      ec = ma (srv, pp->p.dname, ch->name, add, par);
+	      ec = ma (srv, pp->p.dname, ch->name, add, &par);
 	      if (ec <= 0) {
 		if (ec < 0)
 		  dprint(4, "ircd:channels.c: mode +%c %s already present on %s",
@@ -1677,7 +1681,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	    //TODO: need we set noop_since on MODE #chan -o nick ?
 	  else if (ma)			/* it has a parameter */
 	  {
-	    ec = ma (srv, pp->p.dname, ch->name, add, par);
+	    ec = ma (srv, pp->p.dname, ch->name, add, &par);
 	    if (ec <= 0) {
 	      if (ec < 0)
 		dprint(4, "ircd:channels.c: there isn't +%c %s on %s to remove",
@@ -2579,7 +2583,7 @@ modeflag ircd_char2mode(INTERFACE *srv, const char *sname, const char *tar,
   BINDING_TYPE_ircd_channel ((*ff));
 #undef static
   register _mch_func_t f;
-  int (*ma)(INTERFACE *, const char *, const char *, int, const char *);
+  int (*ma)(INTERFACE *, const char *, const char *, int, const char **);
   modeflag mf;
   char chfc[2];
 

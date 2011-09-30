@@ -14,6 +14,8 @@ Fri Sep 30 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed channel mode -k.
 	* modules/ircd/channels.c: fixed empty mode broadcast.
 	* modules/ircd/channels.c: removed invalid broadcast 'MODE +chan +t'.
+	* modules/ircd/channels.c: changed last parameter of function which
+	  is set by "ircd-modechange" bindings.
 
 Thu Sep 29 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ziplink: added new module for compressed links.
