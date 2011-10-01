@@ -1228,9 +1228,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
     case P_LOGIN:
     case P_TALK:
     case P_IDLE:
-#if 0 /* 20110110 - no reprefix */
       sw = 0;
-#endif /* 20110110 - no reprefix */
       if (Peer_Put ((&peer->p), "", &sw) == CONNCHAIN_READY && req) {
 #if 0 /* 20110110 - no reprefix */
 	  /* flush buffer in any case*/
