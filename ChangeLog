@@ -13,6 +13,7 @@ TODO:
 Sat Oct  1 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c, modules/ircd/channels.c, modules/ircd/clients.c, modules/ircd/messages.c, modules/ircd/servers.c:
 	  removed making a prefix from ircd client request handler.
+	* core/lib.c: fixed deadcycle with too long parameter for printl().
 
 Fri Sep 30 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed channel mode -k.

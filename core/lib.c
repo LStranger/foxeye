@@ -554,7 +554,8 @@ int Have_Wildcard (const char *str)
 
 
 /* bs is max space available if text doesn't fit in linelen s
- * bs >= s or bs == 0 if wrapping enabled */
+ * bs >= s if no wrapping
+ * bs == 0 if wrapping enabled */
 static ssize_t _try_subst (char *buf, size_t bs, const char *text, size_t s)
 {
   size_t n = safe_strlen (text);
@@ -672,7 +673,7 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
       ssize_t n;			/* n is number of real chars to add */
       size_t nmax;
       const char *fix;
-      ssize_t nn;
+      ssize_t nn, fw;
       static char mircsubst[] = "WkbgRrmyYGcCBMKw";
 
       if (!q || (end = strchr (t, '?')) == NULL)
@@ -719,18 +720,19 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
       t = cc;				/* we are on '%' now */
       p->i += n;			/* and we have line space for it */
       c += n;
-      if (p->i == 0)			/* nmax is max for line, 0 to wrap */
+      if (ll && p->i != 0)		/* nmax is max for line, 0 to wrap */
 	nmax = 0;				/* wrap: drop line to ll */
       else
 	nmax = nn;				/* rest of buffer */
       fix = &t[1];
+      fw = 0;
       if (*fix >= '0' && *fix <= '9')	/* we have fixed field width here */
       {
-	n = (int)strtol (fix, (char **)&fix, 10);
-	if (n < nn)
+	fw = (int)strtol (fix, (char **)&fix, 10);
+	if (fw < nn)
 	{
 	  nmax = nn;		/* disable wrapping: assume field has width n */
-	  nn = n;
+	  nn = fw;
 	}
       }
       else if (ll && (size_t)nn > ll - p->i)
@@ -879,9 +881,8 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
 	}
 	else				/* if no space available or empty */
 	  n = 0;
-	if (fix > &t[1])		/* check if fixed size */
-	  for (; n < nn; n++)
-	    *c++ = ' ';			/* fill rest with spaces */
+	for (; n < fw; n++)		/* check if fixed size */
+	  *c++ = ' ';			/* fill rest with spaces */
 	t = &fix[1];			/* skip command char */
       }
     }
