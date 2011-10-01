@@ -15,6 +15,7 @@ Sat Oct  1 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  removed making a prefix from ircd client request handler.
 	* core/lib.c: fixed deadcycle with too long parameter for printl().
 	* modules/ircd/ircd.c: added replacement for local user empty realname.
+	* modules/ircd/channels.c: fixed incorrect making of safe channel name.
 
 Fri Sep 30 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed channel mode -k.

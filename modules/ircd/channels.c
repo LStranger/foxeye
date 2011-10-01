@@ -304,8 +304,11 @@ static inline const char *_ich_safename_exists (NODE *n, const char *name)
   char lcname[MB_LEN_MAX*CHANNAMELEN];
   LEAF *l;
   const char *k;
+  register size_t i;
 
   unistrlower (lcname, name, sizeof(lcname)); /* lower case part here */
+  i = unistrcut(lcname, sizeof(lcname), CHANNAMELEN - CHIDLEN);
+  lcname[i] = '\0';
   /* scan whole list for !* channels (it may be slow, I know...) */
   l = Find_Leaf (n, "!", 0);		/* seek to first "!xxx" channel */
   if (!l)				/* there is no '!' channels yet */
@@ -338,6 +341,8 @@ static inline char *_ich_make_safename (const char *name)
     t /= CHIDCNUM;
   }
   strfcpy (&nn[i], name, sizeof(nn) - 1 - CHIDLEN); /* add name part */
+  i = unistrcut(nn, sizeof(nn), CHANNAMELEN);
+  nn[i] = '\0';
   return nn;
 }
 
