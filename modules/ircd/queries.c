@@ -1098,13 +1098,13 @@ static int ircd_whois_sb(INTERFACE *srv, struct peer_t *peer, unsigned short tok
 
 typedef struct whowas_t {
   struct whowas_t *prev, *next;		/* two-side vectors in history of that nick */
-//  time_t wason;
+  time_t wason;
   char nick[MB_LEN_MAX*NICKLEN+1];	/* registration nick */
   char lcnick[MB_LEN_MAX*NICKLEN+1];	/* nick (lower case) - for search */
   char fname[MB_LEN_MAX*REALNAMELEN+1];	/* full name */
   char user[USERLEN+1];			/* ident - from connection */
   char host[HOSTLEN+1];			/* host (lower case) */
-  char fromsrv[HOSTLEN+MB_LEN_MAX*REALNAMELEN+3]; /* server "name :desc" of user */
+  char fromsrv[HOSTLEN+1];		/* server name of user */
 } whowas_t;
 
 static NODE *IrcdWhowasTree = NULL;
@@ -1121,7 +1121,8 @@ static inline int _ircd_query_whowas (IRCD *ircd, CLIENT *cl, struct peer_priv *
   whowas_t *ww;
   int n, max;
   char targets[MESSAGEMAX];
-  char buf[MESSAGEMAX];
+  struct tm tmp;
+  CLIENT dummy;
 
   if (argc == 0)
     return ircd_do_unumeric (cl, ERR_NONICKNAMEGIVEN, cl, 0, NULL);
@@ -1150,12 +1151,17 @@ static inline int _ircd_query_whowas (IRCD *ircd, CLIENT *cl, struct peer_priv *
       ww = NULL;
     for (n = 0; ww && n < max; ww = ww->prev)
     {
-      snprintf (buf, sizeof(buf), "%s %s %s * :%s", ww->nick, ww->user,
-		ww->host, ww->fname);
-      ircd_do_unumeric (cl, RPL_WHOWASUSER, cl, 0, buf);
+      strfcpy (dummy.user, ww->user, sizeof(dummy.user));
+      strfcpy (dummy.nick, ww->nick, sizeof(dummy.nick));
+      strfcpy (dummy.host, ww->host, sizeof(dummy.host));
+      dummy.via = NULL;
+      dummy.umode = 0;
+      ircd_do_unumeric (cl, RPL_WHOWASUSER, &dummy, 0, ww->fname);
       //TODO: whowas time!
-      New_Request (ircd->iface, 0, "312 %s %s %s", cl->nick, ww->nick,
-		   ww->fromsrv);	/* emulate RPL_WHOISSERVER */
+      strfcpy (dummy.nick, ww->fromsrv, sizeof(dummy.nick));
+      localtime_r(&ww->wason, &tmp);
+      strftime(dummy.host, sizeof(dummy.host), "%c", &tmp);
+      ircd_do_unumeric (cl, RPL_WHOISSERVER, &dummy, 0, ww->nick);
       n++;
     }
     if (n)
@@ -1421,11 +1427,8 @@ static void _ilostc_ww(INTERFACE *srv, const char *from, const char *lcnick,
   strfcpy(ww->user, user, sizeof(ww->user));
   strfcpy(ww->host, host, sizeof(ww->host));
   where = _ircd_find_client_lc((IRCD *)srv->data, from);
-  if (where == NULL) {
-    ERROR("ircd:whowas data: cannot find server %s", from);
-    snprintf(ww->fromsrv, sizeof(ww->fromsrv), "%s :[unknown]", from);
-  } else
-    snprintf(ww->fromsrv, sizeof(ww->fromsrv), "%s :%s", from, where->fname);
+  strfcpy(ww->fromsrv, from, sizeof(ww->fromsrv));
+  ww->wason = Time;
   /* done */
 }
 
