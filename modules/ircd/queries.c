@@ -1199,6 +1199,9 @@ static inline int _ircd_query_ping (IRCD *ircd, CLIENT *cl, struct peer_priv *vi
 		 tgt->nick);
     return (-1);		/* don't reset idle time */
   }
+  tgt = ircd_find_client (argv[0], via);
+  if (tgt != cl)
+    dprint(4, "ircd:queries.c: got PING %s!=%s", argv[0], cl->nick);
   me = ircd_find_client(NULL, NULL);
   ircd_sendto_one (cl, ":%s PONG %s %s", me->lcnick, me->lcnick, argv[0]);
   return (-1);			/* don't reset idle time */

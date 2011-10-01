@@ -2055,6 +2055,8 @@ static int _ircd_got_local_user (CLIENT *cl)
     /* FIXME: isn't it fatal? */
   else
     dprint(2, "ircd:ircd.c:_ircd_got_local_user: new name %s", cl->lcnick);
+  if (cl->fname == '\0')
+    strfcpy(cl->fname, "No realname given.", sizeof(cl->fname));
   snprintf (mb, sizeof(mb), "%s@%s", cl->lcnick, Ircd->iface->name);
   Rename_Iface (cl->via->p.iface, mb);	/* rename iface to nick@net */
   cl->away[0] = 0;
