@@ -10,6 +10,10 @@ TODO:
 	* core/connchain.c, ...: to make recv rawflushing on socket=-1.
 
 --- [0.10.0]
+Sat Oct  1 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/ircd.c, modules/ircd/channels.c, modules/ircd/clients.c, modules/ircd/messages.c, modules/ircd/servers.c:
+	  removed making a prefix from ircd client request handler.
+
 Fri Sep 30 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed channel mode -k.
 	* modules/ircd/channels.c: fixed empty mode broadcast.

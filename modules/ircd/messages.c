@@ -182,6 +182,7 @@ static void _ircd_broadcast_msglist_mark(IRCD *ircd, const char **tlist, size_t 
 	    mm->who->cs->via->p.iface->ift |= I_PENDING;
       }
     }
+//TODO: do apply/mark of masks : #*.* $*.* *?@?* *?%?* +external
     else if (*tlist[i] == '#') /* to hostmask */
     {
       LINK *srv;
@@ -338,6 +339,7 @@ static int ircd_privmsg_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
       else
 	ircd_do_unumeric (cl, ERR_CANNOTSENDTOCHAN, cl, 0, c);
     }
+//TODO: do test/local broadcast of masks : #*.* $*.* *?@?* *?%?* +external
     else if ((cl->umode & (A_OP | A_HALFOP)) && //TODO: can local ops send it too?
 	     (*argv[0] == '#' || *argv[0] == '$'))
     {
@@ -362,7 +364,8 @@ static int ircd_privmsg_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
     {
       if (!CLIENT_IS_REMOTE(tcl))
       {
-	New_Request (tcl->via->p.iface, 0, "PRIVMSG %s :%s", c, argv[1]);
+	New_Request (tcl->via->p.iface, 0, ":%s!%s@%s PRIVMSG %s :%s",
+		     peer->dname, user, host, c, argv[1]);
 	if (tcl->umode & A_AWAY)
 	  ircd_do_unumeric (cl, RPL_AWAY, tcl, 0, tcl->away);
       }
@@ -439,7 +442,8 @@ static int ircd_notice_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
     else if ((tcl = _ircd_find_msg_target ((IRCD *)srv->data, c, NULL)))
     {
       if (!CLIENT_IS_REMOTE(tcl))
-	New_Request (tcl->via->p.iface, 0, "NOTICE %s :%s", c, argv[1]);
+	New_Request (tcl->via->p.iface, 0, ":%s!%s@%s NOTICE %s :%s",
+		     peer->dname, user, host, c, argv[1]);
       else
 	ADD_TO_LIST(tcl->lcnick);
     }
@@ -471,7 +475,8 @@ static int ircd_squery_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 #ifdef USE_SERVICES
   if (!CLIENT_IS_REMOTE (tcl))
   {
-    New_Request (tcl->via->p.iface, 0, "SQUERY %s :%s", c, argv[1]);
+    New_Request (tcl->via->p.iface, 0, ":%s SQUERY %s :%s", peer->dname, c,
+		 argv[1]);
     return 1;
   }
 #endif

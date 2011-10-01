@@ -868,7 +868,7 @@ static int ircd_kick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 	ircd_sendto_chan_local (memb->chan, ":%s KICK %s %s :%s",
 				sender, chn, lcl, reason);
       else if (CLIENT_IS_SERVICE(cl))
-	ircd_sendto_chan_local (memb->chan, ":%s!service@%s KICK %s %s :%s",
+	ircd_sendto_chan_local (memb->chan, ":%s@%s KICK %s %s :%s",
 				sender, cl->cs->lcnick, chn, lcl, reason);
       else
 	ircd_sendto_chan_local (memb->chan, ":%s!%s@%s KICK %s %s :%s",
@@ -1002,7 +1002,7 @@ static int _ircd_do_stopic(IRCD *ircd, const char *via, const char *sender,
   if (CLIENT_IS_SERVER(cl)) //TODO: can servers set topics?
     ircd_sendto_chan_local(ch, ":%s TOPIC %s :%s", sender, ch->name, ch->topic);
   else if (CLIENT_IS_SERVICE(cl))
-    ircd_sendto_chan_local(ch, ":%s!service@%s TOPIC %s :%s", sender,
+    ircd_sendto_chan_local(ch, ":%s@%s TOPIC %s :%s", sender,
 			   cl->cs->lcnick, ch->name, ch->topic);
   else
     ircd_sendto_chan_local(ch, ":%s!%s@%s TOPIC %s :%s", sender, cl->user,

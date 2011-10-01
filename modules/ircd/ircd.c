@@ -1228,8 +1228,11 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
     case P_LOGIN:
     case P_TALK:
     case P_IDLE:
+#if 0 /* 20110110 - no reprefix */
       sw = 0;
+#endif /* 20110110 - no reprefix */
       if (Peer_Put ((&peer->p), "", &sw) == CONNCHAIN_READY && req) {
+#if 0 /* 20110110 - no reprefix */
 	  /* flush buffer in any case*/
 	if (req->string[0] == ':' ||		/* if already prefixed or */
 	    CLIENT_IS_SERVER (cl) ||		/* sent to server or */
@@ -1279,9 +1282,16 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	/* would be nice to cut the message to standard size but we don't know
 	   how to handle message in target's charset unfortunately */
 	sw = strlen(buff);
+#else /* 20110110 - no reprefix */
+	sw = strlen(req->string);
+#endif /* 20110110 - no reprefix */
 	sr = sw + 1;			/* for statistics */
 	//TODO: BTIrcdCheckSend(cmd): func (Ircd, &peer->p, peer->link->cl->umode);
+#if 0 /* 20110110 - no reprefix */
 	if (Peer_Put ((&peer->p), buff, &sw) > 0)
+#else /* 20110110 - no reprefix */
+	if (Peer_Put ((&peer->p), req->string, &sw) > 0)
+#endif /* 20110110 - no reprefix */
 	{
 	  peer->ms++;
 	  peer->bs += sr;
@@ -1391,7 +1401,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
   } else if (Time >= (peer->p.last_input + i) && !(cl->umode & A_PINGED)) {
     cl->umode |= A_PINGED;		/* ping our peer */
     if (peer->p.state == P_TALK)	/* but don't send while registering */
-      New_Request (cli, F_QUICK, ":%s PING %s", MY_NAME, MY_NAME);
+      New_Request (cli, F_QUICK, "PING %s", MY_NAME);
   }
   if (req)
     return REQ_REJECTED;		/* retry it later */

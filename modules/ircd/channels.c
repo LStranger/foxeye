@@ -1182,7 +1182,8 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	    if (!mf)
 	      continue;
 	    n++;			/* one more accepted */
-	    New_Request (cl->via->p.iface, 0, "MODE %s +%c", peer->dname, *c);
+	    New_Request (cl->via->p.iface, 0, ":%s MODE %s +%c", peer->dname,
+			 peer->dname, *c);
 	    toadd |= mf;
 	    todel &= ~mf;
 	    continue;
@@ -1191,7 +1192,8 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	  if (!mf)
 	    continue;
 	  n++;				/* one more accepted */
-	  New_Request (cl->via->p.iface, 0, "MODE %s -%c", peer->dname, *c);
+	  New_Request (cl->via->p.iface, 0, ":%s MODE %s -%c", peer->dname,
+		       peer->dname, *c);
 	  todel |= mf;
 	  toadd &= ~mf;
 	}
@@ -1794,7 +1796,8 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	      continue;
 	    n++;			/* one more accepted */
 	    if (!CLIENT_IS_REMOTE(tgt))
-	      New_Request (tgt->via->p.iface, 0, "MODE %s +%c", tgt->nick, *c);
+	      New_Request (tgt->via->p.iface, 0, ":%s MODE %s +%c", sender,
+			   tgt->nick, *c);
 	    toadd |= mf;
 	    todel &= ~mf;
 	    tgt->umode |= mf;
@@ -1805,7 +1808,8 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	    continue;
 	  n++;				/* one more accepted */
 	  if (!CLIENT_IS_REMOTE(tgt))
-	    New_Request (tgt->via->p.iface, 0, "MODE %s -%c", tgt->nick, *c);
+	    New_Request (tgt->via->p.iface, 0, ":%s MODE %s -%c", sender,
+			 tgt->nick, *c);
 	  todel |= mf;
 	  toadd &= ~mf;
 	  tgt->umode &= ~mf;
