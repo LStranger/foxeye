@@ -56,6 +56,7 @@ long int _ircd_hold_period = 900;		/* 15 minutes, see RFC 2811 */
 static long int _ircd_server_class_pingf = 30;	/* in seconds */
 
 static short *_ircd_corrections;		/* for CheckFlood() */
+static short *_ircd_client_recvq;
 
 typedef struct peer_priv peer_priv;
 
@@ -1134,6 +1135,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	dprint(2, "ircd:ircd.c:_ircd_client_request: del name %s", cl->lcnick);
       if (peer == _ircd_uplink)
 	_ircd_uplink = NULL;
+      NoCheckFlood (&peer->penalty); /* no more messages will be accepted */
       if (cl->umode & (A_SERVER | A_UPLINK)) { /* was it autoconnect who left? */
 	if (Get_Clientflags (cl->lcnick, Ircd->iface->name) & U_AUTO)
 	{
@@ -1142,8 +1144,6 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 #endif
 	  _ircd_init_uplinks();	/* recheck uplinks list */
 	}
-	if (CLIENT_IS_SERVER(cl))
-	  NoCheckFlood (&peer->corrections);
       } else {			/* clear any collision relations */
 	/* it's either not logged or phantom at this point */
 	if (cl->rfr != NULL)
@@ -1299,9 +1299,11 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
       }
       break;
   }
-  sr = Peer_Get ((&peer->p), buff, sizeof(buff));
-  if (sr > 0)				/* we got a message from peer */
-  {
+  if (!(cl->umode & (A_SERVER | A_SERVICE)) &&
+      peer->penalty > _ircd_client_recvq[1])
+    sr = 0;				/* apply penalty on flood from clients */
+  else while ((sr = Peer_Get ((&peer->p), buff, sizeof(buff))) > 0)
+  {					/* we got a message from peer */
     peer->p.last_input = Time;
     peer->mr++;				/* do statistics */
     peer->br += sr;
@@ -1382,6 +1384,13 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
     else if (i > 0)
       peer->noidle = Time;		/* for idle calculation */
 #endif
+    /* we accepted a message, apply antiflood penalty on client */
+    if (!(cl->umode & (A_SERVER | A_SERVICE)) &&
+	CheckFlood (&peer->penalty, _ircd_client_recvq) > 0) {
+      dprint(4, "ircd: flood from %s, applying penalty on next message",
+	     cl->nick);
+      break;				/* don't accept more messages */
+    }
   }
   if (peer->p.state == P_QUIT)		/* died in execution! */
     return REQ_OK;
@@ -1479,6 +1488,7 @@ static void _ircd_prehandler (pthread_t th, void **data, idx_t *as)
   peer->p.start[0] = 0;
   peer->bs = peer->br = peer->ms = peer->mr = 0;
   peer->th = th;
+  peer->penalty = 0;
   while (__ircd_have_started == 0) sleep(1); /* wait for main thread */
   /* lock dispatcher and create connchain */
   Set_Iface (NULL);
@@ -1822,6 +1832,7 @@ static inline void _ircd_start_uplink2 (const char *name, char *host,
   uplink->via->p.connchain = NULL;
   uplink->via->started = Time;
   uplink->via->i.token = NULL;
+  uplink->via->penalty = 0;
   uplink->via->t = 0;
   uplink->pcl = NULL;
   uplink->cs = uplink;
@@ -2720,7 +2731,6 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
     Insert_Key (&Ircd->clients, cl->lcnick, cl, 1); //!
   dprint(2, "ircd:ircd.c:ircd_server_rb: new name %s", cl->lcnick);
   cl->umode |= A_SERVER; //!
-  cl->via->corrections = 0;		/* reset correctable errors */
   peer->state = P_TALK;			/* we registered it */
   snprintf (buff, sizeof(buff), "%s@%s", cl->lcnick, Ircd->iface->name);
   Rename_Iface (peer->iface, buff);	/* rename iface to server.name@net */
@@ -4309,7 +4319,7 @@ int ircd_do_cnumeric (CLIENT *requestor, int n, const char *template,
 
 int ircd_recover_done (peer_priv *peer, const char *msg)
 {
-  if (CheckFlood (&peer->corrections, _ircd_corrections) > 0)
+  if (CheckFlood (&peer->penalty, _ircd_corrections) > 0)
   {
     ircd_do_squit (peer->link, peer, "Too many protocol errors");
     return 0;
@@ -4696,6 +4706,13 @@ SigFunction ModuleInit (char *args)
   ircd_message_proto_start();
   /* need to add interface into Ircd->iface ASAP! */
   _ircd_corrections = FloodType ("ircd-errors"); /* sets corrections */
+  _ircd_client_recvq = FloodType ("ircd-penalty");
+  if (_ircd_client_recvq[0] <= 0 || _ircd_client_recvq[1] <= 0) {
+    _ircd_client_recvq[0] = 5; /* 5 messages in 2 seconds is default */
+    _ircd_client_recvq[1] = 10;
+    Add_Request(I_LOG, "*", F_BOOT,
+		"ircd: reset ircd-penalty flood to default 5:10");
+  }
   NewTimer (I_MODULE, "ircd", S_TIMEOUT, 1, 0, 0, 0);
   /* register everything */
   _ircd_register_all();

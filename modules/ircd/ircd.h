@@ -245,7 +245,7 @@ struct peer_priv
     MEMBER *nvited;	/* user: invitations */
   } i;
   unsigned short int t; /* server: tokens list size (see above) */
-  short corrections;	/* server: traffic corrections counter */
+  short penalty;	/* traffic penalty (server: corrections, user: delay) */
 #if IRCD_MULTICONNECT
   ACK *acks;		/* server: list of waiting acks */
 #endif

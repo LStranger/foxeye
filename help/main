@@ -387,4 +387,6 @@ function flood-type
 :
 :Changes value for checking flood utility for some flood type %_name%_\
  so checking will be done if that events type for one client should not\
- exceed %_number%_ events in some time interval given in %_seconds%_.
+ exceed %_number%_ events in some time interval given in %_seconds%_.\
+ Note that due to integer nature of counters either %_number%_ should be\
+ dividable by %_seconds%_ or %_seconds%_ should be dividable by %_number%_.

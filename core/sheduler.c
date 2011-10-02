@@ -27,8 +27,8 @@
 
 typedef struct
 {
-  short *ptr;			/* if 0 then this cell is empty */
-  short timer;
+  short *ptr;
+  short count;
 } shedfloodentry_t;
 
 static shedfloodentry_t *Floodtable = NULL;
@@ -39,20 +39,34 @@ static struct bindtable_t *BT_TimeShift;
 /* create new cell in Floodtable */
 int CheckFlood (short *ptr, short floodtype[2])
 {
-  if (floodtype[0] == 0)	/* don't check this flood */
+  unsigned int i;
+
+  if (floodtype[0] <= 0)	/* don't check this flood */
     return 0;
-  if (_SFnum >= MAXTABLESIZE)
+  if (floodtype[1] <= 0)	/* oops! */
+    return 1;
+  for (i = 0; i < _SFnum; i++)	/* find if this is still here */
+    if (Floodtable[i].ptr == ptr)
+      break;
+  if (i >= MAXTABLESIZE)
     bot_shutdown ("Internal error in CheckFlood()", 8);
-  if (_SFnum >= _SFalloc)
+  if (i >= _SFalloc)
   {
     _SFalloc += 32;
     safe_realloc ((void **)&Floodtable, (_SFalloc) * sizeof(shedfloodentry_t));
   }
-  (*ptr)++;
-  Floodtable[_SFnum].ptr = ptr;
-  Floodtable[_SFnum].timer = floodtype[1];
-  _SFnum++;
-  return ((*ptr) - floodtype[0]);
+  if (floodtype[1] > floodtype[0]) { /* 1 event per some time */
+    (*ptr) += floodtype[1] / floodtype[0];
+    Floodtable[i].count = 1;
+  } else {			/* some events per second */
+    (*ptr)++;
+    Floodtable[i].count = floodtype[0] / floodtype[1];
+  }
+  if (i == _SFnum) {
+    Floodtable[i].ptr = ptr;
+    _SFnum++;
+  }
+  return ((*ptr) - floodtype[1]);
 }
 
 /* delete cells for ptr from Floodtable */
@@ -313,14 +327,17 @@ static int Sheduler (INTERFACE *ifc, REQUEST *req)
     /* decrement floodtimers */
     for (i = 0; i < _SFnum; i++)
     {
-      if (Floodtable[i].ptr && (Floodtable[i].timer -= drift) <= 0)
+      register int change = Floodtable[i].count * drift;
+
+      DBG("decrementing flood counter by %hd from %hd", change, *Floodtable[i].ptr);
+      if (*Floodtable[i].ptr <= change)
       {
-	(*Floodtable[i].ptr)--;
 	_SFnum--;
 	j++;
 	if (i != _SFnum)
 	  memcpy (&Floodtable[i], &Floodtable[_SFnum], sizeof(shedfloodentry_t));
-      }
+      } else
+	*Floodtable[i].ptr -= change;
     }
     if (j)
       dprint (3, "Sheduler: removed %u flood timer(s), remained %u/%u",
