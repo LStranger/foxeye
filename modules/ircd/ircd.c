@@ -1305,12 +1305,13 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
     peer->p.last_input = Time;
     peer->mr++;				/* do statistics */
     peer->br += sr;
+    sr--;				/* skip ending '\0' */
 #if IRCD_USES_ICONV
     c = sbuff;
-    sr = Do_Conversion (cli->conv, &c, sizeof(sbuff), buff, &sr);
+    sr = Do_Conversion (cli->conv, &c, sizeof(sbuff) - 1, buff, &sr);
+    c[sr] = '\0';
 #else
     c = buff;
-    sr--;				/* skip ending '\0' */
 #endif
     if (*c == ':')			/* we got sender prefix */
     {

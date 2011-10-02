@@ -17,6 +17,7 @@ Sat Oct  1 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: added replacement for local user empty realname.
 	* modules/ircd/channels.c: fixed incorrect making of safe channel name.
 	* modules/ircd/queries.c, modules/ircd/numerics.h: fixed WHOWAS replies.
+	* modules/ircd/ircd.c: fixed stack overflow on message receiving.
 
 Fri Sep 30 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed channel mode -k.
