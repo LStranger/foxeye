@@ -1230,66 +1230,10 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
     case P_IDLE:
       sw = 0;
       if (Peer_Put ((&peer->p), "", &sw) == CONNCHAIN_READY && req) {
-#if 0 /* 20110110 - no reprefix */
-	  /* flush buffer in any case*/
-	if (req->string[0] == ':' ||		/* if already prefixed or */
-	    CLIENT_IS_SERVER (cl) ||		/* sent to server or */
-	    req->from->IFRequest != &_ircd_client_request || /* alien message */
-	    !strncmp (req->string, "ERROR ", 6)) /* or ERROR message */
-	  strfcpy(buff, req->string, sizeof(buff)); /* will not add sender prefix */
-	else					/* it must be local request */
-	  /* add sender prefix to the message */
-#ifdef USE_SERVICES
-	  if (CLIENT_IS_SERVICE (((peer_priv *)req->from->data)->link->cl))
-#if IRCD_USES_ICONV
-	    sw = snprintf(sbuff, sizeof(sbuff), ":%s@%s ",
-			  ((peer_priv *)req->from->data)->p.dname, MY_NAME);
-#else
-	    snprintf (buff, sizeof(buff), ":%s@%s %s",
-		      ((peer_priv *)req->from->data)->p.dname, MY_NAME,
-		      req->string);
-#endif /* IRCD_USES_ICONV */
-	else
-#endif /* USE_SERVICES */
-#if IRCD_USES_ICONV
-	  sw = snprintf(sbuff, sizeof(sbuff), ":%s!%s@%s ",
-			((peer_priv *)req->from->data)->p.dname,
-			((peer_priv *)req->from->data)->link->cl->user,
-			((peer_priv *)req->from->data)->link->cl->host);
-#else
-	  snprintf (buff, sizeof(buff), ":%s!%s@%s %s",
-		    ((peer_priv *)req->from->data)->p.dname,
-		    ((peer_priv *)req->from->data)->link->cl->user,
-		    ((peer_priv *)req->from->data)->link->cl->host,
-		    req->string);
-#endif /* IRCD_USES_ICONV */
-#if IRCD_USES_ICONV
-	if (sw > 0) {			/* was prefixed above */
-	  c = buff;
-	  if (sw >= sizeof(sbuff))
-	    sw = sizeof(sbuff) - 1;
-	  sr = Undo_Conversion(cli->conv, &c, sizeof(buff) - 1, sbuff, &sw);
-	  if (c == sbuff) {		/* null conversion */
-	    sw = snprintf(buff, sizeof(buff), "%s%s", sbuff, req->string);
-	    if (sw >= sizeof(buff))
-	      sw = sizeof(buff) - 1;
-	  } else			/* c == buff */
-	    sw = sr + strfcpy(&buff[sr], req->string, sizeof(buff) - sr);
-	} else
-#endif
-	/* would be nice to cut the message to standard size but we don't know
-	   how to handle message in target's charset unfortunately */
-	sw = strlen(buff);
-#else /* 20110110 - no reprefix */
 	sw = strlen(req->string);
-#endif /* 20110110 - no reprefix */
 	sr = sw + 1;			/* for statistics */
 	//TODO: BTIrcdCheckSend(cmd): func (Ircd, &peer->p, peer->link->cl->umode);
-#if 0 /* 20110110 - no reprefix */
-	if (Peer_Put ((&peer->p), buff, &sw) > 0)
-#else /* 20110110 - no reprefix */
 	if (Peer_Put ((&peer->p), req->string, &sw) > 0)
-#endif /* 20110110 - no reprefix */
 	{
 	  peer->ms++;
 	  peer->bs += sr;

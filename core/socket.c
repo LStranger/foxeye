@@ -342,20 +342,9 @@ static inline const char *_get_socket_ipname (inet_addr_t *addr, char *buf,
     if (*(uint32_t *)ptr == 0 && ((uint32_t *)ptr)[1] == 0 &&
 	((uint16_t *)ptr)[4] == 0 &&
 	(((uint16_t *)ptr)[4] == 0 || ((uint16_t *)ptr)[5] == 0xffff)) {
-      fam = AF_INET;
+      fam = AF_INET;		/* v4 to v6 mapped */
       ptr = &((char *)ptr)[12];
     }
-#if	0
-			if ((ptr[0] == 0x0) && (ptr[1] == 0x0) &&
-				(ptr[2] == 0x0) && (ptr[3] == 0x0) &&
-				(ptr[4] == 0x0) && (ptr[5] == 0x0) &&
-				(ptr[6] == 0x0) && (ptr[7] == 0x0) &&
-				(ptr[8] == 0x0) && (ptr[9] == 0x0) &&
-				(((ptr[10] == 0x0) && (ptr[11] == 0x0)) ||
-				((ptr[10] == 0xFF) && (ptr[11] == 0xFF)))) {
-				/* v4 to v6 mapped */
-  }
-#endif
     break;
   default:
     fam = AF_INET6;
