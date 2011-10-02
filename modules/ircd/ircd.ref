@@ -121,6 +121,7 @@ IRCD_MULTICONNECT. See descriptions below.
  reaction on any delayed NICK, etc. messages until get the acknowledge
  back.
 
+
       Command: PASS
    Parameters: see RFC2813
 
@@ -328,7 +329,7 @@ Transition from ircd.conf to foxeye configuration.
    The B:line isn't supported yet.
 
       c:line
-   c:line is version of C:line which includes try to establish connection
+   c:line is version of C:line which forces establishing connection with
    using Zlib compression.  This can be done in the FoxEye by defining
    char 'Z' in field 'flags' of hostmask - see 'C:line' description.  Note
    that you have to have 'ziplinks' module loaded to make this work.
@@ -341,6 +342,13 @@ Transition from ircd.conf to foxeye configuration.
    i.e. it contains every field from C:line but also may contain extra
    field 'flags' which can be used to extent handshake (with Zlib for
    example).
+   Note that you cannot have in FoxEye mixed autoconnects with RFC2813
+   servers and servers capable to work with cyclic network scheme.  Once
+   you have one of RFC2813 servers autoconnected then no more connects
+   will be tried.  So you can have many autoconnects to RFC2813 servers
+   and have only one of them connected at the same time.  Or you can have
+   as many as you need autoconnects to servers that are capable to work
+   with cyclic network scheme simultaneously but none of RFC2813 ones.
 
       D:line
    There is no plain solution for that crossing yet.
