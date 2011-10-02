@@ -1259,7 +1259,7 @@ static void _ident_cleanup (void *input_data)
 
 static void *_ask_ident (void *input_data)
 {
-  const char *domain;
+  const char *domain, *myip;
   size_t sz, sp;
   register ssize_t st;
   unsigned short p;
@@ -1268,7 +1268,10 @@ static void *_ask_ident (void *input_data)
   pthread_cleanup_push (&_ident_cleanup, input_data);
   SocketDomain (acptr->socket, &p);
   domain = SocketIP(acptr->socket);
-  if (SetupSocket (acptr->id, domain, 113, NULL, NULL) == 0)
+  myip = SocketMyIP(acptr->socket, buf, sizeof(buf));
+  dprint (5, "input connection was to %s/%hu, trying identd for it",
+	  NONULLP(myip), acptr->lport);
+  if ((st = SetupSocket (acptr->id, domain, myip, 113, NULL, NULL)) == 0)
   {
     snprintf (buf, sizeof(buf), "%hu, %hu\n", p, acptr->lport);
     dprint (5, "ask host %s for ident: %s", domain, buf);
@@ -1276,7 +1279,8 @@ static void *_ask_ident (void *input_data)
     sp = 0;
     while ((st = WriteSocket (acptr->id, buf, &sp, (size_t *)&sz)) == 0);
     dprint(5, "WriteSocket on ident connection returned %zd", st);
-  }
+  } else
+    dprint (5, "SetupSocket on ident connection returned %zd", st);
   pthread_cleanup_pop(1);
   pthread_exit(NULL);
 }
@@ -1443,7 +1447,7 @@ static void *_listen_port (void *input_data)
   i = acptr->eport - acptr->lport;
   FOREVER {
     port = _random_port(acptr->lport, acptr->eport);
-    n = SetupSocket(acptr->socket, (host && *host) ? host : NULL, port,
+    n = SetupSocket(acptr->socket, NULL, (host && *host) ? host : NULL, port,
 		    &_direct_listener_callback, input_data);
     DBG("_listen_port:SetupSocket for port %hu returned %d", port, n);
     if (n == 0)
@@ -1605,7 +1609,7 @@ static void *_connect_host (void *input_data)
   pthread_cleanup_push (&_connect_host_cleanup, input_data);
   cptr->rc = E_NOSOCKET;
   if ((*cptr->idx = GetSocket (M_RAW)) >= 0)
-    cptr->rc = SetupSocket (*cptr->idx, cptr->host, cptr->port, NULL, NULL);
+    cptr->rc = SetupSocket (*cptr->idx, cptr->host, NULL, cptr->port, NULL, NULL);
   if (cptr->rc == 0)
     dprint (5, "direct:_connect_host: connected to %s at port %hu: new socket %d",
 	    cptr->host, cptr->port, (int)*cptr->idx);

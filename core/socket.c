@@ -322,16 +322,16 @@ void ResetSocket(idx_t idx, unsigned short type)
   DBG ("socket:ResetSocket: %d (fd=%d)", (int)idx, sockfd);
 }
 
-/* returns allocated ip textual representation for socket address */
-static inline char *_make_socket_ipname(inet_addr_t *addr, char *buf,
-					size_t bufsize)
+/* returns ip textual representation for socket address */
+static inline const char *_get_socket_ipname (inet_addr_t *addr, char *buf,
+					      size_t bufsize)
 {
   register const void *ptr;
-//  register sa_family_t fam = addr->sa.sa_family;
+  register sa_family_t fam = addr->sa.sa_family;
 
 #ifdef ENABLE_IPV6
-  switch (addr->sa.sa_family) {	/* prepare ip textual representation */
-//  switch (fam) {	/* prepare ip textual representation */
+//  switch (addr->sa.sa_family) {	/* prepare ip textual representation */
+  switch (fam) {	/* prepare ip textual representation */
   case AF_INET:
 #endif
     ptr = &addr->s_in.sin_addr;
@@ -339,13 +339,13 @@ static inline char *_make_socket_ipname(inet_addr_t *addr, char *buf,
     break;
   case AF_INET6:
     ptr = &addr->s_in6.sin6_addr;
-#if	0
-    if (*(uint32_t *)ptr == 0 && *(uint32_t *)&ptr[4] == 0 &&
-	*(uint16_t *)&ptr[8] == 0 &&
-	(*(uint16_t *)&ptr[10] == 0 || *(uint16_t *)&ptr[10] == 0xffff)) {
+    if (*(uint32_t *)ptr == 0 && ((uint32_t *)ptr)[1] == 0 &&
+	((uint16_t *)ptr)[4] == 0 &&
+	(((uint16_t *)ptr)[4] == 0 || ((uint16_t *)ptr)[5] == 0xffff)) {
       fam = AF_INET;
-      ptr = &ptr[12];
+      ptr = &((char *)ptr)[12];
     }
+#if	0
 			if ((ptr[0] == 0x0) && (ptr[1] == 0x0) &&
 				(ptr[2] == 0x0) && (ptr[3] == 0x0) &&
 				(ptr[4] == 0x0) && (ptr[5] == 0x0) &&
@@ -358,16 +358,21 @@ static inline char *_make_socket_ipname(inet_addr_t *addr, char *buf,
 #endif
     break;
   default:
-//    fam = AF_INET6;
+    fam = AF_INET6;
     ptr = &in6addr_any;
   }
 #endif
-  return safe_strdup(inet_ntop(addr->sa.sa_family, ptr, buf, bufsize));
-//  return safe_strdup(inet_ntop(fam, ptr, buf, bufsize));
+//  return inet_ntop(addr->sa.sa_family, ptr, buf, bufsize);
+  return inet_ntop(fam, ptr, buf, bufsize);
 }
 
+/* returns allocated ip textual representation for socket address */
+#define _make_socket_ipname(__a,__b,__c) \
+	safe_strdup(_get_socket_ipname(__a,__b,__c))
+
 /* For a listening process - we have to get ECONNREFUSED to own port :) */
-int SetupSocket(idx_t idx, const char *domain, unsigned short port,
+int SetupSocket(idx_t idx, const char *domain, const char *bind_to,
+		unsigned short port,
 		int (*callback)(const struct sockaddr *, void *),
 		void *callback_data)
 {
@@ -382,8 +387,17 @@ int SetupSocket(idx_t idx, const char *domain, unsigned short port,
     return (E_NOSOCKET);
   sockfd = Pollfd[idx].fd;		/* idx is owned by caller */
   type = (int)Socket[idx].port;
-  if (!domain && type != M_LIST && type != M_LINP)
+  if (!domain && type != M_LIST && type != M_LINP && type != M_UNIX)
     return (E_UNDEFDOMAIN);
+  if (!bind_to && type == M_UNIX)
+    return (E_UNDEFDOMAIN);
+  i = 1;
+  setsockopt (sockfd, SOL_SOCKET, SO_KEEPALIVE, (void *) &i, sizeof(i));
+  setsockopt (sockfd, SOL_SOCKET, SO_REUSEADDR, (void *) &i, sizeof(i));
+  ling.l_onoff = 1;
+  ling.l_linger = 0;
+  setsockopt (sockfd, SOL_SOCKET, SO_LINGER, (void *) &ling, sizeof(ling));
+  fcntl (sockfd, F_SETOWN, _mypid);
   if (type == M_UNIX)
   {
     addr.s_un.sun_family = AF_UNIX;
@@ -392,28 +406,19 @@ int SetupSocket(idx_t idx, const char *domain, unsigned short port,
       return (E_ERRNO - errno);
     len = SUN_LEN (&addr.s_un);
     Socket[idx].port = 0;		/* should be 0 for Unix socket */
-  }
-  else
-  {
-    if (!domain) {
-      /* NULL domain means we want listen every IPv4 address,
-         for listening on every IPv6 we can ask for domain "::" */
-      len = sizeof(addr.s_in);
-      /* memset(&addr.s_in, 0, len); */
-      addr.s_in.sin_family = AF_INET;
-      addr.s_in.sin_addr.s_addr = htonl(INADDR_ANY);
-    } else {
-      struct addrinfo *ai;
+  } else if (bind_to) {
+    struct addrinfo *ai;
 #ifndef ENABLE_IPV6
-      static struct addrinfo hints = { .ai_family = AF_INET, .ai_socktype = 0,
+    static struct addrinfo hints = { .ai_family = AF_INET, .ai_socktype = 0,
 				       .ai_protocol = 0, .ai_flags = 0 };
 
-      i = getaddrinfo (domain, NULL, &hints, &ai);
+    i = getaddrinfo (bind_to, NULL, &hints, &ai);
 #else
-      i = getaddrinfo (domain, NULL, NULL, &ai);
+    i = getaddrinfo (bind_to, NULL, NULL, &ai);
 #endif
-      if (i == 0)
-      {
+    DBG("trying to resolve address %s to bind to it", bind_to);
+    if (i == 0)
+    {
 	inet_addr_t *ha = (inet_addr_t *)ai->ai_addr;
 
 	len = ai->ai_addrlen;
@@ -439,38 +444,94 @@ int SetupSocket(idx_t idx, const char *domain, unsigned short port,
 	    return (E_NOSOCKET);
 	}
 #endif
-      }
-      else if (i == EAI_AGAIN)
-	return E_RESOLVTIMEOUT;
-      else if (i == EAI_SYSTEM)
-	return (E_ERRNO - errno);
-      else
-	return E_NOSUCHDOMAIN;
     }
+    else if (i == EAI_AGAIN)
+	return E_RESOLVTIMEOUT;
+    else if (i == EAI_SYSTEM)
+	return (E_ERRNO - errno);
+    else
+	return E_NOSUCHDOMAIN;
     /* sockaddr_in is compatible with sockaddr_in6 up to port member */
+    if (type == M_LIST || type == M_LINP)
+      addr.s_in.sin_port = htons(port);
+    else
+      addr.s_in.sin_port = 0;
+  } else if (type == M_LIST || type == M_LINP) {
+    /* NULL domain means we want listen every IPv4 address,
+       for listening on every IPv6 we can ask for domain "::" */
+    len = sizeof(addr.s_in);
+    /* memset(&addr.s_in, 0, len); */
+    addr.s_in.sin_family = AF_INET;
+    addr.s_in.sin_addr.s_addr = htonl(INADDR_ANY);
     addr.s_in.sin_port = htons(port);
+    bind_to = "";
   }
-  i = 1;
-  setsockopt (sockfd, SOL_SOCKET, SO_KEEPALIVE, (void *) &i, sizeof(i));
-  setsockopt (sockfd, SOL_SOCKET, SO_REUSEADDR, (void *) &i, sizeof(i));
-  ling.l_onoff = 1;
-  ling.l_linger = 0;
-  setsockopt (sockfd, SOL_SOCKET, SO_LINGER, (void *) &ling, sizeof(ling));
-  fcntl (sockfd, F_SETOWN, _mypid);
+  if (bind_to && bind (sockfd, &addr.sa, len) < 0)
+    return (E_ERRNO - errno);
   if (type == M_LIST || type == M_LINP)
   {
     i = 3; /* backlog */
     if (type == M_LINP)
       i = 1;
-    if (bind (sockfd, &addr.sa, len) < 0 || listen (sockfd, i) < 0 ||
-	getsockname (sockfd, &addr.sa, &len) < 0)
+    if (listen (sockfd, i) < 0 || getsockname (sockfd, &addr.sa, &len) < 0)
       return (E_ERRNO - errno);
     /* update listening port with real opened one not asked */
     Socket[idx].port = ntohs (addr.s_in.sin_port);
   } else if (type == M_UNIX) {
-    if (bind (sockfd, &addr.sa, len) < 0 || listen (sockfd, 3) < 0)
+    if (listen (sockfd, 3) < 0)
       return (E_ERRNO - errno);
   } else {
+    struct addrinfo *ai;
+    static struct addrinfo hints = { .ai_family = AF_INET, .ai_socktype = 0,
+				       .ai_protocol = 0, .ai_flags = 0 };
+
+#ifdef ENABLE_IPV6
+    if (bind_to == NULL)
+      hints.ai_family = AF_UNSPEC;
+    else
+      hints.ai_family = addr.sa.sa_family;
+    if (hints.ai_family == AF_INET6)
+      hints.ai_flags = AI_V4MAPPED;
+    else
+      hints.ai_flags = 0;
+#endif
+    i = getaddrinfo (domain, NULL, &hints, &ai);
+    if (i == 0)
+    {
+	inet_addr_t *ha = (inet_addr_t *)ai->ai_addr;
+
+	len = ai->ai_addrlen;
+	memcpy(&addr.sa, &ha->sa, len);
+	/* addr.sa.sa_family = ai->ai_family; */
+	freeaddrinfo (ai);
+#ifdef ENABLE_IPV6
+	if (bind_to == NULL && addr.sa.sa_family != AF_INET) {
+	  int cancelstate;
+
+	  /* close IPv4 socket and open IPv6 one instead */
+	  pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancelstate);
+	  pthread_mutex_lock (&LockPoll);
+	  close(sockfd);
+	  sockfd = socket(addr.sa.sa_family, SOCK_STREAM, 0);
+	  DBG("closed IPv4 socket (fd=%d) and opened IPv6 one (fd=%d)",
+	      Pollfd[idx].fd, sockfd);
+	  Pollfd[idx].fd = sockfd;
+	  SChanged = 1;
+	  pthread_mutex_unlock (&LockPoll);
+	  pthread_setcancelstate(cancelstate, NULL);
+	  if (sockfd < 0)
+	    return (E_NOSOCKET);
+	}
+#endif
+    }
+    else if (i == EAI_AGAIN)
+	return E_RESOLVTIMEOUT;
+    else if (i == EAI_SYSTEM)
+	return (E_ERRNO - errno);
+    else
+	return E_NOSUCHDOMAIN;
+    /* sockaddr_in is compatible with sockaddr_in6 up to port member */
+    addr.s_in.sin_port = htons(port);
     if ((i = connect (sockfd, &addr.sa, len)) < 0)
       return (E_ERRNO - errno);
     Socket[idx].port = port;
@@ -633,6 +694,26 @@ const char *SocketIP (idx_t idx)
   if (idx >= 0 && idx < _Snum)
     d = Socket[idx].ipname;
   return NONULL(d);
+}
+
+const char *SocketMyIP (idx_t idx, char *buf, size_t bsz)
+{
+  inet_addr_t addr;
+  socklen_t len;
+
+  /* check for errors! */
+  if (idx < 0 || idx >= _Snum || Pollfd[idx].fd < 0)
+    return (NULL);
+  len = sizeof(addr);
+  if (getsockname(Pollfd[idx].fd, &addr.sa, &len) < 0)
+    return (NULL);
+#ifdef ENABLE_IPV6
+  if (addr.sa.sa_family != AF_INET && addr.sa.sa_family != AF_INET6)
+#else
+  if (addr.sa.sa_family != AF_INET)
+#endif
+    return (NULL);
+  return (_get_socket_ipname(&addr, buf, bsz));
 }
 
 char *SocketError (int er, char *buf, size_t s)

@@ -44,8 +44,9 @@
 #include <sys/socket.h>
 
 idx_t GetSocket (unsigned short);		/* allocate one socket */
-int SetupSocket (idx_t, const char *, unsigned short, /* socket, domain, port */
+int SetupSocket (idx_t, const char *, const char *, unsigned short,
 		 int (*)(const struct sockaddr *, void *), void *);
+		 /* socket, domain, bind_to, port, callback, callerdata */
 void ResetSocket (idx_t, unsigned short);	/* reset after failed setup */
 int KillSocket (idx_t *);			/* forget the socket */
 ssize_t ReadSocket (char *, idx_t, size_t);
@@ -53,6 +54,7 @@ ssize_t WriteSocket (idx_t, const char *, size_t *, size_t *);
 idx_t AnswerSocket (idx_t);
 const char *SocketDomain (idx_t, unsigned short *); /* returns nonull value! */
 const char *SocketIP (idx_t);			/* the same but text IP */
+const char *SocketMyIP (idx_t, char *, size_t);
 char *SocketError (int, char *, size_t);
 void PollSockets (int);				/* sleep for dispatcher */
 

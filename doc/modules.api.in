@@ -1028,18 +1028,22 @@ Sockets API:
 	Reenterability: thread-safe
 	Cancellation point: no (?)
 
-  int SSeettuuppSSoocckkeett (idx_t _i_d_x, const char *_d_o_m_a_i_n, unsigned short _p_o_r_t,
+  int SSeettuuppSSoocckkeett (idx_t _i_d_x, const char *_d_o_m_a_i_n, const char *_b_i_n_d___t_o,
+		   unsigned short _p_o_r_t,
 		   int (*_c_a_l_l_b_a_c_k)(const struct sockaddr *_s_a, void *_c_b_d),
 		   void *_c_b_d);
-    Sets up new socket in non-block mode, establishes connection with
-    Internet address with name _d_o_m_a_i_n to port _p_o_r_t if its mode is M_RAW
-    or opens a new listening socket if its mode is M_LIST, M_LINP, or
-    M_UNIX. If socket mode is M_LINP then listening socket will be opened
-    only for single connection. Parameter _p_o_r_t is ignored when listening
-    Unix socket (socket mode is M_UNIX). Returns 0 on success or error
-    code otherwise. If _c_a_l_l_b_a_c_k is not NULL then function _c_a_l_l_b_a_c_k will
-    be called with address _s_a and callback data _c_b_d as last step of the
-    socket setup.
+    Sets up new socket in non-block mode, establishes connection to port
+    _p_o_r_t of Internet address with name _d_o_m_a_i_n from local Internet address
+    with name _b_i_n_d___t_o if socket was created with mode M_RAW or opens new
+    listening socket on Internet address with name _b_i_n_d___t_o if socket was
+    created with mode M_LIST, M_LINP, or M_UNIX (parameter _d_o_m_a_i_n will be
+    ignored in that case). If socket was created as M_LINP then listening
+    socket will be opened only for single connection. Parameter _p_o_r_t is
+    ignored when listening Unix socket (i.e. socket mode is M_UNIX). If
+    parameter _b_i_n_d___t_o is NULL then default will be used if it's possible.
+    Returns 0 on success or error code otherwise. If _c_a_l_l_b_a_c_k is not NULL
+    then function _c_a_l_l_b_a_c_k will be called with address _s_a and callback
+    data _c_b_d as last step of the socket setup.
 	Reenterability: thread-safe
 	Cancellation point: yes
 
@@ -1069,6 +1073,11 @@ Sockets API:
     is opened in listen mode then returns listening IP name. If there is
     no such socket then returns empty string but no NULL.
 	Reenterability: async-safe
+
+  const char *SSoocckkeettMMyyIIPP (idx_t _i_d_x, char *_b_u_f, size_t _b_s_z);
+    Makes textual representation (own name) for IP of socket _i_d_x which we
+    accepted connection on. Name will be reconstructed in buffer _b_u_f of
+    size _b_s_z. Returns value of _b_u_f or NULL in case of error.
 
   char *SSoocckkeettEErrrroorr (int _e_r_r, char *_b_u_f, size_t _s_z);
     Returns text in buffer _b_u_f of size _s_z that describing error code _e_r_r
