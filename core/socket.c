@@ -707,7 +707,7 @@ void PollSockets(int check_out)
       if (Pollfd[i].fd != _pollfd[i].fd) /* it changed, clear */
 	_pollfd[i].events = 0;
       _pollfd[i].fd = Pollfd[i].fd;
-      _pollfd[i].events = Pollfd[i].events;
+      _pollfd[i].events |= Pollfd[i].events;
       Pollfd[i].events = 0;
     }
     if (_pollfd[i].fd < 0)
