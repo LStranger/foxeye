@@ -177,20 +177,21 @@ ssize_t ReadSocket (char *buf, idx_t idx, size_t sr)
     return (E_NOSOCKET);
   sock = &Socket[idx];
   rev = Pollfd[idx].revents;
+  pthread_mutex_lock(&LockPoll);
   if (!rev)
   {
-    pthread_mutex_lock(&LockPoll);
     _socket_timedwait(idx, (sock->ready == FALSE) ? 1 : 0);
     rev = Pollfd[idx].revents;
-    pthread_mutex_unlock(&LockPoll);
-    /* now check for incomplete connection... */
-    if (!rev && (sock->ready == FALSE))
-      return (E_AGAIN);		/* still waiting for connection */
   }
-  sock->ready = TRUE;		/* connection established or failed */
+  Pollfd[idx].events |= (POLLIN|POLLPRI); /* update it for next read */
+  Pollfd[idx].revents &= ~(POLLIN|POLLPRI); /* we'll read socket, reset state */
+  SChanged = 1;				/* inform poll() in dispatcher */
+  pthread_mutex_unlock(&LockPoll);
+  if (!rev && (sock->ready == FALSE))	/* check for incomplete connection */
+    return (E_AGAIN);			/* still waiting for connection */
+  sock->ready = TRUE;			/* connection established or failed */
   if (rev & (POLLIN | POLLPRI)) {	/* even dead socket can contain data */
     DBG ("trying read socket %hd", idx);
-    Pollfd[idx].revents = 0;		/* we'll read socket, reset state */
     if ((sg = read (Pollfd[idx].fd, buf, sr)) > 0)
       DBG ("got from socket %hd:[%-*.*s]", idx, (int)sg, (int)sg, buf);
     if (sg == 0) {
@@ -226,24 +227,14 @@ ssize_t WriteSocket (idx_t idx, const char *buf, size_t *ptr, size_t *sw)
     return 0;
   rev = Pollfd[idx].revents & (POLLNVAL | POLLERR | POLLHUP | POLLOUT);
   /* if mode isn't M_POLL then it's dispatcher or else we should wait */
-  if (!rev) {
-    pthread_mutex_lock(&LockPoll);
+  pthread_mutex_lock(&LockPoll);
+  if (!rev)
     _socket_timedwait(idx, 1);
-    pthread_mutex_unlock(&LockPoll);
-  }
+  Pollfd[idx].revents &= POLLOUT;	/* we'll write socket, reset state */
+  pthread_mutex_unlock(&LockPoll);
   DBG ("trying write socket %hd: %p +%zu", idx, &buf[*ptr], *sw);
   sg = write (Pollfd[idx].fd, &buf[*ptr], *sw);
   errnosave = errno;			/* save it as unlock can change it */
-  Pollfd[idx].revents = 0;		/* we wrote socket, reset state */
-//  if (sg == (ssize_t)*sw)		/* now waiting for data only */
-//    nev = POLLIN | POLLPRI;
-//  else					/* or else waiting for out too */
-//    nev = POLLIN | POLLPRI | POLLOUT;
-//  if (nev != Pollfd[idx].events) {
-//    pthread_mutex_lock (&LockPoll);
-//    Pollfd[idx].events = nev;
-//    pthread_mutex_unlock (&LockPoll);
-//  }
   if (sg < 0)
     return (errnosave == EAGAIN) ? 0 : (E_ERRNO - errnosave);
   else if (sg == 0)			/* remote end closed connection */
