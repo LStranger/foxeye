@@ -1261,6 +1261,7 @@ static void *_ask_ident (void *input_data)
 {
   const char *domain;
   size_t sz, sp;
+  register ssize_t st;
   unsigned short p;
   char buf[SHORT_STRING];
 
@@ -1273,7 +1274,8 @@ static void *_ask_ident (void *input_data)
     dprint (5, "ask host %s for ident: %s", domain, buf);
     sz = strlen (buf);
     sp = 0;
-    while (!(WriteSocket (acptr->id, buf, &sp, (size_t *)&sz)));
+    while ((st = WriteSocket (acptr->id, buf, &sp, (size_t *)&sz)) == 0);
+    dprint(5, "WriteSocket on ident connection returned %zd", st);
   }
   pthread_cleanup_pop(1);
   pthread_exit(NULL);
@@ -1324,6 +1326,7 @@ static void *_accept_port (void *input_data)
 	pthread_cancel(ith);
     }
     pthread_join(ith, NULL);
+    dprint(5, "ident thread terminated, timer left: %d", (int)(t - time(NULL)));
     sp = 0;
     sz = 0;
     while (time(NULL) < t)
@@ -1345,6 +1348,7 @@ static void *_accept_port (void *input_data)
       if (sz)
 	break;
     }
+    dprint(5, "ident: ReadSocket returned %zd", sz);
     if (sz > 0)
     {
       dprint (3, "%s ident answer: %s", domain, buf);

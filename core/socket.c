@@ -188,11 +188,7 @@ ssize_t ReadSocket (char *buf, idx_t idx, size_t sr)
       return (E_AGAIN);		/* still waiting for connection */
   }
   sock->ready = TRUE;		/* connection established or failed */
-  if (rev & (POLLNVAL | POLLERR | POLLHUP)) {
-    sg = E_NOSOCKET;			/* cannot test errno variable ATM */
-  }
-  else if (rev & (POLLIN | POLLPRI))
-  {
+  if (rev & (POLLIN | POLLPRI)) {	/* even dead socket can contain data */
     DBG ("trying read socket %hd", idx);
     Pollfd[idx].revents = 0;		/* we'll read socket, reset state */
     if ((sg = read (Pollfd[idx].fd, buf, sr)) > 0)
@@ -205,7 +201,10 @@ ssize_t ReadSocket (char *buf, idx_t idx, size_t sr)
       else
 	sg = E_ERRNO - errno;		/* remember error for return */
     }
-  }
+  } else if (rev & POLLHUP)
+    sg = E_EOF;
+  else if (rev & (POLLNVAL | POLLERR))
+    sg = E_NOSOCKET;			/* cannot test errno variable ATM */
   else
     sg = 0;
   return (sg);
@@ -708,7 +707,7 @@ void PollSockets(int check_out)
       if (Pollfd[i].fd != _pollfd[i].fd) /* it changed, clear */
 	_pollfd[i].events = 0;
       _pollfd[i].fd = Pollfd[i].fd;
-      _pollfd[i].events |= Pollfd[i].events;
+      _pollfd[i].events = Pollfd[i].events;
       Pollfd[i].events = 0;
     }
     if (_pollfd[i].fd < 0)
