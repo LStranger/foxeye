@@ -12,6 +12,7 @@ TODO:
 --- [0.10.0]
 Sun Oct  2 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/socket.c: fixed a slowness in reading socket.
+	* core/connchain.c: fixed a slowness in sending through 'x' filter.
 
 Sat Oct  1 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c, modules/ircd/channels.c, modules/ircd/clients.c, modules/ircd/messages.c, modules/ircd/servers.c:

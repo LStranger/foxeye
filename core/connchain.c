@@ -240,6 +240,21 @@ struct connchain_buffer			/* local buffer type for filter 'x' */
   struct peer_t *peer;			/* for notification */
 };
 
+/* internal proc for _ccfilter_x_send
+ * returns either size of buffer that left or error code */
+static ssize_t _ccfilter_x_push (connchain_i **ch, idx_t id, connchain_b *bb)
+{
+  register ssize_t i;
+
+  DBG("connchain.c:_ccfilter_x_send: sending buffer =%zu +%zd", bb->bufpos, bb->inbuf);
+  i = Connchain_Put (ch, id, &bb->buf[bb->bufpos], &bb->inbuf);
+  if (i < 0)				/* some error, end us */
+    bb->inbuf = i;			/* forget the buffer */
+  else if (bb->inbuf != 0)		/* trying to send line by line */
+    bb->bufpos += i;			/* there is something left */
+  return bb->inbuf;
+}
+
 /* get full line, add CR+LF, put into buffer and send it */
 static ssize_t _ccfilter_x_send (connchain_i **ch, idx_t id, const char *str,
 				 size_t *sz, struct connchain_buffer **b)
@@ -254,18 +269,9 @@ static ssize_t _ccfilter_x_send (connchain_i **ch, idx_t id, const char *str,
     return (bb->inbuf);
   if (bb->inbuf > 0)			/* there is something to send */
   {
-    DBG("connchain.c:_ccfilter_x_send: sending buffer =%zu +%zd", bb->bufpos, bb->inbuf);
-    i = Connchain_Put (ch, id, &bb->buf[bb->bufpos], &bb->inbuf);
-    if (i < 0)				/* some error, end us */
-    {
-      bb->inbuf = i;			/* forget the buffer */
-      return i;				/* return error */
-    }
-    if (bb->inbuf != 0)			/* trying to send line by line */
-    {
-      bb->bufpos += i;			/* there is something left */
-      return 0;
-    }
+    i = _ccfilter_x_push(ch, id, bb);
+    if (i != 0)				/* either not empty yet or error */
+      return ((i > 0) ? 0 : i);
   }
   if (str == NULL)			/* got flush request */
     i = 0;
@@ -282,6 +288,7 @@ static ssize_t _ccfilter_x_send (connchain_i **ch, idx_t id, const char *str,
   bb->buf[i+1] = '\n';			/* LF */
   bb->inbuf = i + 2;
   bb->bufpos = 0;
+  _ccfilter_x_push(ch, id, bb);		/* try to send, ignoring errors now */
   return i;
 }
 
