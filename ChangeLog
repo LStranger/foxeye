@@ -19,6 +19,7 @@ Sun Oct  2 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/socket.*, doc/modules.api: added one more parameter into
 	  SetupSocket() to be possible to set own address.
 	* core/direct.c: adapted ident asking to multi-IP hosts.
+	* modules/ircd/ircd.c: disabled USER message with empty realname.
 
 Sat Oct  1 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c, modules/ircd/channels.c, modules/ircd/clients.c, modules/ircd/messages.c, modules/ircd/servers.c:

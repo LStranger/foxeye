@@ -2073,6 +2073,7 @@ BINDING_TYPE_ircd_register_cmd (ircd_user);
 static int ircd_user (INTERFACE *srv, struct peer_t *peer, int argc, const char **argv)
 { /* args: <user> <mode> <unused> <realname> */
   CLIENT *cl = ((peer_priv *)peer->iface->data)->link->cl; /* it's really peer->link->cl */
+  register char *c;
   int umode;
 
   if (cl->umode & A_UPLINK)		/* illegal here! */
@@ -2081,6 +2082,10 @@ static int ircd_user (INTERFACE *srv, struct peer_t *peer, int argc, const char 
     return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, NULL);
   if (cl->fname[0])			/* got USER already */
     return ircd_do_unumeric (cl, ERR_ALREADYREGISTRED, cl, 0, NULL);
+//  c = NextWord(argv[3]);
+//  if (*c == '\0')
+  if (*argv[3] == '\0')
+    return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, NULL);
   if (!cl->user[0])			/* got no ident */
   {
     register unsigned char *cc;
@@ -2098,14 +2103,10 @@ static int ircd_user (INTERFACE *srv, struct peer_t *peer, int argc, const char 
   if (umode & 8)
 #endif
     cl->umode |= A_INVISIBLE;
-  if (*argv[3])
-  {
-    strfcpy (cl->fname, argv[3], sizeof(cl->fname));
-    umode = unistrcut (cl->fname, sizeof(cl->fname), REALNAMELEN);
-    cl->fname[umode] = '\0';
-  }
-  else
-    strcpy (cl->fname, "(No name)");
+  strfcpy (cl->fname, argv[3], sizeof(cl->fname));
+//  StrTrim(cl->fname);
+  umode = unistrcut (cl->fname, sizeof(cl->fname), REALNAMELEN);
+  cl->fname[umode] = '\0';
   if (!cl->nick[0])
     return 1;
   return _ircd_got_local_user (cl);
