@@ -12,6 +12,7 @@ TODO:
 --- [0.10.0]
 Mon Oct  3 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed numerics via IRCD interface.
+	* core/direct.c: added ignorance of fake identd answers.
 
 Sun Oct  2 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/socket.c: fixed a slowness in reading socket.

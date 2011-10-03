@@ -1355,10 +1355,17 @@ static void *_accept_port (void *input_data)
     dprint(5, "ident: ReadSocket returned %zd", sz);
     if (sz > 0)
     {
+      register unsigned char *tstch;
       dprint (3, "%s ident answer: %s", domain, buf);
       /* overflow is impossible: part of buf isn't greater than buf */
       sscanf (buf, "%*[^:]: %[^: ] :%*[^:]: %23[^ \n]", buf, ident);
-      if (!strcmp(buf, "OTHER")) {
+      for (tstch = (unsigned char *)ident; *tstch; tstch++)
+	if (*tstch < 0x20 || *tstch >= 0x80)
+	  break;
+      if (*tstch) {
+	dprint (4, "ident answer contains invalid chars, ignoring it");
+	ident[0] = '\0';
+      } else if (!strcmp(buf, "OTHER")) {
 	memmove(&ident[1], ident, 22);	/* get the room for one char */
 	ident[0] = '=';			/* prepend 'OTHER' ident with '=' */
 	ident[23] = '\0';		/* terminate it if was cut */
