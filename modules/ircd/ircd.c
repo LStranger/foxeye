@@ -649,12 +649,12 @@ static inline int _ircd_do_server_numeric(peer_priv *peer, const char *sender,
 #if IRCD_MULTICONNECT
   if (CLIENT_IS_REMOTE(tgt) && id != -1)
   {
-    ircd_sendto_new(tgt, ":%s INUM %d %d %s %s", sender, id, num, argv[2], buf);
-    ircd_sendto_old(tgt, ":%s %d %s %s", sender, num, argv[2], buf);
+    ircd_sendto_new(tgt, ":%s INUM %d %03d %s %s", sender, id, num, argv[2], buf);
+    ircd_sendto_old(tgt, ":%s %03d %s %s", sender, num, argv[2], buf);
   }
   else
 #endif
-    ircd_sendto_one(tgt, ":%s %d %s %s", sender, num, argv[2], buf);
+    ircd_sendto_one(tgt, ":%s %03d %s %s", sender, num, argv[2], buf);
   return 1;
 }
 
@@ -1255,10 +1255,11 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 #if IRCD_USES_ICONV
     c = sbuff;
     sr = Do_Conversion (cli->conv, &c, sizeof(sbuff) - 1, buff, &sr);
-    c[sr] = '\0';
+    c[sr] = '\0'; //FIXME: move below unistrcut
 #else
     c = buff;
 #endif
+    //FIXME: do sr = unistrcut(c, sr, IRCMSGLEN - 2), c[sr] = '\0'
     if (*c == ':')			/* we got sender prefix */
     {
       register char *cc;

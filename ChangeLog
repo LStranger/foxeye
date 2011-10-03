@@ -7,9 +7,12 @@ TODO:
 	* core/wtmp.c: to handle errors somehow?
 	* core/direct.c: to add support for charset and comments in motd file.
 	* core/socket.c: to make socket limit extendible.
-	* core/connchain.c, ...: to make recv rawflushing on socket=-1.
+	* core/socket.c: to add libidn support.
 
 --- [0.10.0]
+Mon Oct  3 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/ircd.c: fixed numerics via IRCD interface.
+
 Sun Oct  2 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/socket.c: fixed a slowness in reading socket.
 	* core/connchain.c: fixed a slowness in sending through 'x' filter.
