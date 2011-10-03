@@ -26,8 +26,184 @@
 #include "numerics.h"
 
 static struct bindtable_t *BTIrcdCheckMessage;
-//static struct bindtable_t *BTIrcdSetMessageTargetsLocal;
-//static struct bindtable_t *BTIrcdSetMessageTargetsRemote;
+static struct bindtable_t *BTIrcdSetMessageTargets;
+
+/*
+ * 1) check args
+ * 2) if not own syntax then return 0
+ * 3) if bad args then send numeric to sender via serv and return -1
+ * 4) if ok then mark (using search engine next) and return 1
+ */
+//int func (INTERFACE *serv, const char *sender, const char *target,
+//	  int (*next)(INTERFACE *serv, const char **mask, const char **lcname,
+//	  modeflag *mf, int *mark, void **iter));
+
+struct message_iterator_i {
+  IRCD *ircd;		/* server iterated */
+  MEMBER *memb;		/* not NULL on channel iteration */
+  CLIENT *s;		/* NULL on mask iteration, not NULL on server iteration */
+  LINK *link;		/* current iterated */
+  const char *mask;	/* not NULL on mask iteration */
+  int mark;		/* should previous item be marked or not */
+};
+
+/* mask on start points to channel name or local server mask
+    mask should be lower case and contain at least one non-wildcard character
+    starting mask should be hold by caller between iterations
+   for channel it iterates all channel's members
+   for one server it iterates all server's clients
+   for server mask it iterates every local server that matches mask
+   should be called until returns 0 */
+static int _message_iterator(INTERFACE *serv, const char **mask,
+			     const char **lcname, modeflag *mf, int **mark,
+			     void **iter)
+{
+  struct message_iterator_i *i = *iter;
+  IRCD *ircd;
+  CLIENT *s;		//NULL on mask iteration, not NULL on server iteration
+  MEMBER *memb;		//not NULL on channel iteration
+  LINK *link;		//current iterated
+  CLIENT *cl;
+
+  if (i == NULL && *mask == NULL)	/* ended */
+    return (0);
+  if (i == NULL) {			/* first iteration */
+    ircd = (IRCD *)serv->data;
+    memb = ircd_find_member(ircd, *mask, NULL);
+    if (memb == NOSUCHCHANNEL) {
+      memb = NULL;
+      s = ircd_find_client(*mask, NULL);
+      if (s == NULL) {
+	if (!strpbrk(*mask, "*?"))
+	  return (0);			/* no matches */
+	for (link = ircd->servers; link; link = link->prev)
+	  if (!(link->cl->via->p.iface->ift & I_PENDING) &&
+	      match(*mask, link->cl->lcnick))
+	    break;
+	if (link == NULL)
+	  return (0);			/* no matches */
+	*mask = link->cl->lcnick;
+      } else if (CLIENT_IS_SERVER(s) && !(s->via->p.iface->ift & I_PENDING)) {
+	link = s->c.lients;
+	*mask = s->lcnick;
+      } else
+	return (0);			/* we don't try clients with this */
+      cl = link->cl;
+    } else {
+      while (memb)
+	if (!(memb->who->cs->via->p.iface->ift & I_PENDING))
+#if IRCD_MULTICONNECT
+	  break;
+	else if (memb->who->cs->alt != NULL &&
+		 !(memb->who->cs->alt->p.iface->ift & I_PENDING))
+#endif
+	  break;
+	else
+	  memb = memb->prevnick;
+      if (memb == NULL)
+	return (0);			/* no matches */
+      cl = memb->who;
+      *mask = memb->chan->name;
+    }
+    i = safe_malloc(sizeof(struct message_iterator_i));
+    *iter = (void *)i;
+    i->ircd = ircd;
+    i->memb = memb;
+    if (memb == NULL) {
+      i->link = link;
+      i->s = s;
+      if (s == NULL)
+	i->mask = *mask;
+    }
+    i->mark = 0;
+    *mark = &i->mark;
+  } else {				/* next iteration */
+    if (i->mark) {
+      if (i->memb) {			/* channel iteration */
+	i->memb->who->cs->via->p.iface->ift |= I_PENDING;
+#if IRCD_MULTICONNECT
+	if (i->memb->who->cs->alt)
+	  i->memb->who->cs->alt->p.iface->ift |= I_PENDING;
+#endif
+      } else {				/* server or mask iteration */
+	i->link->cl->cs->via->p.iface->ift |= I_PENDING;
+#if IRCD_MULTICONNECT
+	if (i->link->cl->cs->alt)
+	  i->link->cl->cs->alt->p.iface->ift |= I_PENDING;
+#endif
+	if (i->s != NULL) {
+job_done:
+	  FREE(iter);
+	  return (0);			/* this server done */
+	}
+      }
+      i->mark = 0;
+    }
+    if ((memb = i->memb) != NULL) {	/* channel iteration */
+      while (memb)
+	if (!(memb->who->cs->via->p.iface->ift & I_PENDING))
+#if IRCD_MULTICONNECT
+	  break;
+	else if (memb->who->cs->alt != NULL &&
+		 !(memb->who->cs->alt->p.iface->ift & I_PENDING))
+#endif
+	  break;
+	else
+	  memb = memb->prevnick;
+      if (memb == NULL)
+	goto job_done;			/* no more members to send */
+      i->memb = memb;
+      cl = memb->who;
+    } else if (i->s != NULL) {		/* server iteration */
+      link = i->link->prev;
+#if IRCD_MULTICONNECT
+      while (link != NULL && CLIENT_IS_SERVER(link->cl) &&
+	     (link->cl->via->p.iface->ift & I_PENDING)) /* backlink or done */
+	link = link->prev;
+#endif
+      if (link == NULL)
+	goto job_done;			/* no more clients to check */
+      i->link = link;
+      cl = link->cl;
+    } else {				/* mask iteration */
+      for (link = i->link->prev; link; link = link->prev)
+	if (!(link->cl->via->p.iface->ift & I_PENDING) &&
+	    match(i->mask, link->cl->lcnick))
+	  break;
+      if (link == NULL)
+	goto job_done;			/* no matches */
+      i->link = link;
+      cl = link->cl;
+      *mask = link->cl->lcnick;
+    }
+  }
+  *lcname = cl->lcnick;
+  *mf = cl->umode;
+  return (1);
+}
+
+static int _ircd_mark_message_target(INTERFACE *serv, const char *nick,
+				     const char *target)
+{
+  struct binding_t *b = NULL;
+#define static register
+  BINDING_TYPE_ircd_set_message_targets((*f));
+#undef static
+  int rc, i = 0;
+
+  while ((b = Check_Bindtable(BTIrcdSetMessageTargets, target, U_ALL, U_ANYCH, b)))
+  {
+    if (b->name)
+      continue;
+    f = b->func;
+    rc = f(serv, nick, target, &_message_iterator);
+    if (rc < 0)
+      i = rc;
+    else if (rc > 0 && i == 0)
+      i = rc;
+  }
+  return (i);
+}
 
 /* ---------------------------------------------------------------------------
  * Common internal functions.
@@ -123,7 +299,7 @@ static int _ircd_can_send_to_chan (CLIENT *cl, CHANNEL *ch, const char *msg)
   MASK *cm;
   struct binding_t *b = NULL;
   int i, x = -1;
-  char buff[MB_LEN_MAX*NICKLEN+USERLEN+HOSTLEN+3];
+  char buff[MB_LEN_MAX*NICKLEN+IDENTLEN+HOSTLEN+3];
 
   m = _ircd_is_on_channel (cl, ch);
   if (m)
@@ -154,11 +330,15 @@ static int _ircd_can_send_to_chan (CLIENT *cl, CHANNEL *ch, const char *msg)
 /* since this is too hard to do matching, we don't send messages by alternate
    way here so this is rare ocasion when they might be lost in netsplit but
    even so there is still a chance they will come by another way due to mask */
-static void _ircd_broadcast_msglist_mark(IRCD *ircd, const char **tlist, size_t s)
+static void _ircd_broadcast_msglist_mark(IRCD *ircd, const char *nick,
+					 const char **tlist, size_t s)
 {
   size_t i;
   CHANNEL *tch;
   const char *c;
+  CLIENT *tcl;
+  register LINK *lnk;
+  int need_unmark = 0;
 
   for (i = 0; i < s; i++)
   {
@@ -202,13 +382,18 @@ static void _ircd_broadcast_msglist_mark(IRCD *ircd, const char **tlist, size_t 
 	    simple_match (c, ircd->token[t]->lcnick) > 0)
 	  ircd->token[t]->via->p.iface->ift |= I_PENDING;
     }
-    else /* to client */
-    {
-      CLIENT *tcl = _ircd_find_client_lc (ircd, tlist[i]);
-
+    else if ((tcl = _ircd_find_client_lc (ircd, tlist[i])) == NULL) {
+      if (!need_unmark)
+	for (lnk = ircd->token[0]->c.lients; lnk; lnk = lnk->prev) /* no locals */
+	  lnk->cl->via->p.iface->ift |= I_PENDING;
+      need_unmark = 1;
+      _ircd_mark_message_target(ircd->iface, nick, tlist[i]);
+    } else
       tcl->cs->via->p.iface->ift |= I_PENDING;
-    }
   }
+  if (need_unmark)
+    for (lnk = ircd->token[0]->c.lients; lnk; lnk = lnk->prev) /* no locals */
+      lnk->cl->via->p.iface->ift &= ~I_PENDING;
 }
 
 #if IRCD_MULTICONNECT
@@ -224,7 +409,7 @@ static int _ircd_broadcast_msglist_new (IRCD *ircd, struct peer_priv *via,
     if (!(srv->cl->umode & A_MULTI) || srv->cl->via == via ||
 	srv->cl->x.token == token)
       srv->cl->via->p.iface->ift |= I_PENDING;
-  _ircd_broadcast_msglist_mark(ircd, tlist, s);
+  _ircd_broadcast_msglist_mark(ircd, nick, tlist, s);
   rc = 0;
   for (srv = ircd->servers; srv; srv = srv->prev) /* reset them now */
     if (!(srv->cl->umode & A_MULTI) || srv->cl->via == via ||
@@ -256,7 +441,7 @@ static int _ircd_broadcast_msglist_old (IRCD *ircd, struct peer_priv *via,
 #endif
 	srv->cl->x.token == token)
       srv->cl->via->p.iface->ift |= I_PENDING;
-  _ircd_broadcast_msglist_mark(ircd, tlist, s);
+  _ircd_broadcast_msglist_mark(ircd, nick, tlist, s);
   rc = 0;
   for (srv = ircd->servers; srv; srv = srv->prev) /* reset them now */
     if (srv->cl->via == via ||
@@ -272,16 +457,40 @@ static int _ircd_broadcast_msglist_old (IRCD *ircd, struct peer_priv *via,
   return (rc);
 }
 
-static inline CLIENT *_ircd_find_msg_target (IRCD *i, const char *target,
+static inline CLIENT *_ircd_find_msg_target (const char *target,
 					     struct peer_priv *pp)
 {
   CLIENT *tgt = ircd_find_client (target, pp);
 
-  if (tgt && (tgt->umode & (A_SERVER | A_SERVICE)))
-    return NULL;
+  if (tgt && CLIENT_IS_SERVER(tgt))
+    return (NULL);
+  return (tgt);
   //TODO: proc not plain too: user[%host]@servername user%host nickname!user@host
-  return tgt;
 }
+
+#if 0
+// *?!*@?* -- for nickname!user@host
+{
+  char *c1, *c2;
+  char nick[MB_LEN_MAX*NICKLEN+1];
+
+  if ((c1 = strchr(target, '!')) == NULL || (c2 = strchr(c1, '@')) == NULL)
+    return (NULL);
+  if ((c1 - target) >= sizeof(nick))
+    return (NULL);
+  c1++;
+  strfcpy(nick, target, (c1 - target));
+  tgt = ircd_find_client (nick, pp);
+  if (tgt == NULL || (tgt->umode & (A_SERVER | A_SERVICE)))
+    return (tgt);
+  if ((c2 - c1) != strlen(tgt->user) || strncasecmp(c1, tgt->user, (c2 - c1)))
+    return (NULL);
+  c2++;
+  if (strcmp(c2, tgt->host))
+    return (NULL);
+  return (tgt);
+}
+#endif
 
 #define ADD_TO_LIST(S) \
   if (s < MAXTARGETS) \
@@ -304,6 +513,7 @@ static int ircd_privmsg_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 { /* args: <msgtarget> <text to be sent> */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl, *tcl;
   MEMBER *tch;
+  IRCD *ircd = (IRCD *)srv->data;
   char *c, *cnext;
   register char *cmask;
   int n;
@@ -324,7 +534,7 @@ static int ircd_privmsg_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
       *cnext++ = 0;
     if (++n > MAXTARGETS)
       ircd_do_unumeric (cl, ERR_TOOMANYTARGETS, cl, 0, "No Message Delivered.");
-    else if ((tch = ircd_find_member ((IRCD *)srv->data, c, NULL))
+    else if ((tch = ircd_find_member (ircd, c, NULL))
 	     != NOSUCHCHANNEL)
     {
       if ((tch->chan->mode & (A_PRIVATE | A_SECRET)) &&
@@ -351,21 +561,29 @@ static int ircd_privmsg_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
       {
 #ifdef USE_SERVICES
 	if (CLIENT_IS_SERVICE (cl))
-	  _ircd_bmsgl_mask ((IRCD *)srv->data, c, &c[1], 0, peer->dname, NULL,
+	  _ircd_bmsgl_mask (ircd, c, &c[1], 0, peer->dname, NULL,
 			    ircd_find_client(NULL, NULL), "PRIVMSG", argv[1]);
 	else
 #endif
-	  _ircd_bmsgl_mask ((IRCD *)srv->data, c, &c[1], 0, peer->dname, user,
+	  _ircd_bmsgl_mask (ircd, c, &c[1], 0, peer->dname, user,
 			    host, "PRIVMSG", argv[1]);
 	ADD_TO_LIST(c); //TODO: lowercase it?
       }
     }
-    else if ((tcl = _ircd_find_msg_target ((IRCD *)srv->data, c, NULL)))
+    else if ((tcl = _ircd_find_msg_target (c, NULL)))
     {
-      if (!CLIENT_IS_REMOTE(tcl))
+      if (CLIENT_IS_SERVICE(tcl))
+	ircd_do_unumeric (cl, ERR_NOSUCHNICK, cl, 0, c);
+      else if (!CLIENT_IS_REMOTE(tcl))
       {
-	New_Request (tcl->via->p.iface, 0, ":%s!%s@%s PRIVMSG %s :%s",
-		     peer->dname, user, host, c, argv[1]);
+#ifdef USE_SERVICES
+	if (CLIENT_IS_SERVICE (cl))
+	  New_Request (tcl->via->p.iface, 0, ":%s@%s PRIVMSG %s :%s",
+		       peer->dname, ircd_find_client(NULL, NULL), c, argv[1]);
+	else
+#endif
+	  New_Request (tcl->via->p.iface, 0, ":%s!%s@%s PRIVMSG %s :%s",
+		       peer->dname, user, host, c, argv[1]);
 	if (tcl->umode & A_AWAY)
 	  ircd_do_unumeric (cl, RPL_AWAY, tcl, 0, tcl->away);
       }
@@ -373,14 +591,34 @@ static int ircd_privmsg_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 	ADD_TO_LIST(tcl->lcnick);
     }
     else
-      ircd_do_unumeric (cl, ERR_NOSUCHNICK, cl, 0, c);
+    {
+      register LINK *lnk;
+      register int rc;
+
+      for (lnk = ircd->servers; lnk; lnk = lnk->prev) /* preset to ignore later */
+	lnk->cl->via->p.iface->ift |= I_PENDING;
+      rc = _ircd_mark_message_target(srv, peer->dname, c);
+      for (lnk = ircd->servers; lnk; lnk = lnk->prev) /* preset to ignore later */
+	lnk->cl->via->p.iface->ift &= ~I_PENDING;
+      if (rc) {
+#ifdef USE_SERVICES
+	if (CLIENT_IS_SERVICE (cl))
+	  Add_Request(I_PENDING, "*", 0, ":%s@%s PRIVMSG %s :%s",
+		      peer->dname, ircd_find_client(NULL, NULL), c, argv[1]);
+	else
+#endif
+	  Add_Request(I_PENDING, "*", 0, ":%s!%s@%s PRIVMSG %s :%s",
+		      peer->dname, user, host, c, argv[1]);
+	ADD_TO_LIST(c);
+      } else
+	ircd_do_unumeric (cl, ERR_NOSUCHNICK, cl, 0, c);
+    }
   }
   if (s)
   {
-    _ircd_broadcast_msglist_new ((IRCD *)srv->data, NULL, 0, ircd_new_id(),
-				 peer->dname, targets, tlist, s, "PRIVMSG",
-				 argv[1]);
-    _ircd_broadcast_msglist_old ((IRCD *)srv->data, NULL, 0, peer->dname, 0,
+    _ircd_broadcast_msglist_new (ircd, NULL, 0, ircd_new_id(), peer->dname,
+				 targets, tlist, s, "PRIVMSG", argv[1]);
+    _ircd_broadcast_msglist_old (ircd, NULL, 0, peer->dname, 0,
 				 targets, tlist, s, "PRIVMSG", argv[1]);
   }
   return 1;
@@ -392,6 +630,7 @@ static int ircd_notice_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 { /* args: <msgtarget> <text to be sent> */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl, *tcl;
   MEMBER *tch;
+  IRCD *ircd = (IRCD *)srv->data;
   char *c, *cnext;
   register char *cmask;
   int n;
@@ -409,8 +648,7 @@ static int ircd_notice_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
       *cnext++ = 0;
     if (++n > MAXTARGETS)
       continue;
-    else if ((tch = ircd_find_member ((IRCD *)srv->data, c, NULL))
-	     != NOSUCHCHANNEL)
+    else if ((tch = ircd_find_member (ircd, c, NULL)) != NOSUCHCHANNEL)
     {
       if (_ircd_can_send_to_chan (cl, tch->chan, argv[1]))
       {
@@ -430,30 +668,58 @@ static int ircd_notice_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
       {
 #ifdef USE_SERVICES
 	if (CLIENT_IS_SERVICE (cl))
-	  _ircd_bmsgl_mask ((IRCD *)srv->data, c, &c[1], 0, peer->dname, NULL,
+	  _ircd_bmsgl_mask (ircd, c, &c[1], 0, peer->dname, NULL,
 			    ircd_find_client(NULL, NULL), "NOTICE", argv[1]);
 	else
 #endif
-	  _ircd_bmsgl_mask ((IRCD *)srv->data, c, &c[1], 0, peer->dname, user,
+	  _ircd_bmsgl_mask (ircd, c, &c[1], 0, peer->dname, user,
 			    host, "NOTICE", argv[1]);
 	ADD_TO_LIST(c); //TODO: lowercase it?
       }
     }
-    else if ((tcl = _ircd_find_msg_target ((IRCD *)srv->data, c, NULL)))
+    else if ((tcl = _ircd_find_msg_target (c, NULL)))
     {
-      if (!CLIENT_IS_REMOTE(tcl))
-	New_Request (tcl->via->p.iface, 0, ":%s!%s@%s NOTICE %s :%s",
-		     peer->dname, user, host, c, argv[1]);
+      if (CLIENT_IS_SERVICE(tcl)) ;
+      else if (!CLIENT_IS_REMOTE(tcl))
+#ifdef USE_SERVICES
+	if (CLIENT_IS_SERVICE (cl))
+	  New_Request (tcl->via->p.iface, 0, ":%s@%s NOTICE %s :%s",
+		       peer->dname, ircd_find_client(NULL, NULL), c, argv[1]);
+	else
+#endif
+	  New_Request (tcl->via->p.iface, 0, ":%s!%s@%s NOTICE %s :%s",
+		       peer->dname, user, host, c, argv[1]);
       else
 	ADD_TO_LIST(tcl->lcnick);
+    }
+    else
+    {
+      register LINK *lnk;
+      register int rc;
+
+      for (lnk = ircd->servers; lnk; lnk = lnk->prev) /* preset to ignore later */
+	lnk->cl->via->p.iface->ift |= I_PENDING;
+      rc = _ircd_mark_message_target(srv, peer->dname, c);
+      for (lnk = ircd->servers; lnk; lnk = lnk->prev) /* preset to ignore later */
+	lnk->cl->via->p.iface->ift &= ~I_PENDING;
+      if (rc) {
+#ifdef USE_SERVICES
+	if (CLIENT_IS_SERVICE (cl))
+	  Add_Request(I_PENDING, "*", 0, ":%s@%s NOTICE %s :%s",
+		      peer->dname, ircd_find_client(NULL, NULL), c, argv[1]);
+	else
+#endif
+	  Add_Request(I_PENDING, "*", 0, ":%s!%s@%s NOTICE %s :%s",
+		      peer->dname, user, host, c, argv[1]);
+	ADD_TO_LIST(c);
+      }
     }
   }
   if (s)
   {
-    _ircd_broadcast_msglist_new ((IRCD *)srv->data, NULL, 0, ircd_new_id(),
-				 peer->dname, targets, tlist, s, "NOTICE",
-				 argv[1]);
-    _ircd_broadcast_msglist_old ((IRCD *)srv->data, NULL, 0, peer->dname, 0,
+    _ircd_broadcast_msglist_new (ircd, NULL, 0, ircd_new_id(), peer->dname,
+				 targets, tlist, s, "NOTICE", argv[1]);
+    _ircd_broadcast_msglist_old (ircd, NULL, 0, peer->dname, 0,
 				 targets, tlist, s, "NOTICE", argv[1]);
   }
   return 1;
@@ -464,12 +730,13 @@ static int ircd_squery_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 			  char *user, char *host, int argc, const char **argv)
 { /* args: <servicename> <text to be sent> */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl, *tcl;
+  IRCD *ircd = (IRCD *)srv->data;
 
   if (argc == 0 || !*argv[0])
     return ircd_do_unumeric (cl, ERR_NORECIPIENT, cl, 0, NULL);
   if (argc == 1 || !*argv[1])
     return ircd_do_unumeric (cl, ERR_NOTEXTTOSEND, cl, 0, NULL);
-  if (!(tcl = _ircd_find_msg_target ((IRCD *)srv->data, argv[0], NULL)) ||
+  if (!(tcl = _ircd_find_msg_target (argv[0], NULL)) ||
       !CLIENT_IS_SERVICE (tcl))
     return ircd_do_unumeric (cl, ERR_NOSUCHSERVICE, cl, 0, argv[0]);
 #ifdef USE_SERVICES
@@ -480,9 +747,9 @@ static int ircd_squery_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
     return 1;
   }
 #endif
-  _ircd_broadcast_msglist_new((IRCD *)srv->data, NULL, 0, ircd_new_id(),
+  _ircd_broadcast_msglist_new(ircd, NULL, 0, ircd_new_id(),
 			      peer->dname, argv[0], argv, 1, "SQUERY", argv[1]);
-  _ircd_broadcast_msglist_old((IRCD *)srv->data, NULL, 0, peer->dname, 0,
+  _ircd_broadcast_msglist_old(ircd, NULL, 0, peer->dname, 0,
 			      argv[0], argv, 1, "SQUERY", argv[1]);
   return 1;
 }
@@ -500,6 +767,7 @@ static int ircd_privmsg_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
 { /* args: <msgtarget> <text to be sent> */
   CLIENT *cl, *tcl;
   MEMBER *tch;
+  IRCD *ircd = (IRCD *)srv->data;
   char *c, *cnext;
   struct peer_priv *pp = peer->iface->data; /* it's really peer */
   const char *tlist[MAXTARGETS];
@@ -512,17 +780,17 @@ static int ircd_privmsg_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
 	  argc);
     return ircd_recover_done(pp, "Invalid number of parameters");
   }
-  cl = _ircd_find_client_lc((IRCD *)srv->data, lcsender);
+  cl = _ircd_find_client_lc(ircd, lcsender);
   for (c = (char *)argv[0]; c; c = cnext)
   {
     if ((cnext = strchr(c, ',')))
       *cnext++ = 0;
     if (s == MAXTARGETS) {
-      _ircd_broadcast_msglist_old((IRCD *)srv->data, pp, token, sender, 1,
+      _ircd_broadcast_msglist_old(ircd, pp, token, sender, 1,
 				  targets, tlist, s, "PRIVMSG", argv[1]);
       s = s2 = 0;
     }
-    tch = ircd_find_member((IRCD *)srv->data, c, NULL);
+    tch = ircd_find_member(ircd, c, NULL);
     if (tch != NOSUCHCHANNEL) {
       if (!_ircd_can_send_to_chan(cl, tch->chan, argv[1]))
 	Add_Request(I_LOG, "*", F_WARN,
@@ -537,15 +805,17 @@ static int ircd_privmsg_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
       }
     } else if ((cl->umode & A_OP) && (*argv[0] == '#' || *argv[0] == '$')) {
       if (CLIENT_IS_SERVICE(cl))
-	_ircd_bmsgl_mask((IRCD *)srv->data, c, &c[1], 0, sender, NULL,
+	_ircd_bmsgl_mask(ircd, c, &c[1], 0, sender, NULL,
 			 cl->cs->lcnick, "PRIVMSG", argv[1]);
       else
-	_ircd_bmsgl_mask((IRCD *)srv->data, c, &c[1], 0, sender, cl->user,
+	_ircd_bmsgl_mask(ircd, c, &c[1], 0, sender, cl->user,
 			 cl->host, "PRIVMSG", argv[1]);
       ADD_TO_LIST(c); //TODO: lowercase it?
-    } else if ((tcl = _ircd_find_msg_target((IRCD *)srv->data, c, pp))) {
-      if (!CLIENT_IS_REMOTE(tcl))
-      {
+    } else if ((tcl = _ircd_find_msg_target(c, pp))) {
+      if (CLIENT_IS_SERVICE(tcl)) {
+	ERROR("ircd:invalid PRIVMSG target %s via %s", c, peer->dname);
+	ircd_recover_done(pp, "Invalid recipient");
+      } else if (!CLIENT_IS_REMOTE(tcl)) {
 	if (CLIENT_IS_SERVICE(cl))
 	  New_Request(tcl->via->p.iface, 0, ":%s@%s PRIVMSG %s :%s", sender,
 		      cl->cs->lcnick, c, argv[1]);
@@ -554,16 +824,33 @@ static int ircd_privmsg_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
 		      cl->user, cl->host, c, argv[1]);
 	if (tcl->umode & A_AWAY)
 	  ircd_do_unumeric(cl, RPL_AWAY, tcl, 0, tcl->away);
-      }
-      else
+      } else
 	ADD_TO_LIST(tcl->lcnick);
     } else {
-      ERROR("ircd:invalid PRIVMSG target %s via %s", c, peer->dname);
-      ircd_recover_done(pp, "Invalid recipient");
+      register LINK *lnk;
+      register int rc;
+
+      for (lnk = ircd->servers; lnk; lnk = lnk->prev) /* preset to ignore later */
+	lnk->cl->via->p.iface->ift |= I_PENDING;
+      rc = _ircd_mark_message_target(srv, sender, c);
+      for (lnk = ircd->servers; lnk; lnk = lnk->prev) /* preset to ignore later */
+	lnk->cl->via->p.iface->ift &= ~I_PENDING;
+      if (rc) {
+	if (CLIENT_IS_SERVICE (cl))
+	  Add_Request(I_PENDING, "*", 0, ":%s@%s PRIVMSG %s :%s", sender,
+		      cl->cs->lcnick, c, argv[1]);
+	else
+	  Add_Request(I_PENDING, "*", 0, ":%s!%s@%s PRIVMSG %s :%s", sender,
+		      cl->user, cl->host, c, argv[1]);
+	ADD_TO_LIST(c);
+      } else {
+	ERROR("ircd:invalid PRIVMSG target %s via %s", c, peer->dname);
+	ircd_recover_done(pp, "Invalid recipient");
+      }
     }
   }
   if (s)
-    _ircd_broadcast_msglist_old((IRCD *)srv->data, pp, token, sender, 1,
+    _ircd_broadcast_msglist_old(ircd, pp, token, sender, 1,
 				targets, tlist, s, "PRIVMSG", argv[1]);
   return 1;
 }
@@ -575,6 +862,7 @@ static int ircd_notice_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
 { /* args: <msgtarget> <text to be sent> */
   CLIENT *cl, *tcl;
   MEMBER *tch;
+  IRCD *ircd = (IRCD *)srv->data;
   char *c, *cnext;
   struct peer_priv *pp = peer->iface->data; /* it's really peer */
   const char *tlist[MAXTARGETS];
@@ -588,17 +876,17 @@ static int ircd_notice_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
 		peer->dname, argc);
     return (1);
   }
-  cl = _ircd_find_client_lc((IRCD *)srv->data, lcsender);
+  cl = _ircd_find_client_lc(ircd, lcsender);
   for (c = (char *)argv[0]; c; c = cnext)
   {
     if ((cnext = strchr(c, ',')))
       *cnext++ = 0;
     if (s == MAXTARGETS) {
-      _ircd_broadcast_msglist_old((IRCD *)srv->data, pp, token, sender, 1,
+      _ircd_broadcast_msglist_old(ircd, pp, token, sender, 1,
 				  targets, tlist, s, "NOTICE", argv[1]);
       s = s2 = 0;
     }
-    tch = ircd_find_member((IRCD *)srv->data, c, NULL);
+    tch = ircd_find_member(ircd, c, NULL);
     if (tch != NOSUCHCHANNEL) {
       if (!_ircd_can_send_to_chan(cl, tch->chan, argv[1]))
 	Add_Request(I_LOG, "*", F_WARN,
@@ -612,14 +900,17 @@ static int ircd_notice_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
 		    c, peer->dname);
     } else if ((cl->umode & A_OP) && (*argv[0] == '#' || *argv[0] == '$')) {
       if (CLIENT_IS_SERVICE(cl))
-	_ircd_bmsgl_mask((IRCD *)srv->data, c, &c[1], 0, sender, NULL,
+	_ircd_bmsgl_mask(ircd, c, &c[1], 0, sender, NULL,
 			 cl->cs->lcnick, "NOTICE", argv[1]);
       else
-	_ircd_bmsgl_mask((IRCD *)srv->data, c, &c[1], 0, sender, cl->user,
+	_ircd_bmsgl_mask(ircd, c, &c[1], 0, sender, cl->user,
 			 cl->host, "NOTICE", argv[1]);
       ADD_TO_LIST(c); //TODO: lowercase it?
-    } else if ((tcl = _ircd_find_msg_target((IRCD *)srv->data, c, pp))) {
-      if (!CLIENT_IS_REMOTE(tcl)) {
+    } else if ((tcl = _ircd_find_msg_target(c, pp))) {
+      if (CLIENT_IS_SERVICE(tcl)) {
+	Add_Request(I_LOG, "*", F_WARN, "ircd:invalid NOTICE target %s via %s",
+		    c, peer->dname);
+      } else if (!CLIENT_IS_REMOTE(tcl)) {
 	if (CLIENT_IS_SERVICE(cl))
 	  New_Request(tcl->via->p.iface, 0, ":%s@%s NOTICE %s :%s", sender,
 		      cl->cs->lcnick, c, argv[1]);
@@ -628,12 +919,30 @@ static int ircd_notice_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
 		      cl->user, cl->host, c, argv[1]);
       } else
 	ADD_TO_LIST(tcl->lcnick);
-    } else
-      Add_Request(I_LOG, "*", F_WARN, "ircd:invalid NOTICE target %s via %s", c,
-		  peer->dname);
+    } else {
+      register LINK *lnk;
+      register int rc;
+
+      for (lnk = ircd->servers; lnk; lnk = lnk->prev) /* preset to ignore later */
+	lnk->cl->via->p.iface->ift |= I_PENDING;
+      rc = _ircd_mark_message_target(srv, sender, c);
+      for (lnk = ircd->servers; lnk; lnk = lnk->prev) /* preset to ignore later */
+	lnk->cl->via->p.iface->ift &= ~I_PENDING;
+      if (rc) {
+	if (CLIENT_IS_SERVICE (cl))
+	  Add_Request(I_PENDING, "*", 0, ":%s@%s NOTICE %s :%s", sender,
+		      cl->cs->lcnick, c, argv[1]);
+	else
+	  Add_Request(I_PENDING, "*", 0, ":%s!%s@%s NOTICE %s :%s", sender,
+		      cl->user, cl->host, c, argv[1]);
+	ADD_TO_LIST(c);
+      } else
+	Add_Request(I_LOG, "*", F_WARN, "ircd:invalid NOTICE target %s via %s",
+		    c, peer->dname);
+    }
   }
   if (s)
-    _ircd_broadcast_msglist_old((IRCD *)srv->data, pp, token, sender, 1,
+    _ircd_broadcast_msglist_old(ircd, pp, token, sender, 1,
 				targets, tlist, s, "NOTICE", argv[1]);
   return 1;
 }
@@ -653,7 +962,7 @@ static int ircd_squery_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
     return ircd_recover_done(pp, "Invalid number of parameters");
   }
   //cl = _ircd_find_client_lc((IRCD *)srv->data, lcsender);
-  if (!(tcl = _ircd_find_msg_target((IRCD *)srv->data, argv[0], pp)) ||
+  if (!(tcl = _ircd_find_msg_target(argv[0], pp)) ||
       !CLIENT_IS_SERVICE(tcl)) {
     ERROR("ircd:invalid SQUERY target %s via %s", argv[0], peer->dname);
     return ircd_recover_done(pp, "Invalid recipient");
@@ -676,6 +985,7 @@ static int ircd_iprivmsg(INTERFACE *srv, struct peer_t *peer, unsigned short tok
 { /* args: <id> <msgtarget> <text to be sent> */
   CLIENT *cl, *tcl;
   MEMBER *tch;
+  IRCD *ircd = (IRCD *)srv->data;
   char *c, *cnext;
   struct peer_priv *pp = peer->iface->data; /* it's really peer */
   const char *tlist[MAXTARGETS];
@@ -690,10 +1000,10 @@ static int ircd_iprivmsg(INTERFACE *srv, struct peer_t *peer, unsigned short tok
     return ircd_recover_done(pp, "Invalid number of parameters");
   }
   id = atoi(argv[0]);
-  if (!ircd_test_id(((IRCD *)srv->data)->token[token], id))
+  if (!ircd_test_id(ircd->token[token], id))
     //TODO: log duplicate?
     return (1);
-  cl = _ircd_find_client_lc((IRCD *)srv->data, lcsender);
+  cl = _ircd_find_client_lc(ircd, lcsender);
   for (c = (char *)argv[1]; c; c = cnext)
   {
     if ((cnext = strchr(c, ',')))
@@ -703,7 +1013,7 @@ static int ircd_iprivmsg(INTERFACE *srv, struct peer_t *peer, unsigned short tok
 	    peer->dname, c);
       ircd_recover_done(pp, "Too many targets");
     }
-    tch = ircd_find_member((IRCD *)srv->data, c, NULL);
+    tch = ircd_find_member(ircd, c, NULL);
     if (tch != NOSUCHCHANNEL) {
       if (!_ircd_can_send_to_chan(cl, tch->chan, argv[2]))
 	Add_Request(I_LOG, "*", F_WARN,
@@ -718,15 +1028,17 @@ static int ircd_iprivmsg(INTERFACE *srv, struct peer_t *peer, unsigned short tok
       }
     } else if ((cl->umode & A_OP) && (*argv[1] == '#' || *argv[1] == '$')) {
       if (CLIENT_IS_SERVICE(cl))
-	_ircd_bmsgl_mask((IRCD *)srv->data, c, &c[1], 0, sender, NULL,
+	_ircd_bmsgl_mask(ircd, c, &c[1], 0, sender, NULL,
 			 cl->cs->lcnick, "PRIVMSG", argv[2]);
       else
-	_ircd_bmsgl_mask((IRCD *)srv->data, c, &c[1], 0, sender, cl->user,
+	_ircd_bmsgl_mask(ircd, c, &c[1], 0, sender, cl->user,
 			 cl->host, "PRIVMSG", argv[2]);
       ADD_TO_LIST(c); //TODO: lowercase it?
-    } else if ((tcl = _ircd_find_msg_target((IRCD *)srv->data, c, pp))) {
-      if (!CLIENT_IS_REMOTE(tcl))
-      {
+    } else if ((tcl = _ircd_find_msg_target(c, pp))) {
+      if (CLIENT_IS_SERVICE(tcl)) {
+	ERROR("ircd:invalid IPRIVMSG target %s via %s", c, peer->dname);
+	ircd_recover_done(pp, "Invalid recipient");
+      } else if (!CLIENT_IS_REMOTE(tcl)) {
 	if (CLIENT_IS_SERVICE(cl))
 	  New_Request(tcl->via->p.iface, 0, ":%s@%s PRIVMSG %s :%s", sender,
 		      cl->cs->lcnick, c, argv[2]);
@@ -735,18 +1047,35 @@ static int ircd_iprivmsg(INTERFACE *srv, struct peer_t *peer, unsigned short tok
 		      cl->user, cl->host, c, argv[2]);
 	if (tcl->umode & A_AWAY)
 	  ircd_do_unumeric(cl, RPL_AWAY, tcl, 0, tcl->away);
-      }
-      else
+      } else
 	ADD_TO_LIST(tcl->lcnick);
     } else {
-      ERROR("ircd:invalid IPRIVMSG target %s via %s", c, peer->dname);
-      ircd_recover_done(pp, "Invalid recipient");
+      register LINK *lnk;
+      register int rc;
+
+      for (lnk = ircd->servers; lnk; lnk = lnk->prev) /* preset to ignore later */
+	lnk->cl->via->p.iface->ift |= I_PENDING;
+      rc = _ircd_mark_message_target(srv, sender, c);
+      for (lnk = ircd->servers; lnk; lnk = lnk->prev) /* preset to ignore later */
+	lnk->cl->via->p.iface->ift &= ~I_PENDING;
+      if (rc) {
+	if (CLIENT_IS_SERVICE (cl))
+	  Add_Request(I_PENDING, "*", 0, ":%s@%s PRIVMSG %s :%s", sender,
+		      cl->cs->lcnick, c, argv[1]);
+	else
+	  Add_Request(I_PENDING, "*", 0, ":%s!%s@%s PRIVMSG %s :%s", sender,
+		      cl->user, cl->host, c, argv[1]);
+	ADD_TO_LIST(c);
+      } else {
+	ERROR("ircd:invalid IPRIVMSG target %s via %s", c, peer->dname);
+	ircd_recover_done(pp, "Invalid recipient");
+      }
     }
   }
   if (s) {
-    _ircd_broadcast_msglist_new((IRCD *)srv->data, pp, token, id, sender,
+    _ircd_broadcast_msglist_new(ircd, pp, token, id, sender,
 				targets, tlist, s, "PRIVMSG", argv[2]);
-    _ircd_broadcast_msglist_old((IRCD *)srv->data, pp, token, sender, 0,
+    _ircd_broadcast_msglist_old(ircd, pp, token, sender, 0,
 				targets, tlist, s, "PRIVMSG", argv[2]);
   }
   return 1;
@@ -759,6 +1088,7 @@ static int ircd_inotice(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 { /* args: <id> <msgtarget> <text to be sent> */
   CLIENT *cl, *tcl;
   MEMBER *tch;
+  IRCD *ircd = (IRCD *)srv->data;
   char *c, *cnext;
   struct peer_priv *pp = peer->iface->data; /* it's really peer */
   const char *tlist[MAXTARGETS];
@@ -774,10 +1104,10 @@ static int ircd_inotice(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     return (1);
   }
   id = atoi(argv[0]);
-  if (!ircd_test_id(((IRCD *)srv->data)->token[token], id))
+  if (!ircd_test_id((ircd)->token[token], id))
     //TODO: log duplicate?
     return (1);
-  cl = _ircd_find_client_lc((IRCD *)srv->data, lcsender);
+  cl = _ircd_find_client_lc(ircd, lcsender);
   for (c = (char *)argv[1]; c; c = cnext)
   {
     if ((cnext = strchr(c, ',')))
@@ -785,7 +1115,7 @@ static int ircd_inotice(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     if (s == MAXTARGETS)
       Add_Request(I_LOG, "*", F_WARN, "ircd:too many targets of INOTICE via "
 		  "%s, may lose message for %s", peer->dname, c);
-    tch = ircd_find_member((IRCD *)srv->data, c, NULL);
+    tch = ircd_find_member(ircd, c, NULL);
     if (tch != NOSUCHCHANNEL) {
       if (!_ircd_can_send_to_chan(cl, tch->chan, argv[2]))
 	Add_Request(I_LOG, "*", F_WARN,
@@ -799,14 +1129,17 @@ static int ircd_inotice(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 		    c, peer->dname);
     } else if ((cl->umode & A_OP) && (*argv[1] == '#' || *argv[1] == '$')) {
       if (CLIENT_IS_SERVICE(cl))
-	_ircd_bmsgl_mask((IRCD *)srv->data, c, &c[1], 0, sender, NULL,
+	_ircd_bmsgl_mask(ircd, c, &c[1], 0, sender, NULL,
 			 cl->cs->lcnick, "NOTICE", argv[2]);
       else
-	_ircd_bmsgl_mask((IRCD *)srv->data, c, &c[1], 0, sender, cl->user,
+	_ircd_bmsgl_mask(ircd, c, &c[1], 0, sender, cl->user,
 			 cl->host, "NOTICE", argv[2]);
       ADD_TO_LIST(c); //TODO: lowercase it?
-    } else if ((tcl = _ircd_find_msg_target((IRCD *)srv->data, c, pp))) {
-      if (!CLIENT_IS_REMOTE(tcl)) {
+    } else if ((tcl = _ircd_find_msg_target(c, pp))) {
+      if (CLIENT_IS_SERVICE(tcl)) {
+	Add_Request(I_LOG, "*", F_WARN, "ircd:invalid INOTICE target %s via %s",
+		    c, peer->dname);
+      } else if (!CLIENT_IS_REMOTE(tcl)) {
 	if (CLIENT_IS_SERVICE(cl))
 	  New_Request(tcl->via->p.iface, 0, ":%s@%s NOTICE %s :%s", sender,
 		      cl->cs->lcnick, c, argv[2]);
@@ -815,14 +1148,32 @@ static int ircd_inotice(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 		      cl->user, cl->host, c, argv[2]);
       } else
 	ADD_TO_LIST(tcl->lcnick);
-    } else
-      Add_Request(I_LOG, "*", F_WARN, "ircd:invalid INOTICE target %s via %s", c,
-		  peer->dname);
+    } else {
+      register LINK *lnk;
+      register int rc;
+
+      for (lnk = ircd->servers; lnk; lnk = lnk->prev) /* preset to ignore later */
+	lnk->cl->via->p.iface->ift |= I_PENDING;
+      rc = _ircd_mark_message_target(srv, sender, c);
+      for (lnk = ircd->servers; lnk; lnk = lnk->prev) /* preset to ignore later */
+	lnk->cl->via->p.iface->ift &= ~I_PENDING;
+      if (rc) {
+	if (CLIENT_IS_SERVICE (cl))
+	  Add_Request(I_PENDING, "*", 0, ":%s@%s NOTICE %s :%s", sender,
+		      cl->cs->lcnick, c, argv[1]);
+	else
+	  Add_Request(I_PENDING, "*", 0, ":%s!%s@%s NOTICE %s :%s", sender,
+		      cl->user, cl->host, c, argv[1]);
+	ADD_TO_LIST(c);
+      } else
+	Add_Request(I_LOG, "*", F_WARN, "ircd:invalid INOTICE target %s via %s",
+		    c, peer->dname);
+    }
   }
   if (s) {
-    _ircd_broadcast_msglist_new((IRCD *)srv->data, pp, token, id, sender,
+    _ircd_broadcast_msglist_new(ircd, pp, token, id, sender,
 				targets, tlist, s, "NOTICE", argv[2]);
-    _ircd_broadcast_msglist_old((IRCD *)srv->data, pp, token, sender, 0,
+    _ircd_broadcast_msglist_old(ircd, pp, token, sender, 0,
 				targets, tlist, s, "NOTICE", argv[2]);
   }
   return 1;
@@ -834,6 +1185,7 @@ static int ircd_isquery(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 			int argc, const char **argv)
 { /* args: <id> <servicename> <text to be sent> */
   CLIENT *tcl;
+  IRCD *ircd = (IRCD *)srv->data;
   struct peer_priv *pp = peer->iface->data; /* it's really peer */
   int id;
 
@@ -844,11 +1196,11 @@ static int ircd_isquery(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     return ircd_recover_done(pp, "Invalid number of parameters");
   }
   id = atoi(argv[0]);
-  if (!ircd_test_id(((IRCD *)srv->data)->token[token], id))
+  if (!ircd_test_id((ircd)->token[token], id))
     //TODO: log duplicate?
     return (1);
-  //cl = _ircd_find_client_lc((IRCD *)srv->data, lcsender);
-  if (!(tcl = _ircd_find_msg_target((IRCD *)srv->data, argv[1], pp)) ||
+  //cl = _ircd_find_client_lc(ircd, lcsender);
+  if (!(tcl = _ircd_find_msg_target(argv[1], pp)) ||
       !CLIENT_IS_SERVICE(tcl)) {
     ERROR("ircd:invalid ISQUERY target %s via %s", argv[1], peer->dname);
     return ircd_recover_done(pp, "Invalid recipient");
@@ -859,9 +1211,9 @@ static int ircd_isquery(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   else
 #endif
   {
-    _ircd_broadcast_msglist_new((IRCD *)srv->data, pp, token, id, sender,
+    _ircd_broadcast_msglist_new(ircd, pp, token, id, sender,
 				argv[1], &argv[1], 1, "SQUERY", argv[2]);
-    _ircd_broadcast_msglist_old((IRCD *)srv->data, pp, token, sender, 0,
+    _ircd_broadcast_msglist_old(ircd, pp, token, sender, 0,
 				argv[1], &argv[1], 1, "SQUERY", argv[2]);
   }
   return (1);
@@ -893,6 +1245,7 @@ void ircd_message_proto_end (void)
 void ircd_message_proto_start (void)
 {
   BTIrcdCheckMessage = Add_Bindtable ("ircd-check-message", B_MASK);
+  BTIrcdSetMessageTargets = Add_Bindtable ("ircd-set-message-targets", B_MASK);
   Add_Binding ("ircd-client-cmd", "privmsg", 0, 0, &ircd_privmsg_cb, NULL);
   Add_Binding ("ircd-client-cmd", "notice", 0, 0, &ircd_notice_cb, NULL);
   Add_Binding ("ircd-client-cmd", "squery", 0, 0, &ircd_squery_cb, NULL);

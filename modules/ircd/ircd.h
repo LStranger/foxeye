@@ -202,7 +202,7 @@ struct CLIENT
   char lcnick[SERVERNAMELEN+1];
 #endif
   char fname[MB_LEN_MAX*REALNAMELEN+1];	/* full name (description) */
-  char user[USERLEN+1];			/* ident - from connection */
+  char user[IDENTLEN+1];		/* ident - from connection */
   char host[HOSTLEN+1];			/* host ; LC ; split server if on hold
 						       empty if hold by acks */
 					/* and it's used for service distrib. */

@@ -13,6 +13,10 @@ TODO:
 Mon Oct  3 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed numerics via IRCD interface.
 	* core/direct.c: added ignorance of fake identd answers.
+	* modules/ircd/channels.c, modules/ircd/ircd.h, modules/ircd/messages.c, modules/ircd/queries.c:
+	  eliminated constant USERLEN in favor to IDENTLEN.
+	* modules/ircd/messages.c: implemented new "ircd-set-message-targets"
+	  bindtable for extending PRIVMSG and NOTICE target masks.
 
 Sun Oct  2 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/socket.c: fixed a slowness in reading socket.

@@ -484,6 +484,7 @@ int SetupSocket(idx_t idx, const char *domain, const char *bind_to,
     else
       hints.ai_flags = 0;
 #endif
+    //TODO: idna_to_ascii_lz
     i = getaddrinfo (domain, NULL, &hints, &ai);
     if (i == 0)
     {
@@ -542,6 +543,7 @@ int SetupSocket(idx_t idx, const char *domain, const char *bind_to,
     i = getnameinfo (&addr.sa, len, hname, sizeof(hname), NULL, 0, 0);
     if (i == 0)			/* no errors */
       domain = hname;
+      //TODO: idna_to_unicode_lzlz()
     else if (domain == NULL)	/* else make it not NULL */
       domain = Socket[idx].ipname;
   }

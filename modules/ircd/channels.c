@@ -1320,7 +1320,7 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
   modeflag mf;
   int x, i, ptr;
   char cnfc[2];
-  char lcb[MB_LEN_MAX*NICKLEN+USERLEN+HOSTLEN+3];
+  char lcb[MB_LEN_MAX*NICKLEN+IDENTLEN+HOSTLEN+3];
   char bufforservers[MB_LEN_MAX*IRCMSGLEN];
 
   if (argc == 0)

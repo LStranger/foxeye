@@ -2074,7 +2074,7 @@ BINDING_TYPE_ircd_register_cmd (ircd_user);
 static int ircd_user (INTERFACE *srv, struct peer_t *peer, int argc, const char **argv)
 { /* args: <user> <mode> <unused> <realname> */
   CLIENT *cl = ((peer_priv *)peer->iface->data)->link->cl; /* it's really peer->link->cl */
-  register char *c;
+//  register char *c;
   int umode;
 
   if (cl->umode & A_UPLINK)		/* illegal here! */

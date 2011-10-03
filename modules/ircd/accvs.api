@@ -233,3 +233,11 @@
     make another nick collision then that user will be killed instead so
     be careful and do checks.
       Matching: anything.  (userflags are ignored)
+
+-     "ircd-set-message-targets" MASK
+  int func (INTERFACE *serv, const char *sender, const char *target,
+	    int (*next)(INTERFACE *serv, const char **mask,
+			const char **lcname, modeflag *mf, int **mark,
+			void **iter));
+    Used when........
+      Matching: anything.  (userflags are ignored)

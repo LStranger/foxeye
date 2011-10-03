@@ -1102,7 +1102,7 @@ typedef struct whowas_t {
   char nick[MB_LEN_MAX*NICKLEN+1];	/* registration nick */
   char lcnick[MB_LEN_MAX*NICKLEN+1];	/* nick (lower case) - for search */
   char fname[MB_LEN_MAX*REALNAMELEN+1];	/* full name */
-  char user[USERLEN+1];			/* ident - from connection */
+  char user[IDENTLEN+1];		/* ident - from connection */
   char host[HOSTLEN+1];			/* host (lower case) */
   char fromsrv[HOSTLEN+1];		/* server name of user */
 } whowas_t;
