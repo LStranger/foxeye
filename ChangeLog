@@ -17,6 +17,7 @@ Mon Oct  3 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  eliminated constant USERLEN in favor to IDENTLEN.
 	* modules/ircd/messages.c: implemented new "ircd-set-message-targets"
 	  bindtable for extending PRIVMSG and NOTICE target masks.
+	* modules/ircd/clients.c: fixed WHO request for operators.
 
 Sun Oct  2 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/socket.c: fixed a slowness in reading socket.

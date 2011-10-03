@@ -537,8 +537,10 @@ static int ircd_who_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 
   if (argc > 0)
   {
-    if (argc > 1 && !strcmp (argv[1], "o"))
+    if (argc > 1 && !strcasecmp (argv[1], "o"))
       mmf = (A_OP | A_HALFOP);
+    else if (argc > 1)
+      return (ircd_do_unumeric (cl, RPL_ENDOFWHO, cl, 0, argv[0]));
     if ((argv[0])[1] != '\0' || (*argv[0] != '0' && *argv[0] != '*'))
       mask = argv[0];
   }
@@ -555,7 +557,7 @@ static int ircd_who_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 	for (link = tgt->c.lients; link; link = link->prev)
 	{
 	  tgt = link->cl;
-	  if (CLIENT_IS_SERVER (tgt) || (tgt->umode & mmf) != mmf)
+	  if (CLIENT_IS_SERVER (tgt) || (mmf && !(tgt->umode & mmf)))
 	    continue;
 	  if ((cl->umode & (A_OP | A_HALFOP)) || !(tgt->umode & A_INVISIBLE) ||
 	      tgt == cl)
@@ -581,20 +583,20 @@ static int ircd_who_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 	  (mc = _ircd_is_on_channel (cl, m->chan)) ||
 	  !(m->chan->mode & (A_PRIVATE | A_SECRET)))
 	for ( ; m; m = m->prevnick)
-	  if ((m->mode & mmf) == mmf) /* use "o" parameter against chanmode */
+	  if (!mmf || (m->mode & mmf)) /* use "o" parameter against chanmode */
 	    if (mc || !(m->who->umode & A_INVISIBLE))
 	      _ircd_who_reply (cl, CLIENT_IS_REMOTE (m->who) ? m->who->cs : me,
 			       m->who, m); /* ME can be only in QUIET chan */
       }
   } else if ((tgt = ircd_find_client(mask, NULL)) != NULL &&
-	     !CLIENT_IS_SERVER(tgt) && (tgt->umode & mmf) == mmf) {
+	     !CLIENT_IS_SERVER(tgt) && (!mmf || (tgt->umode & mmf))) {
     _ircd_who_reply (cl, CLIENT_IS_REMOTE (tgt) ? tgt->cs : me, tgt, NULL);
   } else if (tgt != NULL && CLIENT_IS_SERVER (tgt)) {
     LINK *link;
 
     for (link = tgt->c.lients; link; link = link->prev) {
       tgt = link->cl;
-      if ((tgt->umode & mmf) == mmf)
+      if (!mmf || (tgt->umode & mmf))
 	_ircd_who_reply (cl, CLIENT_IS_REMOTE (tgt) ? tgt->cs : me, tgt, NULL);
     }
   } else
