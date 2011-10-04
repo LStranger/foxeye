@@ -13,6 +13,8 @@ TODO:
 Tue Oct  4 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ziplink/ziplink.c: fixed false error message on Zlib output
 	  termination.
+	* core/lib.c: rewritten overcomplicated match() and simple_match()
+	  (bug#78).
 
 Mon Oct  3 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed numerics via IRCD interface.

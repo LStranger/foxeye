@@ -281,13 +281,12 @@ static int pattern_size (const char *pattern)
   switch (*pattern)
   {
     case '[':
-      if (*c == '^') c++;		/* it may be first */
-      if (*c == ']') c++;		/* "[]...]" is allowed too */
-      if (*c == '-') c++;		/* '-' may be first literal */
-      while (*c && *c != ']')		/* skip rest up to ']' */
+      while (*c)			/* skip rest up to ']' */
       {
-        if (*c == '-') c++;		/* it's range so skip both chars */
-	if (*c) c++;
+	if (*c == '-') c++;		/* it's range so skip both chars */
+	else if (*c == ']')		/* and -] is still allowed */
+	  break;
+	c++;
       }
       if (!*c++) return (-1);		/* "[..." is error */
       break;
@@ -309,6 +308,8 @@ static int pattern_size (const char *pattern)
 static char Wildcards[] = "[?*{";
 #define wildcard(c) strchr (Wildcards, c)
 
+#if 0
+//overcomplicated so replaced
 /* it does literal+[pattern+rest(match_it)...] */
 static int match_it (const char *mask, const char **text, const char *pe)
 {
@@ -424,6 +425,118 @@ static int match_it (const char *mask, const char **text, const char *pe)
   *text = te;
   return (x + n);
 }
+#endif
+
+static int match_it (const char *p, const char *pe, const char *t, const char *te, char pp)
+{
+  const unsigned char *c;
+  int count = 0, rc;
+  register int r;
+  register unsigned char cch;
+
+  while (p < pe) {
+    switch (*p) {
+    case '[':
+      if (*t == '\0')
+	return (-1);
+      r = pattern_size(p) - 2;
+      if (r < 0)
+	return (-1);		/* invalid pattern */
+      c = &p[1];		/* ptr for testing */
+      p = &c[r];		/* new pattern end */
+      cch = *t;
+      r = 0;
+      if (*c == '^') {
+	r = -1;			/* mark reverse matching */
+	c++;
+      }
+      if (*c == '-') {
+	if (cch == '-')		/* char matched */
+	  break;
+	c++;
+	if (*c == ']') {	/* -] is literal at start */
+	  if (cch == ']')
+	    break;
+	  c++;
+	}
+      }
+      while (*c != ']') {
+	if (cch == *c)
+	  break;
+	if (c[1] == '-') {
+	  if (cch > *c && cch <= c[2])
+	    break;
+	  c += 2;
+	}
+	c++;
+      }
+      if (*c == ']')		/* no matched chars found */
+	r = -1 - r;		/* invert matching flag */
+      break;
+    case '?':
+      r = 0;
+      if (*t == '\0')
+	r = -1;
+      else if (pp == '*' && p[1] == '*') /* short '*?*' to '*?' */
+	p++;			/* p points to '*' again */
+      break;
+    case '*':
+      if (pp == '*')		/* skip duplicate '*' */
+	p++;
+      rc = 0;			/* anything is matched */
+      for (c = t; *c; c++) {
+	r = match_it(&p[1], pe, c, te, '*');
+	if (r > rc)
+	  rc = r;
+      }
+      return (rc + count);
+    case '{':
+      r = pattern_size(p);
+      if (r < 0)
+	break;			/* invalid pattern */
+      c = &p[r];
+      rc = -1;
+      while (*p != '}') {	/* check each subpattern */
+	const char *ps, *tc;
+	int rt;
+
+	p++;			/* skip '{' or ',' */
+	ps = p;
+	while (*p != ',' && *p != '}')
+	  p++;			/* now it's on ',' or '}' */
+	for (tc = t; tc <= te; tc++) {
+	  r = match_it(ps, p, t, tc, '{');
+	  if (r < 0)		/* initial part doesn't match */
+	    continue;
+	  rt = r;
+	  r = match_it(c, pe, tc, te, '}');
+	  if (r < 0)		/* rest doesn't match */
+	    continue;
+	  r += rt;
+	  if (r > rc)		/* best matched */
+	    rc = r;
+	}
+      }
+      if (rc < 0)
+	return (rc);
+      return (rc + count);
+    case '\\':
+      p++;			/* skip one escaped char */
+    default:
+      r = 0;
+      if (*p != *t)
+	r = -1;
+      count++;
+    }
+    if (r < 0)
+      return (-1);		/* invalid pattern above */
+    pp = *p++;
+    t++;
+  }
+  if (*t != '\0')
+    return (-1);
+  return (count);
+}
 
 /* check for matching in shell wildcards style:
  * returns -1 if no matched, or number of not-wildcards characters matched */
@@ -446,12 +559,15 @@ int match (const char *mask, const char *text)
     return 0;
   if (!text || !mask)				/* NULL not matched to smth */
     return -1;
-  return match_it (mask, &text, &mask[ptr]);	/* do real comparison */
+//  return match_it (mask, &text, &mask[ptr]);	/* do real comparison */
+  return match_it(mask, &mask[ptr], text, &text[strlen(text)], '0');
 }
 
 
 #define swildcard(c) (c == '*' || c == '?' || c == '\\')
 
+#if 0
+//overcomplicated so replaced
 static int smatch_it (const char *mask, const char **text, const char *pe)
 {
   const char *t, *tc, *te;		/* current char */
@@ -508,7 +624,7 @@ static int smatch_it (const char *mask, const char **text, const char *pe)
 	  tc = (t += strlen(t)), cur = 0;	/* it will be consumed all */
 	else if (!*t)
 	  cur = (-1);
-        else while (*t && (tc = t) && (cur = smatch_it (se, &tc, pe)) < 0)
+	else while (*t && (tc = t) && (cur = smatch_it (se, &tc, pe)) < 0)
 	  t++;					/* find matched to rest */
 	if (!*t || cur < 0)			/* cannot do match anymore */
 	  sc = se;
@@ -526,10 +642,52 @@ static int smatch_it (const char *mask, const char **text, const char *pe)
   *text = te;
   return (x + n);
 }
+#endif
+
+static int smatch_it (const char *p, const char *t, char pp)
+{
+  const char *tc;
+  int count = 0, rc;
+  register int r;
+
+  while (*p) {
+    switch (*p) {
+    case '?':
+      if (*t == '\0')
+	return (-1);
+      if (pp == '*' && p[1] == '*') /* short '*?*' to '*?' */
+	p++;			/* p points to '*' again */
+      break;
+    case '*':
+      if (pp == '*')		/* skip duplicate '*' */
+	p++;
+      rc = 0;			/* anything is matched */
+      for (tc = t; *tc; tc++) {
+	r = smatch_it(&p[1], tc, '*');
+	if (r > rc)
+	  rc = r;
+      }
+      return (rc + count);
+    case '\\':
+      if (swildcard(p[1]))
+	p++;			/* skip one escaped wildcard */
+      /* else take it literally */
+    default:
+      if (*p != *t)
+	return (-1);
+      count++;
+    }
+    pp = *p++;
+    t++;
+  }
+  if (*t != '\0')
+    return (-1);
+  return (count);
+}
 
 int simple_match (const char *mask, const char *text)
 {
-  register int ptr;
+//  register int ptr;
 
   if ((!text || !*text) && (!mask || !*mask))	/* empty string are equal */
     return 0;
@@ -538,8 +696,9 @@ int simple_match (const char *mask, const char *text)
     return 0;
   if (!text || !mask)				/* NULL not matched to smth */
     return -1;
-  ptr = strlen (mask);
-  return smatch_it (mask, &text, &mask[ptr]);	/* do real comparison */
+//  ptr = strlen (mask);
+//  return smatch_it (mask, &text, &mask[ptr]);	/* do real comparison */
+  return smatch_it (mask, text, '\0');		/* do real comparison */
 }
 
 int Have_Wildcard (const char *str)
