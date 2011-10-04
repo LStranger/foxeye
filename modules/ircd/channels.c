@@ -1022,7 +1022,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	    par = argv[++i];		/* target is next param */
 	    tar = _ircd_is_on_channel (ircd_find_client (par, NULL), ch);
 	    if (!tar)
-	      CONTINUE_ON_MODE_ERROR (ERR_USERNOTINCHANNEL, NULL);
+	      CONTINUE_ON_MODE_ERROR (ERR_USERNOTINCHANNEL, par);
 	  } else
 	    par = NULL;
 	  ma = NULL;

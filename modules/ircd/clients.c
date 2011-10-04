@@ -384,7 +384,7 @@ static int ircd_invite_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, cha
     if ((memb->chan->mode & A_INVITEONLY) && !(memb->mode & A_OP))
       return ircd_do_cnumeric (cl, ERR_CHANOPRIVSNEEDED, memb->chan, 0, NULL);
     if (tgt && _ircd_is_on_channel (tgt, memb->chan))
-      return ircd_do_unumeric (cl, ERR_USERONCHANNEL, tgt, 0, argv[1]);
+      return ircd_do_cnumeric (cl, ERR_USERONCHANNEL, memb->chan, 0, tgt->nick);
   }
   if (!tgt)
     return 1;
@@ -436,7 +436,7 @@ static int ircd_kick_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
       ircd_do_cnumeric (cl, ERR_CHANOPRIVSNEEDED, memb->chan, 0, NULL);
     else if (!(tgt = ircd_find_client (lcl, NULL)) ||
 	     !(tm = _ircd_is_on_channel (tgt, memb->chan)))
-      ircd_do_unumeric (cl, ERR_USERNOTINCHANNEL, cl, 0, chn);
+      ircd_do_cnumeric (cl, ERR_USERNOTINCHANNEL, memb->chan, 0, lcl);
     else
     {
       ircd_sendto_chan_local (memb->chan, ":%s!%s@%s KICK %s %s :%s",

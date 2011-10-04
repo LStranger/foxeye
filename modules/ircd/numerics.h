@@ -145,10 +145,10 @@
 #define ERR_NICKCOLLISION	436, "%N :Nickname collision KILL from %L@%@"
 #define ERR_UNAVAILRESOURCE	437, "%* :Nick/channel is temporarily unavailable"
 /* 438 reserved */
-#define ERR_USERNOTINCHANNEL	441, "%N %# :They aren't on that channel"
-#define ERR_NOTONCHANNEL	442, "%N :You're not on that channel"
-#define ERR_USERONCHANNEL	443, "%N %# :is already on channel"
-#define ERR_NOLOGIN		444, "%# :User not logged in"
+#define ERR_USERNOTINCHANNEL	441, "%* %# :They aren't on that channel"
+#define ERR_NOTONCHANNEL	442, "%* :You're not on that channel"
+#define ERR_USERONCHANNEL	443, "%* %# :is already on channel"
+#define ERR_NOLOGIN		444, "%* :User not logged in"
 #define ERR_SUMMONDISABLED	445, ":SUMMON has been disabled"
 #define ERR_USERSDISABLED	446, ":USERS has been disabled" /* RFC1459 */
 #define ERR_NOTREGISTERED	451, ":You have not registered"

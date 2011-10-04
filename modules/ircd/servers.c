@@ -715,7 +715,7 @@ static int ircd_invite_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
       Add_Request(I_LOG, "*", F_WARN, "ircd:got INVITE via %s from %s to %s "
 		  "overriding channel modes", peer->dname, sender, argv[1]);
     else if (_ircd_is_on_channel (tgt, memb->chan))
-      return ircd_do_unumeric (cl, ERR_USERONCHANNEL, tgt, 0, argv[1]);
+      return ircd_do_cnumeric (cl, ERR_USERONCHANNEL, memb->chan, 0, tgt->nick);
     if (!CLIENT_IS_REMOTE(tgt))
       ircd_add_invited (tgt, me->chan);
   }
