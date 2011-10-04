@@ -10,6 +10,10 @@ TODO:
 	* core/socket.c: to add libidn support.
 
 --- [0.10.0]
+Tue Oct  4 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ziplink/ziplink.c: fixed false error message on Zlib output
+	  termination.
+
 Mon Oct  3 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed numerics via IRCD interface.
 	* core/direct.c: added ignorance of fake identd answers.

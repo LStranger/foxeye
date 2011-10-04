@@ -221,7 +221,8 @@ static ssize_t _ccfilter_Z_recv(struct connchain_i **ch, idx_t id, char *str,
 finish_filter:
   if (buf->saved_chain != NULL && Connchain_Get(&buf->saved_chain, id, NULL, 0))
     buf->saved_chain = NULL;
-  if (deflateEnd(&buf->out.z) != Z_OK)
+  flush = deflateEnd(&buf->out.z); /* Z_DATA_ERROR means data was discarded */
+  if (flush != Z_OK && flush != Z_DATA_ERROR)
     ERROR("ziplink: error on Zlib output termination: %s", buf->out.z.msg);
   if (inflateEnd(&buf->in.z) != Z_OK)
     ERROR("ziplink: error on Zlib input termination: %s", buf->in.z.msg);
