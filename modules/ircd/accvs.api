@@ -236,7 +236,7 @@
 
 -     "ircd-set-message-targets" MASK
   int func (INTERFACE *serv, const char *sender, const char *target,
-	    int (*next)(INTERFACE *serv, const char **mask,
+	    int (*next)(INTERFACE *serv, const char *mask,
 			const char **lcname, modeflag *mf, int **mark,
 			void **iter));
     Used when........

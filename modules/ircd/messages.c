@@ -35,26 +35,25 @@ static struct bindtable_t *BTIrcdSetMessageTargets;
  * 4) if ok then mark (using search engine next) and return 1
  */
 //int func (INTERFACE *serv, const char *sender, const char *target,
-//	  int (*next)(INTERFACE *serv, const char **mask, const char **lcname,
-//	  modeflag *mf, int *mark, void **iter));
+//	  int (*next)(INTERFACE *serv, const char *mask, const char **lcname,
+//	  modeflag *mf, int **mark, void **iter));
 
 struct message_iterator_i {
   IRCD *ircd;		/* server iterated */
   MEMBER *memb;		/* not NULL on channel iteration */
   CLIENT *s;		/* NULL on mask iteration, not NULL on server iteration */
   LINK *link;		/* current iterated */
-  const char *mask;	/* not NULL on mask iteration */
   int mark;		/* should previous item be marked or not */
 };
 
 /* mask on start points to channel name or local server mask
     mask should be lower case and contain at least one non-wildcard character
-    starting mask should be hold by caller between iterations
+    mask should be hold by caller between iterations
    for channel it iterates all channel's members
    for one server it iterates all server's clients
    for server mask it iterates every local server that matches mask
    should be called until returns 0 */
-static int _message_iterator(INTERFACE *serv, const char **mask,
+static int _message_iterator(INTERFACE *serv, const char *mask,
 			     const char **lcname, modeflag *mf, int **mark,
 			     void **iter)
 {
@@ -65,32 +64,36 @@ static int _message_iterator(INTERFACE *serv, const char **mask,
   LINK *link;		//current iterated
   CLIENT *cl;
 
-  if (i == NULL && *mask == NULL)	/* ended */
-    return (0);
   if (i == NULL) {			/* first iteration */
     ircd = (IRCD *)serv->data;
-    memb = ircd_find_member(ircd, *mask, NULL);
+    memb = ircd_find_member(ircd, mask, NULL);
     if (memb == NOSUCHCHANNEL) {
       memb = NULL;
-      s = ircd_find_client(*mask, NULL);
+      s = ircd_find_client(mask, NULL);
       if (s == NULL) {
-	if (!strpbrk(*mask, "*?"))
+	if (!strpbrk(mask, "*?"))
 	  return (0);			/* no matches */
 	for (link = ircd->servers; link; link = link->prev)
 	  if (!(link->cl->via->p.iface->ift & I_PENDING) &&
-	      match(*mask, link->cl->lcnick))
+	      match(mask, link->cl->lcnick))
 	    break;
 	if (link == NULL)
 	  return (0);			/* no matches */
-	*mask = link->cl->lcnick;
       } else if (CLIENT_IS_SERVER(s) && !(s->via->p.iface->ift & I_PENDING)) {
 	link = s->c.lients;
-	*mask = s->lcnick;
+#if IRCD_MULTICONNECT
+	while (link != NULL && CLIENT_IS_SERVER((cl = link->cl)) &&
+	       (cl->via != s->via || cl->hops <= s->hops)) /* path match */
+	  link = link->prev;
+	if (link == NULL)
+	  return (0);
+#endif
       } else
 	return (0);			/* we don't try clients with this */
       cl = link->cl;
+      *mf = cl->umode;
     } else {
-      while (memb)
+      while (memb != NULL)
 	if (!(memb->who->cs->via->p.iface->ift & I_PENDING))
 #if IRCD_MULTICONNECT
 	  break;
@@ -103,7 +106,7 @@ static int _message_iterator(INTERFACE *serv, const char **mask,
       if (memb == NULL)
 	return (0);			/* no matches */
       cl = memb->who;
-      *mask = memb->chan->name;
+      *mf = memb->mode;
     }
     i = safe_malloc(sizeof(struct message_iterator_i));
     *iter = (void *)i;
@@ -112,8 +115,6 @@ static int _message_iterator(INTERFACE *serv, const char **mask,
     if (memb == NULL) {
       i->link = link;
       i->s = s;
-      if (s == NULL)
-	i->mask = *mask;
     }
     i->mark = 0;
     *mark = &i->mark;
@@ -140,7 +141,7 @@ job_done:
       i->mark = 0;
     }
     if ((memb = i->memb) != NULL) {	/* channel iteration */
-      while (memb)
+      while (memb != NULL)
 	if (!(memb->who->cs->via->p.iface->ift & I_PENDING))
 #if IRCD_MULTICONNECT
 	  break;
@@ -154,31 +155,33 @@ job_done:
 	goto job_done;			/* no more members to send */
       i->memb = memb;
       cl = memb->who;
-    } else if (i->s != NULL) {		/* server iteration */
+      *mf = memb->mode;
+    } else if ((s = i->s) != NULL) {	/* server iteration */
       link = i->link->prev;
 #if IRCD_MULTICONNECT
-      while (link != NULL && CLIENT_IS_SERVER(link->cl) &&
-	     (link->cl->via->p.iface->ift & I_PENDING)) /* backlink or done */
+      while (link != NULL && CLIENT_IS_SERVER((cl = link->cl)) &&
+	     (cl->via != s->via || cl->hops <= s->hops ||
+	      (cl->via->p.iface->ift & I_PENDING))) /* backlink or done */
 	link = link->prev;
 #endif
       if (link == NULL)
 	goto job_done;			/* no more clients to check */
       i->link = link;
       cl = link->cl;
+      *mf = cl->umode;
     } else {				/* mask iteration */
       for (link = i->link->prev; link; link = link->prev)
 	if (!(link->cl->via->p.iface->ift & I_PENDING) &&
-	    match(i->mask, link->cl->lcnick))
+	    match(mask, link->cl->lcnick))
 	  break;
       if (link == NULL)
-	goto job_done;			/* no matches */
+	goto job_done;			/* no more matches */
       i->link = link;
       cl = link->cl;
-      *mask = link->cl->lcnick;
+      *mf = cl->umode;
     }
   }
   *lcname = cl->lcnick;
-  *mf = cl->umode;
   return (1);
 }
 
