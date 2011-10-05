@@ -473,12 +473,12 @@ static int match_it (const char *p, const char *pe, const char *t, const char *t
       }
       if (*c == ']')		/* no matched chars found */
 	r = -1 - r;		/* invert matching flag */
+      count++;			/* count it if matched */
       break;
     case '?':
       r = 0;
-      if (*t++ == '\0')
-	r = -1;
-      else if (pp == '*' && p[1] == '*') /* short '*?*' to '*?' */
+      t++;			/* should be consumed */
+      if (pp == '*' && p[1] == '*') /* short '*?*' to '*?' */
 	p++;			/* p points to '*' again */
       break;
     case '*':
@@ -486,12 +486,14 @@ static int match_it (const char *p, const char *pe, const char *t, const char *t
 	r = 0;
 	break;
       }
-      rc = 0;			/* anything is matched */
-      for (c = t; *c; c++) {
+      rc = -1;
+      for (c = t; (char *)c <= te; c++) {
 	r = match_it(&p[1], pe, c, te, '*');
 	if (r > rc)
 	  rc = r;
       }
+      if (rc < 0)
+	return (rc);
       return (rc + count);
     case '{':
       r = pattern_size(p, pe);
@@ -531,11 +533,11 @@ static int match_it (const char *p, const char *pe, const char *t, const char *t
 	r = -1;
       count++;
     }
-    if (r < 0)
+    if (r < 0 || t > te)
       return (-1);		/* invalid pattern above */
     pp = *p++;
   }
-  if (*t != '\0')
+  if (t < te)			/* not consumed by pattern */
     return (-1);
   return (count);
 }
