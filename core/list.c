@@ -259,7 +259,8 @@ static int _add_usermask (struct clrec_t *user, const char *mask)
   int r;
   char lcmask[HOSTMASKLEN+1];
 
-  if (strchr(user->lname, '.')) /* it's server name rather than user name */
+  if (user->uid > ID_ANY && strchr(user->lname, '.'))
+    /* it's server name rather than user name */
     strfcpy (lcmask, mask, sizeof(lcmask));
   else
     unistrlower (lcmask, mask, sizeof(lcmask));
