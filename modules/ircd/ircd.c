@@ -860,7 +860,8 @@ static CLIENT *_ircd_do_nickchange(CLIENT *, peer_priv *, unsigned short, const 
    if there is no solution then removes collided one and sets nick to ""
    in either case returns collided nick structure which caller should handle:
    either tail phantom to it or destroy it if new collided nick isn't phantom */
-static CLIENT *_ircd_check_nick_collision(char *nick, size_t nsz, peer_priv *pp)
+static CLIENT *_ircd_check_nick_collision(char *nick, size_t nsz, peer_priv *pp,
+					  char *onserv)
 {
   char *collnick;
   struct binding_t *b;
@@ -871,7 +872,7 @@ static CLIENT *_ircd_check_nick_collision(char *nick, size_t nsz, peer_priv *pp)
 #undef static
   register CLIENT *test;
 
-  dprint(5, "ircd:ircd.c:_ircd_check_nick_collision: %s", nick);
+  dprint(5, "ircd:ircd.c:_ircd_check_nick_collision: %s from %s", nick, onserv);
   /* phase 1: check if collision exists and isn't expired */
   collided = _ircd_find_client(nick);
   if (collided && collided->hold_upto != 0) /* collision with phantom */
@@ -881,10 +882,11 @@ static CLIENT *_ircd_check_nick_collision(char *nick, size_t nsz, peer_priv *pp)
   if (collided->hold_upto != 0) { /* check if it's a phantom after squit */
     CLIENT *tst;
     for (tst = collided; tst; tst = tst->pcl)
-      if (tst->host[0] != 0 && !strcmp(tst->host, pp->link->cl->lcnick)) {
+      if (tst->host[0] != 0 && !strcmp(tst->host, onserv)) {
 	tst->hold_upto = 1;		/* drop hold as netsplit is over */
 	break;
       }
+    if (tst) DBG("_ircd_check_nick_collision: nick was after squit");
     _ircd_try_drop_collision(&collided);
     if (collided == NULL)
       return (collided);
@@ -930,17 +932,17 @@ static CLIENT *_ircd_check_nick_collision(char *nick, size_t nsz, peer_priv *pp)
   } else if (res == 0) {		/* no solution from binding */
     if (!CLIENT_IS_REMOTE(collided))
       New_Request(collided->via->p.iface, 0, ":%s KILL %s :Nick collision from %s",
-		  MY_NAME, collided->nick, pp->p.dname); /* notify the victim */
+		  MY_NAME, collided->nick, onserv); /* notify the victim */
     ircd_sendto_servers_all_ack(Ircd, collided, NULL, NULL,
 				":%s KILL %s :Nick collision from %s", MY_NAME,
-				collided->nick, pp->p.dname); /* broadcast KILL */
+				collided->nick, onserv); /* broadcast KILL */
     ircd_prepare_quit(collided, pp, "nick collision");
     collided->hold_upto = Time + CHASETIMELIMIT;
     Add_Request(I_PENDING, "*", 0, ":%s!%s@%s QUIT :Nick collision from %s",
-		collided->nick, collided->user, collided->host, pp->p.dname);
+		collided->nick, collided->user, collided->host, onserv);
     collided->host[0] = '\0';		/* for collision check */
     Add_Request(I_LOG, "*", F_MODES, "KILL %s :Nick collision from %s",
-		collided->nick, pp->p.dname);
+		collided->nick, onserv);
   } else if (collnick != collided->nick) { /* binding asked to change collided */
     collided = _ircd_do_nickchange(collided, NULL, 0, collnick, 0);
     if (_ircd_find_client(nick)) { /* ouch! we got the same for both collided! */
@@ -3218,7 +3220,8 @@ static int _ircd_remote_nickchange(CLIENT *tgt, peer_priv *pp,
     changed = -1;			/* should be corrected */
     ircd_recover_done(pp, "Invalid nick");
   }
-  collision = _ircd_check_nick_collision(checknick, sizeof(checknick), pp);
+  collision = _ircd_check_nick_collision(checknick, sizeof(checknick), pp,
+					 pp->p.dname);
   if (collision != NULL && strcmp(nn, checknick)) {
     /* we have the same nick either live or on hold and we should
        to do something with the client which changed nick now */
@@ -3334,7 +3337,8 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     ct = 1;				/* should be corrected */
     ircd_recover_done(pp, "Invalid nick");
   }
-  collision = _ircd_check_nick_collision(tgt->nick, sizeof(tgt->nick), pp);
+  collision = _ircd_check_nick_collision(tgt->nick, sizeof(tgt->nick), pp,
+					 on->lcnick);
   if (collision != NULL) { /* this nick found - either live or phantom */
     ERROR("ircd:nick collision via %s: %s => %s", peer->dname, argv[0],
 	  tgt->nick);
