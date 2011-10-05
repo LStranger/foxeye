@@ -139,7 +139,7 @@
 #define ERR_NOADMININFO		423, "%= :No administrative info available"
 #define ERR_FILEERROR		424, ":File error doing %*"
 #define ERR_NONICKNAMEGIVEN	431, ":No nickname given"
-#define ERR_ERRONEUSNICKNAME	432, "%# :Erroneous nickname"
+#define ERR_ERRONEUSNICKNAME	432, "%* :Erroneous nickname"
 #define ERR_NICKNAMEINUSE	433, "%# :Nickname is already in use"
 /* 434-435 reserved */
 #define ERR_NICKCOLLISION	436, "%N :Nickname collision KILL from %L@%@"

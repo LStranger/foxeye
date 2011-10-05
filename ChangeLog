@@ -15,7 +15,10 @@ Wed Oct  5 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed collision source server in check in
 	  _ircd_check_nick_collision().
 	* modules/ircd/clients.c: fixed SIGSEGV on INVITE for server (bug#83).
-	* modules/ircd/channels.c: fixed wrong diagnostics on MODE target.
+	* modules/ircd/channels.c: fixed wrong diagnostics on MODE target
+	  (bug#76).
+	* modules/ircd/ircd.c, modules/ircd/numerics.h: fixed numerics
+	  ERR_ERRONEUSNICKNAME and ERR_NICKNAMEINUSE (bug#82).
 
 Tue Oct  4 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ziplink/ziplink.c: fixed false error message on Zlib output

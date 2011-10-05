@@ -2211,7 +2211,7 @@ static int _ircd_check_nick_cmd (CLIENT *cl, char *b, const char *nick,
 
   if (!_ircd_validate_nickname (b, nick, bs))
   {
-    ircd_do_unumeric (cl, ERR_ERRONEUSNICKNAME, cl, 0, NULL);
+    ircd_do_unumeric (cl, ERR_ERRONEUSNICKNAME, cl, 0, nick);
     return 0;
   }
   cl2 = _ircd_find_client (b);
@@ -2219,7 +2219,7 @@ static int _ircd_check_nick_cmd (CLIENT *cl, char *b, const char *nick,
   {
     if (!cl2->hold_upto)
     {
-      ircd_do_unumeric (cl, ERR_NICKNAMEINUSE, cl, 0, NULL);
+      ircd_do_unumeric (cl, ERR_NICKNAMEINUSE, cl2, 0, NULL);
       b[0] = 0;
       return 0;
     }
