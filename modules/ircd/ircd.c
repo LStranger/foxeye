@@ -2050,6 +2050,7 @@ static int _ircd_got_local_user (CLIENT *cl)
 #ifdef USE_SERVICES
   //TODO: notify services about new user
 #endif
+  cl->via->p.state = P_TALK;
   ircd_do_unumeric (cl, RPL_WELCOME, cl, 0, NULL);
   ircd_do_unumeric (cl, RPL_YOURHOST, &ME, 0, NULL);
   ircd_do_unumeric (cl, RPL_CREATED, &ME, 0, COMPILETIME);
@@ -2067,7 +2068,6 @@ static int _ircd_got_local_user (CLIENT *cl)
     New_Request(cl->via->p.iface, 0, ":%s MODE %s +%s", cl->nick, cl->nick, mb);
   if (cl->umode & A_RESTRICTED)
     ircd_do_unumeric (cl, ERR_RESTRICTED, cl, 0, NULL);
-  cl->via->p.state = P_TALK;
   return 1;
 }
 
@@ -4421,7 +4421,7 @@ int ircd_lusers_unknown(void)
 
   pthread_mutex_lock (&IrcdLock);
   for (t = IrcdPeers; t; t = t->p.priv)
-    if (t->p.state < P_LOGIN)
+    if (t->p.state < P_QUIT && t->p.state != P_TALK) /* ignore terminating ones */
       i++;
   pthread_mutex_unlock (&IrcdLock);
   return (i);

@@ -475,11 +475,14 @@ static inline int _ircd_query_lusers (IRCD *ircd, CLIENT *cl, struct peer_priv *
     smask = argv[0];
 #define COUNT_USERS(A,B,C,D) \
   for (l = A; l; l = l->prev) \
+    COUNT_USERS_CHECK_STATE \
     if (CLIENT_IS_SERVER(l->cl)) D++; \
     else if (CLIENT_IS_SERVICE(l->cl)) C++; \
     else if (l->cl->umode & (A_OP | A_HALFOP)) op++; \
     else B++
+#define COUNT_USERS_CHECK_STATE if (l->cl->via->p.state != P_TALK) continue; else
   COUNT_USERS (ircd->token[0]->c.lients, lu, ls, ll);
+#undef COUNT_USERS_CHECK_STATE
   if (simple_match (smask, ircd->token[0]->lcnick) >= 0)
     gu = lu, gs = ls, gl = ll, lu += op, x = 1;
   else
@@ -488,7 +491,9 @@ static inline int _ircd_query_lusers (IRCD *ircd, CLIENT *cl, struct peer_priv *
   for (i = 1; i < ircd->s; i++)
     if (ircd->token[i] && simple_match (smask, ircd->token[i]->lcnick) >= 0)
     {
+#define COUNT_USERS_CHECK_STATE 
       COUNT_USERS (ircd->token[i]->c.lients, gu, gs, gl);
+#undef COUNT_USERS_CHECK_STATE
       if (CLIENT_IS_LOCAL(ircd->token[i]))
 	ll++;
       x++;
