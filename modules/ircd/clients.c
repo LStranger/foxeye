@@ -375,7 +375,7 @@ static int ircd_invite_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, cha
     return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, NULL);
   tgt = ircd_find_client (argv[0], NULL);
   if (!tgt || (tgt->umode & (A_SERVER|A_SERVICE)))
-    ircd_do_unumeric (cl, ERR_NOSUCHNICK, cl, 0, argv[0]);
+    return ircd_do_unumeric (cl, ERR_NOSUCHNICK, cl, 0, argv[0]);
   memb = ircd_find_member ((IRCD *)srv->data, argv[1], cl);
   if (memb != NOSUCHCHANNEL)
   {
