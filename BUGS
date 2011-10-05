@@ -79,4 +79,4 @@
 #00080	05.10.2011		on bad MODE (*a against *) there is no numeric
 #00081	05.10.2011		ircd:invalid NJOIN member from witch-test.local:
 #00082	05.10.2011		sf:#3418963 bad 432
-#00083	05.10.2011		sf:#3419023 SIGSEGV after INVITE server.name
+#00083	05.10.2011  05.10.2011	sf:#3419023 SIGSEGV after INVITE server.name

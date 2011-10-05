@@ -14,7 +14,8 @@ Wed Oct  5 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/list.c: fixed SIGSEGV on nonamed bans.
 	* modules/ircd/ircd.c: fixed collision source server in check in
 	  _ircd_check_nick_collision().
-	* modules/ircd/clients.c: fixed SIGSEGV on INVITE for server.
+	* modules/ircd/clients.c: fixed SIGSEGV on INVITE for server (bug#83).
+	* modules/ircd/channels.c: fixed wrong diagnostics on MODE target.
 
 Tue Oct  4 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ziplink/ziplink.c: fixed false error message on Zlib output

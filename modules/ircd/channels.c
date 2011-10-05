@@ -938,10 +938,10 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 
   if (argc < 1)
     return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, NULL);
-  ch = _ircd_find_channel ((IRCD *)srv->data, argv[0]);
-  if (ch == NULL && ircd_find_client (argv[0], NULL) != cl)
-    return ircd_do_unumeric (cl, ERR_USERSDONTMATCH, cl, 0, argv[0]);
-  if (ch)				/* channel mode request */
+  modepass[0] = argv[0][0];
+  modepass[1] = '\0';
+  /* check if target is a channel name */
+  if (Check_Bindtable(BTIrcdChannel, modepass, U_ALL, U_ANYCH, NULL))
   {
     MEMBER *memb;
     char *imp;
@@ -949,6 +949,9 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
     const char *c;
     int x, add;
 
+    ch = _ircd_find_channel ((IRCD *)srv->data, argv[0]);
+    if (ch == NULL)
+      return ircd_do_unumeric (cl, ERR_NOSUCHCHANNEL, cl, 0, argv[0]);
     if (argc == 1)			/* channel mode query */
       return _ircd_mode_query_reply (cl, ch);
     memb = _ircd_is_on_channel (cl, ch); /* may query some modes if NULL */
@@ -1118,6 +1121,8 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
       _ircd_mode_broadcast((IRCD *)srv->data, ircd_new_id(), cl, ch, imp,
 			   NULL, 0, modepass, passed, x);
   }
+  else if (ircd_find_client(argv[0], NULL) != cl)
+    return ircd_do_unumeric (cl, ERR_USERSDONTMATCH, cl, 0, argv[0]);
   else					/* umode request */
   {
     modeflag toadd = 0, todel = 0;
