@@ -19,6 +19,7 @@ Wed Oct  5 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  (bug#76).
 	* modules/ircd/ircd.c, modules/ircd/numerics.h: fixed numerics
 	  ERR_ERRONEUSNICKNAME and ERR_NICKNAMEINUSE (bug#82).
+	* modules/ircd/servers.c: fixed error on NJOIN to '+' channel (bug#81).
 
 Tue Oct  4 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ziplink/ziplink.c: fixed false error message on Zlib output

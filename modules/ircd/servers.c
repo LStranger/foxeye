@@ -477,6 +477,7 @@ static int ircd_njoin(INTERFACE *srv, struct peer_t *peer, unsigned short token,
   struct peer_priv *pp = peer->iface->data; /* it's really peer */
   size_t mptr;
   modeflag mf;
+  register modeflag amf;
   char clname[MB_LEN_MAX*NICKLEN+1];
   char msg[MB_LEN_MAX*IRCMSGLEN];
   register size_t i;
@@ -530,10 +531,11 @@ static int ircd_njoin(INTERFACE *srv, struct peer_t *peer, unsigned short token,
 		  peer->dname, clname);
       continue;
     }
+    amf = 0;
     if (argv[0][0] == '+')	/* special support for modeless channel */
-      mf |= A_TOPICLOCK;
+      amf = A_TOPICLOCK;
     if (tgt == NULL)		/* adding will check acks too */
-      tgt = t = ircd_new_to_channel(srv->data, pp, argv[0], cl, mf);
+      tgt = t = ircd_new_to_channel(srv->data, pp, argv[0], cl, (mf | amf));
     else
       t = ircd_add_to_channel(srv->data, pp, tgt->chan, cl, mf);
     if (t == NULL)		/* not approved to add */

@@ -72,11 +72,11 @@
 #00073	08.09.2011  08.09.2011	SIGSEGV after nick/channel temp.unavailable
 #00074	30.09.2011  30.09.2011	deadcycle in 'x' filter after socket error
 #00075	04.10.2011  04.10.2011	sf:#3418459 bad 441
-#00076	04.10.2011		sf:#3418480 502 instead of 403 for MODE
+#00076	04.10.2011  05.10.2011	sf:#3418480 502 instead of 403 for MODE
 #00077	04.10.2011  04.10.2011	sf:#3418493 bad 442
 #00078	04.10.2011  05.10.2011	sf:#3418569 deadcycle on too big pattern
 #00079	05.10.2011		on overwrite MODE dropped one not sent to peers
 #00080	05.10.2011		on bad MODE (*a against *) there is no numeric
-#00081	05.10.2011		ircd:invalid NJOIN member from witch-test.local:
-#00082	05.10.2011		sf:#3418963 bad 432
+#00081	05.10.2011  05.10.2011	ircd:invalid NJOIN member from witch-test.local:
+#00082	05.10.2011  05.10.2011	sf:#3418963 bad 432
 #00083	05.10.2011  05.10.2011	sf:#3419023 SIGSEGV after INVITE server.name
