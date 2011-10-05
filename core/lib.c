@@ -272,7 +272,7 @@ size_t unistrcut (const char *line, size_t len, int maxchars)
 }
 
 
-static int pattern_size (const char *pattern)
+static int pattern_size (const char *pattern, const char *pe)
 {
   register const char *c;
   register int s;
@@ -292,7 +292,7 @@ static int pattern_size (const char *pattern)
       break;
     case '{':
       while (*c && *c != '}')		/* recursively skip up to '}' */
-	if ((s = pattern_size (c)) < 0)
+	if ((s = pattern_size (c, pe)) < 0)
 	  return s;
 	else
 	  c += s;
@@ -302,6 +302,7 @@ static int pattern_size (const char *pattern)
       if (!*c++) return (-1);		/* "\" is error */
     default:;				/* all other chars are one-by-one */
   }
+  if (c > pe) return (-1);		/* out of bound! */
   return (c - pattern);
 }
 
@@ -439,12 +440,12 @@ static int match_it (const char *p, const char *pe, const char *t, const char *t
     case '[':
       if (*t == '\0')
 	return (-1);
-      r = pattern_size(p) - 2;
+      r = pattern_size(p, pe) - 2;
       if (r < 0)
 	return (-1);		/* invalid pattern */
       c = &p[1];		/* ptr for testing */
       p = &c[r];		/* new pattern end */
-      cch = *t;
+      cch = *t++;
       r = 0;
       if (*c == '^') {
 	r = -1;			/* mark reverse matching */
@@ -475,14 +476,16 @@ static int match_it (const char *p, const char *pe, const char *t, const char *t
       break;
     case '?':
       r = 0;
-      if (*t == '\0')
+      if (*t++ == '\0')
 	r = -1;
       else if (pp == '*' && p[1] == '*') /* short '*?*' to '*?' */
 	p++;			/* p points to '*' again */
       break;
     case '*':
-      if (pp == '*')		/* skip duplicate '*' */
-	p++;
+      if (pp == '*') {		/* skip duplicate '*' */
+	r = 0;
+	break;
+      }
       rc = 0;			/* anything is matched */
       for (c = t; *c; c++) {
 	r = match_it(&p[1], pe, c, te, '*');
@@ -491,7 +494,7 @@ static int match_it (const char *p, const char *pe, const char *t, const char *t
       }
       return (rc + count);
     case '{':
-      r = pattern_size(p);
+      r = pattern_size(p, pe);
       if (r < 0)
 	break;			/* invalid pattern */
       c = &p[r];
@@ -524,19 +527,20 @@ static int match_it (const char *p, const char *pe, const char *t, const char *t
       p++;			/* skip one escaped char */
     default:
       r = 0;
-      if (*p != *t)
+      if (*p != *t++)
 	r = -1;
       count++;
     }
     if (r < 0)
       return (-1);		/* invalid pattern above */
     pp = *p++;
-    t++;
   }
   if (*t != '\0')
     return (-1);
   return (count);
 }
+
+#define PATTERN_MAX_LEN HOSTMASKLEN
 
 /* check for matching in shell wildcards style:
  * returns -1 if no matched, or number of not-wildcards characters matched */
@@ -549,7 +553,7 @@ int match (const char *mask, const char *text)
   if (mask)
   {
     while (mask[ptr])				/* check whole pattern */
-      if ((cur = pattern_size (&mask[ptr])) < 0)
+      if ((cur = pattern_size (&mask[ptr], &mask[PATTERN_MAX_LEN])) < 0)
 	return cur;				/* OOPS! invalid pattern! */
       else
 	ptr += cur;
@@ -653,14 +657,14 @@ static int smatch_it (const char *p, const char *t, char pp)
   while (*p) {
     switch (*p) {
     case '?':
-      if (*t == '\0')
+      if (*t++ == '\0')
 	return (-1);
       if (pp == '*' && p[1] == '*') /* short '*?*' to '*?' */
 	p++;			/* p points to '*' again */
       break;
     case '*':
       if (pp == '*')		/* skip duplicate '*' */
-	p++;
+	break;
       rc = 0;			/* anything is matched */
       for (tc = t; *tc; tc++) {
 	r = smatch_it(&p[1], tc, '*');
@@ -673,12 +677,11 @@ static int smatch_it (const char *p, const char *t, char pp)
 	p++;			/* skip one escaped wildcard */
       /* else take it literally */
     default:
-      if (*p != *t)
+      if (*p != *t++)
 	return (-1);
       count++;
     }
     pp = *p++;
-    t++;
   }
   if (*t != '\0')
     return (-1);
