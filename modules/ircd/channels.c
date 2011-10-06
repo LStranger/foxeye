@@ -115,7 +115,7 @@ static void _ircd_validate_channel_name (char *chname)
   memset(&ps, 0, sizeof(ps)); /* reset the state */
   for (sp = 0; *ss; sp++)
   {
-    if (sp > CHANNAMELEN)		/* name is too long */
+    if (sp >= CHANNAMELEN)		/* name is too long */
       break;
     if (strchr ("\007\r\n,", *ss))	/* non-allowed chars */
       REPLACE_NEXT_CHANNEL_CHAR
