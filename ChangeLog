@@ -15,6 +15,7 @@ Thu Oct  6 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed channel name validation on local JOIN
 	  (bug#84).
 	* modules/ziplink/ziplink.c: fixed ShutdownR setting on termination.
+	* modules/ircd/ircd.c: fixed delivering of KILL message to client.
 
 Wed Oct  5 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/list.c: fixed SIGSEGV on nonamed bans.

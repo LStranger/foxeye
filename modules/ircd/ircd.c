@@ -434,7 +434,7 @@ static inline void _ircd_peer_kill (peer_priv *peer, const char *msg)
   }
   LOG_CONN ("ircd: killing peer %s@%s: %s", peer->link->cl->user,
 	    peer->link->cl->host, msg);
-  New_Request (peer->p.iface, F_AHEAD, "ERROR :closing link to %s@%s: %s",
+  New_Request (peer->p.iface, 0, "ERROR :closing link to %s@%s: %s",
 	       peer->link->cl->user, peer->link->cl->host, msg);
   peer->link->cl->umode &= ~A_UPLINK;	/* don't mix it with A_AWAY */
   Set_Iface (peer->p.iface);		/* lock it for next call */
@@ -1130,6 +1130,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	sw = strlen (req->string);
 	if (sw && Peer_Put ((&peer->p), req->string, &sw) == 0)
 	  return REQ_REJECTED;	/* try again later */
+	return REQ_OK;		/* let every ERROR/KILL be delivered */
       }
       Rename_Iface(cli, NULL);	/* delete it from everywhere before checks */
       /* note: server can be multiconnected and if so then cl->via != peer */

@@ -291,7 +291,7 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
 {
   INTERFACE *tmp;
   struct connchain_buffer *buf;
-  const char *termreason = "module 'ziplink' termination";
+  char *termreason = "module 'ziplink' termination";
 
   switch (sig) {
   case S_TERMINATE:
