@@ -124,7 +124,7 @@ int ircd_names_reply (CLIENT *me, CLIENT *cl, CHANNEL *ch, int done)
   if (ch->mode & (A_QUIET | A_ANONYMOUS)) /* no listing */
     return done;
   if (!(here = _ircd_is_on_channel (cl, ch)) &&
-      (ch->mode & (A_PRIVATE | A_SECRET))) /* hidden for outsiders */
+      (ch->mode & A_SECRET))		/* hidden for outsiders */
     return done;
   x = sizeof(buf) - strlen (me->nick) - strlen (cl->nick);
   p = snprintf (buf, sizeof(buf), "%c %s :",
@@ -297,8 +297,7 @@ static inline void _ircd_list_reply (CLIENT *cl, CHANNEL *ch)
 {
   if (!ch->users) /* on hold */
     return;
-  if ((ch->mode & (A_PRIVATE | A_SECRET)) &&
-      !_ircd_is_on_channel (cl, ch)) /* hidden for outsiders */
+  if ((ch->mode & A_SECRET) && !_ircd_is_on_channel (cl, ch)) /* hidden for outsiders */
     return;
   ircd_do_cnumeric (cl, RPL_LIST, ch, (ch->mode & A_ANONYMOUS) ? 0 : ch->count,
 		    ch->topic);
@@ -328,7 +327,8 @@ static inline int _ircd_query_list (IRCD *ircd, CLIENT *cl, struct peer_priv *vi
     LEAF *l = NULL;
 
     while ((l = Next_Leaf (ircd->channels, l, NULL)))
-      _ircd_list_reply (cl, l->s.data);
+      if (!(((CHANNEL *)l->s.data)->mode & A_PRIVATE)) /* hidden for listing */
+	_ircd_list_reply (cl, l->s.data);
     return ircd_do_unumeric (cl, RPL_LISTEND, cl, 0, NULL);
   }
   c = (char *)argv[0];

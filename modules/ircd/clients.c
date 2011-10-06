@@ -311,17 +311,13 @@ static int ircd_topic_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char
   if (argc == 0)
     return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, NULL);
   memb = ircd_find_member ((IRCD *)srv->data, argv[0], NULL);
-#ifdef IRCD_PUBLIC_TOPIC
   if (memb == NOSUCHCHANNEL)
-#else
-  if (memb == NOSUCHCHANNEL || memb == NULL)
-#endif
     return ircd_do_unumeric (cl, ERR_NOTONCHANNEL, cl, 0, argv[0]);
   ch = memb->chan;
   memb = _ircd_is_on_channel(cl, ch);
 #ifdef IRCD_PUBLIC_TOPIC
   /* private and secret channels should be not visible such way - RFC2811 */
-  if ((ch->mode & (A_PRIVATE | A_SECRET | A_TOPICLOCK | A_NOOUTSIDE)) &&
+  if ((ch->mode & (A_SECRET | A_TOPICLOCK | A_NOOUTSIDE)) &&
       memb == NULL)
 #else
   if (memb == NULL)
@@ -564,9 +560,8 @@ static int ircd_who_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 	    mc = (MEMBER *)1;
 	  else
 	    for (m = tgt->c.hannels; (mc = m); m = m->prevchan)
-	      if (!(m->chan->mode & (A_PRIVATE | A_SECRET)) ||
-		  ((!(m->chan->mode & (A_ANONYMOUS | A_QUIET))) &&
-		   (mc = _ircd_is_on_channel (cl, mc->chan))))
+	      if (!(m->chan->mode & (A_ANONYMOUS | A_QUIET)) &&
+		  (mc = _ircd_is_on_channel (cl, mc->chan)))
 		  break;
 	  if (mc)
 	    if (!mask || smatched >= 0 || simple_match (mask, tgt->host) >= 0 ||
@@ -587,7 +582,7 @@ static int ircd_who_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 	    if (mc || !(m->who->umode & A_INVISIBLE))
 	      _ircd_who_reply (cl, CLIENT_IS_REMOTE (m->who) ? m->who->cs : me,
 			       m->who, m); /* ME can be only in QUIET chan */
-      }
+    }
   } else if ((tgt = ircd_find_client(mask, NULL)) != NULL &&
 	     !CLIENT_IS_SERVER(tgt) && (!mmf || (tgt->umode & mmf))) {
     _ircd_who_reply (cl, CLIENT_IS_REMOTE (tgt) ? tgt->cs : me, tgt, NULL);
