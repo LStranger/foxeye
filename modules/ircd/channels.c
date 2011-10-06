@@ -957,6 +957,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
     memb = _ircd_is_on_channel (cl, ch); /* may query some modes if NULL */
     _imch_channel = ch;
     _imch_client = cl;
+    //TODO: accept RFC1459 query syntax too (mode #chan +b) ifndef IRCD_STRICT_MODECMD
     if (argc == 2 && *argv[1] != '+' && *argv[1] != '-') /* mask mode query */
       return _ircd_mode_mask_query_reply (srv, cl, ch, argv[1],
 					  memb ? memb->mode : 0);

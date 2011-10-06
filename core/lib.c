@@ -309,124 +309,157 @@ static int pattern_size (const char *pattern, const char *pe)
 static char Wildcards[] = "[?*{";
 #define wildcard(c) strchr (Wildcards, c)
 
-#if 0
-//overcomplicated so replaced
-/* it does literal+[pattern+rest(match_it)...] */
-static int match_it (const char *mask, const char **text, const char *pe)
+static int match_it_mb (const char *p, const char *pe, const char *t, const char *te, char pp)
 {
-  register const uchar *m;
-  const char *t, *tc, *te;		/* current char */
-  const uchar *sc, *se;			/* subpattern current/end */
-  int cur, x, n;
+  const char *c;
+  int count = 0, rc;
+  register int r;
+  wchar_t wc, cch;
+  mbstate_t ms;
 
-  /* starts from literal? check it and set x as match! */
-  x = 0;
-  t = *text;
-  while (*t && !wildcard (*mask) && mask < pe)
-  {
-    if (*mask == '\\')			/* skip quote char */
-      mask++;
-    if (*mask != *t)			/* char isn't equal */
+  memset(&ms, 0, sizeof(ms));	/* reset state */
+  while (p < pe) {
+    switch (*p) {
+    case '[':
+      if (t >= te)
+	return (-1);
+      r = pattern_size(p, pe) - 2;
+      if (r < 0)
+	return (-1);		/* invalid pattern */
+      c = &p[1];		/* ptr for testing */
+      p = &c[r];		/* new pattern end */
+      r = mbrtowc(&cch, t, te - t, &ms);
+      if (r < 1)
+	return (-1);		/* invalid text */
+      t += r;
+      rc = 0;
+      if (*c == '^') {
+	rc = -1;		/* mark reverse matching */
+	c++;
+      }
+      if (*c == '-') {
+	if (cch == '-')		/* char matched */
+	  break;
+	c++;
+	if (*c == ']') {	/* -] is literal at start */
+	  if (cch == ']')
+	    break;
+	  c++;
+	}
+      }
+      while (*c != ']') {
+	r = mbrtowc(&wc, c, p - c, &ms);
+	if (r < 0)
+	  return (-1);		/* invalid pattern */
+	if (cch == wc)
+	  break;
+	c += r;
+	if (*c == '-') {
+	  c++;
+	  if (cch < wc)		/* below range */
+	    continue;
+	  r = mbrtowc(&wc, c, p - c, &ms);
+	  if (r < 1)
+	    return (-1);	/* invalid pattern */
+	  if (cch <= wc)	/* in range */
+	    break;
+	  c += r;
+	}
+      }
+      r = rc;
+      if (*c == ']')		/* no matched chars found */
+	r = -1 - rc;		/* invert matching flag */
+      count++;			/* count it if matched */
       break;
-    mask++;
-    t++;
-    x++;
-  }
-  if (mask >= pe)			/* really it cannot be mask>pe */
-  {
-    if (!*pe && *t)			/* end of pattern is reached but text */
-      return (-1);
-    if (x)
-      *text = t;
-    return x;				/* all pattern is consumed */
-  }
-  if (!wildcard (*mask))		/* it's not matched */
-    return (-1);
-  sc = mask;				/* set this wildcard pattern ptrs */
-  se = sc + pattern_size (sc);
-  n = (-1);
-  te = NULL;				/* to avoid compiler warning */
-  while (sc < se)			/* cyclic check one wildcard pattern */
-  {
-    switch (*mask)
-    {
-      case '[':
-	if (*t)
-	{
-	  register uchar c = *t;
+    case '?':
+      if (t >= te)
+	return (-1);
+      r = mbrtowc(&cch, t, te - t, &ms);
+      if (r == 0)
+	r = -1;			/* no text here */
+      t += r;			/* should be consumed */
+      if (pp == '*' && p[1] == '*') /* short '*?*' to '*?' */
+	p++;			/* p points to '*' again */
+      break;
+    case '*':
+      if (pp == '*') {		/* skip duplicate '*' */
+	r = 0;
+	break;
+      }
+      rc = -1;
+      for (c = t; (char *)c <= te; ) {
+	r = match_it_mb(&p[1], pe, c, te, '*');
+	if (r > rc)
+	  rc = r;
+	if ((char *)c < te) {
+	  r = mbrtowc(&cch, c, te - c, &ms);
+	  if (r < 1)
+	    return (-1);	/* invalid text */
+	  c += r;
+	} else
+	  break;
+      }
+      if (rc < 0)
+	return (rc);
+      return (rc + count);
+    case '{':
+      r = pattern_size(p, pe);
+      if (r < 0)
+	break;			/* invalid pattern */
+      c = &p[r];
+      rc = -1;
+      while (*p != '}') {	/* check each subpattern */
+	const char *ps, *tc;
+	int rt;
 
-	  m = mask;
-	  if (m[1] == '^')
-	  {
-	    cur = 1;				/* mark "reverse match" */
-	    m++;
-	  }
-	  else
-	    cur = 0;
-	  if (m[1] == ']' && c != ']')		/* it may be []...] */
-	    m++;				/* it may be []-...] too */
-	  sc = se - 1;
-	  while (++m < sc)
-	  {
-	    if (*m == c)			/* matched exactly */
-	      break;
-	    else if (m[1] == '-')		/* '-' at begin is literal */
-	    {
-	      if (c > *m && c <= m[2])		/* matched range */
-		break;
-	      m += 2;
+	p++;			/* skip '{' or ',' */
+	ps = p;
+	while (*p != ',' && *p != '}')
+	  p++;			/* now it's on ',' or '}' */
+	for (tc = t; tc <= te; ) {
+	  r = match_it_mb(ps, p, t, tc, '{');
+	  if (r >= 0) {		/* initial part matches */
+	    rt = r;
+	    r = match_it_mb(c, pe, tc, te, '}');
+	    if (r >= 0) {	/* rest matches */
+	      r += rt;
+	      if (r > rc)	/* best matched */
+		rc = r;
 	    }
 	  }
-	  if ((!cur && m < sc) || (cur && m >= sc)) /* it's matched */
-	    tc = t + 1, cur = match_it (se, &tc, pe); /* check rest */
-	  else					/* it's not matched */
-	    cur = (-1);
+	  if (tc >= te)		/* cycle ended */
+	    break;
+	  r = mbrtowc(&wc, tc, te - tc, &ms);
+	  if (r < 0)
+	    return (r);		/* invalid text */
+	  tc += r;
 	}
-	else					/* must be at least one char */
-	  cur = (-1);
-	sc = se;				/* end of pattern, of course */
-	break;
-      case '?':
-	if (*t)					/* check rest of text */
-	  tc = t + 1, cur = match_it (se, &tc, pe);
-	else					/* must be at least one char */
-	  cur = (-1);
-	sc = se;
-	break;
-      case '*':
-	if ((char *)se == pe)			/* it's last char of pattern */
-	  tc = (t += strlen(t)), cur = 0;	/* it will be consumed all */
-	else if (!*t)
-	  cur = (-1);
-        else while (*t && (tc = t) && (cur = match_it (se, &tc, pe)) < 0)
-	  t++;					/* find matched to rest */
-	if (!*t || cur < 0)			/* cannot do match anymore */
-	  sc = se;
-	else					/* get ready for next try */
-	  t++;					/* (next char is matched '*') */
-	break;
-      default: /* '{' */
-	m = ++sc;				/* skip '{' or ',' in pattern */
-	while (*sc != ',' && sc < (se - 1))
-	  sc += pattern_size (sc);		/* get end of subpattern */
-	tc = t;					/* prepare start pointer */
-	if (*sc == '}')				/* end of subpatterns reached */
-	  cur = (-1);
-	else if ((cur = match_it (m, &tc, sc)) >= 0) /* ok, it's matched */
-	  cur = match_it (se, &tc, pe);		/* it's real match value */
+      }
+      if (rc < 0)
+	return (rc);
+      return (rc + count);
+    case '\\':
+      p++;			/* skip one escaped char */
+    default:
+      r = mbrtowc(&cch, t, te - t, &ms);
+      if (r < 1)
+	return (-1);		/* invalid text */
+      t += r;			/* should be consumed */
+      r = mbrtowc(&wc, p, pe - p, &ms);
+      if (cch != wc)
+	r = -1;
+      else
+	p += (r - 1);		/* p will be incremented below */
+      count++;
     }
-    if (cur > n && (*pe || !*tc))		/* matched to part or whole */
-    {
-      n = cur;					/* set max matched counter */
-      te = tc;					/* and advance text ptr */
-    }
+    if (r < 0 || t > te)
+      return (-1);		/* invalid pattern above */
+    pp = *p++;
   }
-  if (n < 0)					/* wildcard pattern not matched */
+  if (t < te)			/* not consumed by pattern */
     return (-1);
-  *text = te;
-  return (x + n);
+  return (count);
 }
-#endif
 
 static int match_it (const char *p, const char *pe, const char *t, const char *te, char pp)
 {
@@ -438,7 +471,7 @@ static int match_it (const char *p, const char *pe, const char *t, const char *t
   while (p < pe) {
     switch (*p) {
     case '[':
-      if (*t == '\0')
+      if (t >= te)
 	return (-1);
       r = pattern_size(p, pe) - 2;
       if (r < 0)
@@ -566,89 +599,73 @@ int match (const char *mask, const char *text)
   if (!text || !mask)				/* NULL not matched to smth */
     return -1;
 //  return match_it (mask, &text, &mask[ptr]);	/* do real comparison */
+  if (MB_CUR_MAX > 1)
+    return match_it_mb(mask, &mask[ptr], text, &text[strlen(text)], '0');
   return match_it(mask, &mask[ptr], text, &text[strlen(text)], '0');
 }
 
 
 #define swildcard(c) (c == '*' || c == '?' || c == '\\')
 
-#if 0
-//overcomplicated so replaced
-static int smatch_it (const char *mask, const char **text, const char *pe)
+static int smatch_it_mb (const char *p, const char *pe, const char *t,
+			 const char *te, char pp)
 {
-  const char *t, *tc, *te;		/* current char */
-  const uchar *sc, *se;			/* subpattern current/end */
-  int cur, x, n;
+  const char *tc;
+  int count = 0, rc;
+  register int r;
+  wchar_t wc, pc;
+  mbstate_t ms;
 
-  /* starts from literal? check it and set x as match! */
-  x = 0;
-  t = *text;
-  while (*t && !swildcard (*mask) && mask < pe)
-  {
-    if (*mask != *t)			/* char isn't equal */
+  memset(&ms, 0, sizeof(ms));	/* reset the state */
+  while (*p) {
+    switch (*p) {
+    case '?':
+      if (*t == '\0')
+	return (-1);
+      r = mbrtowc(&wc, t, te - t, &ms);
+      if (r < 1)
+	return (-1);
+      t += r;
+      if (pp == '*' && p[1] == '*') /* short '*?*' to '*?' */
+	p++;			/* p points to '*' again */
       break;
-    mask++;
-    t++;
-    x++;
-  }
-  if (mask >= pe)			/* really it cannot be mask>pe */
-  {
-    if (!*pe && *t)			/* end of pattern is reached but text */
-      return (-1);
-    if (x)
-      *text = t;
-    return x;				/* all pattern is consumed */
-  }
-  if (!swildcard (*mask))		/* it's not matched */
-    return (-1);
-  sc = mask;				/* set this wildcard pattern ptrs */
-  se = sc + 1;
-  n = (-1);
-  te = NULL;				/* to avoid compiler warning */
-  while (sc < se)			/* cyclic check one wildcard pattern */
-  {
-    switch (*mask)
-    {
-      case '?':
-	if (*t)					/* check rest of text */
-	  tc = t + 1, cur = smatch_it (se, &tc, pe);
-	else					/* must be at least one char */
-	  cur = (-1);
-	sc = se;
+    case '*':
+      if (pp == '*')		/* skip duplicate '*' */
 	break;
-      case '\\':
-	if (swildcard (mask[1]))		/* it's escape */
-	  sc = se++;				/* skip escape char */
-	if (*t == *sc)				/* it should be equal */
-	  tc = t + 1, cur = smatch_it (se, &tc, pe);
-	else
-	  cur = (-1);
-	sc = se;
-	break;
-      default: /* '*' */
-	if ((char *)se == pe)			/* it's last char of pattern */
-	  tc = (t += strlen(t)), cur = 0;	/* it will be consumed all */
-	else if (!*t)
-	  cur = (-1);
-	else while (*t && (tc = t) && (cur = smatch_it (se, &tc, pe)) < 0)
-	  t++;					/* find matched to rest */
-	if (!*t || cur < 0)			/* cannot do match anymore */
-	  sc = se;
-	else					/* get ready for next try */
-	  t++;					/* (next char is matched '*') */
+      rc = -1;
+      p++;
+      for (tc = t; *tc; ) {
+	r = smatch_it_mb(p, pe, tc, te, '*');
+	if (r > rc)
+	  rc = r;
+	r = mbrtowc(&wc, tc, te - tc, &ms);
+	if (r < 1)
+	  return (-1);
+	tc += r;
+      }
+      if (rc < 0)		/* rest doesn't match */
+	return (rc);
+      return (rc + count);
+    case '\\':
+      if (swildcard(p[1]))
+	p++;			/* skip one escaped wildcard */
+      /* else take it literally */
+    default:
+      r = mbrtowc(&wc, t, te - t, &ms);
+      if (r < 1)
+	return (-1);
+      t += r;
+      if (mbrtowc(&pc, p, pe - p, &ms) < 1 || pc != wc)
+	return (-1);
+      p += (r - 1);		/* p is incremented below */
+      count++;
     }
-    if (cur > n && (*pe || !*tc))		/* matched to part or whole */
-    {
-      n = cur;					/* set max matched counter */
-      te = tc;					/* and advance text ptr */
-    }
+    pp = *p++;
   }
-  if (n < 0)					/* wildcard pattern not matched */
+  if (*t != '\0')
     return (-1);
-  *text = te;
-  return (x + n);
+  return (count);
 }
-#endif
 
 static int smatch_it (const char *p, const char *t, char pp)
 {
@@ -667,12 +684,14 @@ static int smatch_it (const char *p, const char *t, char pp)
     case '*':
       if (pp == '*')		/* skip duplicate '*' */
 	break;
-      rc = 0;			/* anything is matched */
+      rc = -1;
       for (tc = t; *tc; tc++) {
 	r = smatch_it(&p[1], tc, '*');
 	if (r > rc)
 	  rc = r;
       }
+      if (rc < 0)		/* rest doesn't match */
+	return (rc);
       return (rc + count);
     case '\\':
       if (swildcard(p[1]))
@@ -703,6 +722,8 @@ int simple_match (const char *mask, const char *text)
     return -1;
 //  ptr = strlen (mask);
 //  return smatch_it (mask, &text, &mask[ptr]);	/* do real comparison */
+  if (MB_CUR_MAX > 1)
+    return smatch_it_mb(mask, &mask[strlen(mask)], text, &text[strlen(text)], '\0');
   return smatch_it (mask, text, '\0');		/* do real comparison */
 }
 
