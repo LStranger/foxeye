@@ -634,10 +634,12 @@ static int smatch_it_mb (const char *p, const char *pe, const char *t,
 	break;
       rc = -1;
       p++;
-      for (tc = t; *tc; ) {
+      for (tc = t; tc <= te; ) {
 	r = smatch_it_mb(p, pe, tc, te, '*');
 	if (r > rc)
 	  rc = r;
+	if (tc == te)
+	  break;
 	r = mbrtowc(&wc, tc, te - tc, &ms);
 	if (r < 1)
 	  return (-1);
