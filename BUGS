@@ -80,3 +80,8 @@
 #00081	05.10.2011  05.10.2011	ircd:invalid NJOIN member from witch-test.local:
 #00082	05.10.2011  05.10.2011	sf:#3418963 bad 432
 #00083	05.10.2011  05.10.2011	sf:#3419023 SIGSEGV after INVITE server.name
+#00084	06.10.2011  06.10.2011	sf:#3419737 JOIN on overflowing name gives +o
+#00085	06.10.2011		sf:#3419658 client doesn't get KILL message
+#00086	06.10.2011		sf:#3419663 not-PONG message doesn't reset PINGED
+#00087	06.10.2011		sf:#3419752 RPL_WHO ignores +i
+#00088	06.10.2011		sf:#3419768 mode # +b *!*@* doesn't work

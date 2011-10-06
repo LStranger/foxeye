@@ -1244,24 +1244,11 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 #undef CONTINUE_ON_MODE_ERROR
 
 /* modified version of ircd_new_to_channel() */
-static inline MEMBER *_ircd_do_join(IRCD *ircd, CLIENT *cl, CHANNEL **chptr,
-				    const char *name, modeflag mf)
+static inline MEMBER *_ircd_do_join(IRCD *ircd, CLIENT *cl, CHANNEL *ch, modeflag mf)
 {
   MEMBER *r;
-  CHANNEL *ch = *chptr;
   register MEMBER *mm;
 
-  if (!ch)
-  {
-    char lcname[MB_LEN_MAX*CHANNAMELEN+1];
-
-    unistrlower (lcname, name, sizeof(lcname));
-    _ircd_validate_channel_name (lcname);
-    ch = _ircd_find_channel_lc (ircd, lcname); /* last check for the name */
-    if (!ch)				/* it may comply after validation */
-      ch = _ircd_new_channel (ircd, name, lcname);
-    *chptr = ch;
-  }
   for (mm = ch->invited; mm; mm = mm->prevnick)
     if (mm->who == cl)
       break;
@@ -1326,6 +1313,7 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
   modeflag mf;
   int x, i, ptr;
   char cnfc[2];
+  char lcchname[MB_LEN_MAX*CHANNAMELEN+1];
   char lcb[MB_LEN_MAX*NICKLEN+IDENTLEN+HOSTLEN+3];
   char bufforservers[MB_LEN_MAX*IRCMSGLEN];
 
@@ -1371,7 +1359,9 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
     mf = 0;
     cnfc[0] = chn[0];
     lcb[0] = '\0';
-    ch = _ircd_find_channel ((IRCD *)srv->data, chn);
+    unistrlower(lcchname, chn, sizeof(lcchname));
+    _ircd_validate_channel_name(lcchname);
+    ch = _ircd_find_channel ((IRCD *)srv->data, lcchname);
     if (ch && Time >= ch->hold_upto &&	/* it's available to hold off now */
 	ch->count == 0)
     {
@@ -1451,7 +1441,9 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
     if (x++ >= MAXCHANNELS)		/* joined too many channels already */
       ircd_do_unumeric (cl, ERR_TOOMANYCHANNELS, cl, 0, NULL);
     else if (i > 0) {			/* so user can join, do it then */
-      mm = _ircd_do_join ((IRCD *)srv->data, cl, &ch, nchn, mf);
+      if (!ch)
+	ch = _ircd_new_channel ((IRCD *)srv->data, nchn, lcchname);
+      mm = _ircd_do_join ((IRCD *)srv->data, cl, ch, mf);
       if (mm == NULL) {
 	DBG("refused to add %s into %s", cl->nick, ch->name);
       } else if (!(ch->mode & A_INVISIBLE)) { /* it is not a local channel */
