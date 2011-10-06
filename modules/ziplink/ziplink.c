@@ -291,12 +291,13 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
 {
   INTERFACE *tmp;
   struct connchain_buffer *buf;
+  const char *termreason = "module 'ziplink' termination";
 
   switch (sig) {
   case S_TERMINATE:
     Delete_Binding("connchain-grow", &_ccfilter_Z_init, NULL);
     if (ShutdownR == NULL)
-      ShutdownR = "module 'ziplink' termination";
+      ShutdownR = termreason;
     while (zipbuflist) {	/* kill every ziplink in progress */
       tmp = zipbuflist->peer->iface;
       Send_Signal(tmp->ift, tmp->name, S_TERMINATE);
@@ -305,6 +306,8 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
       Unset_Iface();
     }
     Delete_Help("ziplink");
+    if (ShutdownR == termreason)
+      ShutdownR = NULL;
     break;
   case S_REPORT:
     tmp = Set_Iface(iface);

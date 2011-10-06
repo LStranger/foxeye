@@ -13,6 +13,7 @@ TODO:
 Thu Oct  6 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/lib.c: added multibyte support into match() and simple_match().
 	* modules/ircd/channels.c: fixed channel name validation.
+	* modules/ziplink/ziplink.c: fixed ShutdownR setting on termination.
 
 Wed Oct  5 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/list.c: fixed SIGSEGV on nonamed bans.
