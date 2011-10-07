@@ -10,6 +10,9 @@ TODO:
 	* core/socket.c: to add libidn support.
 
 --- [0.10.0]
+Fri Oct  7 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ziplink/ziplink.c: fixed transit of socket error by ziplink.
+
 Thu Oct  6 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/lib.c: added multibyte support into match() and simple_match().
 	* modules/ircd/channels.c: fixed channel name validation on local JOIN

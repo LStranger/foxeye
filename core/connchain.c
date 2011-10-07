@@ -190,17 +190,17 @@ int Connchain_Check (struct peer_t *peer, char c)
 
 ssize_t Connchain_Put (connchain_i **chain, idx_t idx, const char *buf, size_t *sz)
 {
-  ssize_t i;
+  register ssize_t i;
 
   if (chain == NULL || *chain == NULL)		/* it's error or dead */
     return E_NOSOCKET;
   /* ok, it seems we got something to run */
   i = (*chain)->send (&(*chain)->next, idx, buf, sz, &(*chain)->buf);
-  if (buf == NULL || i >= 0)			/* everything seems OK */
+//  if (buf == NULL || i >= 0)			/* everything seems OK */
     return i;
-  if ((i = Connchain_Put (&(*chain)->next, idx, NULL, 0)) < 0)
-    return i;					/* next link finished */
-  return 0;
+//  if ((i = Connchain_Put (&(*chain)->next, idx, NULL, 0)) < 0)
+//    return i;					/* next link finished */
+//  return 0;
 }
 
 ssize_t Connchain_Get (connchain_i **chain, idx_t idx, char *buf, size_t sz)

@@ -38,6 +38,7 @@ struct connchain_buffer {
   struct peer_t *peer;
   struct connchain_i *saved_chain;
   struct connchain_buffer *next;
+  ssize_t error;
   struct zipbuff in, out;
 };
 
@@ -189,15 +190,18 @@ static ssize_t _ccfilter_Z_recv(struct connchain_i **ch, idx_t id, char *str,
   }
   flush = Z_PARTIAL_FLUSH;
   if (buf->saved_chain == NULL) { /* read data from chain if there is a room */
-    if (buf->in.inbuf < sizeof(buf->in.buf))
-      i = Connchain_Get(ch, id, &buf->in.buf[buf->in.bufptr],
-			(sizeof(buf->in.buf) - buf->in.inbuf));
-    else
+    if ((*b)->error)
+      i = (*b)->error;
+    else if (buf->in.inbuf < sizeof(buf->in.buf)) {
+      if ((i = Connchain_Get(ch, id, &buf->in.buf[buf->in.bufptr],
+			     (sizeof(buf->in.buf) - buf->in.inbuf))) < 0)
+	(*b)->error = i;
+    } else
       i = 0;
     if (i > 0) {
       buf->in.inbuf += i;
       dprint(6, "ziplink: got compressed data from socket, size=%zd", i);
-    } else if (i < 0 && buf->in.inbuf == 0)
+    } else if (i < 0)
       flush = Z_SYNC_FLUSH;
   } else			/* not ready yet, try to pull saved buffers */
     _z_check_saved_buffer(id, buf);
@@ -215,9 +219,13 @@ static ssize_t _ccfilter_Z_recv(struct connchain_i **ch, idx_t id, char *str,
     i = (char *)buf->in.z.next_out - str;
     if (i > 0)
       dprint(6, "ziplink: decompressed data: [%-*.*s]", (int)i, (int)i, str);
-    return (i);
-  }
-  ERROR("ziplink: Zlib returned error %zd, finishing streams.", i);
+    else			/* everything available decompressed */
+      i = (*b)->error;		/* there might be error from connchain */
+    if (i >= 0)
+      return (i);
+    ERROR("ziplink: got %zd from connection chain, terminating", i);
+  } else
+    ERROR("ziplink: Zlib returned error %zd, finishing streams.", i);
 finish_filter:
   if (buf->saved_chain != NULL && Connchain_Get(&buf->saved_chain, id, NULL, 0))
     buf->saved_chain = NULL;
@@ -226,8 +234,11 @@ finish_filter:
     ERROR("ziplink: error on Zlib output termination: %s", buf->out.z.msg);
   if (inflateEnd(&buf->in.z) != Z_OK)
     ERROR("ziplink: error on Zlib input termination: %s", buf->in.z.msg);
+  i = (*b)->error;
+  if (i == 0)
+    i = E_NOSOCKET;
   _freezipbuff(b);
-  return E_NOSOCKET;
+  return (i);
 }
 
 BINDING_TYPE_connchain_grow(_ccfilter_Z_init);
@@ -277,6 +288,7 @@ static int _ccfilter_Z_init (struct peer_t *peer,
     _freezipbuff(b);
     return (-1);
   }
+  buf->error = 0;
   /* from now on all data should be compressed */
   return (1);
 }
