@@ -650,7 +650,7 @@ static int smatch_it_mb (const char *p, const char *pe, const char *t,
       return (rc + count);
     case '\\':
       if (swildcard(p[1]))
-	p++;			/* skip one escaped wildcard */
+	p++;			/* skip escape char if escaped is wildcard */
       /* else take it literally */
     default:
       r = mbrtowc(&wc, t, te - t, &ms);
@@ -687,11 +687,12 @@ static int smatch_it (const char *p, const char *t, char pp)
       if (pp == '*')		/* skip duplicate '*' */
 	break;
       rc = -1;
-      for (tc = t; *tc; tc++) {
+      tc = t;
+      do {
 	r = smatch_it(&p[1], tc, '*');
 	if (r > rc)
 	  rc = r;
-      }
+      } while (*tc++ != '\0');
       if (rc < 0)		/* rest doesn't match */
 	return (rc);
       return (rc + count);
