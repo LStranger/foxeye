@@ -75,7 +75,7 @@
 #00076	04.10.2011  05.10.2011	sf:#3418480 502 instead of 403 for MODE
 #00077	04.10.2011  04.10.2011	sf:#3418493 bad 442
 #00078	04.10.2011  05.10.2011	sf:#3418569 deadcycle on too big pattern
-#00079	05.10.2011		on overwrite MODE dropped one not sent to peers
+#00079	05.10.2011  09.10.2011	on overwrite MODE dropped one not sent to peers
 #00080	05.10.2011		on bad MODE (*a against *) there is no numeric
 #00081	05.10.2011  05.10.2011	ircd:invalid NJOIN member from witch-test.local:
 #00082	05.10.2011  05.10.2011	sf:#3418963 bad 432
@@ -84,4 +84,5 @@
 #00085	06.10.2011  06.10.2011	sf:#3419658 client doesn't get KILL message
 #00086	06.10.2011  ok as is	sf:#3419663 not-PONG message doesn't reset PINGED
 #00087	06.10.2011  06.10.2011	sf:#3419752 RPL_WHO ignores +i
-#00088	06.10.2011		sf:#3419768 mode # +b *!*@* doesn't work
+#00088	06.10.2011  06.10.2011	sf:#3419768 mode # +b *!*@* doesn't work
+#00089	08.10.2011		sf:#3420614 bugged !chan illegal chars creating

@@ -520,23 +520,24 @@ static modeflag imch_t(INTERFACE *srv, const char *rq, modeflag rchmode,
 static CHANNEL *_imch_channel;
 /* this is used to make sending numerics faster in _imch_do_* */
 static CLIENT *_imch_client;
+/* dummy client structure for cancelling overwritten masks */
+static CHANNEL _imch_cancel = { .bans = NULL, .exempts = NULL, .invites = NULL };
 
 static int _imch_do_keyset (INTERFACE *srv, const char *rq, const char *ch,
 			    int add, const char **param)
 {
   if (add < 0)
     return 0; /* invalid query */
-  else if (add)
+  else if (add) {
     //TODO: limit its length?
     //TODO: ERR_KEYSET
     strfcpy (_imch_channel->key, *param, sizeof(_imch_channel->key));
 #ifndef IRCD_IGNORE_MKEY_ARG
-  else if (safe_strcmp(_imch_channel->key, *param)) {
+  } else if (safe_strcmp(_imch_channel->key, *param)) {
     ircd_do_cnumeric (_imch_client, ERR_KEYSET, _imch_channel, 0, NULL);
     return 0;
-  }
 #endif
-  else
+  } else
     _imch_channel->key[0] = '\0';
   return 1;
 }
@@ -588,7 +589,7 @@ static modeflag imch_l(INTERFACE *srv, const char *rq, modeflag rchmode,
   return (add ? 1 : 0);
 }
 
-static int _imch_add_mask (MASK **list, const char **ptr)
+static int _imch_add_mask (MASK **list, const char **ptr, MASK **cancel)
 {
   register MASK *mm;
   const char *mask = *ptr;
@@ -610,7 +611,8 @@ static int _imch_add_mask (MASK **list, const char **ptr)
     } else if (simple_match (mask, (*list)->what) > 0) { /* it eats that one */
       mm = *list;
       *list = mm->next;
-      free_MASK (mm);
+      mm->next = *cancel;	/* move it to cancellation list */
+      *cancel = mm;
     } else if (simple_match ((*list)->what, mask) > 0) { /* that one eats it */
       free_MASK (nm);
       return 0;
@@ -652,7 +654,7 @@ static int _imch_do_banset (INTERFACE *srv, const char *rq, const char *ch,
     return 1;
   }
   else if (add)
-    return _imch_add_mask (&_imch_channel->bans, param);
+    return _imch_add_mask (&_imch_channel->bans, param, &_imch_cancel.bans);
   else
     return _imch_del_mask (&_imch_channel->bans, param);
 }
@@ -684,7 +686,7 @@ static int _imch_do_exemptset (INTERFACE *srv, const char *rq, const char *ch,
     return 1;
   }
   else if (add)
-    return _imch_add_mask (&_imch_channel->exempts, param);
+    return _imch_add_mask (&_imch_channel->exempts, param, &_imch_cancel.exempts);
   else
     return _imch_del_mask (&_imch_channel->exempts, param);
 }
@@ -716,7 +718,8 @@ static int _imch_do_inviteset (INTERFACE *srv, const char *rq, const char *ch,
     return 1;
   }
   else if (add)
-    return _imch_add_mask (&_imch_channel->invites, param);
+    return _imch_add_mask (&_imch_channel->invites, param,
+			   &_imch_cancel.invites);
   else
     return _imch_del_mask (&_imch_channel->invites, param);
 }
@@ -856,6 +859,10 @@ static inline void _ircd_mode_broadcast (IRCD *ircd, int id, CLIENT *sender,
   if (ch->mode & A_INVISIBLE ||	/* don't broadcast local channel mode */
       ch->name[0] == '+')	/* nor mode +t for modeless channel */
     return;
+#if IRCD_MULTICONNECT
+  if (id < 0 && !CLIENT_IS_SERVER(sender) && !CLIENT_IS_REMOTE(sender))
+    id = ircd_new_id();		/* make new id if it's local client */
+#endif
   imp = strchr (ch->name, ':');	/* use it as mask ptr storage */
   if (imp)
   {
@@ -934,7 +941,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl;
   CHANNEL *ch;
   int i, n;
-  char modepass[2*MAXMODES+1];
+  char modepass[64]; /* it should accept all modes at once */
 
   if (argc < 1)
     return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, NULL);
@@ -1034,6 +1041,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	  {
 	    if (!b->name)
 	    {
+	      ma = NULL;
 	      f = (_mch_func_t)b->func;
 	      if (tar)			/* modechange for target */
 		mf = f (srv, peer->dname, memb->mode, tar->who->nick,
@@ -1062,7 +1070,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	      CONTINUE_ON_MODE_ERROR (ERR_CHANOPRIVSNEEDED, NULL);
 	    } else
 	      CONTINUE_ON_MODE_ERROR (ERR_UNKNOWNMODE, charstr);
-	  } else if (n == MAXMODES)
+	  } else if ((par != NULL && x == MAXMODES) || n > 30) /* see modepass */
 	    continue; //TODO: silently ignore or what?
 	  if (add)
 	  {
@@ -1119,8 +1127,60 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
       }
     }
     if (n)				/* there were some changes */
-      _ircd_mode_broadcast((IRCD *)srv->data, ircd_new_id(), cl, ch, imp,
-			   NULL, 0, modepass, passed, x);
+      _ircd_mode_broadcast((IRCD *)srv->data, -1, cl, ch, imp, NULL, 0,
+			   modepass, passed, x);
+    /* broadcast cancelled modes now */
+    x = 0;
+    modepass[0] = '-';
+    imp = modepass;
+    while (_imch_cancel.bans != NULL) {
+      register MASK *mm;
+
+      if (x == MAXMODES) {
+	_ircd_mode_broadcast((IRCD *)srv->data, -1, cl, ch, imp, NULL, 0,
+			     modepass, passed, x);
+	imp = modepass;
+	x = 0;
+      }
+      *++imp = 'b';
+      mm = _imch_cancel.bans;
+      _imch_cancel.bans = mm->next;
+      passed[x++] = mm->what;	/* it will be not changed yet */
+      free_MASK(mm);
+    }
+    while (_imch_cancel.exempts != NULL) {
+      register MASK *mm;
+
+      if (x == MAXMODES) {
+	_ircd_mode_broadcast((IRCD *)srv->data, -1, cl, ch, imp, NULL, 0,
+			     modepass, passed, x);
+	imp = modepass;
+	x = 0;
+      }
+      *++imp = 'e';
+      mm = _imch_cancel.exempts;
+      _imch_cancel.exempts = mm->next;
+      passed[x++] = mm->what;	/* it will be not changed yet */
+      free_MASK(mm);
+    }
+    while (_imch_cancel.invites != NULL) {
+      register MASK *mm;
+
+      if (x == MAXMODES) {
+	_ircd_mode_broadcast((IRCD *)srv->data, -1, cl, ch, imp, NULL, 0,
+			     modepass, passed, x);
+	imp = modepass;
+	x = 0;
+      }
+      *++imp = 'I';
+      mm = _imch_cancel.invites;
+      _imch_cancel.invites = mm->next;
+      passed[x++] = mm->what;	/* it will be not changed yet */
+      free_MASK(mm);
+    }
+    if (x > 0)
+      _ircd_mode_broadcast((IRCD *)srv->data, -1, cl, ch, imp, NULL, 0,
+			   modepass, passed, x);
   }
   else if (ircd_find_client(argv[0], NULL) != cl)
     return ircd_do_unumeric (cl, ERR_USERSDONTMATCH, cl, 0, argv[0]);
@@ -1497,7 +1557,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
   CLIENT *src, *tgt;
   CHANNEL *ch;
   int i, n;
-  char modepass[2*MAXMODES+1];
+  char modepass[64]; /* it should accept all modes at once */
 
   if (!(src = _ircd_find_client_lc ((IRCD *)srv->data, lcsender)))
   {
@@ -1605,6 +1665,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	  {
 	    if (!b->name)
 	    {
+	      ma = NULL;
 	      f = (_mch_func_t)b->func;
 	      if (tar)			/* modechange for target */
 		mf = f (srv, pp->p.dname, whof, tar->who->nick,
@@ -1636,7 +1697,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	    CONTINUE_ON_MODE_ERROR ("impossible MODE", " %c%c via %s",
 				    add ? '+' : '-', *c, pp->p.dname);
 	  }
-	  if (n == MAXMODES)
+	  if ((par != NULL && x == MAXMODES) || n > 30) /* see modepass */
 	  {
 #if IRCD_MULTICONNECT
 	    if (id >= 0) {
@@ -1666,12 +1727,14 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	    } else if (ma) {		/* it has a parameter */
 	      ec = ma (srv, pp->p.dname, ch->name, add, &par);
 	      if (ec <= 0) {
-		if (ec < 0)
-		  dprint(4, "ircd:channels.c: mode +%c %s already present on %s",
-			 *c, par, ch->name);
-		else
+		if (ec == 0) {
 		  WARNING ("ircd: error on setting MODE %s +%c %s", ch->name,
 			   *c, par);
+		  New_Request (pp->p.iface, 0, "MODE %s -%c %s", ch->name, *c,
+			       par);	/* revert it */
+		} else
+		  dprint(4, "ircd:channels.c: mode +%c %s already present on %s",
+			 *c, par, ch->name);
 		n--;			/* it discarded */
 		continue;
 	      } else
@@ -1690,16 +1753,20 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	  {
 	    ec = ma (srv, pp->p.dname, ch->name, add, &par);
 	    if (ec <= 0) {
-	      if (ec < 0)
-		dprint(4, "ircd:channels.c: there isn't +%c %s on %s to remove",
+#if IRCD_MULTICONNECT
+	      if (id < 0) {		/* we sent that mode before */
+#endif
+		dprint(4, "ircd:channels.c: there isn't +%c %s on %s to remove, ignoring it",
 		       *c, par, ch->name);
-	      else
-		WARNING ("ircd: error on setting MODE %s -%c %s", ch->name, *c,
-			 par);
-	      n--;			/* it discarded */
-	      continue;
-	    } else
-	      ch->mode &= ~mf;
+		n--;			/* it discarded */
+		continue;
+#if IRCD_MULTICONNECT
+	      }
+	      dprint(4, "ircd:channels.c: there isn't +%c %s on %s to remove but sending it anyway",
+		     *c, par, ch->name); /* see below - we skipped sending */
+#endif
+	    }
+	    ch->mode &= ~mf;
 	  }
 	  else				/* just modechange */
 	    ch->mode &= ~mf;
@@ -1712,6 +1779,82 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
     if (n)				/* there were some changes */
       _ircd_mode_broadcast ((IRCD *)srv->data, id, src, ch, imp, pp, token,
 			    modepass, passed, x);
+    /* broadcast cancelled modes now */
+    x = 0;
+    modepass[0] = '-';
+    imp = modepass;
+    while (_imch_cancel.bans != NULL) {
+      register MASK *mm;
+
+      if (x == MAXMODES) {
+	_ircd_mode_broadcast((IRCD *)srv->data, -1, src, ch, imp, NULL, 0,
+			     modepass, passed, x);
+	imp = modepass;
+	x = 0;
+      }
+      mm = _imch_cancel.bans;
+      _imch_cancel.bans = mm->next;
+#if IRCD_MULTICONNECT
+      if (id < 0) {		/* it came from RFC2812 server */
+#endif
+	*++imp = 'b';
+	passed[x++] = mm->what;	/* it will be not changed yet */
+#if IRCD_MULTICONNECT
+      } else			/* and we trust new server send it itself */
+	  dprint(4, "ircd:channels.c: not sending MODE %s -b %s thinking %s will do it",
+		 ch->name, mm->what, pp->p.dname);
+#endif
+      free_MASK(mm);
+    }
+    while (_imch_cancel.exempts != NULL) {
+      register MASK *mm;
+
+      if (x == MAXMODES) {
+	_ircd_mode_broadcast((IRCD *)srv->data, -1, src, ch, imp, NULL, 0,
+			     modepass, passed, x);
+	imp = modepass;
+	x = 0;
+      }
+      mm = _imch_cancel.exempts;
+      _imch_cancel.exempts = mm->next;
+#if IRCD_MULTICONNECT
+      if (id < 0) {		/* it came from RFC2812 server */
+#endif
+	*++imp = 'e';
+	passed[x++] = mm->what;	/* it will be not changed yet */
+#if IRCD_MULTICONNECT
+      } else			/* and we trust new server send it itself */
+	  dprint(4, "ircd:channels.c: not sending MODE %s -e %s thinking %s will do it",
+		 ch->name, mm->what, pp->p.dname);
+#endif
+      free_MASK(mm);
+    }
+    while (_imch_cancel.invites != NULL) {
+      register MASK *mm;
+
+      if (x == MAXMODES) {
+	_ircd_mode_broadcast((IRCD *)srv->data, -1, src, ch, imp, NULL, 0,
+			     modepass, passed, x);
+	imp = modepass;
+	x = 0;
+      }
+      mm = _imch_cancel.invites;
+      _imch_cancel.invites = mm->next;
+#if IRCD_MULTICONNECT
+      if (id < 0) {		/* it came from RFC2812 server */
+#endif
+	*++imp = 'I';
+	passed[x++] = mm->what;	/* it will be not changed yet */
+#if IRCD_MULTICONNECT
+      } else			/* and we trust new server send it itself */
+	  dprint(4, "ircd:channels.c: not sending MODE %s -I %s thinking %s will do it",
+		 ch->name, mm->what, pp->p.dname);
+#endif
+      free_MASK(mm);
+    }
+    if (x > 0)
+      _ircd_mode_broadcast((IRCD *)srv->data, -1, src, ch, imp, NULL, 0,
+			   modepass, passed, x);
 #if IRCD_MULTICONNECT
     if (errors < 0)
       ircd_do_squit(pp->link, pp, "MODE protocol error");

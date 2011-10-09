@@ -12,6 +12,8 @@ TODO:
 --- [0.10.0]
 Sun Oct  9 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: removed try of autoconnect to already connected.
+	* modules/ircd/channels.c: added sending cancelled modes (after some
+	  override) to relevant peers (bug#79).
 
 Fri Oct  7 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ziplink/ziplink.c: fixed transit of socket error by ziplink.
