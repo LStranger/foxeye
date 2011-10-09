@@ -1902,6 +1902,8 @@ static void _ircd_do_init_uplinks (void)
       cc = gettoken (c, NULL);
       lid = FindLID (c);
       c = cc;
+      if (_ircd_find_client(c))		/* already connected, go to next */
+	continue;
       while (Get_Request());		/* we need queue to be empty */
       _ircd_sublist_buffer = hosts;
       i = Get_Hostlist (tmp, lid);
