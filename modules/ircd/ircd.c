@@ -2280,7 +2280,7 @@ static int ircd_nick_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 #endif
   if (cl->umode & A_RESTRICTED)
     return ircd_do_unumeric (cl, ERR_RESTRICTED, cl, 0, NULL);
-  _ircd_do_nickchange(cl, NULL, 0, checknick, is_casechange);
+  _ircd_do_nickchange(cl, NULL, 0, argv[0], is_casechange);
   if (is_casechange)		/* no iface rename required */
     return (1);
   snprintf (checknick, sizeof(checknick), "%s@%s", cl->lcnick, Ircd->iface->name);
