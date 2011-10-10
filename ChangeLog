@@ -17,6 +17,7 @@ Mon Oct 10 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc-channel/irc-channel.c: added rejoin onto temporarily
 	  unavailable channels (bug#90).
 	* modules/ircd/channels.c: fixed name of created !chan (bug#89).
+	* modules/ircd/clients.c: fixed WHO for channels containing chars '?'.
 
 Sun Oct  9 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: removed try of autoconnect to already connected.

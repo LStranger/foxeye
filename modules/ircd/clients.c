@@ -540,7 +540,20 @@ static int ircd_who_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
     if ((argv[0])[1] != '\0' || (*argv[0] != '0' && *argv[0] != '*'))
       mask = argv[0];
   }
-  if (!mask || strpbrk (mask, "*?.")) { /* so we have wildcards, ok */
+  if ((m = ircd_find_member ((IRCD *)srv->data, mask, NULL)) &&
+      m != NOSUCHCHANNEL) { /* check for channel fisrt, it can contain * or ? */
+    if (!(m->chan->mode & (A_ANONYMOUS | A_QUIET))) { /* users are hidden */
+      mc = m;				/* allow seeing for opers */
+      if ((cl->umode & (A_OP | A_HALFOP)) ||
+	  (mc = _ircd_is_on_channel (cl, m->chan)) ||
+	  !(m->chan->mode & (A_PRIVATE | A_SECRET)))
+	for ( ; m; m = m->prevnick)
+	  if (!mmf || (m->mode & mmf)) /* use "o" parameter against chanmode */
+	    if (mc || !(m->who->umode & A_INVISIBLE))
+	      _ircd_who_reply (cl, CLIENT_IS_REMOTE (m->who) ? m->who->cs : me,
+			       m->who, m); /* ME can be only in QUIET chan */
+    }
+  } else if (!mask || strpbrk (mask, "*?.")) { /* so we have wildcards, ok */
     LINK *link;
     int i, smatched = 0;
 
@@ -570,19 +583,6 @@ static int ircd_who_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 	      _ircd_who_reply (cl, (i == 0) ? me : tgt->cs, tgt, NULL);
 	}
       }
-  } else if ((m = ircd_find_member ((IRCD *)srv->data, mask, NULL)) &&
-	     m != NOSUCHCHANNEL) {
-    if (!(m->chan->mode & (A_ANONYMOUS | A_QUIET))) { /* users are hidden */
-      mc = m;				/* allow seeing for opers */
-      if ((cl->umode & (A_OP | A_HALFOP)) ||
-	  (mc = _ircd_is_on_channel (cl, m->chan)) ||
-	  !(m->chan->mode & (A_PRIVATE | A_SECRET)))
-	for ( ; m; m = m->prevnick)
-	  if (!mmf || (m->mode & mmf)) /* use "o" parameter against chanmode */
-	    if (mc || !(m->who->umode & A_INVISIBLE))
-	      _ircd_who_reply (cl, CLIENT_IS_REMOTE (m->who) ? m->who->cs : me,
-			       m->who, m); /* ME can be only in QUIET chan */
-    }
   } else if ((tgt = ircd_find_client(mask, NULL)) != NULL &&
 	     !CLIENT_IS_SERVER(tgt) && (!mmf || (tgt->umode & mmf))) {
     _ircd_who_reply (cl, CLIENT_IS_REMOTE (tgt) ? tgt->cs : me, tgt, NULL);
