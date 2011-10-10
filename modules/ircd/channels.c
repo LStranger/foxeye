@@ -589,7 +589,8 @@ static modeflag imch_l(INTERFACE *srv, const char *rq, modeflag rchmode,
   return (add ? 1 : 0);
 }
 
-static int _imch_add_mask (MASK **list, const char **ptr, MASK **cancel)
+static int _imch_add_mask (MASK **list, const char **ptr, MASK **cancel,
+			   int num, const char *txt)
 {
   register MASK *mm;
   const char *mask = *ptr;
@@ -607,6 +608,7 @@ static int _imch_add_mask (MASK **list, const char **ptr, MASK **cancel)
   while (*list)
     if (strcmp(mask, (*list)->what) == 0) { /* duplicate mask */
       free_MASK(nm);
+      ircd_do_cnumeric(_imch_client, num, txt, _imch_channel, 0, (*list)->what);
       return (-1);
     } else if (simple_match (mask, (*list)->what) > 0) { /* it eats that one */
       mm = *list;
@@ -654,7 +656,8 @@ static int _imch_do_banset (INTERFACE *srv, const char *rq, const char *ch,
     return 1;
   }
   else if (add)
-    return _imch_add_mask (&_imch_channel->bans, param, &_imch_cancel.bans);
+    return _imch_add_mask (&_imch_channel->bans, param, &_imch_cancel.bans,
+			   RPL_BANLIST);
   else
     return _imch_del_mask (&_imch_channel->bans, param);
 }
@@ -686,7 +689,8 @@ static int _imch_do_exemptset (INTERFACE *srv, const char *rq, const char *ch,
     return 1;
   }
   else if (add)
-    return _imch_add_mask (&_imch_channel->exempts, param, &_imch_cancel.exempts);
+    return _imch_add_mask (&_imch_channel->exempts, param,
+			   &_imch_cancel.exempts, RPL_EXCEPTLIST);
   else
     return _imch_del_mask (&_imch_channel->exempts, param);
 }
@@ -719,7 +723,7 @@ static int _imch_do_inviteset (INTERFACE *srv, const char *rq, const char *ch,
   }
   else if (add)
     return _imch_add_mask (&_imch_channel->invites, param,
-			   &_imch_cancel.invites);
+			   &_imch_cancel.invites, RPL_INVITELIST);
   else
     return _imch_del_mask (&_imch_channel->invites, param);
 }

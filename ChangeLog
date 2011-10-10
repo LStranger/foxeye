@@ -10,6 +10,9 @@ TODO:
 	* core/socket.c: to add libidn support.
 
 --- [0.10.0]
+Mon Oct 10 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/channels.c: added numeric on bad mode (bug#80).
+
 Sun Oct  9 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: removed try of autoconnect to already connected.
 	* modules/ircd/channels.c: added sending cancelled modes (after some
