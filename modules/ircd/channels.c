@@ -617,6 +617,7 @@ static int _imch_add_mask (MASK **list, const char **ptr, MASK **cancel,
       *cancel = mm;
     } else if (simple_match ((*list)->what, mask) > 0) { /* that one eats it */
       free_MASK (nm);
+      ircd_do_cnumeric(_imch_client, num, txt, _imch_channel, 0, (*list)->what);
       return 0;
     } else
       list = &(*list)->next;

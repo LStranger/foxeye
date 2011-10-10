@@ -985,7 +985,7 @@ static void _ircd_do_whois (CLIENT *cl, CLIENT *tgt, CLIENT *me)
   ptr = 0;
   for (m = tgt->c.hannels; m; m = m->prevchan)
   {
-    if (!(cl->umode & (A_OP | A_HALFOP)))
+    if (cl != tgt && !(cl->umode & (A_OP | A_HALFOP)))
     {
       if (m->chan->mode & (A_ANONYMOUS | A_QUIET))
 	continue;

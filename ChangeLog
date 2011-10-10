@@ -13,6 +13,7 @@ TODO:
 Mon Oct 10 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: added numeric on bad mode (bug#80).
 	* modules/ircd/ircd.c: fixed wrong nick casechange.
+	* modules/ircd/queries.c: fixed telling channels to client itself.
 
 Sun Oct  9 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: removed try of autoconnect to already connected.
