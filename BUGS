@@ -86,4 +86,4 @@
 #00087	06.10.2011  06.10.2011	sf:#3419752 RPL_WHO ignores +i
 #00088	06.10.2011  06.10.2011	sf:#3419768 mode # +b *!*@* doesn't work
 #00089	08.10.2011		sf:#3420614 bugged !chan illegal chars creating
-#00090	10.10.2011		does not rejoin channels if temp. unavailable
+#00090	10.10.2011  10.10.2011	does not rejoin channels if temp. unavailable

@@ -1379,6 +1379,7 @@ static void _ircch_join_channel (IRC *net, char *chname)
   char *key, *c;
   struct clrec_t *clr;
 
+  /* TODO: check if we already joined to not waste bandwidth */
   clr = Lock_Clientrecord (chname);
   if (clr)
   {
@@ -1579,20 +1580,52 @@ static int _ircch_servlist (INTERFACE *iface, REQUEST *req)
  * "irc-connected" binding:
  *   - check for autojoins
  */
+static void _ircch_start_autojoins(IRC *net, char *buf, size_t bs)
+{
+  INTERFACE *tmp;
+  char *c, *ch;
+  static time_t last_autojoin = 0;
+  int i;
+
+  if (Time < last_autojoin + 10)	/* don't spam server */
+    return;
+  last_autojoin = Time;
+  buf[0] = '?';
+  buf[1] = '*';
+  strfcpy (&buf[2], net->name, bs-2);
+  tmp = Add_Iface (I_TEMP, NULL, NULL, &_ircch_servlist, NULL);
+  i = Get_Clientlist (tmp, U_SPECIAL, NULL, buf);
+  if (i)
+  {
+    Set_Iface (tmp);
+    for (; i; i--)
+      Get_Request();
+    Unset_Iface();
+  }
+  c = tmp->data;
+  DBG ("ircch: connected to %s, known channels: %s", net->neti->name, NONULL(c));
+  while (c && *c)
+  {
+    ch = gettoken(c, NULL);
+    if (Get_Clientflags (c, "") & U_ACCESS)	/* autojoin found */
+      _ircch_join_channel (net, c);
+    c = ch;
+  }
+  tmp->ift = I_DIED;
+}
+
 BINDING_TYPE_irc_connected (ic_ircch);
 static void ic_ircch (INTERFACE *network, char *servname, char *nick,
 		      size_t (*lc) (char *, const char *, size_t))
 {
   char mask[NAMEMAX+4];
   IRC *net;
-  char *c, *ch;
-  INTERFACE *tmp;
-  int i;
 
   net = _ircch_get_network (network->name, 1, lc);
   if (net->me)					/* already registered? */
   {
-    WARNING ("ircch: got duplicate connection notification: %s", network->name);
+    dprint(4, "ircch: got duplicate connection notification: %s", network->name);
+    _ircch_start_autojoins(net, mask, sizeof(mask));
     return;
   }
   net->neti = network;
@@ -1606,28 +1639,7 @@ static void ic_ircch (INTERFACE *network, char *servname, char *nick,
   net->me->umode = A_ME;
   net->me->host = safe_strdup (nick);
   New_Request (network, F_QUICK, "USERHOST %s", nick); /* check it ASAP! */
-  mask[0] = '?';
-  mask[1] = '*';
-  strfcpy (&mask[2], net->name, sizeof(mask)-2);
-  tmp = Add_Iface (I_TEMP, NULL, NULL, &_ircch_servlist, NULL);
-  i = Get_Clientlist (tmp, U_SPECIAL, NULL, mask);
-  if (i)
-  {
-    Set_Iface (tmp);
-    for (; i; i--)
-      Get_Request();
-    Unset_Iface();
-  }
-  c = tmp->data;
-  DBG ("ircch: connected to %s, known channels: %s", network->name, NONULL(c));
-  for ( ; c && *c; c = ch)
-  {
-    if ((ch = strchr (c, ' ')))			/* get a token */
-      *ch++ = 0;
-    if (Get_Clientflags (c, "") & U_ACCESS)	/* autojoin found */
-      _ircch_join_channel (net, c);
-  }
-  tmp->ift = I_DIED;
+  _ircch_start_autojoins(net, mask, sizeof(mask));
 }
 
 
@@ -2875,6 +2887,7 @@ static int irc_join_errors (INTERFACE *iface, char *svname, char *me,
   strfcpy (&ch[s], net->name, sizeof(ch) - s);
   Add_Request (I_LOG, ch, F_WARN, _("cannot join to channel %s: %s"), parv[1],
 	       parv[2]);
+  NewTimer (I_MODULE, "irc", S_FLUSH, 0, 1, 0, 0); /* try again in 1 minute */
   return 0;
 }
 
