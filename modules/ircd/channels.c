@@ -1508,8 +1508,12 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
     if (x++ >= MAXCHANNELS)		/* joined too many channels already */
       ircd_do_unumeric (cl, ERR_TOOMANYCHANNELS, cl, 0, NULL);
     else if (i > 0) {			/* so user can join, do it then */
-      if (!ch)
+      if (!ch) {
+	if (nchn != chn)		/* binding changed the name */
+	  unistrlower(lcchname, nchn, sizeof(lcchname));
+	  _ircd_validate_channel_name(lcchname);
 	ch = _ircd_new_channel ((IRCD *)srv->data, nchn, lcchname);
+      }
       mm = _ircd_do_join ((IRCD *)srv->data, cl, ch, mf);
       if (mm == NULL) {
 	DBG("refused to add %s into %s", cl->nick, ch->name);
