@@ -317,6 +317,7 @@ void ResetSocket(idx_t idx, unsigned short type)
   if (sockfd < 0)
     return;
   Pollfd[idx].fd = sockfd;
+  Pollfd[idx].revents = 0;
   SChanged = 1;
   Socket[idx].port = type;
   DBG ("socket:ResetSocket: %d (fd=%d)", (int)idx, sockfd);
@@ -426,6 +427,7 @@ int SetupSocket(idx_t idx, const char *domain, const char *bind_to,
 	  DBG("closed IPv4 socket (fd=%d) and opened IPv6 one (fd=%d)",
 	      Pollfd[idx].fd, sockfd);
 	  Pollfd[idx].fd = sockfd;
+	  Pollfd[idx].revents = 0;
 	  SChanged = 1;
 	  pthread_mutex_unlock (&LockPoll);
 	  pthread_setcancelstate(cancelstate, NULL);
@@ -506,6 +508,7 @@ int SetupSocket(idx_t idx, const char *domain, const char *bind_to,
 	  DBG("closed IPv4 socket (fd=%d) and opened IPv6 one (fd=%d)",
 	      Pollfd[idx].fd, sockfd);
 	  Pollfd[idx].fd = sockfd;
+	  Pollfd[idx].revents = 0;
 	  SChanged = 1;
 	  pthread_mutex_unlock (&LockPoll);
 	  pthread_setcancelstate(cancelstate, NULL);
