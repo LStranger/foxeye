@@ -2324,27 +2324,28 @@ static inline void _ircd_burst_servers(INTERFACE *cl, const char *sn, LINK *l)
 #endif
 
 static inline void _ircd_burst_clients (INTERFACE *cl, unsigned short t,
-					LINK *s, char *umode/* 16 bytes */)
+					LINK *s, unsigned short hops,
+					char *umode/* 16 bytes */)
 {
   if (s == NULL)
     return;
   dprint(5, "ircd:ircd.c:_ircd_burst_clients: %s to %s", s->cl->nick, cl->name);
   for ( ; s; s = s->prev)
   {
-    if ((t == 0) && (s->cl->via->p.state != P_TALK)) { /* not ready */
+    if ((t == 1) && (s->cl->via->p.state != P_TALK)) { /* not ready */
       dprint(5, "ircd: ignoring incomplete connection %s@%s", s->cl->user,
 	     s->cl->host);
       continue;
-    } else if (CLIENT_IS_SERVER (s->cl)) /* recursion */
-      _ircd_burst_clients (cl, s->cl->x.token, s->cl->c.lients, umode);
+    } else if (CLIENT_IS_SERVER (s->cl))
+      continue;
     else if (CLIENT_IS_SERVICE (s->cl))
       /* <servicename> <servertoken> <distribution> <type> <hopcount> <info> */
-      New_Request (cl, 0, "SERVICE %s %hu %s 0 %hu :%s", s->cl->nick, t + 1,
-		   s->cl->away, s->cl->hops, s->cl->fname);
+      New_Request (cl, 0, "SERVICE %s %hu %s 0 %hu :%s", s->cl->nick, t,
+		   s->cl->away, hops, s->cl->fname);
     else
       /* <nickname> <hopcount> <username> <host> <servertoken> <umode> <realname> */
       New_Request (cl, 0, "NICK %s %hu %s %s %hu +%s :%s", s->cl->nick,
-		   s->cl->hops, s->cl->user, s->cl->host, t + 1,
+		   hops, s->cl->user, s->cl->host, t,
 		   ircd_make_umode (umode, s->cl->umode, 16), s->cl->fname);
   }
 }
@@ -2353,6 +2354,7 @@ static inline void _ircd_burst_clients (INTERFACE *cl, unsigned short t,
 static void _ircd_connection_burst (CLIENT *cl)
 {
   char umode[16];			/* it should be enough in any case */
+  unsigned short i;
 #if IRCD_MULTICONNECT
   register int tst = (cl->umode & A_MULTI);
 
@@ -2361,8 +2363,10 @@ static void _ircd_connection_burst (CLIENT *cl)
 #else
   _ircd_burst_servers(cl->via->p.iface, MY_NAME, Ircd->servers->prev);
 #endif
-  _ircd_burst_clients (cl->via->p.iface, 0, ME.c.lients, umode);
-  _ircd_burst_clients (cl->via->p.iface, 0, Ircd->servers, umode);
+  for (i = 0; i < Ircd->s; i++)
+    if (Ircd->token[i] != NULL && Ircd->token[i]->via != cl->via)
+      _ircd_burst_clients (cl->via->p.iface, i + 1, Ircd->token[i]->c.lients,
+			   Ircd->token[i]->hops + 1, umode);
   ircd_burst_channels (cl->via->p.iface, Ircd->channels);
   dprint(5, "ircd: burst done for %s", cl->lcnick);
 }
@@ -2696,7 +2700,9 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
   else
     ircd_sendto_servers_new (Ircd, cl->via, "SERVER %s 2 %hu :%s", argv[0],
 			     cl->x.token + 1, cl->fname); //!
-  if (clt == NULL)			/* don't send duplicates to RFC2813 */
+  if (clt != NULL)			/* cyclic, our map is changed! */
+    _ircd_recalculate_hops();
+  else					/* don't send duplicates to RFC2813 */
 #endif
   ircd_sendto_servers_old (Ircd, cl->via, "SERVER %s 2 %hu :%s", argv[0],
 			   cl->x.token + 1, cl->fname); //!
