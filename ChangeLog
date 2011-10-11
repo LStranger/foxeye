@@ -13,6 +13,7 @@ TODO:
 Tue Oct 11 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed SIGSEGV on message from gone client.
 	* core/socket.c: added a little cleanup on revents.
+	* core/dispatcher.c: disabled expired code.
 
 Mon Oct 10 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: added numeric on bad mode (bug#80).

@@ -1516,6 +1516,7 @@ int dispatcher (INTERFACE *start_if)
       i = 0;
       count = 0;
     }
+#if 0
     if (!i)
     {
       /* check forced queues */
@@ -1536,6 +1537,7 @@ int dispatcher (INTERFACE *start_if)
       }
       /* all queue depth ok! */
     }
+#endif
     /* check all interfaces */
     iface_run (i);
     i++;
