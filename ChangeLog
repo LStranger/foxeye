@@ -17,6 +17,8 @@ Tue Oct 11 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/socket.c: fixed broken IPv6 socket setup.
 	* modules/irc-channel/irc-channel.c: fixed recently changed rejoin.
 	* modules/irc/irc.c: fixed wrong handling of "irc-raw" bindtable.
+	* modules/ircd/clients.c: changed shown hops in WHO reply.
+	* modules/ircd/ircd.c: fixed clients burst.
 
 Mon Oct 10 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: added numeric on bad mode (bug#80).

@@ -486,7 +486,7 @@ static int ircd_servlist_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, c
 #ifdef USE_SERVICES
       !CLIENT_IS_REMOTE (tgt) ? me :
 #endif
-		tgt->cs->nick, mask, tgt->away, tgt->hops, tgt->fname);
+		tgt->cs->nick, mask, tgt->away, tgt->hops - 1, tgt->fname);
       ircd_do_unumeric (cl, RPL_SERVLIST, tgt, 0, buf);
     }
   }
@@ -511,13 +511,13 @@ static inline void _ircd_who_reply (CLIENT *rq, CLIENT *srv, CLIENT *tgt,
     snprintf (buf, sizeof(buf), "%s %s %s %s %s %c%s%s :%hu %s", m->chan->name,
 	      tgt->user, tgt->host, srv->lcnick, tgt->nick,
 	      (tgt->umode & A_AWAY) ? 'G' : 'H',
-	      (tgt->umode & (A_OP | A_HALFOP)) ? "*" : "", ch, tgt->hops,
+	      (tgt->umode & (A_OP | A_HALFOP)) ? "*" : "", ch, tgt->hops - 1,
 	      tgt->fname);
   }
   else
     snprintf (buf, sizeof(buf), "* %s %s %s %s %c%s :%hu %s", tgt->user,
 	      tgt->host, srv->lcnick, tgt->nick, (tgt->umode & A_AWAY) ? 'G' : 'H',
-	      (tgt->umode & (A_OP | A_HALFOP)) ? "*" : "", tgt->hops, tgt->fname);
+	      (tgt->umode & (A_OP | A_HALFOP)) ? "*" : "", tgt->hops - 1, tgt->fname);
   ircd_do_unumeric (rq, RPL_WHOREPLY, rq, 0, buf);
 }
 
