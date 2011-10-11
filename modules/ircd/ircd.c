@@ -580,7 +580,7 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
       c = _ircd_find_phantom(c, peer); //FIXME: shouldn't we skip it for A_MULTI?
 #if IRCD_MULTICONNECT
     //TODO: rewrite acks check for QUIT and NICK here!
-    if (peer && c->hold_upto && !(CLIENT_IS_SERVER(c)) &&
+    if (peer && c && c->hold_upto && !(CLIENT_IS_SERVER(c)) &&
 	(ack = ircd_check_ack(peer, c, NULL)) && /* sender has quited/renamed */
 	strcasecmp(argv[1], "NICK"))	/* ircd_nick_sb handles this case */
     {

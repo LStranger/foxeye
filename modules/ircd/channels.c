@@ -597,10 +597,19 @@ static int _imch_add_mask (MASK **list, const char **ptr, MASK **cancel,
   MASK *nm;
 
   nm = alloc_MASK();
+  //FIXME: first valid mask is .+!.{1,IDENTLEN}@.+
+  //FIXME: normalize it to [NICKLEN]![IDENTLEN]@[HOSTLEN]
   if (!strchr(mask, '!') && !strchr(mask, '@')) { /* it's just nick */
-    unistrlower (nm->what, mask, (sizeof(nm->what) - 2));
-    strfcat(nm->what, "!*", sizeof(nm->what));
+    unistrlower (nm->what, mask, (sizeof(nm->what) - 4));
+    strfcat(nm->what, "!*@*", sizeof(nm->what));
     *ptr = nm->what;
+  //FIXME: second valid mask is [^!]{1,IDENTLEN}@.+, adding "*!" before
+  //FIXME: third valid mask is [^!@]{1,NICKLEN}, adding "!*@*" after
+  //FIXME: any other mask should:
+  //  snprintf(nm->what, sizeof(nm->what), "%c :invalid MODE mask", mchar);
+  //  ircd_do_cnumeric(_imch_client, ERR_BANLISTFULL, ch, 0, nm->what);
+  //  free_MASK(nm);
+  //  return 0;
   } else
     unistrlower (nm->what, mask, sizeof(nm->what));
   /* note: it might exceed field size? */
