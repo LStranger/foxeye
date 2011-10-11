@@ -381,13 +381,6 @@ int SetupSocket(idx_t idx, const char *domain, const char *bind_to,
     return (E_UNDEFDOMAIN);
   if (!bind_to && type == M_UNIX)
     return (E_UNDEFDOMAIN);
-  i = 1;
-  setsockopt (sockfd, SOL_SOCKET, SO_KEEPALIVE, (void *) &i, sizeof(i));
-  setsockopt (sockfd, SOL_SOCKET, SO_REUSEADDR, (void *) &i, sizeof(i));
-  ling.l_onoff = 1;
-  ling.l_linger = 0;
-  setsockopt (sockfd, SOL_SOCKET, SO_LINGER, (void *) &ling, sizeof(ling));
-  fcntl (sockfd, F_SETOWN, _mypid);
   if (type == M_UNIX)
   {
     addr.s_un.sun_family = AF_UNIX;
@@ -533,6 +526,13 @@ int SetupSocket(idx_t idx, const char *domain, const char *bind_to,
     //SChanged = 1;
     //pthread_mutex_unlock (&LockPoll);
   }
+  i = 1;
+  setsockopt (sockfd, SOL_SOCKET, SO_KEEPALIVE, (void *) &i, sizeof(i));
+  setsockopt (sockfd, SOL_SOCKET, SO_REUSEADDR, (void *) &i, sizeof(i));
+  ling.l_onoff = 1;
+  ling.l_linger = 0;
+  setsockopt (sockfd, SOL_SOCKET, SO_LINGER, (void *) &ling, sizeof(ling));
+  fcntl (sockfd, F_SETOWN, _mypid);
 #ifdef HAVE_SYS_FILIO_H		/* non-BSDish systems have not O_ASYNC flag */
   i = 1;
   ioctl (sockfd, FIONBIO, &i);
