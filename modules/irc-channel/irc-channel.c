@@ -296,6 +296,7 @@ static IRC *_ircch_get_network (const char *network, int create,
   net->maxbans = 30;
   net->maxtargets = 4;
   net->lc = lc;
+  net->last_rejoin = 0;
   if (Insert_Key (&IRCNetworks, net->name, net, 1))
     ERROR ("_ircch_get_network: tree error on adding %s!", net->name);
   else
@@ -1584,12 +1585,11 @@ static void _ircch_start_autojoins(IRC *net, char *buf, size_t bs)
 {
   INTERFACE *tmp;
   char *c, *ch;
-  static time_t last_autojoin = 0;
   int i;
 
-  if (Time < last_autojoin + 10)	/* don't spam server */
+  if (Time < net->last_rejoin + 10)	/* don't spam server */
     return;
-  last_autojoin = Time;
+  net->last_rejoin = Time;
   buf[0] = '?';
   buf[1] = '*';
   strfcpy (&buf[2], net->name, bs-2);

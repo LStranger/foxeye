@@ -16,8 +16,9 @@ module ircd
     d  - means this is a restricted class;
     o  - means this is an Operator;
     h  - means this is a Local Operator;
+    s  - means this is a local service;
     a  - means this is a known server on that network;
-    *  - means this is a hub where we have an autoconnect.
+    *  - means this is a hub where we have an autoconnect to.
  
  Field "hub" on server record contains mask(s) for servers that server can\
  introduce. Mask "!some.server" means wrong path (L:line analog).

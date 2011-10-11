@@ -15,6 +15,7 @@ Tue Oct 11 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/socket.c: added a little cleanup on revents.
 	* core/dispatcher.c: disabled expired code.
 	* core/socket.c: fixed broken IPv6 socket setup.
+	* modules/irc-channel/irc-channel.c: fixed recently changed rejoin.
 
 Mon Oct 10 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: added numeric on bad mode (bug#80).

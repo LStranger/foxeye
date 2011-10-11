@@ -119,6 +119,7 @@ typedef struct IRC
   NICK *me;
   netsplit *splits;
   invited_t *invited;
+  time_t last_rejoin;
   int maxmodes, maxbans, maxtargets;
   char features;		/* L_NOUSERHOST, etc. */
   char modechars[3];		/* restricted,registered,hidehost */
