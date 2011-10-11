@@ -16,6 +16,7 @@ Tue Oct 11 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c: disabled expired code.
 	* core/socket.c: fixed broken IPv6 socket setup.
 	* modules/irc-channel/irc-channel.c: fixed recently changed rejoin.
+	* modules/irc/irc.c: fixed wrong handling of "irc-raw" bindtable.
 
 Mon Oct 10 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: added numeric on bad mode (bug#80).

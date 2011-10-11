@@ -902,6 +902,7 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
     char *params[19]; /* network sender command args ... NULL */
     char *prefix, *p, *uh;
     struct binding_t *bind;
+    register int ec;
 
     /* connection established, we may send data */
     if ((sw = _irc_send (serv, req ? req->string : NULL)) == 1)
@@ -992,17 +993,17 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
       }
       /* run bindings */
       bind = NULL;
-      //FIXME: how we can have no mynick still here?
+      ec = 0;
       while ((bind = Check_Bindtable (BT_Irc, params[2], U_ALL, U_ANYCH, bind)))
       {
 	if (bind->name) /* cannot use RunBinding here! */
-	  i = bind->func (bind->name, i+3, params);
+	  ec = bind->func (bind->name, i+3, params);
 	else
-	  i = bind->func (iface, p, serv->mynick, uh, i, &params[3], serv->lc);
-	if (i)
+	  ec = bind->func (iface, p, serv->mynick, uh, i, &params[3], serv->lc);
+	if (ec)
 	  break;
       }
-      if (i == -1)
+      if (ec == -1)
 	ERROR ("strange IRC command from %s: %s %s%s%s%s%s%s",
 		prefix ? prefix : (NONULLP(serv->p.dname)), params[2],
 		i ? params[3] : "", i > 1 ? " " : "", i > 1 ? params[4] : "",
