@@ -450,6 +450,10 @@ int SetupSocket(idx_t idx, const char *domain, const char *bind_to,
     addr.s_in.sin_port = htons(port);
     bind_to = "";
   }
+  if (type == M_LIST || type == M_LINP) {
+    i = 1;
+    setsockopt (sockfd, SOL_SOCKET, SO_REUSEADDR, (void *) &i, sizeof(i));
+  }
   if (bind_to && bind (sockfd, &addr.sa, len) < 0)
     return (E_ERRNO - errno);
   if (type == M_LIST || type == M_LINP)
@@ -528,7 +532,6 @@ int SetupSocket(idx_t idx, const char *domain, const char *bind_to,
   }
   i = 1;
   setsockopt (sockfd, SOL_SOCKET, SO_KEEPALIVE, (void *) &i, sizeof(i));
-  setsockopt (sockfd, SOL_SOCKET, SO_REUSEADDR, (void *) &i, sizeof(i));
   ling.l_onoff = 1;
   ling.l_linger = 0;
   setsockopt (sockfd, SOL_SOCKET, SO_LINGER, (void *) &ling, sizeof(ling));
