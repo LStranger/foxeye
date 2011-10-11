@@ -121,7 +121,7 @@ static idx_t allocate_socket ()
   if (idx == _Salloc)
     return -1; /* no free sockets! */
   Pollfd[idx].fd = -1;
-  Pollfd[idx].events = POLLIN | POLLPRI;
+  Pollfd[idx].events = 0;	/* not ready */
   Pollfd[idx].revents = 0;
   Socket[idx].domain = NULL;
   Socket[idx].ipname = NULL;
@@ -778,6 +778,8 @@ void PollSockets(int check_out)
       _pollfd[i].fd = Pollfd[i].fd;
       _pollfd[i].events |= Pollfd[i].events;
       Pollfd[i].events = 0;
+      if (_pollfd[i].events == 0) /* not ready yet */
+	_pollfd[i].fd = -1;
     }
     if (_pollfd[i].fd < 0)
       continue;

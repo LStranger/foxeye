@@ -19,6 +19,7 @@ Tue Oct 11 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc/irc.c: fixed wrong handling of "irc-raw" bindtable.
 	* modules/ircd/clients.c: changed shown hops in WHO reply.
 	* modules/ircd/ircd.c: fixed clients burst.
+	* core/socket.c: disabled polling incomplete sockets.
 
 Mon Oct 10 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: added numeric on bad mode (bug#80).
