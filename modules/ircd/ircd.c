@@ -3194,8 +3194,10 @@ static int _ircd_remote_nickchange(CLIENT *tgt, peer_priv *pp,
       if (changed) {
 	phantom = _ircd_find_client(nn);
 	if (phantom != NULL && collision->x.rto != NULL &&
-	    phantom == collision->x.rto->cs)
+	    phantom == collision->x.rto->cs) {
+	  dprint(4, "ircd:ircd.c: nickchange to %s already known to me", nn);
 	  return 1;			/* we got the change back */
+	}
       }
 #endif
       if (tgt)
@@ -3338,6 +3340,23 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   }
   ct--;					/* tokens are sent from 1 */
   tgt = alloc_CLIENT();
+  ct = 0;
+  if (!_ircd_validate_nickname(tgt->nick, argv[0], sizeof(tgt->nick))) {
+    _ircd_transform_invalid_nick(tgt->nick, argv[0], sizeof(tgt->nick));
+    ERROR("ircd:invalid NICK %s via %s => %s", argv[0], peer->dname, tgt->nick);
+    ct = 1;				/* should be corrected */
+    ircd_recover_done(pp, "Invalid nick");
+#if IRCD_MULTICONNECT
+    collision = NULL;
+  } else
+    collision = ircd_find_client(tgt->nick, pp);
+  if (collision != NULL && collision->cs == on) {
+    dprint(4, "ircd: backup introduction of %s from %s by %s", tgt->nick,
+	   on->lcnick, peer->dname);
+    free_CLIENT(tgt);
+    return (1);
+#endif
+  }
   tgt->cs = on;
   tgt->hold_upto = 0;
   tgt->rfr = NULL;
@@ -3345,13 +3364,6 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   tgt->via = NULL;
   tgt->c.hannels = NULL;
   tgt->away[0] = '\0';
-  ct = 0;
-  if (!_ircd_validate_nickname(tgt->nick, argv[0], sizeof(tgt->nick))) {
-    _ircd_transform_invalid_nick(tgt->nick, argv[0], sizeof(tgt->nick));
-    ERROR("ircd:invalid NICK %s via %s => %s", argv[0], peer->dname, tgt->nick);
-    ct = 1;				/* should be corrected */
-    ircd_recover_done(pp, "Invalid nick");
-  }
   collision = _ircd_check_nick_collision(tgt->nick, sizeof(tgt->nick), pp,
 					 on->lcnick);
   if (collision != NULL) { /* this nick found - either live or phantom */
