@@ -1375,28 +1375,45 @@ static void _ircch_net_got_activity (IRC *net, LINK *link)
  * ...or...
  *		-> "403"|"405"|"407"|"437"|"471"|"473"|"474"|"475" (cannot join)
  */
-static void _ircch_join_channel (IRC *net, char *chname)
+static void _ircch_join_channel(IRC *net, char *chname)
 {
-  char *key, *c;
+  char *key;
+  register char *c;
   struct clrec_t *clr;
+  int ns;
+  static char *oldkey = NULL;
+  static char buf[400];
+  static int inb = 0;
 
   /* TODO: check if we already joined to not waste bandwidth */
-  clr = Lock_Clientrecord (chname);
-  if (clr)
+  if (chname != NULL && (clr = Lock_Clientrecord (chname)) != NULL)
   {
     key = safe_strdup (Get_Field (clr, "passwd", NULL));
     Unlock_Clientrecord (clr);
   }
   else
     key = NULL;
-  c = strrchr (chname, '@');
-  if (c) *c = 0;
-  if (key)
-    New_Request (net->neti, 0, "JOIN %s %s", chname, key);
+  if (chname == NULL)
+    ns = 0;
+  else if ((c = strrchr (chname, '@')))
+    ns = c - chname;
   else
-    New_Request (net->neti, 0, "JOIN %s", chname);
-  if (c) *c = '@';
-  FREE (&key);
+    ns = strlen(chname);
+  if (ns == 0 || (key && inb > 0) || ns >= (sizeof(buf) - inb - 2)) {
+    if (oldkey) {
+      New_Request (net->neti, 0, "JOIN %.*s %s", inb, buf, oldkey);
+      FREE(&oldkey);
+    } else
+      New_Request (net->neti, 0, "JOIN %.*s", inb, buf);
+    inb = 0;
+    if (ns == 0)
+      return;
+  }
+  oldkey = key;
+  if (inb > 0)
+    buf[inb++] = ',';
+  ns = strfcpy(&buf[inb], chname, sizeof(buf) - inb);
+  inb += ns;
 }
 
 BINDING_TYPE_connect (connect_ircchannel);
@@ -1587,7 +1604,7 @@ static void _ircch_start_autojoins(IRC *net, char *buf, size_t bs)
   char *c, *ch;
   int i;
 
-  if (Time < net->last_rejoin + 10)	/* don't spam server */
+  if (Time < net->last_rejoin + 20)	/* don't spam server */
     return;
   net->last_rejoin = Time;
   buf[0] = '?';
@@ -1611,6 +1628,7 @@ static void _ircch_start_autojoins(IRC *net, char *buf, size_t bs)
       _ircch_join_channel (net, c);
     c = ch;
   }
+  _ircch_join_channel (net, NULL);		/* flush buffers */
   tmp->ift = I_DIED;
 }
 
@@ -1720,7 +1738,8 @@ static int irc_invite (INTERFACE *iface, char *svname, char *me, unsigned char *
   cf = Get_Clientflags (chname, "");
   if (cf & U_ACCESS)				/* it seems it's pending */
   {
-    _ircch_join_channel (net, chname);
+    _ircch_join_channel (net, chname);	/* add to buffer */
+    _ircch_join_channel (net, NULL);	/* flush buffer */
     return 0;
   }
   if (net->invited)				/* oops, another invite came */
@@ -1992,6 +2011,7 @@ static int irc_kick (INTERFACE *iface, char *svname, char *me, unsigned char *pr
     {
       snprintf (str, sizeof(str), "%s%s", ch->real, net->name);
       _ircch_join_channel (net, str);	/* do 'cycle' feature */
+      _ircch_join_channel (net, NULL);
     }
     _ircch_destroy_channel (ch);
     nt = NULL;
@@ -2222,6 +2242,7 @@ static int irc_part (INTERFACE *iface, char *svname, char *me, unsigned char *pr
     {
       snprintf (str, sizeof(str), "%s%s", ch->real, net->name);
       _ircch_join_channel (net, str);	/* do 'cycle' feature */
+      _ircch_join_channel (net, NULL);
     }
     _ircch_destroy_channel (ch);
     nt = NULL;
