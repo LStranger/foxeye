@@ -813,13 +813,13 @@ __attribute__((warn_unused_result)) static inline CLIENT *
     cl2->pcl = NULL;			/* it's alone now */
     if (lon)
       strfcpy(cl2->lcnick, lon, sizeof(cl2->lcnick));
-    strfcpy(cl2->nick, on, sizeof(cl2->nick));
     if (Insert_Key (&Ircd->clients, cl2->lcnick, cl2, 1) < 0)
       ERROR("ircd:_ircd_get_phantom: tree error on adding %s", cl2->lcnick);
       /* FIXME: isn't it something fatal? */
     else
       dprint(2, "ircd:ircd.c:_ircd_get_phantom: new name %s", cl2->lcnick);
   }
+  strfcpy(cl2->nick, on, sizeof(cl2->nick));
   cl2->via = NULL;			/* no structures for this */
   cl2->host[0] = 0;			/* mark it to drop later */
   cl2->away[0] = 0;			/* it's used by nick tracking */
@@ -3864,13 +3864,6 @@ static int _ircd_request (INTERFACE *cli, REQUEST *req)
   return REQ_OK;
 }
 
-static void _ircd_catch_undeleted_ch (void *ch)
-{
-  ERROR ("ircd:_ircd_catch_undeleted_ch: channel %s with %d users",
-	 ((CHANNEL *)ch)->name, ((CHANNEL *)ch)->count);
-  ircd_drop_channel (Ircd, ch);
-}
-
 static void _ircd_catch_undeleted_cl (void *cl)
 {
   if (CLIENT_IS_ME((CLIENT *)cl))
@@ -3942,7 +3935,6 @@ static iftype_t _ircd_signal (INTERFACE *iface, ifsig_t sig)
 	Ircd->users = cl->next;
 	free_CLASS (cl);
       }
-      Destroy_Tree (&Ircd->channels, &_ircd_catch_undeleted_ch);
       Destroy_Tree (&Ircd->clients, &_ircd_catch_undeleted_cl);
       Ircd->iface = NULL;
       if (iface)
@@ -4549,12 +4541,15 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
 #endif
       Delete_Binding ("ircd-stats-reply", (Function)&_istats_l, NULL);
       Delete_Binding ("ircd-stats-reply", (Function)&_istats_m, NULL);
-      ircd_channel_proto_end();
+      if (Ircd->iface != NULL)	/* it might be already terminated? */
+	_ircd_signal (Ircd->iface, S_TERMINATE);
+      else
+	ERROR("ircd:cannot find main interface for termination!");
+      ircd_channel_proto_end(&Ircd->channels);
       ircd_client_proto_end();
       ircd_server_proto_end();
       ircd_queries_proto_end();
       ircd_message_proto_end();
-      _ircd_signal (Ircd->iface, S_TERMINATE);
       Delete_Help("ircd");
       FREE (&Ircd->token);
       FREE (&Ircd);

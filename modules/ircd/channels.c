@@ -2477,7 +2477,7 @@ void ircd_drop_channel (IRCD *ircd, CHANNEL *ch)
   CLEAR_MASKS (ch->invites);
   while (ch->invited)
     _ircd_del_from_invited (ch->invited);
-  if (Delete_Key (ircd->channels, ch->lcname, ch))
+  if (ircd && Delete_Key (ircd->channels, ch->lcname, ch))
     ERROR("ircd:ircd_drop_channel: tree error on removing %s", ch->lcname);
     //TODO: isn't it fatal?
   free_CHANNEL (ch);
@@ -2804,8 +2804,15 @@ modeflag ircd_whochar2mode(char ch)
 }
 
 
+static void _ircd_catch_undeleted_ch (void *ch)
+{
+  ERROR ("ircd:_ircd_catch_undeleted_ch: channel %s with %d users",
+	 ((CHANNEL *)ch)->name, ((CHANNEL *)ch)->count);
+  ircd_drop_channel (NULL, ch);
+}
+
 /* common end and start of channel protocol */
-void ircd_channel_proto_end (void)
+void ircd_channel_proto_end (NODE **tree)
 {
   Delete_Binding ("ircd-whochar", (Function)&iwc_ircd, NULL);
   Delete_Binding ("ircd-channel", (Function)&ich_normal, NULL);
@@ -2842,6 +2849,7 @@ void ircd_channel_proto_end (void)
   Delete_Binding ("ircd-umodechange", (Function)&iumch_s, NULL);
   Delete_Binding ("ircd-check-modechange", &ichmch_r, NULL);
   _ircd_internal_logger_sig (_ircd_internal_logger, S_TERMINATE); /* stop &* */
+  Destroy_Tree (tree, &_ircd_catch_undeleted_ch);
   _forget_(CHANNEL);
   _forget_(MEMBER);
   _forget_(MASK);

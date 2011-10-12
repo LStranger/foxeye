@@ -386,7 +386,7 @@ int ircd_lusers_unknown (void);
 
 	/* channel.c bindings */
 void ircd_channel_proto_start (IRCD *);
-void ircd_channel_proto_end (void);
+void ircd_channel_proto_end (NODE **);
 	/* client.c bindings */
 void ircd_client_proto_start (void);
 void ircd_client_proto_end (void);

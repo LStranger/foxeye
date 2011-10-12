@@ -1618,14 +1618,14 @@ static void *_connect_host (void *input_data)
   if ((*cptr->idx = GetSocket (M_RAW)) >= 0)
     cptr->rc = SetupSocket (*cptr->idx, cptr->host, NULL, cptr->port, NULL, NULL);
   if (cptr->rc == 0)
-    dprint (5, "direct:_connect_host: connected to %s at port %hu: new socket %d",
-	    cptr->host, cptr->port, (int)*cptr->idx);
+    dprint (5, "direct:_connect_host: connected to %s at port %hu: new socket %hd",
+	    cptr->host, cptr->port, *cptr->idx);
   else
   {
     char buf[SHORT_STRING];
 
-    LOG_CONN ("Could not make connection to %s at port %hu (socket %d): %s",
-	      cptr->host, cptr->port, (int)*cptr->idx,
+    LOG_CONN ("Could not make connection to %s at port %hu (socket %hd): %s",
+	      cptr->host, cptr->port, *cptr->idx,
 	      SocketError (cptr->rc, buf, sizeof(buf)));
     KillSocket (cptr->idx);
   }
