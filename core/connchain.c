@@ -39,6 +39,18 @@ struct connchain_i			/* internal use only */
   char tc;
 };
 
+#if 0
+//TODO: remember 'sticky' on adding, remove on killing, reinsert on restart
+//SSL need to be first always
+struct cc_sticky {
+  struct cc_sticky *next;
+  struct peer_t *peer;
+  char tc;
+};
+typedef struct cc_sticky __cc_sticky;
+ALLOCATABLE_TYPE (__cc_sticky, _CCS_, next)
+#endif
+
 static struct bindtable_t *BT_CChain;
 
 typedef struct connchain_i connchain_i;

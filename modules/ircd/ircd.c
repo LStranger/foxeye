@@ -99,7 +99,7 @@ static sig_atomic_t __ircd_have_started = 0;
 static tid_t _uplinks_timer = -1;
 
 static CLIENT ME = { .umode = A_SERVER, .via = NULL, .x.token = 0, .cs = NULL,
-		     .c.lients = NULL };
+		     .c.lients = NULL, .hops = 0 };
 
 #define MY_NAME ME.lcnick
 
@@ -2295,15 +2295,19 @@ static inline void _ircd_burst_servers(INTERFACE *cl, const char *sn, LINK *l,
 {
   dprint(5, "ircd:ircd.c:_ircd_burst_servers: %s to %s", sn, cl->name);
   while (l) {
-    if (CLIENT_IS_SERVER (l->cl) &&
-	(l->where == &ME || l->cl->via == l->where->via)) {
+    if (CLIENT_IS_SERVER (l->cl) && (l->cl->hops >= l->where->hops) &&
+	/* send any: our link, server behind this one,
+	   or if we send to A_MULTI then send other equal path too */
+	(tst || l->where == &ME || l->cl->via == l->where->via)) {
       register char *cmd = "SERVER";
 
       if (tst && (l->cl->umode & A_MULTI)) /* new server type */
 	cmd = "ISERVER";		/* protocol extension */
       New_Request (cl, 0, ":%s %s %s %hu %hu :%s", sn, cmd, l->cl->nick,
 		   l->cl->hops + 1, l->cl->x.token + 1, l->cl->fname);
-      _ircd_burst_servers(cl, l->cl->nick, l->cl->c.lients, tst); /* recursion */
+      if (l->where == &ME || l->cl->via == l->where->via) /* recursion */
+	/* for alternative path only send multipath but don't go further */
+	_ircd_burst_servers(cl, l->cl->nick, l->cl->c.lients, tst);
     }
     l = l->prev;
   }

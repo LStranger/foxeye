@@ -10,6 +10,9 @@ TODO:
 	* core/socket.c: to add libidn support.
 
 --- [0.10.0]
+Wed Oct 12 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/ircd.c: added alternative path to send on servers burst.
+
 Tue Oct 11 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed SIGSEGV on message from gone client.
 	* core/socket.c: added a little cleanup on revents.
