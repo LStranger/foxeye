@@ -1399,21 +1399,27 @@ static void _ircch_join_channel(IRC *net, char *chname)
     ns = c - chname;
   else
     ns = strlen(chname);
-  if (ns == 0 || (key && inb > 0) || ns >= (sizeof(buf) - inb - 2)) {
+  if (ns == 0 || (key && inb > 0) || ns >= ((int)sizeof(buf) - inb - 2)) {
     if (oldkey) {
       New_Request (net->neti, 0, "JOIN %.*s %s", inb, buf, oldkey);
       FREE(&oldkey);
     } else
       New_Request (net->neti, 0, "JOIN %.*s", inb, buf);
     inb = 0;
-    if (ns == 0)
+    if (ns == 0) {
       return;
+      FREE(&key);
+    }
+    if (ns >= ((int)sizeof(buf))) /* that's impossible! */
+      ns = sizeof(buf) - 1;
   }
-  oldkey = key;
+  DBG("irc-channel:irc-channel.c:_ircch_join_channel: adding channel=%.*s key=%s",
+      ns, chname, NONULL(key));
+  if (key)
+    oldkey = key;
   if (inb > 0)
     buf[inb++] = ',';
-  ns = strfcpy(&buf[inb], chname, sizeof(buf) - inb);
-  inb += ns;
+  inb += strfcpy(&buf[inb], chname, ns + 1);
 }
 
 BINDING_TYPE_connect (connect_ircchannel);
