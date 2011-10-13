@@ -300,7 +300,11 @@ static int _del_usermask (struct clrec_t *user, const char *mask)
   int i = 0;
   char lcmask[HOSTMASKLEN+1];
 
-  unistrlower (lcmask, mask, sizeof(lcmask));  
+  if (user->uid > ID_ANY && strchr(user->lname, '.'))
+    /* it's server name rather than user name */
+    strfcpy (lcmask, mask, sizeof(lcmask));
+  else
+    unistrlower (lcmask, mask, sizeof(lcmask));  
   /* check for aliases */
   if (user->flag & U_ALIAS)
     user = user->u.owner;
