@@ -1407,8 +1407,8 @@ static void _ircch_join_channel(IRC *net, char *chname)
       New_Request (net->neti, 0, "JOIN %.*s", inb, buf);
     inb = 0;
     if (ns == 0) {
-      return;
       FREE(&key);
+      return;
     }
     if (ns >= ((int)sizeof(buf))) /* that's impossible! */
       ns = sizeof(buf) - 1;

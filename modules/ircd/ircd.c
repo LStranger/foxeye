@@ -895,7 +895,8 @@ static CLIENT *_ircd_check_nick_collision(char *nick, size_t nsz, peer_priv *pp,
   b = Check_Bindtable(BTIrcdCollision, "*", U_ALL, U_ANYCH, NULL);
   if (b == NULL || b->name) {		/* no binding or script binding? */
     res = 0;
-    nick[0] = '\0';			/* both should be removed (RFC2812) */
+    if (collided->hold_upto == 0)
+      nick[0] = '\0';			/* both should be removed (RFC2812) */
     collnick = NULL;			/* initialize to avoid warning */
   } else {
     /* set res to 0 if collided is active and is renamed one so we are forced
@@ -1333,7 +1334,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
       peer->noidle = Time;		/* for idle calculation */
 #endif
     /* we accepted a message, apply antiflood penalty on client */
-    if (!(cl->umode & (A_SERVER | A_SERVICE)) &&
+    if (!(cl->umode & (A_SERVER | A_SERVICE)) && i >= 0 &&
 	CheckFlood (&peer->penalty, _ircd_client_recvq) > 0) {
       dprint(4, "ircd: flood from %s, applying penalty on next message",
 	     cl->nick);
@@ -3146,7 +3147,7 @@ static CLIENT *_ircd_do_nickchange(CLIENT *tgt, peer_priv *pp,
   phantom->rfr = tgt->rfr;
   phantom->x.rto = tgt;
   tgt->rfr = phantom;
-  phantom->hold_upto = Time + CHASETIMELIMIT; /* nick delay for collided */
+  phantom->hold_upto = Time/* + CHASETIMELIMIT*/; /* nick delay for collided */
 #if IRCD_MULTICONNECT
   _ircd_move_acks(tgt, phantom); /* move acks into the clone with old lcnick */
 #endif
@@ -3366,7 +3367,8 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   tgt->away[0] = '\0';
   collision = _ircd_check_nick_collision(tgt->nick, sizeof(tgt->nick), pp,
 					 on->lcnick);
-  if (collision != NULL) { /* this nick found - either live or phantom */
+  if (collision != NULL && collision->hold_upto == 0) {
+    /* another client of that nick found and still kept alive */
     ERROR("ircd:nick collision via %s: %s => %s", peer->dname, argv[0],
 	  tgt->nick);
     ct = 1;				/* should be changed by collision */
@@ -3393,6 +3395,18 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     phantom->x.rto = tgt;		/* set relations */
     tgt->rfr = phantom;
     New_Request(peer->iface, 0, ":%s NICK :%s", argv[0], tgt->nick);
+  } else if (collision != NULL) { /* we got new client collided with phantom */
+    if (Delete_Key(Ircd->clients, collision->lcnick, tgt) < 0)
+      ERROR("ircd:ircd_nick_sb: tree error on removing %s", collision->lcnick);
+      //TODO: isn't it fatal?
+    else
+      dprint(2, "ircd:ircd.c:ircd_nick_sb: del name %s", collision->lcnick);
+    collision->lcnick[0] = '\0';
+    tgt->rfr = collision;
+    while (collision) {			/* make it a nick holder now */
+      collision->cs = tgt;		/* as we are about to insert it */
+      collision = collision->pcl;
+    }
   }
   tgt->hops = on->hops + 1;
   strfcpy(tgt->user, argv[2], sizeof(tgt->user));
