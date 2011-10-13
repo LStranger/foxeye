@@ -13,6 +13,7 @@ TODO:
 Thu Oct 13 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed handling collision with nick on hold.
 	* core/list.c: fixed deleting of host for servers.
+	* modules/ircd/ircd.c: fixed matching of server host with no ident mask.
 
 Wed Oct 12 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: added alternative path to send on servers burst.

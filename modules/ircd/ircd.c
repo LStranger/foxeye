@@ -2469,8 +2469,10 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
 	  *ourpass++ = 0;
 	if ((!*ident || match (ident, cl->user) >= 0) && /* user part matches */
 	    (!strcasecmp (chost, cl->host) || /* host part matches host */
-	     !strcasecmp (chost, ipname))) /* or host part matches IP */
+	     !strcasecmp (chost, ipname))) { /* or host part matches IP */
+	  *c = ':';			/* in case if no ident mask given */
 	  break;			/* it's matched, done */
+	}
 	c = cc;				/* else try next host */
       } while (*c);
       if (*c)
