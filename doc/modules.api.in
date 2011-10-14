@@ -1341,6 +1341,9 @@ All int func() returns 0 if binding did not executed. If binding executed
 but result should be ignored (no logs for example) then func() may return
 value -1. All bindings may be non-reenterable if another wasn't declared.
 
+Every matched binding in non-unique bindtable type should be called on
+bindtable check if another wasn't declared.
+
 Interpreter entrance for bindings:
   int func(char *_f_n_a_m_e, int _a_r_g_c, const char *_a_r_g_v[]);
     Call interpreter function _f_n_a_m_e with _a_r_g_c arguments array _a_r_g_v (see

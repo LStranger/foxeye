@@ -17,6 +17,7 @@ RAW   "iirrcc--rraaww"        MATCHCASE
     specific case conversion function _l_c. Note: return value -1 of the
     binding has unusual meaning: parameters are incorrect.
       Matching: command.  (any flags are ignored)
+      Matching stops after first succesful binding call.
       Script args: network sender command (params)...
 
 -     "iirrcc--ccoonnnneecctteedd"  MASK
@@ -79,6 +80,7 @@ CTCP  "iirrcc--ppuubb--mmssgg--ccttccpp" MATCHCASE
     Used the same as above but for ctcp and with another script arguments
     list.
       Matching: command.
+      Matching stops after first succesful binding call.
       Script args: nick user@host Lname chan@net command [args]
 
 CTCR  "iirrcc--ppuubb--nnoottiiccee--ccttccpp" MATCHCASE
@@ -125,6 +127,7 @@ CTCP  "iirrcc--pprriivv--mmssgg--ccttccpp" MATCHCASE
     Used the same as above but for ctcp and with another script arguments
     list.
       Matching: command.
+      Matching stops after first succesful binding call.
       Script args: nick user@host Lname mynick command [args]
 
 CTCR  "iirrcc--pprriivv--nnoottiiccee--ccttccpp" MATCHCASE
@@ -140,6 +143,7 @@ FLUD  "iirrcc--fflloooodd"      MASK
     channel is _c_h_a_n, else if target is me then _c_h_a_n contains NULL. Type
     of flood _f_t may be one of "ctcp" or "msg".
       Matching: flood type.
+      Matching stops after first succesful binding call.
       Script args: nick user@host Lname ft chan
 
 NICK  "iirrcc--nniicckkcchhgg"    MASK

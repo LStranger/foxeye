@@ -28,6 +28,7 @@
     may ruin IRC protocol). If bindings denying access for that client
     then it should return 0 and leave reason message into _m_s_g.
       Matching: host.  (userflags are ignored)
+      Matching stops after first access failure.
 
 -     "iirrccdd--rreeggiisstteerr--ccmmdd" UNIQ
   int func(INTERFACE *_s_r_v, struct peer_t *_p_e_e_r, int _a_r_g_c, const char **_a_r_g_v);
@@ -130,6 +131,7 @@
     disallowed it), or 0 if it is disallowed. If no appropriate binding
     was found then message will be allowed.
       Matching: target.  (userflags are ignored)
+      Matching stops after first binding call that returns 1.
 
 -     "iirrccdd--cchheecckk--mmooddeecchhaannggee" MASK
   int func(modeflag _u_m_o_d_e, modeflag _m_m_o_d_e, int _a_d_d, modeflag _c_h_g,
@@ -144,6 +146,7 @@
     and in that case _u_m_o_d_e is user mode and _c_h_g is 0. Returns 0 in case
     if modechange should be rejected or any other value otherwise.
       Matching: channel name/user nick.  (userflags are ignored)
+      Matching stops after first reject.
 
 -     "iirrccdd--mmooddeecchhaannggee" MATCHCASE
   (int) modeflag func(INTERFACE *_s_r_v, const char *_r_q, modeflag _r_c_h_m_o_d_e,
@@ -182,6 +185,7 @@
     removing a binding so those modules can build their list of supported
     flags to reply to user on request.
       Matching: modechar.  (userflags are ignored)
+      Matching stops after first succesful binding call.
 
 -     "iirrccdd--uummooddeecchhaannggee" MATCHCASE
   (int) modeflag func(INTERFACE *_s_r_v, const char *_r_q, modeflag _r_u_m_o_d_e,
@@ -209,6 +213,7 @@
     receives the same _s_r_v, _p_e_e_r, _a_r_g_c, and _a_r_g_v parameters that binding
     for "ircd-client-cmd" will do and also user mode flags _u_m_o_d_e.
       Matching: command.  (channel userflags are ignored)
+      Matching stops after first succesful binding call.
 
 -     "iirrccdd--ssttaattss--rreeppllyy" KEYWORD
   (int) void func(INTERFACE *_s_r_v, const char *_r_q, modeflag _m_f);

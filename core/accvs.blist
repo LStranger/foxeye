@@ -50,6 +50,7 @@ FILT  "iinn--ffiilltteerr"      MASK
     be applied. Null-terminated text at area _m_s_g no longer than _m_s_g_l_e_n
     can be rewritten by internal binding.
       Matching: full text line.  (any channel userflags are ignored)
+      Matching stops when text is empty.
       Script args: Dcc-idx msg
       Bind result: new text line.
 
@@ -60,6 +61,7 @@ FILT  "iinn--ffiilltteerr"      MASK
     applied. Null-terminated text at area _m_s_g no longer than _m_s_g_l_e_n can
     be rewritten.
       Matching: full text line.  (any channel userflags are ignored)
+      Matching stops when text is empty.
       Script args: Dcc-idx msg
       Bind result: new text line.
 
@@ -243,6 +245,7 @@ UNLD  "uunnllooaadd"         MASK
     and change counter (by argument's pointer) appropriately. The _s_e_n_d()
     function should never close or destroy the socket.
       Matching: connchain flag char.
+      Matching stops after first succesful binding call.
 
 -     "ggoott--lliisstteenneerr"    UNIQMASK
   int func(struct sockaddr *_s_a, int _s_e_t);

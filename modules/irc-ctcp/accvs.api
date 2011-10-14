@@ -9,6 +9,7 @@
     _w_h_o and who is identified as _l_n_a_m_e. _m_s_g is the full command line
     with arguments.
       Matching: command. (any channel flags are ignored)
+      Matching stops after first succesful binding call.
 
 RCVD  "ddcccc--ggoott"        MASK
   (int) void func(unsigned char *_w_h_o, char *_f_i_l_e_n_a_m_e);
