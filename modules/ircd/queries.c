@@ -268,7 +268,7 @@ static int ircd_names_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char
 //TODO: check and forbid services to query
 #define DO_SERVER_QUERY(F) \
   register CLIENT *cl = _ircd_find_client_lc ((IRCD *)srv->data, lcsender); \
-  if (!cl || !CLIENT_IS_REMOTE(cl)) \
+  if (cl == NULL || CLIENT_IS_SERVER(cl) || !CLIENT_IS_REMOTE(cl)) \
   { \
     ERROR ("ircd:Invalid query source %s from %s", sender, peer->dname); \
     return ircd_recover_done (peer->iface->data, "Invalid query source"); \
@@ -1054,7 +1054,6 @@ static inline int _ircd_query_whois (IRCD *ircd, CLIENT *cl, struct peer_priv *v
     }
     else if (strpbrk (c, "*?"))
     {
-      //FIXME: error if cl is server?
       if (!CLIENT_IS_REMOTE(cl))	/* cl cannot be ME */
       {
 	NODE *t = ircd->clients;
