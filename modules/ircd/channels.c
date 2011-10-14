@@ -590,28 +590,44 @@ static modeflag imch_l(INTERFACE *srv, const char *rq, modeflag rchmode,
 }
 
 static int _imch_add_mask (MASK **list, const char **ptr, MASK **cancel,
-			   int num, const char *txt)
+			   int num, const char *txt, char mchar)
 {
   register MASK *mm;
   const char *mask = *ptr;
+  const char *ex, *at;
+  register size_t sz;
   MASK *nm;
 
   nm = alloc_MASK();
-  //FIXME: first valid mask is .+!.{1,IDENTLEN}@.+
-  //FIXME: normalize it to [NICKLEN]![IDENTLEN]@[HOSTLEN]
-  if (!strchr(mask, '!') && !strchr(mask, '@')) { /* it's just nick */
-    unistrlower (nm->what, mask, (sizeof(nm->what) - 4));
+  if ((ex = strchr(mask, '!')) == NULL &&
+      (at = strchr(mask, '@')) == NULL) { /* it's just nick */
+    /* first valid mask is [^!@]{1,NICKLEN}, adding "!*@*" after */
+    sz = unistrcut(mask, (sizeof(nm->what) - 4), NICKLEN);
+    unistrlower (nm->what, mask, sz + 1);
     strfcat(nm->what, "!*@*", sizeof(nm->what));
     *ptr = nm->what;
-  //FIXME: second valid mask is [^!]{1,IDENTLEN}@.+, adding "*!" before
-  //FIXME: third valid mask is [^!@]{1,NICKLEN}, adding "!*@*" after
-  //FIXME: any other mask should:
-  //  snprintf(nm->what, sizeof(nm->what), "%c :invalid MODE mask", mchar);
-  //  ircd_do_cnumeric(_imch_client, ERR_BANLISTFULL, ch, 0, nm->what);
-  //  free_MASK(nm);
-  //  return 0;
-  } else
+  } else if (ex == NULL && at[1] != '\0') {
+    /* second valid mask is [^!]{1,IDENTLEN}@.+, adding "*!" before */
+    sz = at - mask;
+    if (sz > (sizeof(nm->what) - 4))
+      sz = (sizeof(nm->what) - 4);
+    sz = unistrcut(mask, sz, IDENTLEN);
+    nm->what[0] = '*';
+    nm->what[1] = '!';
+    sz = unistrlower(&nm->what[2], mask, sz + 1);
+    sz += 2;
+    unistrlower(&nm->what[sz], at, sizeof(nm->what) - sz);
+  } else if (ex != NULL && (at = strchr(mask, '@')) != NULL && at[1] != '\0') {
+    /* third valid mask is .+!.{1,IDENTLEN}@.+ */
+    //FIXME: normalize it to [NICKLEN]![IDENTLEN]@[HOSTLEN]
     unistrlower (nm->what, mask, sizeof(nm->what));
+  } else {
+    /* any other mask is error */
+    snprintf(nm->what, sizeof(nm->what), "%c :Invalid mask", mchar);
+    ircd_do_cnumeric(_imch_client, ERR_BANLISTFULL, _imch_channel, 0, nm->what);
+    free_MASK(nm);
+    return 0;
+  }
   /* note: it might exceed field size? */
   mask = nm->what;
   while (*list)
@@ -669,7 +685,7 @@ static int _imch_do_banset (INTERFACE *srv, const char *rq, const char *ch,
   }
   else if (add)
     return _imch_add_mask (&_imch_channel->bans, param, &_imch_cancel.bans,
-			   RPL_BANLIST);
+			   RPL_BANLIST, 'b');
   else
     return _imch_del_mask (&_imch_channel->bans, param);
 }
@@ -702,7 +718,7 @@ static int _imch_do_exemptset (INTERFACE *srv, const char *rq, const char *ch,
   }
   else if (add)
     return _imch_add_mask (&_imch_channel->exempts, param,
-			   &_imch_cancel.exempts, RPL_EXCEPTLIST);
+			   &_imch_cancel.exempts, RPL_EXCEPTLIST, 'e');
   else
     return _imch_del_mask (&_imch_channel->exempts, param);
 }
@@ -735,7 +751,7 @@ static int _imch_do_inviteset (INTERFACE *srv, const char *rq, const char *ch,
   }
   else if (add)
     return _imch_add_mask (&_imch_channel->invites, param,
-			   &_imch_cancel.invites, RPL_INVITELIST);
+			   &_imch_cancel.invites, RPL_INVITELIST, 'I');
   else
     return _imch_del_mask (&_imch_channel->invites, param);
 }

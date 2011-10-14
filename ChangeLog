@@ -15,6 +15,7 @@ Fri Oct 14 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  "ircd-got-client" into "ircd-local-client".
 	* modules/ircd/channels.c: disabled "&CHANNEL" as it's unused.
 	* modules/ircd/queries.c: denied queries from servers.
+	* modules/ircd/channels.c: implemented simple MODE mask validation.
 
 Thu Oct 13 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed handling collision with nick on hold.
