@@ -2911,11 +2911,17 @@ void ircd_channel_proto_start (IRCD *ircd)
 		     "SERVER MESSAGES: server errors", F_ERROR);
   _ircd_log_channel (ircd, "&LOCAL",
 		     "SERVER MESSAGES: notices about local connections", F_CONN);
-  _ircd_log_channel (ircd, "&CHANNEL",
-		     "SERVER MESSAGES: fake modes", F_JOIN);
-//  _ircd_log_channel ("&HASH", ?????);
-//  _ircd_log_channel ("&NUMERICS", ?????);
+//  _ircd_log_channel (ircd, "&CHANNEL",
+//		     "SERVER MESSAGES: fake modes", F_JOIN);
+//  _ircd_log_channel ("&HASH", "SERVER MESSAGES: hash tables growth", ?????);
+//  _ircd_log_channel ("&NUMERICS", "SERVER MESSAGES: numerics received", ?????);
   _ircd_log_channel (ircd, "&SERVERS",
 		     "SERVER MESSAGES: servers joining and leaving", F_SERV);
+// "&SERVICES", "SERVER MESSAGES: services joining and leaving"
+// "&AUTH", "SERVER MESSAGES: messages from the authentication slave"
+// "&ISERV", "SERVER MESSAGES: messages from the configuration slave" -- A_SECRET
+// "&OPER", "SERVER MESSAGES: opers-only notices" -- A_SECRET
+// "&WALLOPS", "WALLOPS MESSAGES: supermouse-only" -- A_SECRET
+  //TODO: BTIrcdSystemChannel -- create empty log channel
 }
 #endif

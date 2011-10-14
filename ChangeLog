@@ -13,6 +13,7 @@ TODO:
 Fri Oct 14 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c, modules/ircd/queries.c: renamed bindtable
 	  "ircd-got-client" into "ircd-local-client".
+	* modules/ircd/channels.c: disabled "&CHANNEL" as it's unused.
 
 Thu Oct 13 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed handling collision with nick on hold.
