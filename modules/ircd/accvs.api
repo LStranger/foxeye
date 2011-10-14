@@ -5,12 +5,12 @@
   Interfaces: accepts messages for I_SERVICE with name <network> to run
   them as if they came anywhere else from (_s_r_v below) but as exception
   message can be some numeric and in that case it will be forwarded to
-  target user thru "ircd-do-numeric" bindtable.
+  target user thru "ircd-do-numeric" bindtable. If message has no prefix
+  then the server itself will be assumed as message source.
   accepts messages for I_CLIENT with name <name>@<network> to send them
   to valid recipient in network (note: if <name> is "" then recipient is
   every local user and if <name> is "*.*" then recipient is every local
-  server link); messages have to have prefix until they come from local
-  client (in latter case module "ircd" can compose prefix itself).
+  server link); messages have to have prefix.
 
   Note: Inspect_Client() function for this module is case-sensitive for
   nicks or server names to be as fast as possible and avoid undesired
@@ -69,7 +69,7 @@
     not reset idle time calculation.
       Matching: command.  (userflags are ignored)
 
--     "iirrccdd--ggoott--cclliieenntt" MASK
+-     "iirrccdd--llooccaall--cclliieenntt" MASK
   (int) void func (INTERFACE *_s_r_v, struct peer_t *_p_e_e_r);
     Used when an user _p_e_e_r has been succesfully registered on the server
     and propagated to others. _s_r_v is IRCD interface which can be used to

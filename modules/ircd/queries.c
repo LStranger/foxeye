@@ -1369,8 +1369,8 @@ static int ircd_users_sb(INTERFACE *srv, struct peer_t *peer, unsigned short tok
 
 
 /* ---------------------------------------------------------------------------
-   "ircd-got-client" binding for user connection start */
-BINDING_TYPE_ircd_got_client(_igotc_lu_mo);
+   "ircd-local-client" binding for user connection start */
+BINDING_TYPE_ircd_local_client(_igotc_lu_mo);
 static void _igotc_lu_mo (INTERFACE *srv, struct peer_t *peer)
 {
   ircd_lusers_cb (srv, peer, NULL, NULL, NULL, 0, NULL);
@@ -1544,7 +1544,7 @@ void ircd_queries_proto_end (void)
   Delete_Binding ("ircd-server-cmd", (Function)&ircd_pong_sb, NULL);
   Delete_Binding ("ircd-server-cmd", (Function)&ircd_summon_sb, NULL);
   Delete_Binding ("ircd-server-cmd", (Function)&ircd_users_sb, NULL);
-  Delete_Binding ("ircd-got-client", (Function)&_igotc_lu_mo, NULL);
+  Delete_Binding ("ircd-local-client", (Function)&_igotc_lu_mo, NULL);
   Delete_Binding ("ircd-lost-client", (Function)&_ilostc_ww, NULL);
   Delete_Binding ("ircd-stats-reply", (Function)&_istats_o, NULL);
   Delete_Binding ("ircd-stats-reply", (Function)&_istats_u, NULL);
@@ -1602,7 +1602,7 @@ void ircd_queries_proto_start (void)
   Add_Binding ("ircd-server-cmd", "pong", 0, 0, (Function)&ircd_pong_sb, NULL);
   Add_Binding ("ircd-server-cmd", "summon", U_HALFOP, 0, (Function)&ircd_summon_sb, NULL);
   Add_Binding ("ircd-server-cmd", "users", U_HALFOP, 0, (Function)&ircd_users_sb, NULL);
-  Add_Binding ("ircd-got-client", "*", 0, 0, (Function)&_igotc_lu_mo, NULL);
+  Add_Binding ("ircd-local-client", "*", 0, 0, (Function)&_igotc_lu_mo, NULL);
   Add_Binding ("ircd-lost-client", "*", 0, 0, (Function)&_ilostc_ww, NULL);
   Add_Binding ("ircd-stats-reply", "o", 0, 0, (Function)&_istats_o, NULL);
   Add_Binding ("ircd-stats-reply", "u", 0, 0, (Function)&_istats_u, NULL);

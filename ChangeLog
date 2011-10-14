@@ -10,6 +10,10 @@ TODO:
 	* core/socket.c: to add libidn support.
 
 --- [0.10.0]
+Fri Oct 14 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/ircd.c, modules/ircd/queries.c: renamed bindtable
+	  "ircd-got-client" into "ircd-local-client".
+
 Thu Oct 13 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed handling collision with nick on hold.
 	* core/list.c: fixed deleting of host for servers.

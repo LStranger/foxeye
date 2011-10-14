@@ -78,7 +78,7 @@ static struct bindtable_t *BTIrcdServerCmd;
 static struct bindtable_t *BTIrcdClientCmd;
 static struct bindtable_t *BTIrcdRegisterCmd;
 static struct bindtable_t *BTIrcdClientFilter;
-static struct bindtable_t *BTIrcdGotClient;
+static struct bindtable_t *BTIrcdLocalClient;
 //static struct bindtable_t *BTIrcdSetClient;
 static struct bindtable_t *BTIrcdLostClient;
 static struct bindtable_t *BTIrcdDoNumeric;
@@ -2063,7 +2063,7 @@ static int _ircd_got_local_user (CLIENT *cl)
   ircd_do_unumeric (cl, RPL_MYINFO, &ME, 0, _ircd_modesstring);
   b = NULL;
   uf = Get_Clientflags (cl->x.class->name, Ircd->iface->name);
-  while ((b = Check_Bindtable (BTIrcdGotClient, cl->nick, uf, U_ANYCH, b)))
+  while ((b = Check_Bindtable (BTIrcdLocalClient, cl->nick, uf, U_ANYCH, b)))
     if (!b->name)			/* do lusers and custom messages */
       b->func (Ircd->iface, &cl->via->p);
 #if IRCD_USES_ICONV
@@ -4644,10 +4644,9 @@ SigFunction ModuleInit (char *args)
   /* create main bindtables */
 //  BTIrcdLinked = Add_Bindtable ("ircd-got-server", B_MASK);
 //  BTIrcdUnlinked = Add_Bindtable ("ircd-lost-server", B_MASK);
-  BTIrcdGotClient = Add_Bindtable ("ircd-got-client", B_MASK);
+  BTIrcdLocalClient = Add_Bindtable ("ircd-local-client", B_MASK);
+//  BTIrcdGotRemote = Add_Bindtable ("ircd-got-client", B_MASK);
   BTIrcdLostClient = Add_Bindtable ("ircd-lost-client", B_MASK);
-//  BTIrcdGotRemote = Add_Bindtable ("ircd-got-remote", B_MASK);
-//  BTIrcdLostRemote = Add_Bindtable ("ircd-lost-remote", B_MASK);
   BTIrcdCollision = Add_Bindtable ("ircd-collision", B_UNIQMASK);
   BTIrcdAuth = Add_Bindtable ("ircd-auth", B_MASK);
   BTIrcdServerCmd = Add_Bindtable ("ircd-server-cmd", B_KEYWORD);
