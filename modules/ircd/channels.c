@@ -2933,11 +2933,13 @@ void ircd_channel_proto_start (IRCD *ircd)
 //  _ircd_log_channel ("&NUMERICS", "SERVER MESSAGES: numerics received", ?????);
   _ircd_log_channel (ircd, "&SERVERS",
 		     "SERVER MESSAGES: servers joining and leaving", F_SERV);
+  _ircd_log_channel (ircd, "&WALLOPS",
+		     "WALLOPS MESSAGES: supermouse-only", F_WALL);
+  _ircd_internal_logger_list[_ircd_internal_logger_list_n-1].m->mode |= A_SECRET;
 // "&SERVICES", "SERVER MESSAGES: services joining and leaving"
 // "&AUTH", "SERVER MESSAGES: messages from the authentication slave"
 // "&ISERV", "SERVER MESSAGES: messages from the configuration slave" -- A_SECRET
 // "&OPER", "SERVER MESSAGES: opers-only notices" -- A_SECRET
-// "&WALLOPS", "WALLOPS MESSAGES: supermouse-only" -- A_SECRET
   //TODO: BTIrcdSystemChannel -- create empty log channel
 }
 #endif

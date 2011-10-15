@@ -16,6 +16,8 @@ Fri Oct 14 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: disabled "&CHANNEL" as it's unused.
 	* modules/ircd/queries.c: denied queries from servers.
 	* modules/ircd/channels.c: implemented simple MODE mask validation.
+	* modules/ircd/channels.c, modules/ircd/clients.c, modules/ircd/ircd.c, modules/ircd/sendto.h, modules/ircd/servers.c:
+	  implemented &WALLOPS system channel.
 
 Thu Oct 13 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed handling collision with nick on hold.

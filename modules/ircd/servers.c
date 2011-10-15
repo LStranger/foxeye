@@ -325,7 +325,7 @@ static int ircd_squit_sb(INTERFACE *srv, struct peer_t *peer, unsigned short tok
   } else {
     /* we doing squit only for shortest way despite of possible multiconnect! */
     if (CLIENT_IS_LOCAL(tgt)) {		/* squit if it's local link */
-      ircd_sendto_wallops((IRCD *)srv->data, NULL, "SQUIT %s from %s: %s",
+      ircd_sendto_wallops((IRCD *)srv->data, NULL, me, "SQUIT %s from %s: %s",
 			  argv[0], cl->nick, argv[1]);
       ircd_do_squit(tgt->via->link, pp, argv[1]); /* do job */
     } else				/* or else forward it to it's links */
@@ -916,9 +916,10 @@ static int ircd_wallops_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
   if (cl->cs->via != pp)
     return (1); //TODO: log as duplicate
   /* just broadcast it to everyone */
-  ircd_mark_wallops();
-  ircd_sendto_servers_all((IRCD *)srv->data, pp, ":%s WALLOPS :%s", sender,
-			  argv[0]);
+  ircd_sendto_wallops((IRCD *)srv->data, pp, sender, "%s", argv[0]);
+//  ircd_mark_wallops();
+//  ircd_sendto_servers_all((IRCD *)srv->data, pp, ":%s WALLOPS :%s", sender,
+//			  argv[0]);
   return (1);
 }
 

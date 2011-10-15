@@ -177,12 +177,17 @@
 #define ircd_sendto_servers_mask_all_ack(i,a,b,c,d,...) \
   ircd_sendto_servers_mask(i,c,d,__VA_ARGS__)
 #endif
-#define __TRANSIT__ /* no transit by default */
 
 //TODO: implement IWALLOPS too
-/* broadcasts WALLOPS; args: ircd, from peer, text, ... */
-#define ircd_sendto_wallops(i,a,b,...) do { \
-  const char *me = ircd_mark_wallops(); \
-  ircd_sendto_servers_all(i, a, ":%s WALLOPS :" b, me, __VA_ARGS__); } while(0)
+/* broadcasts WALLOPS; args: ircd, from peer, sender/me, text, ... */
+#define ircd_sendto_wallops(i,a,b,c,...) do { \
+  __attribute__((unused)) register const char *me = ircd_mark_wallops(); \
+  register LINK *L; \
+  for (L = (i)->servers; L; L = L->prev) \
+    if (L->cl->via != a) \
+      __TRANSIT__ L->cl->via->p.iface->ift |= I_PENDING; \
+  Add_Request (I_PENDING|I_LOG, "*", F_WALL, ":%s WALLOPS :" c, \
+	       b, __VA_ARGS__); } while(0)
 
+#define __TRANSIT__ /* no transit by default */
 #endif
