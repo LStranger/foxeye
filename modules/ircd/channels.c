@@ -611,13 +611,15 @@ static int _imch_add_mask (MASK **list, const char **ptr, MASK **cancel,
     sz = at - mask;
     if (sz > (sizeof(nm->what) - 4))
       sz = (sizeof(nm->what) - 4);
-    sz = unistrcut(mask, sz, IDENTLEN);
+    sz = unistrcut(mask, sz + 1, IDENTLEN);
     nm->what[0] = '*';
     nm->what[1] = '!';
     sz = unistrlower(&nm->what[2], mask, sz + 1);
     sz += 2;
     unistrlower(&nm->what[sz], at, sizeof(nm->what) - sz);
-  } else if (ex != NULL && (at = strchr(mask, '@')) != NULL && at[1] != '\0') {
+    *ptr = nm->what;
+  } else if (ex != NULL && ex != mask &&
+	     (at = strchr(ex, '@')) != NULL && at[1] != '\0') {
     /* third valid mask is .+!.{1,IDENTLEN}@.+ */
     //FIXME: normalize it to [NICKLEN]![IDENTLEN]@[HOSTLEN]
     unistrlower (nm->what, mask, sizeof(nm->what));
