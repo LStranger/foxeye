@@ -1062,11 +1062,11 @@ static inline int _ircd_query_whois (IRCD *ircd, CLIENT *cl, struct peer_priv *v
 	while (n < MAXWHOIS && (l = Next_Leaf (t, l, NULL)))
 	{
 	  tgt = l->s.data;
-	  if ((cl->umode & (A_SERVER | A_SERVICE)) | cl->hold_upto)
+	  if ((tgt->umode & (A_SERVER | A_SERVICE)) | tgt->hold_upto)
 	    continue;
 	  if ((cl->umode & (A_OP | A_HALFOP)) || !(tgt->umode & A_INVISIBLE) ||
 	      _ircd_is_on_the_same_channel (cl, tgt))
-	    if (simple_match (c, tgt->lcnick))
+	    if (simple_match (c, tgt->lcnick) >= 0)
 	    {
 	      _ircd_do_whois (cl, tgt, me);
 	      n++;
