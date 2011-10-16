@@ -676,7 +676,7 @@ static int ircd_rehash_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 
   if (!(cl->umode & (A_OP | A_HALFOP)))
     return ircd_do_unumeric(cl, ERR_NOPRIVILEGES, cl, 0, NULL);
-  Dcc_Parse(peer, peer->dname, cmd, U_OWNER, 0, (int)peer->socket + 1, -1,
+  Dcc_Parse(peer, peer->dname, cmd, U_MASTER, 0, (int)peer->socket + 1, -1,
 	    NULL, NULL);
   return ircd_do_unumeric(cl, RPL_REHASHING, cl, 0, NULL);
 }
@@ -708,7 +708,7 @@ static int ircd_restart_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 
   if (!(cl->umode & (A_OP | A_HALFOP)))
     return ircd_do_unumeric(cl, ERR_NOPRIVILEGES, cl, 0, NULL);
-  Dcc_Parse(peer, peer->dname, cmd, U_OWNER, 0, (int)peer->socket + 1, -1,
+  Dcc_Parse(peer, peer->dname, cmd, U_MASTER, 0, (int)peer->socket + 1, -1,
 	    NULL, NULL);
   return 1;
 }
