@@ -1488,7 +1488,7 @@ static void _ircd_handler (char *cln, char *ident, const char *host, void *data)
   cl->x.class = NULL;
   peer->p.state = P_INITIAL;
   pthread_mutex_unlock (&IrcdLock);
-  strfcpy (cl->user, NONULL(ident), sizeof(cl->user));
+  unistrlower (cl->user, NONULL(ident), sizeof(cl->user));
   unistrlower (cl->host, host, sizeof(cl->host));
   cl->pcl = NULL;
   cl->cs = cl;
@@ -3411,8 +3411,8 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     }
   }
   tgt->hops = on->hops + 1;
-  strfcpy(tgt->user, argv[2], sizeof(tgt->user));
-  strfcpy(tgt->host, argv[3], sizeof(tgt->host));
+  unistrlower(tgt->user, argv[2], sizeof(tgt->user));
+  unistrlower(tgt->host, argv[3], sizeof(tgt->host));
   strfcpy(tgt->fname, argv[6], sizeof(tgt->fname));
   for (c = argv[5]; *c; c++) { /* make umode from argv[5] */
     register modeflag mf;

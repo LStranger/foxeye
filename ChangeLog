@@ -13,6 +13,7 @@ TODO:
 Sun Oct 16 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/queries.c: fixed matching on reply to WHOIS (bug#91).
 	* modules/ircd/ircd.c: fixed critical bug on phantom collision.
+	* modules/ircd/ircd.c: fixed case of ident and host from local/remote.
 
 Fri Oct 14 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c, modules/ircd/queries.c: renamed bindtable
