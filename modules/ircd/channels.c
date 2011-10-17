@@ -307,7 +307,7 @@ static inline const char *_ich_safename_exists (NODE *n, const char *name)
   register size_t i;
 
   unistrlower (lcname, name, sizeof(lcname)); /* lower case part here */
-  i = unistrcut(lcname, sizeof(lcname), CHANNAMELEN - CHIDLEN);
+  i = unistrcut(lcname, sizeof(lcname), CHANNAMELEN - CHIDLEN - 1);
   lcname[i] = '\0';
   /* scan whole list for !* channels (it may be slow, I know...) */
   l = Find_Leaf (n, "!", 0);		/* seek to first "!xxx" channel */
@@ -317,7 +317,7 @@ static inline const char *_ich_safename_exists (NODE *n, const char *name)
   do {
     if (k[0] != '!')			/* no more ! channels */
       return NULL;
-    if (!strcmp (lcname, &k[CHIDLEN]))	/* skip id part and compare it */
+    if (!strcmp (lcname, &k[CHIDLEN+1])) /* skip id part and compare it */
       return ((CHANNEL *)l->s.data)->name;
     l = Next_Leaf (n, l, &k);		/* get next channel and key */
   } while (l);
@@ -1536,10 +1536,13 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
       ircd_do_unumeric (cl, ERR_TOOMANYCHANNELS, cl, 0, NULL);
     else if (i > 0) {			/* so user can join, do it then */
       if (!ch) {
-	if (nchn != chn)		/* binding changed the name */
+	if (nchn != chn) {		/* binding changed the name */
 	  unistrlower(lcchname, nchn, sizeof(lcchname));
 	  _ircd_validate_channel_name(lcchname);
-	ch = _ircd_new_channel ((IRCD *)srv->data, nchn, lcchname);
+	  ch = _ircd_find_channel ((IRCD *)srv->data, lcchname);
+	}
+	if (ch == NULL)			/* it's still not found */
+	  ch = _ircd_new_channel ((IRCD *)srv->data, nchn, lcchname);
       }
       mm = _ircd_do_join ((IRCD *)srv->data, cl, ch, mf);
       if (mm == NULL) {
