@@ -3398,7 +3398,7 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     tgt->rfr = phantom;
     New_Request(peer->iface, 0, ":%s NICK :%s", argv[0], tgt->nick);
   } else if (collision != NULL) { /* we got new client collided with phantom */
-    if (Delete_Key(Ircd->clients, collision->lcnick, tgt) < 0)
+    if (Delete_Key(Ircd->clients, collision->lcnick, collision) < 0)
       ERROR("ircd:ircd_nick_sb: tree error on removing %s", collision->lcnick);
       //TODO: isn't it fatal?
     else
