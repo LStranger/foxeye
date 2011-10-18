@@ -164,6 +164,8 @@ static inline CHANNEL *_ircd_new_channel (IRCD *ircd, const char *name,
   if (Insert_Key (&ircd->channels, ch->lcname, ch, 1))
     ERROR("ircd:_ircd_new_channel: tree error on adding %s", ch->lcname);
     //TODO: isn't it fatal?
+  else
+    dprint(2, "ircd:channels.c:_ircd_new_channel: add chan %s", ch->lcname);
   return ch;
 }
 
@@ -1457,6 +1459,9 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
     _ircd_validate_channel_name(lcchname);
     ch = _ircd_find_channel ((IRCD *)srv->data, lcchname);
     if (ch && Time >= ch->hold_upto &&	/* it's available to hold off now */
+#if IRCD_MULTICONNECT
+	ch->on_ack == 0 &&
+#endif
 	ch->count == 0)
     {
       ircd_drop_channel ((IRCD *)srv->data, ch);
@@ -2501,6 +2506,8 @@ void ircd_drop_channel (IRCD *ircd, CHANNEL *ch)
   if (ircd && Delete_Key (ircd->channels, ch->lcname, ch))
     ERROR("ircd:ircd_drop_channel: tree error on removing %s", ch->lcname);
     //TODO: isn't it fatal?
+  else
+    dprint(2, "ircd:channels.c:ircd_drop_channel: del chan %s", ch->lcname);
   free_CHANNEL (ch);
 }
 
