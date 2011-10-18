@@ -370,7 +370,7 @@ static modeflag ich_excl(INTERFACE *u, modeflag umode, modeflag chmode,
 	_ich_safename_exists (cl, &chname[2])) /* cannot duplicate short name */
       return 0;
     *tocreate = _ich_make_safename (&chname[2]);
-    return (A_ISON | A_OP | A_ADMIN);	/* default mode on creating */
+    return (A_ISON | A_ADMIN);		/* default mode on creating */
   }
   /* chmode != 0 is OK as there is no 'unavailable' state for safe channels */
   return A_ISON;			/* default mode for joining */
@@ -385,7 +385,7 @@ static modeflag imch_o(INTERFACE *srv, const char *rq, modeflag rchmode,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
-  if (target && ((rchmode & A_OP) || !rchmode))
+  if (target && ((rchmode & (A_OP | A_ADMIN)) || !rchmode))
     return A_OP;
   return 0;
 }
@@ -396,7 +396,7 @@ static modeflag imch_v(INTERFACE *srv, const char *rq, modeflag rchmode,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
-  if (target && ((rchmode & A_OP) || !rchmode))
+  if (target && ((rchmode & (A_OP | A_ADMIN)) || !rchmode))
     return A_VOICE;
   return 0;
 }
@@ -409,7 +409,7 @@ static modeflag imch_a(INTERFACE *srv, const char *rq, modeflag rchmode,
 {
   if (!target && !rchmode) /* it's testing */
     return A_ANONYMOUS;
-  if (target || !(rchmode & A_OP))
+  if (target || !(rchmode & (A_OP | A_ADMIN)))
     return 0;
   if (chtype == '&')			/* & channel */
     return A_ANONYMOUS;
@@ -426,7 +426,7 @@ static modeflag imch_i(INTERFACE *srv, const char *rq, modeflag rchmode,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
-  if (!target && ((rchmode & A_OP) || !rchmode))
+  if (!target && ((rchmode & (A_OP | A_ADMIN)) || !rchmode))
     return A_INVITEONLY;
   return 0;
 }
@@ -437,7 +437,7 @@ static modeflag imch_m(INTERFACE *srv, const char *rq, modeflag rchmode,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
-  if (!target && ((rchmode & A_OP) || !rchmode))
+  if (!target && ((rchmode & (A_OP | A_ADMIN)) || !rchmode))
     return A_MODERATED;
   return 0;
 }
@@ -448,7 +448,7 @@ static modeflag imch_n(INTERFACE *srv, const char *rq, modeflag rchmode,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
-  if (!target && ((rchmode & A_OP) || !rchmode))
+  if (!target && ((rchmode & (A_OP | A_ADMIN)) || !rchmode))
     return A_NOOUTSIDE;
   return 0;
 }
@@ -472,7 +472,7 @@ static modeflag imch_p(INTERFACE *srv, const char *rq, modeflag rchmode,
 {
   if (!target && !rchmode) /* it's testing */
     return A_PRIVATE;
-  if (!target && (rchmode & A_OP) && !(tmode & A_SECRET))
+  if (!target && (rchmode & (A_OP | A_ADMIN)) && !(tmode & A_SECRET))
     return A_PRIVATE;
   return 0;
 }
@@ -485,7 +485,7 @@ static modeflag imch_s(INTERFACE *srv, const char *rq, modeflag rchmode,
 {
   if (!target && !rchmode) /* it's testing */
     return A_SECRET;
-  if (!target && (rchmode & A_OP) && !(tmode & A_PRIVATE))
+  if (!target && (rchmode & (A_OP | A_ADMIN)) && !(tmode & A_PRIVATE))
     return A_SECRET;
   return 0;
 }
@@ -511,7 +511,7 @@ static modeflag imch_t(INTERFACE *srv, const char *rq, modeflag rchmode,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
-  if (!target && ((rchmode & A_OP) || !rchmode))
+  if (!target && ((rchmode & (A_OP | A_ADMIN)) || !rchmode))
     return A_TOPICLOCK;
   return 0;
 }
@@ -548,7 +548,7 @@ static modeflag imch_k(INTERFACE *srv, const char *rq, modeflag rchmode,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
-  if (!target && (rchmode & A_OP))
+  if (!target && (rchmode & (A_OP | A_ADMIN)))
   {
     *ma = &_imch_do_keyset;
     return (A_KEYSET | 1);
@@ -581,7 +581,7 @@ static modeflag imch_l(INTERFACE *srv, const char *rq, modeflag rchmode,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
-  if (!target && (rchmode & A_OP))
+  if (!target && (rchmode & (A_OP | A_ADMIN)))
   {
     *ma = &_imch_do_limit;
     return (A_LIMIT | (add ? 1 : 0));
@@ -698,7 +698,7 @@ static modeflag imch_b(INTERFACE *srv, const char *rq, modeflag rchmode,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
-  if (!target && ((rchmode & A_OP) || add < 0))
+  if (!target && ((rchmode & (A_OP | A_ADMIN)) || add < 0))
   {
     *ma = &_imch_do_banset;
     return (A_DENIED | 1);
@@ -731,7 +731,7 @@ static modeflag imch_e(INTERFACE *srv, const char *rq, modeflag rchmode,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
-  if (!target && ((rchmode & A_OP) || add < 0))
+  if (!target && ((rchmode & (A_OP | A_ADMIN)) || add < 0))
   {
     *ma = &_imch_do_exemptset;
     return (A_EXEMPT | 1);
@@ -765,9 +765,9 @@ static modeflag imch_I(INTERFACE *srv, const char *rq, modeflag rchmode,
 				  const char **))
 {
 #ifdef NO_SPARE_INVITES
-  if (!target && (rchmode & A_OP) && (tmode & A_INVITEONLY))
+  if (!target && (rchmode & (A_OP | A_ADMIN)) && (tmode & A_INVITEONLY))
 #else
-  if (!target && (rchmode & A_OP))
+  if (!target && (rchmode & (A_OP | A_ADMIN)))
 #endif
   {
     *ma = &_imch_do_inviteset;
@@ -2361,11 +2361,11 @@ void ircd_del_from_channel (IRCD *ircd, MEMBER *memb, int tohold)
     register struct binding_t *b;
 
     *m = memb->prevnick;
-    if (memb->mode & A_OP) {		/* check if it was last OP left */
+    if (memb->mode & (A_OP | A_ADMIN)) { /* check if it was last OP left */
       register MEMBER *op;
 
       for (op = memb->chan->users; op; op = op->prevnick)
-	if (op->mode & A_OP)
+	if (op->mode & (A_OP | A_ADMIN))
 	  break;
       if (op)
 	op->chan->noop_since = Time;

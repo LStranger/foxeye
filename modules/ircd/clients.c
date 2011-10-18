@@ -377,7 +377,7 @@ static int ircd_invite_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, cha
   {
     if (!memb)
       return ircd_do_unumeric (cl, ERR_NOTONCHANNEL, cl, 0, argv[1]);
-    if ((memb->chan->mode & A_INVITEONLY) && !(memb->mode & A_OP))
+    if ((memb->chan->mode & A_INVITEONLY) && !(memb->mode & (A_OP | A_ADMIN)))
       return ircd_do_cnumeric (cl, ERR_CHANOPRIVSNEEDED, memb->chan, 0, NULL);
     if (tgt && _ircd_is_on_channel (tgt, memb->chan))
       return ircd_do_cnumeric (cl, ERR_USERONCHANNEL, memb->chan, 0, tgt->nick);
@@ -428,7 +428,7 @@ static int ircd_kick_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
       ircd_do_unumeric (cl, ERR_NOSUCHCHANNEL, cl, 0, chn);
     else if (memb == NULL)
       ircd_do_unumeric (cl, ERR_NOTONCHANNEL, cl, 0, chn);
-    else if (!(memb->mode & A_OP))
+    else if (!(memb->mode & (A_OP | A_ADMIN)))
       ircd_do_cnumeric (cl, ERR_CHANOPRIVSNEEDED, memb->chan, 0, NULL);
     else if (!(tgt = ircd_find_client (lcl, NULL)) ||
 	     !(tm = _ircd_is_on_channel (tgt, memb->chan)))

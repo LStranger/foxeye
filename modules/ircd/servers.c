@@ -505,7 +505,7 @@ static int ircd_njoin(INTERFACE *srv, struct peer_t *peer, unsigned short token,
 	msg[mptr+1] = *c;
     }
     if (c[0] == '@' && c[1] == '@') {
-      mf = A_ADMIN | A_OP;
+      mf = A_ADMIN;
       c += 2;
     } else {
       mf = ircd_whochar2mode(*c);
@@ -713,7 +713,7 @@ static int ircd_invite_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
 		  "which is not on that channel", peer->dname, sender, argv[1]);
     else if (memb->chan->mode & A_INVISIBLE)
       return ircd_recover_done(pp, "Invalid channel name for INVITE");
-    else if ((memb->chan->mode & A_INVITEONLY) && !(memb->mode & A_OP))
+    else if ((memb->chan->mode & A_INVITEONLY) && !(memb->mode & (A_OP|A_ADMIN)))
       Add_Request(I_LOG, "*", F_WARN, "ircd:got INVITE via %s from %s to %s "
 		  "overriding channel modes", peer->dname, sender, argv[1]);
     else if (_ircd_is_on_channel (tgt, memb->chan))
