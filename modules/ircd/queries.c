@@ -1194,26 +1194,28 @@ static int ircd_whowas_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
 static inline int _ircd_query_ping (IRCD *ircd, CLIENT *cl, struct peer_priv *via,
 				    int argc, const char **argv)
 { /* args: <server1> [<server2>] */
-  CLIENT *tgt, *me;
+  CLIENT *tgt;
+  const char *origin;
 
   if (argc == 0)
     return ircd_do_unumeric (cl, ERR_NOORIGIN, cl, 0, NULL);
-  if (argc > 1)
-  {
+  if (argc > 1) {
     tgt = ircd_find_client (argv[1], via);
-    if (!tgt || !CLIENT_IS_SERVER(tgt))
+    if (!tgt)
       return ircd_do_unumeric (cl, ERR_NOSUCHSERVER, cl, 0, argv[1]);
-    if (CLIENT_IS_ME(tgt))
-      return _ircd_query_ping (ircd, cl, via, 1, argv);
-    New_Request (tgt->cs->via->p.iface, 0, ":%s PING %s %s", cl->nick, argv[0],
-		 tgt->nick);
-    return (-1);		/* don't reset idle time */
+    origin = argv[0];
+  } else {
+    tgt = ircd_find_client (argv[0], via);
+    origin = cl->nick;
   }
-  tgt = ircd_find_client (argv[0], via);
-  if (tgt != cl)
-    dprint(4, "ircd:queries.c: got PING %s!=%s", argv[0], cl->nick);
-  me = ircd_find_client(NULL, NULL);
-  ircd_sendto_one (cl, ":%s PONG %s %s", me->lcnick, me->lcnick, argv[0]);
+  if (tgt == NULL || tgt == cl || CLIENT_IS_ME(tgt)) {
+    register CLIENT *me = ircd_find_client(NULL, NULL);
+//    ircd_sendto_one (cl, ":%s PONG %s %s", me->lcnick, me->lcnick, argv[0]);
+    ircd_sendto_one (cl, "PONG %s %s", me->lcnick, argv[0]);
+  } else
+//    New_Request (tgt->cs->via->p.iface, 0, ":%s PING %s %s", cl->nick, origin,
+//		 tgt->nick);
+    New_Request (tgt->cs->via->p.iface, 0, "PING %s %s", origin, tgt->nick);
   return (-1);			/* don't reset idle time */
 }
 
