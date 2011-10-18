@@ -1296,8 +1296,8 @@ static void _accept_port_cleanup (void *input_data)
 static void *_accept_port (void *input_data)
 {
   const char *domain;
-  char ident[24];
-  char buf[SHORT_STRING];
+  char ident[64];
+  char buf[512];		/* see RFC1413 */
   ssize_t sz;
   size_t sp;
   unsigned short p;
@@ -1355,21 +1355,40 @@ static void *_accept_port (void *input_data)
     dprint(5, "ident: ReadSocket returned %zd", sz);
     if (sz > 0)
     {
-      register unsigned char *tstch;
       dprint (3, "%s ident answer: %s", domain, buf);
       /* overflow is impossible: part of buf isn't greater than buf */
-      sscanf (buf, "%*[^:]: %[^: ] :%*[^:]: %23[^ \n]", buf, ident);
-      for (tstch = (unsigned char *)ident; *tstch; tstch++)
-	if (*tstch < 0x20 || *tstch >= 0x80)
-	  break;
-      if (*tstch) {
-	dprint (4, "ident answer contains invalid chars, ignoring it");
-	ident[0] = '\0';
-      } else if (!strcmp(buf, "OTHER")) {
-	memmove(&ident[1], ident, 22);	/* get the room for one char */
-	ident[0] = '=';			/* prepend 'OTHER' ident with '=' */
-	ident[23] = '\0';		/* terminate it if was cut */
-      } else if (strcmp (buf, "USERID")) /* bad answer */
+      if (sscanf(buf, "%*[^:]: USERID : %[^: ] : %63[^ \r\n]", buf, ident) == 2)
+      {
+	char *charset;
+//	conversion_t *conv = NULL;
+	register unsigned char *tstch;
+
+	charset = strchr(buf, ',');
+	if (charset)
+	  *charset++ = '\0';
+//	else
+//	  charset = "US-ASCII";
+//	conv = Get_Conversion(charset);
+	if (!strcmp(buf, "OTHER")) {
+//	  buf[0] = '=';
+//	  Do_Conversion();
+	  ident[0] = '=';
+	  memmove(&ident[1], ident, 62);
+	  ident[63] = '\0';
+	}
+//	} else
+//	  Do_Conv....
+//	Free_Conversion(conv);
+//	strfcpy(ident, buf, sizeof(ident));
+	for (tstch = (unsigned char *)ident; *tstch; tstch++)
+//	  if (*tstch < 0x20 || *tstch == text_replace_char[0])
+	  if (*tstch < 0x20 || *tstch >= 0x80 || *tstch == ':')
+	    break;
+	if (*tstch) {
+	  dprint (4, "ident answer contains invalid chars, ignoring it");
+	  ident[0] = '\0';
+	}
+      } else
 	*ident = 0;
     } /* ident is checked */
     DBG ("_accept_port: killing ident socket");
