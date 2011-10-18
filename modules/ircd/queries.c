@@ -1201,7 +1201,7 @@ static inline int _ircd_query_ping (IRCD *ircd, CLIENT *cl, struct peer_priv *vi
   if (argc > 1)
   {
     tgt = ircd_find_client (argv[1], via);
-    if (!tgt)
+    if (!tgt || !CLIENT_IS_SERVER(tgt))
       return ircd_do_unumeric (cl, ERR_NOSUCHSERVER, cl, 0, argv[1]);
     if (CLIENT_IS_ME(tgt))
       return _ircd_query_ping (ircd, cl, via, 1, argv);
