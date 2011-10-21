@@ -1811,6 +1811,7 @@ static inline void _ircd_start_uplink2 (const char *name, char *host,
     register peer_priv **pp;
     register LINK **ll;
 
+    uplink->via->p.iface->data = NULL; /* disown it */
     uplink->via->p.iface->ift = I_DIED; /* error on thread creating */
     ERROR ("ircd:error on starting connect to %s/%s", host, port);
 #if IRCD_MULTICONNECT

@@ -915,8 +915,7 @@ static void iface_run (unsigned int i)
 void Add_Request (iftype_t ift, const char *mask, flag_t fl, const char *text, ...)
 {
   va_list ap;
-  register unsigned int i;
-  unsigned int inum;
+  unsigned int i, inum;
   register iftype_t rc;
   int cancelstate;
 
@@ -967,6 +966,9 @@ void Add_Request (iftype_t ift, const char *mask, flag_t fl, const char *text, .
 	  li->ift |= rc;
       }
     }
+    for (i = 0; i < _Inum; )	/* some interfaces might be killed by signal */
+      if (!(Interface[i]->a.ift & I_DIED) || _delete_iface(i) != 0)
+	i++;				/* advance only if it's not removed */
     O_GENERATECONF = savestate;			/* restoring status quo */
   }
   else
