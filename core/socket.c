@@ -717,12 +717,18 @@ char *SocketError (int er, char *buf, size_t s)
 {
   if (!buf)
     return NULL;
-  else if (er < E_ERRNO)
+  buf[0] = '\0';
+  if (er < E_ERRNO) {
+#if _GNU_SOURCE
     strerror_r (E_ERRNO - er, buf, s);
+#else
+    if (strerror_r (E_ERRNO - er, buf, s) < 0)
+      snprintf(buf, s, "unknown system error %d", er);
+#endif
+  }
   else switch (er)
   {
     case 0:
-      buf[0] = 0;
       break;
     case E_AGAIN:
       strfcpy (buf, "socket is waiting for connection", s);
