@@ -53,7 +53,7 @@
 #00054	09.01.2011  10.01.2011	own join date is in wrong locale
 #00055	12.01.2011  13.01.2011	printl() counts bytes not chars for %Nx macros
 #00056	13.01.2011  13.01.2011	.tcl module -l -- SIGSEGV
-#00057	13.01.2011		SIGSEGV after .restart (by Mercurius)
+#00057	13.01.2011  21.10.2011	SIGSEGV after .restart (by Mercurius)
 #00058	13.01.2011  13.01.2011	.module -l -- does not work
 #00059	13.01.2011		'-r ~/xxx' in logfile command does not expand
 #00060	14.01.2011  14.01.2011	html log: http://a.html^B : ^B ignored
@@ -88,3 +88,7 @@
 #00089	08.10.2011  10.10.2011	sf:#3420614 bugged !chan illegal chars creating
 #00090	10.10.2011  10.10.2011	does not rejoin channels if temp. unavailable
 #00091	16.10.2011  16.10.2011	ircd: whois * doesn't work
+#00092	19.10.2011		sf:#3425864 +b/e/I not work on JOIN by shortname
+#00093	19.10.2011		sf:#3425868 +o/-o shown for channel creator
+#00094	19.10.2011		sf:#3425918 nick locked on nick backchange
+#00095	19.10.2011		sf:#3425953 modechange unhide nicks on +a chan

@@ -387,8 +387,10 @@ static modeflag imch_o(INTERFACE *srv, const char *rq, modeflag rchmode,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
-  if (target && ((rchmode & (A_OP | A_ADMIN)) || !rchmode))
+  if (target && ((rchmode & A_OP) || !rchmode))
     return A_OP;
+  else if (target && (rchmode & A_ADMIN))
+    return A_ADMIN;			/* +-o on admin will do +-O */
   return 0;
 }
 

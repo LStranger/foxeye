@@ -13,7 +13,8 @@ TODO:
 Fri Oct 21 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/socket.c: fixed wrong setting of Pollfd structure after poll.
 	* core/socket.c: fixed SocketError() on errors from strerror_r().
-	* core/dispatcher.c: fixed shutting down of modules on restart.
+	* core/dispatcher.c: fixed shutting down of modules on restart (bug#57).
+	* modules/ircd/channels.c: fixed +-o on A_ADMIN (bug#93).
 
 Tue Oct 17 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/queries.c: added validation of second arg of PING.
