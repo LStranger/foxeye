@@ -876,11 +876,26 @@ static inline void _ircd_mode_broadcast (IRCD *ircd, int id, CLIENT *sender,
   *imp = '\0';				/* terminate line */
   sz = sizeof(buff);
   buff[0] = 0;				/* in case if no arguments */
-  for (i = 0; i < x && ptr < sz; i++)	/* compose arguments */
+  if (ch->mode & A_ANONYMOUS) {
+    for (i = 0; i < x && ptr < (sz - 1); i++)
+      ptr += strfcpy(&buff[ptr], " anonymous", sz - ptr);
+    if (CLIENT_IS_SERVER (sender))
+      ircd_sendto_chan_local (ch, ":%s MODE %s %s%s", sender->nick, ch->name,
+			      modepass, buff);
+    else if (CLIENT_IS_SERVICE (sender)) /* it's forbidden for local services */
+      ircd_sendto_chan_local (ch, ":%s@%s MODE %s %s%s", sender->nick,
+			      sender->cs->nick, ch->name, modepass, buff);
+    else
+      ircd_sendto_chan_local (ch, ":anonymous!anonymous@anonymous. MODE %s %s%s",
+			      ch->name, modepass, buff);
+    ptr = 0;
+  }
+  for (i = 0; i < x && ptr < (sz-1); i++) /* compose arguments */
     ptr += snprintf (&buff[ptr], sz - ptr, " %s", passed[i]);
     //TODO: errors check?
   /* notify local users who are on channel */
-  if (CLIENT_IS_SERVER (sender))
+  if (ch->mode & (A_ANONYMOUS | A_QUIET)) ;
+  else if (CLIENT_IS_SERVER (sender))
     ircd_sendto_chan_local (ch, ":%s MODE %s %s%s", sender->nick, ch->name,
 			    modepass, buff);
   else if (CLIENT_IS_SERVICE (sender))	/* it's forbidden for local services */
