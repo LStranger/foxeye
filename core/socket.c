@@ -121,7 +121,7 @@ static idx_t allocate_socket ()
   if (idx == _Salloc)
     return -1; /* no free sockets! */
   Pollfd[idx].fd = -1;
-  Pollfd[idx].events = 0;	/* not ready */
+  Pollfd[idx].events = POLLHUP;	/* not ready, to reset */
   Pollfd[idx].revents = 0;
   Socket[idx].domain = NULL;
   Socket[idx].ipname = NULL;
@@ -144,9 +144,9 @@ static void _socket_timedwait(idx_t idx, int write)
   struct timespec abstime;
 
   if (write)
-    Pollfd[idx].events = POLLIN | POLLPRI | POLLOUT;
+    Pollfd[idx].events |= POLLIN | POLLPRI | POLLOUT;
   else
-    Pollfd[idx].events = POLLIN | POLLPRI;
+    Pollfd[idx].events |= POLLIN | POLLPRI;
   if (pthread_equal(pthread_self(), __main_thread)) {
     poll (&Pollfd[idx], 1, 0);	/* don't wait in dispatcher */
     return;
@@ -225,9 +225,9 @@ ssize_t WriteSocket (idx_t idx, const char *buf, size_t *ptr, size_t *sw)
     return E_NOSOCKET;
   if (!buf || !sw || !ptr)
     return 0;
-  rev = Pollfd[idx].revents & (POLLNVAL | POLLERR | POLLHUP | POLLOUT);
   /* if mode isn't M_POLL then it's dispatcher or else we should wait */
   pthread_mutex_lock(&LockPoll);
+  rev = Pollfd[idx].revents & (POLLNVAL | POLLERR | POLLHUP | POLLOUT);
   if (!rev)
     _socket_timedwait(idx, 1);
   Pollfd[idx].revents &= POLLOUT;	/* we'll write socket, reset state */
@@ -758,6 +758,7 @@ void PollSockets(int check_out)
   int x;
   static struct pollfd *_pollfd = NULL;
   static idx_t          _pfdnum = 0;
+  idx_t _pfdset;
 
   /*
    * bits flow here is:
@@ -768,17 +769,17 @@ void PollSockets(int check_out)
   pthread_mutex_lock (&LockPoll);
   if (_pfdnum < _Salloc) {
     safe_realloc((void **)&_pollfd, _Salloc * sizeof(struct pollfd));
-    memset(&_pollfd[_pfdnum], 0xff, (_Salloc - _pfdnum) * sizeof(struct pollfd));
     _pfdnum = _Salloc;
   }
-  for (i = 0; i < _Snum; i++) {
+  _pfdset = _Snum;
+  for (i = 0; i < _pfdset; i++) {
     if (SChanged) {
-      if (Pollfd[i].fd != _pollfd[i].fd) /* it changed, clear */
+      if (Pollfd[i].events & POLLHUP) /* signaled to reset */
 	_pollfd[i].events = 0;
       _pollfd[i].fd = Pollfd[i].fd;
       _pollfd[i].events |= Pollfd[i].events;
       Pollfd[i].events = 0;
-      if (_pollfd[i].events == 0) /* not ready yet */
+      if ((_pollfd[i].events & ~POLLHUP) == 0) /* not ready yet */
 	_pollfd[i].fd = -1;
     }
     if (_pollfd[i].fd < 0)
@@ -789,14 +790,14 @@ void PollSockets(int check_out)
       check_out = 0;		/* then allow the timeout */
   }
   SChanged = 0;			/* we consumed changes */
-  x = _Snum;
   pthread_mutex_unlock (&LockPoll);
-  if (x > 0)
-    x = poll(_pollfd, (unsigned int)x, check_out ? 10 : POLL_TIMEOUT);
+  if (_pfdset > 0)
+    x = poll(_pollfd, (unsigned int)_pfdset, check_out ? 10 : POLL_TIMEOUT);
   pthread_mutex_lock (&LockPoll);
   /* reset found events but callers will set it again when needs */
-  for (i = 0; i < _Snum; i++)
-    if (_pollfd[i].fd >= 0 && (_pollfd[i].revents)) {
+  for (i = 0; i < _pfdset; i++)
+    if (Pollfd[i].events & POLLHUP) ; /* was reset while we polled */
+    else if (_pollfd[i].fd >= 0 && (_pollfd[i].revents)) {
       _pollfd[i].events &= ~_pollfd[i].revents;
       if (_pollfd[i].fd == Pollfd[i].fd)
 	Pollfd[i].revents |= _pollfd[i].revents;
