@@ -795,7 +795,7 @@ static int _delete_iface (unsigned int r)
   if (!(todel->ift & I_MODULE))		/* modules have handle in data */
     safe_free (&todel->data);
 #ifndef STATIC
-  else
+  else if (todel->data)
     dlclose (todel->data);
 #endif
 #ifdef HAVE_ICONV
@@ -964,11 +964,14 @@ void Add_Request (iftype_t ift, const char *mask, flag_t fl, const char *text, .
 	  li = li->prev;
 	if (li->IFSignal && (rc = li->IFSignal (li, (ifsig_t)text)))
 	  li->ift |= rc;
+#ifndef STATIC
+	if ((li->ift & (I_DIED | I_MODULE)) == (I_DIED | I_MODULE)) {
+	  dlclose (li->data);			/* special support for init */
+	  li->data = NULL;
+	}
+#endif
       }
     }
-    for (i = 0; i < _Inum; )	/* some interfaces might be killed by signal */
-      if (!(Interface[i]->a.ift & I_DIED) || _delete_iface(i) != 0)
-	i++;				/* advance only if it's not removed */
     O_GENERATECONF = savestate;			/* restoring status quo */
   }
   else
