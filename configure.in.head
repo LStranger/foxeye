@@ -16,7 +16,6 @@ AC_PATH_PROG(BASH, bash)
 AC_PATH_PROGS(XGETTEXT, [gxgettext xgettext])
 
 dnl Some non-standard compiler defaults
-fe_cv_profiling_flag=-pg
 if test "x$CC" = x; then
     case "$host_os" in
 	bsd*)
@@ -33,7 +32,6 @@ if test "x$CC" = x; then
 	    MAKE="$ac_cv_path_GMAKE"
 	    FORCE_GMAKE="MAKE = $ac_cv_path_GMAKE"
 	    AC_SUBST(FORCE_GMAKE)
-	    fe_cv_profiling_flag=-xpg
 	    ;;
 	*)
 	    ;;
@@ -76,15 +74,6 @@ AC_CHECK_LDFLAG(fe_cv_add_wnounusedparameter, -Wno-unused-parameter, CFLAGS)
 AC_CHECK_LDFLAG(fe_cv_add_wall, -Wall, CFLAGS)
 AC_CHECK_LDFLAG(fe_cv_add_pipe, -pipe, CFLAGS)
 AC_CHECK_LDFLAG(fe_cv_add_fshortenums, -fshort-enums, CFLAGS)
-
-dnl Do we want profiling?
-AC_ARG_ENABLE([profile],
-    [  --enable-profile        enable profiling statistics generation for GCC],
-    [AC_CHECK_LDFLAG(fe_cv_add_pg, $fe_cv_profiling_flag, CFLAGS)
-    if test $fe_cv_add_pg = no; then
-	AC_MSG_WARN([    Sorry, don't found a way to enable profiling.])
-    fi
-])
 
 dnl Do we want debug or optimization?
 AC_ARG_ENABLE(debug,

@@ -17,6 +17,7 @@ Fri Oct 21 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed +-o on A_ADMIN (bug#93).
 	* modules/ircd/channels.c: fixed modechange shown to users on the
 	  anonymous channels (bug#95).
+	* configure: removed --enable-profile as gprof doesn't handle dlopen().
 
 Tue Oct 17 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/queries.c: added validation of second arg of PING.

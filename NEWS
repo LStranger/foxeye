@@ -2,6 +2,9 @@
 
 Changes in version 0.10 since 0.9:
 
+- Removed '--enable-profile' from confugure script since gprof cannot
+    handle code linked in runtime with dlopen().
+
 - New module 'ircd' which is IRC protocol server (the RFC2810...RFC2813
     compliant). See included documentation for more info.
 
@@ -21,8 +24,7 @@ Changes in version 0.10 since 0.9:
     IPv4 connections on every IPv4 interface if is called with NULL as
     domain name.  To listen for both IPv4 and IPv6 use "::" name.
 
-- The Solaris OS support revived, works fine on 64-bit OpenSolaris 11
-    (snv_105).
+- The Solaris OS support revived, works fine on OpenSolaris 11 (snv_105).
 
 - Merged libiconv detection with AM_ICONV macro from gettext tests, now
     path to libiconv which given to --with-libiconv-prefix option of the
