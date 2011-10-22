@@ -527,7 +527,11 @@ static inline CLIENT *_ircd_find_phantom(CLIENT *nick, peer_priv *via)
   dprint(5, "ircd:ircd.c:_ircd_find_phantom: %s", nick->nick);
   if (via->link->cl->umode & A_SERVER)
     while (nick) {
+#if IRCD_MULTICONNECT
+      if ((nick->hold_upto <= Time) && (nick->on_ack == 0));
+#else
       if (nick->hold_upto <= Time);
+#endif
       else if (!strcmp(nick->away, via->p.dname))
 	return (nick);
       else if (resort == NULL && nick->away[0] == '\0')
