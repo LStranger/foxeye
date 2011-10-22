@@ -343,8 +343,6 @@ static inline int _ircd_join_0_remote(IRCD *ircd, struct peer_priv *bysrv,
   register ACK *ack;
 #endif
 
-  if (key == NULL)
-    key = cl->nick;
 #if IRCD_MULTICONNECT
   if (bysrv->link->cl->umode & A_MULTI)
     New_Request(bysrv->p.iface, 0, "ACK JOIN %s :0", cl->nick);
@@ -354,6 +352,10 @@ static inline int _ircd_join_0_remote(IRCD *ircd, struct peer_priv *bysrv,
     return (1);
   }
 #endif
+  if (cl->c.hannels == NULL)
+    return (1);
+  if (key == NULL)
+    key = cl->nick;
   while (cl->c.hannels)
   {
     if ((ch = cl->c.hannels->chan)->mode & A_QUIET) ;
@@ -449,7 +451,8 @@ static int ircd_join_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 				 (m == msg) ? m : &m[1]);
       else
 	m += ptr;
-    }
+    } else
+      err = 1;
     if (*c == ',')
       c++;
   }

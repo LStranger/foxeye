@@ -1381,6 +1381,8 @@ static inline void _ircd_join_0_local (IRCD *ircd, CLIENT *cl, char *key)
 {
   register CHANNEL *ch;
 
+  if (cl->c.hannels == NULL)	/* nothing to do! */
+    return;
   if (key == NULL)
     key = cl->nick;
   while (cl->c.hannels)
@@ -1460,7 +1462,8 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
       _ircd_join_0_local ((IRCD *)srv->data, cl, key);
       chn = nextch;
       key = nextkey;
-      x = 0;
+      x = 0;				/* reset counters */
+      ptr = 0;
       continue;
     }
     //TODO: just drop ^G or cancel (sub)join?
