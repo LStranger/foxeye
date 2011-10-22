@@ -16,6 +16,7 @@ Sat Oct 22 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed phantom finding.
 	* modules/ircd/ircd.c: set phantom again to be created on nick change
 	  but ignored on attempt to regain that free nick.
+	* modules/ircd/ircd.c: added ignorance of dummy nick change.
 
 Fri Oct 21 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/socket.c: fixed wrong setting of Pollfd structure after poll.

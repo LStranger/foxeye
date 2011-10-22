@@ -2277,6 +2277,8 @@ static int ircd_nick_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 
   if (argc == 0)
     return ircd_do_unumeric (cl, ERR_NONICKNAMEGIVEN, cl, 0, NULL);
+  if (strcmp(cl->nick, argv[0]) == 0) /* ignore dummy change */
+    return 1;
   unistrlower(checknick, argv[0], sizeof(checknick));
   if (strcmp(checknick, cl->lcnick) == 0)
     is_casechange = 1;
@@ -3232,9 +3234,15 @@ static int _ircd_remote_nickchange(CLIENT *tgt, peer_priv *pp,
       dprint(5, "ircd:ircd.c:_ircd_remote_nickchange: nick %s already gone",
 	     sender);
   }
-  if (!tgt || tgt->hold_upto != 0 || (tgt->umode & (A_SERVER | A_SERVICE))) {
+  if (tgt == NULL || (tgt->umode & (A_SERVER | A_SERVICE))) {
+    /* tgt->hold_upto can be only 0 after check above */
     ERROR("ircd:got NICK from nonexistent user %s via %s", sender, pp->p.dname);
     return ircd_recover_done(pp, "Bogus NICK sender");
+  }
+  if (strcmp(tgt->nick, nn) == 0) {
+    Add_Request(I_LOG, "*", F_WARN, "ircd:dummy NICK change via %s for %s",
+		pp->p.dname, nn);
+    return ircd_recover_done(pp, "Bogus nickchange");
   }
   unistrlower(checknick, nn, sizeof(checknick));
   if (strcmp(tgt->lcnick, checknick) == 0) { /* this is just case change */
@@ -3261,11 +3269,6 @@ static int _ircd_remote_nickchange(CLIENT *tgt, peer_priv *pp,
 	  sender, nn);
     checknick[0] = '\0';		/* kill client then */
     changed = -1;
-  }
-  if (!strcmp(tgt->nick, checknick)) {
-    Add_Request(I_LOG, "*", F_WARN, "ircd:dummy NICK change via %s for %s",
-		pp->p.dname, checknick);
-    return ircd_recover_done(pp, "Bogus nickchange");
   }
   phantom = NULL;
   if (changed < 0) {			/* redo change on collision */
