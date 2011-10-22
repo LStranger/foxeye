@@ -88,7 +88,7 @@ AC_ARG_ENABLE(debug,
 	    ac_cv_add_optimization=yes
 	else
 	    ac_cv_add_optimization=no
-	endif
+	fi
 	AC_CHECK_LDFLAG(fe_cv_add_g, -g, CFLAGS)
 	AC_CHECK_LDFLAG(fe_cv_add_wextra, -Wextra, CFLAGS)
     fi
