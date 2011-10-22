@@ -2237,6 +2237,9 @@ static int _ircd_check_nick_cmd (CLIENT *cl, char *b, const char *nick,
     _ircd_try_drop_collision(&cl2);
     if (cl == cl2)			/* client took own old nick back */
       _ircd_force_drop_collision(&cl2); /* new nick cannot have tail in ->rfr */
+    //FIXME: add some #define for behavior below?
+    if (cl2->x.rto != NULL)		/* it's phantom from nick change */
+      _ircd_force_drop_collision(&cl2); /* let's allow client to regain it */
     if (cl2 != NULL)
     {
       ircd_do_unumeric (cl, ERR_UNAVAILRESOURCE, cl, 0, b);
@@ -3154,7 +3157,7 @@ static CLIENT *_ircd_do_nickchange(CLIENT *tgt, peer_priv *pp,
   phantom->rfr = tgt->rfr;
   phantom->x.rto = tgt;
   tgt->rfr = phantom;
-  phantom->hold_upto = Time/* + CHASETIMELIMIT*/; /* nick delay for collided */
+  phantom->hold_upto = Time + CHASETIMELIMIT; /* nick delay for changed nick */
 #if IRCD_MULTICONNECT
   _ircd_move_acks(tgt, phantom); /* move acks into the clone with old lcnick */
 #endif
