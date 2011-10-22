@@ -77,14 +77,18 @@ AC_CHECK_LDFLAG(fe_cv_add_fshortenums, -fshort-enums, CFLAGS)
 
 dnl Do we want debug or optimization?
 AC_ARG_ENABLE(debug,
-    [  --enable-debug          creates debugging code],
+    [  --enable-debug[[=info]]   creates debugging code],
     [
     if test "x$enableval" = xno; then
 	dnl enable optimization - this is default too
 	ac_cv_add_optimization=yes
     else
 	dnl disable optimization and add extra warnings if it's debug compilation
-	ac_cv_add_optimization=no
+	if test "$enableval" = info; then
+	    ac_cv_add_optimization=yes
+	else
+	    ac_cv_add_optimization=no
+	endif
 	AC_CHECK_LDFLAG(fe_cv_add_g, -g, CFLAGS)
 	AC_CHECK_LDFLAG(fe_cv_add_wextra, -Wextra, CFLAGS)
     fi

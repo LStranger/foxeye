@@ -38,28 +38,6 @@ dnl ------------------------------------------------------------------------
 dnl Project-specific set of tests
 dnl ------------------------------------------------------------------------
 
-AC_DEFUN([AC_SET_NODEBUG],
-[
-test "$LDFLAGS" = "" && LDFLAGS="-s"
-test "$CFLAGS" = "" || CFLAGS=`echo "$CFLAGS" | sed 's/[-]p*g[ ]*//g'`
-])
-
-AC_DEFUN([AC_CHECK_DEBUG],
-[
-AC_ARG_ENABLE(debug,
-    [  --enable-debug          creates debugging code],
-[
-if test "x$enableval" = xno; then
-  AC_SET_NODEBUG
-else
-  dnl disable optimization and add extra warnings if it's debug compilation
-  test "$CFLAGS" = "" || CFLAGS=`echo "$CFLAGS" | sed 's/[-]O2/-O0/g'`
-  AC_CHECK_LDFLAG(fe_cv_add_wextra, -Wextra, CFLAGS)
-fi
-],
-AC_SET_NODEBUG)
-])
-
 AC_DEFUN([AC_CHECK_LDFLAG],
 [AC_CACHE_CHECK([whether the target compiler accepts $2], $1,
     [$1=no

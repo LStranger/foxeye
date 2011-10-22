@@ -10,6 +10,10 @@ TODO:
 	* core/socket.c: to add libidn support.
 
 --- [0.10.0]
+Sat Oct 22 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* configure: added optional parameter 'info' for --enable-debug to
+	  not disable optimization in that case.
+
 Fri Oct 21 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/socket.c: fixed wrong setting of Pollfd structure after poll.
 	* core/socket.c: fixed SocketError() on errors from strerror_r().
