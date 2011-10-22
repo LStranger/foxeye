@@ -1145,6 +1145,10 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 		continue;
 	      } /* else */
 	      ch->mode |= mf;
+	    } else if (ch->mode & mf) { /* dummy modechange */
+	      dprint(4, "ircd:channels.c: mode +%c already present on %s", *c,
+		     ch->name);
+	      continue;
 	    } else			/* just modechange */
 	      ch->mode |= mf;
 	    n++;			/* one more accepted */
@@ -1170,6 +1174,10 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	      continue;
 	    } /* else */
 	    ch->mode &= ~mf;
+	  } else if (!(ch->mode & mf)) { /* dummy modechange */
+	    dprint(4, "ircd:channels.c: there isn't +%c on %s to remove", *c,
+		   ch->name);
+	    continue;
 	  } else			/* just modechange */
 	    ch->mode &= ~mf;
 	  n++;				/* one more accepted */
@@ -1496,6 +1504,11 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 					  ch ? ch->mode : 0, ch ? ch->count : 0,
 					  chn, ((IRCD *)srv->data)->channels,
 					  &nchn);
+    if (ch == NULL && mf != 0 && nchn != chn) { /* binding changed the name */
+      unistrlower(lcchname, nchn, sizeof(lcchname));
+      _ircd_validate_channel_name(lcchname);
+      ch = _ircd_find_channel ((IRCD *)srv->data, lcchname);
+    }
     if (ch && !mf)			/* channel is still on hold */
       ircd_do_unumeric (cl, ERR_UNAVAILRESOURCE, cl, 0, chn);
     else if (!mf)			/* cannot create a channel */
@@ -1550,8 +1563,7 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
     if (mf && i == 0)			/* OK, user is allowed to join yet */
     {
       b = NULL;
-      while ((b = Check_Bindtable (BTIrcdCheckModechange, ch->name, U_ALL,
-				   U_ANYCH, b)))
+      while ((b = Check_Bindtable(BTIrcdCheckModechange, nchn, U_ALL, U_ANYCH, b)))
 	if (!b->name && (ff = b->func) && ff (cl->umode, mf, 1, 0, NULL) == 0)
 	  break;			/* denied! */
       if (!b)
@@ -1560,15 +1572,8 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
     if (x++ >= MAXCHANNELS)		/* joined too many channels already */
       ircd_do_unumeric (cl, ERR_TOOMANYCHANNELS, cl, 0, NULL);
     else if (i > 0) {			/* so user can join, do it then */
-      if (!ch) {
-	if (nchn != chn) {		/* binding changed the name */
-	  unistrlower(lcchname, nchn, sizeof(lcchname));
-	  _ircd_validate_channel_name(lcchname);
-	  ch = _ircd_find_channel ((IRCD *)srv->data, lcchname);
-	}
-	if (ch == NULL)			/* it's still not found */
-	  ch = _ircd_new_channel ((IRCD *)srv->data, nchn, lcchname);
-      }
+      if (ch == NULL)			/* it's still not found */
+	ch = _ircd_new_channel ((IRCD *)srv->data, nchn, lcchname);
       mm = _ircd_do_join ((IRCD *)srv->data, cl, ch, mf);
       if (mm == NULL) {
 	DBG("refused to add %s into %s", cl->nick, ch->name);
@@ -1783,7 +1788,6 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	    else
 	      *imp = '-';
 	  }
-	  n++;				/* one more accepted */
 	  if (add)
 	  {
 	    if (tar) {			/* it has a target */
@@ -1801,12 +1805,16 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 		} else
 		  dprint(4, "ircd:channels.c: mode +%c %s already present on %s",
 			 *c, par, ch->name);
-		n--;			/* it discarded */
 		continue;
 	      } else
 		ch->mode |= mf;
+	    } else if (ch->mode & mf) { /* dummy modechange */
+	      dprint(4, "ircd:channels.c: dummy modechange via %s on %s: +%c",
+		     pp->p.dname, ch->name, *c);
+	      continue;
 	    } else			/* just modechange */
 	      ch->mode |= mf;
+	    n++;			/* one more accepted */
 	    *++imp = *c;		/* it has '+' or last */
 	    if (par)
 	      passed[x++] = par;	/* one more param accepted */
@@ -1824,7 +1832,6 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 #endif
 		dprint(4, "ircd:channels.c: there isn't +%c %s on %s to remove, ignoring it",
 		       *c, par, ch->name);
-		n--;			/* it discarded */
 		continue;
 #if IRCD_MULTICONNECT
 	      }
@@ -1833,9 +1840,13 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 #endif
 	    }
 	    ch->mode &= ~mf;
-	  }
-	  else				/* just modechange */
+	  } else if (!(ch->mode & mf)) { /* dummy modechange */
+	    dprint(4, "ircd:channels.c: dummy modechange via %s on %s: -%c",
+		   pp->p.dname, ch->name, *c);
+	    continue;
+	  } else			/* just modechange */
 	    ch->mode &= ~mf;
+	  n++;				/* one more accepted */
 	  *++imp = *c;			/* it has '-' or last */
 	  if (par)
 	    passed[x++] = par;		/* one more param accepted */
