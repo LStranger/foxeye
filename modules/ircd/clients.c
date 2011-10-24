@@ -383,14 +383,15 @@ static int ircd_invite_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, cha
       return ircd_do_unumeric (cl, ERR_NOTONCHANNEL, cl, 0, argv[1]);
     if ((memb->chan->mode & A_INVITEONLY) && !(memb->mode & (A_OP | A_ADMIN)))
       return ircd_do_cnumeric (cl, ERR_CHANOPRIVSNEEDED, memb->chan, 0, NULL);
-    if (tgt && _ircd_is_on_channel (tgt, memb->chan))
+    if (_ircd_is_on_channel (tgt, memb->chan))
       return ircd_do_cnumeric (cl, ERR_USERONCHANNEL, memb->chan, 0, tgt->nick);
   }
-  if (!tgt)
-    return 1;
-  if (CLIENT_IS_REMOTE(tgt))
+  //FIXME: check channel mask against target server
+  if (CLIENT_IS_REMOTE(tgt)) {
+    if ((memb != NOSUCHCHANNEL) && (memb->chan->mode & A_INVISIBLE))
+      return (1); /* TODO: send some numeric to client? */
     ircd_sendto_one (tgt, ":%s INVITE %s %s", peer->dname, argv[0], argv[1]);
-  else
+  } else
     ircd_sendto_one (tgt, ":%s!%s@%s INVITE %s %s", peer->dname, user, host,
 		     argv[0], argv[1]);
   if (!CLIENT_IS_REMOTE(tgt) && memb != NOSUCHCHANNEL)
