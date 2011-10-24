@@ -16,7 +16,9 @@ Mon Oct 24 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/clients.c, modules/ircd/servers.c: fixed local TOPIC
 	  broadcast on A_ANONYMOUS channels (bug#95).
 	* modules/ircd/channels.c: fixed duplicates on chanmode -l.
-	* modules/ircd/clients.c: disabled sending invite to remote &channel.
+	* modules/ircd/clients.c: disabled invite to remote &channel (bug#97).
+	* modules/ircd/clients.c, modules/ircd/servers.c: fixed local KICK
+	  broadcast on A_ANONYMOUS channels (bug#95).
 
 Sun Oct 23 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: rewritten message origin detection again.
@@ -26,7 +28,7 @@ Sat Oct 22 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  not disable optimization in that case.
 	* modules/ircd/ircd.c: fixed phantom finding.
 	* modules/ircd/ircd.c: set phantom again to be created on nick change
-	  but ignored on attempt to regain that free nick.
+	  but ignored on attempt to regain that free nick (bug#94).
 	* modules/ircd/ircd.c: added ignorance of dummy nick change.
 	* modules/ircd/channels.c, modules/ircd/servers.c: fixed non-ignorance
 	  of dummy "JOIN 0".

@@ -904,10 +904,14 @@ static inline void _ircd_mode_broadcast (IRCD *ircd, int id, CLIENT *sender,
   else if (CLIENT_IS_SERVICE (sender))	/* it's forbidden for local services */
     ircd_sendto_chan_local (ch, ":%s@%s MODE %s %s%s", sender->nick,
 			    sender->cs->nick, ch->name, modepass, buff);
-  else if (ch->mode & A_ANONYMOUS)
-    ircd_sendto_chan_local (ch, ":anonymous!anonymous@anonymous. MODE %s %s%s",
+  else if (ch->mode & A_ANONYMOUS) {
+    if (!CLIENT_IS_REMOTE(sender))
+      New_Request(sender->via->p.iface, 0, ":%s!%s@%s MODE %s %s%s",
+		  sender->nick, sender->user, sender->host, ch->name, modepass,
+		  buff);
+    ircd_sendto_chan_butone(ch, sender, ":anonymous!anonymous@anonymous. MODE %s %s%s",
 			    ch->name, modepass, buff);
-  else
+  } else
     ircd_sendto_chan_local (ch, ":%s!%s@%s MODE %s %s%s", sender->nick,
 			    sender->user, sender->host, ch->name, modepass,
 			    buff);

@@ -440,8 +440,15 @@ static int ircd_kick_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
       ircd_do_cnumeric (cl, ERR_USERNOTINCHANNEL, memb->chan, 0, lcl);
     else
     {
-      ircd_sendto_chan_local (memb->chan, ":%s!%s@%s KICK %s %s :%s",
-			      peer->dname, user, host, chn, lcl, reason);
+      if (memb->chan->mode & A_ANONYMOUS) {
+	New_Request(cl->via->p.iface, 0, ":%s!%s@%s KICK %s %s :%s",
+		    peer->dname, user, host, chn, lcl, reason);
+	ircd_sendto_chan_butone(memb->chan, cl,
+				":anonymous!anonymous@anonymous. KICK %s anonymous :%s",
+				chn, reason);
+      } else
+	ircd_sendto_chan_local (memb->chan, ":%s!%s@%s KICK %s %s :%s",
+				peer->dname, user, host, chn, lcl, reason);
 #ifdef USE_SERVICES
       //TODO: inform services
 #endif

@@ -740,9 +740,9 @@ static int ircd_kick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 			int argc, const char **argv)
 { /* args: <channel>[,<channel> ...] <user>[,<user> ...] [<comment>] */
   CLIENT *cl, *tgt;
-  MEMBER *memb, *tm;
+  MEMBER *tm;
   const char *reason;
-  char *lcl, *lch, *chn, *nlcl, *nchn;
+  char *lcl, *lch, *chn, *nlcl, *nchn, *tname;
   struct peer_priv *pp = peer->iface->data; /* it's really peer */
   register char *cmask;
 
@@ -800,23 +800,31 @@ static int ircd_kick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 	continue;
       } else
 	tm = tst;
-      memb = _ircd_is_on_channel (cl, tm->chan);
-      if (memb == NULL)
+      tst = _ircd_is_on_channel (cl, tm->chan);
+      if (tst == NULL)
 	Add_Request(I_LOG, "*", F_WARN, "ircd:KICK via %s by %s not member of %s",
 		    peer->dname, sender, chn);
-      if (CLIENT_IS_SERVER(cl)) //TODO: can servers kick users?
-	ircd_sendto_chan_local (memb->chan, ":%s KICK %s %s :%s",
-				sender, chn, lcl, reason);
-      else if (CLIENT_IS_SERVICE(cl))
-	ircd_sendto_chan_local (memb->chan, ":%s@%s KICK %s %s :%s",
-				sender, cl->cs->lcnick, chn, lcl, reason);
+      if (tm->chan->mode & A_ANONYMOUS)
+	tname = "anonymous";
       else
-	ircd_sendto_chan_local (memb->chan, ":%s!%s@%s KICK %s %s :%s",
+	tname = lcl;
+      if (CLIENT_IS_SERVER(cl)) //TODO: can servers kick users?
+	ircd_sendto_chan_local (tm->chan, ":%s KICK %s %s :%s",
+				sender, chn, tname, reason);
+      else if (CLIENT_IS_SERVICE(cl))
+	ircd_sendto_chan_local (tm->chan, ":%s@%s KICK %s %s :%s",
+				sender, cl->cs->lcnick, chn, tname, reason);
+      else if (tm->chan->mode & A_ANONYMOUS)
+	ircd_sendto_chan_local (tm->chan,
+				":anonymous@anonymous!anonymous. KICK %s anonymous :%s",
+				chn, reason);
+      else
+	ircd_sendto_chan_local (tm->chan, ":%s!%s@%s KICK %s %s :%s",
 				sender, cl->user, cl->host, chn, lcl, reason);
 #ifdef USE_SERVICES
       //TODO: inform services
 #endif
-      if ((cmask = strchr (memb->chan->name, ':'))) {
+      if ((cmask = strchr (tm->chan->name, ':'))) {
 	cmask++; /* not put '++' into macro below */
 	ircd_sendto_servers_mask_all_ack ((IRCD *)srv->data, tgt, tm->chan,
 					  pp, cmask, ":%s KICK %s %s :%s",
