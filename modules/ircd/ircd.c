@@ -547,6 +547,7 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
   struct binding_t *b = NULL;
   int i = 0;
   CLIENT *c;
+  register CLIENT *c2;
   int t;
 #if IRCD_MULTICONNECT
   ACK *ack;
@@ -556,32 +557,36 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
   {
     /* check if message source is known for me */
     c = _ircd_find_client (argv[0]);
+    /* check if this link have phantom instead of real client on nick */
+    if (c == NULL || peer == NULL) ; /* skip check for internal call */
+    else if (c->hold_upto != 0)
+      /* link haven't got our NICK or KILL so track it */
+      c = _ircd_find_phantom(c, peer);
+    else if (c->rfr != NULL && c->rfr->cs == c && /* it's nick holder */
+	     (c2 = _ircd_find_phantom(c->rfr, peer)) != NULL &&
+	     c2->away[0] != '\0')
+      c = c2;			/* found collision originated from this link */
+    /* it's real client, check if message may come from the link */
+    else if (c->cs->via != peer)
+#if IRCD_MULTICONNECT
+    if (!(peer->link->cl->umode & A_MULTI)) /* else if (X && Y) */
+#endif
+    {
+      ERROR("ircd:invalid source %s from %s: invalid path", argv[0],
+	    peer->link->cl->lcnick);
+      if (CLIENT_IS_SERVER(c)) {
+	ircd_do_squit(peer->link, peer, "invalid message source path");
+	return (0);
+      }
+      return (ircd_recover_done(peer, "invalid message source path"));
+      //TODO: RFC2813:3.3 - KILL for (c) if it's a client instead?
+    }
     if (c == NULL) {
       ERROR("ircd:invalid source [%s] from [%s]", argv[0],
 	    peer ? peer->link->cl->lcnick : "internal call");
       //TODO: drop link if argv[0] is server name (RFC2813)
       return (0);
     }
-    /* check if message may come from the link */
-#if IRCD_MULTICONNECT
-    if (peer != NULL && !(peer->link->cl->umode & A_MULTI))
-#else
-    if (peer != NULL)
-#endif
-      if (c->cs->via != peer) {		/* it should not came from this link! */
-	ERROR("ircd:invalid source %s from %s: invalid path", argv[0],
-	      peer->link->cl->lcnick);
-	if (CLIENT_IS_SERVER(c)) {
-	  ircd_do_squit(peer->link, peer, "invalid message source path");
-	  return (0);
-	}
-	return (ircd_recover_done(peer, "invalid message source path"));
-	//TODO: RFC2813:3.3 - KILL for (c) if it's a client instead?
-      }
-    /* check if this link have phantom instead of real client on nick */
-    if (peer != NULL && c->hold_upto != 0)
-      /* link haven't got our NICK or KILL so track it */
-      c = _ircd_find_phantom(c, peer); //FIXME: shouldn't we skip it for A_MULTI?
 #if IRCD_MULTICONNECT
     //TODO: rewrite acks check for QUIT and NICK here!
     if (peer && c && c->hold_upto && !(CLIENT_IS_SERVER(c)) &&
@@ -601,7 +606,8 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
     if (c == NULL) {			/* sender has quited at last */
       dprint(3, "ircd: sender [%s] of message %s is offline for us", argv[0],
 	     argv[1]);
-      return (0);
+      //FIXME: handle remote ":killed NICK :someone" message as well
+      return (1);		/* just ignore it then */
     } /* it's not phantom at this moment */
     if (((CLIENT_IS_ME(c)) ||
 	 (!(CLIENT_IS_REMOTE(c)) && !(CLIENT_IS_SERVER(c)))) &&
@@ -1909,7 +1915,8 @@ static void _ircd_do_init_uplinks (void)
       if (_ircd_find_client(c)) {	/* already connected, go to next */
 	c = cc;
 	continue;
-      }
+      } //FIXME: check in IrcdPeers list instead: lower info hosts[]
+      // then compare with every peer->p.dname while IrcdLock is on
       lid = FindLID (c);
       c = cc;
       while (Get_Request());		/* we need queue to be empty */
@@ -2238,7 +2245,7 @@ static int _ircd_check_nick_cmd (CLIENT *cl, char *b, const char *nick,
     if (cl == cl2)			/* client took own old nick back */
       _ircd_force_drop_collision(&cl2); /* new nick cannot have tail in ->rfr */
     //FIXME: add some #define for behavior below?
-    if (cl2->x.rto != NULL)		/* it's phantom from nick change */
+    if (cl2 && cl2->x.rto != NULL)	/* it's phantom from nick change */
       _ircd_force_drop_collision(&cl2); /* let's allow client to regain it */
     if (cl2 != NULL)
     {
@@ -2698,6 +2705,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
     ERROR("ircd:ircd_server_rb: cannot find %s in local clients list", cl->nick);
   cl->via->link->prev = Ircd->servers;	/* add it to local lists */
   Ircd->servers = cl->via->link;
+  cl->via->p.dname = cl->lcnick;	/* it should be lower case for server */
 #if IRCD_MULTICONNECT
   cl->via->acks = NULL;			/* no acks from fresh connect */
   if (cl->alt == NULL)			/* it's first instance */
@@ -3380,8 +3388,9 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   tgt->away[0] = '\0';
   collision = _ircd_check_nick_collision(tgt->nick, sizeof(tgt->nick), pp,
 					 on->lcnick);
-  if (collision != NULL && collision->hold_upto == 0) {
-    /* another client of that nick found and still kept alive */
+  if ((collision != NULL && collision->hold_upto == 0) || tgt->nick[0] == '\0') {
+    /* another client of that nick found and still kept alive
+       or asked to remove remote client too */
     ERROR("ircd:nick collision via %s: %s => %s", peer->dname, argv[0],
 	  tgt->nick);
     ct = 1;				/* should be changed by collision */
@@ -3986,6 +3995,8 @@ void ircd_drop_nick (CLIENT *cl)
   dprint(5, "ircd:ircd.c:ircd_drop_nick: %s", cl->nick);
   if (cl->umode & A_SERVER)
     free_CLIENT(cl);
+  else if (cl->via != NULL && cl->via->p.state == P_QUIT)
+    return;				/* it's at last message sending */
   else if (cl->via != NULL)
     ERROR("ircd:ircd_drop_nick() not for nick on hold: %s", cl->nick);
   else if (cl->cs->hold_upto != 0)

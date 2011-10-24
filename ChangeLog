@@ -10,6 +10,9 @@ TODO:
 	* core/socket.c: to add libidn support.
 
 --- [0.10.0]
+Sun Oct 23 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/ircd.c: rewritten message origin detection again.
+
 Sat Oct 22 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* configure: added optional parameter 'info' for --enable-debug to
 	  not disable optimization in that case.
