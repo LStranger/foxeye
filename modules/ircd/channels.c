@@ -574,7 +574,9 @@ static int _imch_do_limit (INTERFACE *srv, const char *rq, const char *ch,
       *param = "1";
     }
     _imch_channel->limit = i;
-  } else
+  } else if (_imch_channel->limit == 0) /* already reset */
+    return (-1);
+  else
     _imch_channel->limit = 0;
   return 1;
 }

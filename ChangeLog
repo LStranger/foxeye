@@ -15,6 +15,7 @@ Mon Oct 24 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  channels (bug#95).
 	* modules/ircd/clients.c, modules/ircd/servers.c: fixed local TOPIC
 	  broadcast on A_ANONYMOUS channels (bug#95).
+	* modules/ircd/channels.c: fixed duplicates on chanmode -l.
 
 Sun Oct 23 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: rewritten message origin detection again.
