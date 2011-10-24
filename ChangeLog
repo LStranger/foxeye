@@ -10,6 +10,12 @@ TODO:
 	* core/socket.c: to add libidn support.
 
 --- [0.10.0]
+Mon Oct 24 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/channels.c: fixed local MODE broadcast on A_ANONYMOUS
+	  channels (bug#95).
+	* modules/ircd/clients.c, modules/ircd/servers.c: fixed local TOPIC
+	  broadcast on A_ANONYMOUS channels (bug#95).
+
 Sun Oct 23 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: rewritten message origin detection again.
 

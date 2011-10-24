@@ -945,6 +945,9 @@ static int _ircd_do_stopic(IRCD *ircd, const char *via, const char *sender,
   else if (CLIENT_IS_SERVICE(cl))
     ircd_sendto_chan_local(ch, ":%s@%s TOPIC %s :%s", sender,
 			   cl->cs->lcnick, ch->name, ch->topic);
+  else if (ch->mode & A_ANONYMOUS)
+    ircd_sendto_chan_local(ch, ":anonymous!anonymous@anonymous. TOPIC %s :%s",
+			   ch->name, ch->topic);
   else
     ircd_sendto_chan_local(ch, ":%s!%s@%s TOPIC %s :%s", sender, cl->user,
 			   cl->host, ch->name, ch->topic);

@@ -337,8 +337,12 @@ static int ircd_topic_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char
   }
   sz = unistrcut (argv[1], sizeof(ch->topic), TOPICLEN); /* validate */
   strfcpy (ch->topic, argv[1], sz+1);
-  ircd_sendto_chan_local(ch, ":%s!%s@%s TOPIC %s :%s", peer->dname, user, host,
-			 ch->name, ch->topic);
+  if (ch->mode & A_ANONYMOUS)
+    ircd_sendto_chan_local(ch, ":anonymous!anonymous@anonymous. TOPIC %s :%s",
+			   ch->name, ch->topic);
+  else
+    ircd_sendto_chan_local(ch, ":%s!%s@%s TOPIC %s :%s", peer->dname, user, host,
+			   ch->name, ch->topic);
   if (ch->mode & A_INVISIBLE)		/* it's local channel */
     return 1;
   cmask = strchr (ch->name, ':');
