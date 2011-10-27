@@ -94,3 +94,5 @@
 #00095	19.10.2011  21.10.2011	sf:#3425953 modechange unhide nicks on +a chan
 #00096	19.10.2011  22.10.2011	duplicate modes don't supressed (-pspssssssl)
 #00097	24.10.2011  24.10.2011	sf:#3427820 silly remote invites to local channel
+#00098	27.10.2011		almost every thread left as zombie, not joined
+#00099	27.10.2011		/mode #chan does not work outside of #chan

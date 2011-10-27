@@ -160,7 +160,12 @@ typedef struct LINK
    in case of we sent back NICK or KILL for collided user away contains
    server name where we sent that command (for tracking purpose)
    host contains host of client while client is alive and if client
-   is on hold due to network split then host contains name of server */
+   is on hold due to network split then host contains name of server
+   *** if CLIENT is online user then it is in lists:
+   - class - via pcl - reference is x.class
+   - channel members - via list c.hannels
+   - server clients - reference is cs
+   *** as soon user gone offline it should be deleted from each of those */
 struct CLIENT
 {
   CLIENT *pcl;				/* list in class */

@@ -200,9 +200,6 @@ static int _ircd_class_in (struct peer_t *peer, char *user, char *host, const ch
     Unlock_Clientrecord (cl);
   }
   peer->uf = uf;
-  link->cl->x.class = clcl;		/* insert it into class */
-  link->cl->pcl = clcl->glob;
-  clcl->glob = link->cl;
   if (clcl->lin >= clcl->lpc)		/* class overloaded */
   {
     Unset_Iface();
@@ -230,6 +227,10 @@ static int _ircd_class_in (struct peer_t *peer, char *user, char *host, const ch
     *msg = "too many users from this host";
     return 0;
   }
+  DBG("ircd:CLASS: adding %p into class %p: prev %p", link->cl, clcl, clcl->glob);
+  link->cl->x.class = clcl;		/* insert it into class */
+  link->cl->pcl = clcl->glob;
+  clcl->glob = link->cl;
 #if IRCD_USES_ICONV
   DBG("ircd:ircd.c: setting charset %s", uh);
   if (*uh)				/* override charset with class' one */
@@ -256,7 +257,7 @@ static void _ircd_class_rin (LINK *l)
   if (!Ircd->iface)
     return;
   snprintf (uh, sizeof(uh), "%s@%s", l->cl->user, l->cl->host);
-  dprint(2, "ircd:ircd.c: adding %s (remote) into class", uh);
+  dprint(2, "ircd:ircd.c: adding %s!%s (remote) into class", l->cl->nick, uh);
   cl = Find_Clientrecord (uh, &clname, NULL, NULL);
   /* host is reported by remote server so no other matching is possible */
   if (cl) {
@@ -276,10 +277,10 @@ static void _ircd_class_rin (LINK *l)
     *clp = clcl = _ircd_get_new_class (clname, clparms);
   if (cl)
     Unlock_Clientrecord (cl);
+  DBG("ircd:CLASS: adding %p into class %p: prev %p", l->cl, clcl, clcl->glob);
   l->cl->x.class = clcl;
   l->cl->pcl = clcl->glob;
   clcl->glob = l->cl;
-  clcl->lin++;
 }
 
 /* removes client from class, not from remote server list! */
@@ -296,6 +297,7 @@ static void _ircd_class_out (LINK *link)
   dprint(2, "ircd:ircd.c: removing %s from class %s", link->cl->nick, cc->name);
   /* removing from ->pcl */
   clp = &cc->glob;
+  DBG("ircd:CLASS: removing %p from class %p", link->cl, cc);
   while (*clp)
     if (*clp == link->cl)
       break;
@@ -308,7 +310,8 @@ static void _ircd_class_out (LINK *link)
 	   link->cl->nick);
   link->cl->x.rto = NULL;
   link->cl->pcl = NULL;
-  cc->lin--;
+  if (link->cl->via != NULL)	/* it's local client */
+    cc->lin--;
 }
 
 /* updates every class data from Listfile */
@@ -364,7 +367,7 @@ static inline void _ircd_real_drop_nick(CLIENT **ptr)
 {
   register CLIENT *cl = *ptr;
 
-  dprint(2, "ircd:ircd.c:_ircd_real_drop_nick: client %s", cl->nick);
+  dprint(2, "ircd:CLIENT: deleting phantom %s: %p => %p", cl->nick, cl, cl->pcl);
   *ptr = cl->pcl;
   if (cl->rfr != NULL)
     cl->rfr->x.rto = cl->x.rto;
@@ -699,6 +702,8 @@ static void _ircd_bounce_collision(CLIENT *cl)
 {
   register CLIENT *host;
 
+  dprint(5, "ircd:ircd.c:_ircd_bounce_collision: bouncing collisions %s to %p",
+	 cl->nick, cl);
   if (cl->lcnick[0] == '\0') /* it should take name */ {
     _ircd_try_drop_collision(&cl);
     if (cl == NULL)		/* it might be gone */
@@ -708,7 +713,7 @@ static void _ircd_bounce_collision(CLIENT *cl)
       ERROR("ircd:_ircd_bounce_collision: tree error on %s", cl->lcnick);
       /* FIXME: isn't it something fatal? */
     else
-      dprint(2, "ircd:ircd.c:_ircd_bounce_collision: new name %s", cl->lcnick);
+      dprint(2, "ircd:CLIENT: added phantom name %s", cl->lcnick);
   } //TODO: else check for expired holders somehow too?
   for (host = cl; cl; cl = cl->pcl)
     cl->cs = host;
@@ -731,9 +736,9 @@ static void _ircd_try_drop_collision(CLIENT **ptr)
   dprint (2, "ircd: dropping nick %s from hold (was on %s)", cl->nick, cl->host);
   if (cl->lcnick[0] != '\0') {	/* it had the nick key */
     if (Delete_Key(Ircd->clients, cl->lcnick, cl) < 0)
-      ERROR("ircd:_ircd_try_drop_collision: tree error on %s", cl->lcnick);
+      ERROR("ircd:_ircd_try_drop_collision: tree error on %s (%p)", cl->lcnick, cl);
     else
-      dprint(2, "ircd:ircd.c:_ircd_try_drop_collision: del name %s", cl->lcnick);
+      dprint(2, "ircd:CLIENT: del phantom name %s: %p", cl->lcnick, cl);
     cl = (*ptr)->pcl;
     if (cl != NULL)
       _ircd_bounce_collision(cl);
@@ -760,14 +765,14 @@ static void _ircd_force_drop_collision(CLIENT **ptr)
     dprint (2, "ircd: dropping nick %s from hold (was on %s)", cl->nick, cl->host);
   if (cl->lcnick[0] != '\0') {	/* it had the nick key */
     if (Delete_Key(Ircd->clients, cl->lcnick, cl) < 0)
-      ERROR("ircd:_ircd_try_drop_collision: tree error on %s", cl->lcnick);
+      ERROR("ircd:_ircd_force_drop_collision: tree error on %s (%p)", cl->lcnick, cl);
     else
-      dprint(2, "ircd:ircd.c:_ircd_try_drop_collision: del name %s", cl->lcnick);
+      dprint(2, "ircd:CLIENT: del phantom name %s: %p", cl->lcnick, cl);
     cl->lcnick[0] = '\0';
   }
 #if IRCD_MULTICONNECT
   if (cl->on_ack > 0) {
-    DBG("ircd: holding %s still while acks are gone", cl->nick);
+    DBG("ircd: holding %s(%p) still until acks are gone", cl->nick, cl);
     cl->hold_upto = 1;		/* ircd_drop_ack will need it */
     cl->cs = cl;		/* ircd_drop_nick will need it */
     *ptr = NULL;		/* for caller satisfying */
@@ -818,6 +823,8 @@ __attribute__((warn_unused_result)) static inline CLIENT *
       cl2->pcl = cl->pcl;
       cl->pcl = cl2;
     }
+    dprint(2, "ircd:CLIENT: added phantom to name %s: %p shift %p", cl2->lcnick,
+	   cl2, cl);
   } else {
     cl2->cs = cl2;
     cl2->pcl = NULL;			/* it's alone now */
@@ -827,7 +834,7 @@ __attribute__((warn_unused_result)) static inline CLIENT *
       ERROR("ircd:_ircd_get_phantom: tree error on adding %s", cl2->lcnick);
       /* FIXME: isn't it something fatal? */
     else
-      dprint(2, "ircd:ircd.c:_ircd_get_phantom: new name %s", cl2->lcnick);
+      dprint(2, "ircd:CLIENT: new phantom %s: %p", cl2->lcnick, cl2);
   }
   strfcpy(cl2->nick, on, sizeof(cl2->nick));
   cl2->via = NULL;			/* no structures for this */
@@ -1146,7 +1153,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
       Rename_Iface(cli, NULL);	/* delete it from everywhere before checks */
       /* note: server can be multiconnected and if so then cl->via != peer */
       if (cl->via == peer && Delete_Key (Ircd->clients, cl->lcnick, cl) == 0)
-	dprint(2, "ircd:ircd.c:_ircd_client_request: del name %s", cl->lcnick);
+	dprint(2, "ircd:CLIENT: del quitting name %s: %p", cl->lcnick, cl);
       if (peer == _ircd_uplink)
 	_ircd_uplink = NULL;
       NoCheckFlood (&peer->penalty); /* no more messages will be accepted */
@@ -1196,9 +1203,9 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	cl->rfr = NULL;
 	cl->pcl = NULL;		/* for safe module termination */
 	cl->hold_upto = 0;	/* it's 0 since no collisions on it */
-	DBG("ircd client: unshifting %p prev %p", peer->link, peer->link->prev);
       }
       if (!CLIENT_IS_SERVER(cl)) { /* should be done for incomplete uplink too */
+	DBG("ircd client: unshifting %p prev %p", peer->link, peer->link->prev);
 	pthread_mutex_lock (&IrcdLock);
 	for (ll = &ME.c.lients; *ll != NULL; ll = &(*ll)->prev)
 	  if (*ll == peer->link)
@@ -1229,9 +1236,10 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	}
       free_LINK (peer->link);	/* free all structures */
       DBG("link %p freed", peer->link);
-      if (cl->via == peer)
+      if (cl->via == peer) {
+	dprint(2, "ircd:CLIENT: deleting client %p", cl);
 	free_CLIENT (cl);
-      else
+      } else
 	dprint(5, "ircd:ircd.c:_ircd_client_request: leaving client %s intact",
 	       cl->lcnick);
       free_peer_priv (peer);
@@ -1490,7 +1498,8 @@ static void _ircd_handler (char *cln, char *ident, const char *host, void *data)
   peer->link = alloc_LINK();
   peer->link->cl = cl = alloc_CLIENT();
   peer->link->where = &ME;
-  DBG("ircd client: adding %p prev %p", peer->link, ME.c.lients);
+  dprint(2, "ircd:CLIENT: adding %p: local link %p prev %p", peer->link->cl,
+	 peer->link, ME.c.lients);
   peer->link->prev = ME.c.lients;
   peer->link->flags = 0;
   ME.c.lients = peer->link;
@@ -1665,7 +1674,8 @@ static iftype_t _ircd_uplink_sig (INTERFACE *uli, ifsig_t sig)
 	  *ull = uplink->p.priv;	/* remove it from list */
 	  break;
 	}
-      DBG("ircd uplink: unshifting %p prev %p", uplink->link, uplink->link->prev);
+      dprint(2, "ircd:CLIENT: uplink %s (%p): unshifting link %p prev %p",
+	     uplink->link->cl->lcnick, uplink, uplink->link, uplink->link->prev);
       for (ll = &ME.c.lients; *ll != NULL; ll = &(*ll)->prev)
 	if (*ll == uplink->link)
 	  break;
@@ -1773,7 +1783,8 @@ static inline void _ircd_start_uplink2 (const char *name, char *host,
   uplink->via->link = alloc_LINK();
   uplink->via->link->cl = uplink;
   uplink->via->link->where = &ME;
-  DBG("ircd uplink: adding %p prev %p", uplink->via->link, ME.c.lients);
+  dprint(2, "ircd:CLIENT: adding uplink %p: link %p prev %p", uplink,
+	 uplink->via->link, ME.c.lients);
   uplink->via->link->prev = ME.c.lients;
   uplink->via->link->flags = 0;
   ME.c.lients = uplink->via->link;
@@ -1835,7 +1846,8 @@ static inline void _ircd_start_uplink2 (const char *name, char *host,
 	*pp = uplink->via->p.priv;
 	break;
       }
-    DBG("ircd uplink: unshifting %p prev %p", uplink->via->link, uplink->via->link->prev);
+    dprint(2, "ircd:CLIENT: uplink %s (%p): unshifting %p prev %p",
+	   uplink->lcnick, uplink, uplink->via->link, uplink->via->link->prev);
     for (ll = &ME.c.lients; *ll != NULL; ll = &(*ll)->prev)
       if (*ll == uplink->via->link)
 	break;
@@ -2031,7 +2043,7 @@ static int _ircd_got_local_user (CLIENT *cl)
     ERROR("ircd:_ircd_got_local_user: tree error on %s", cl->lcnick);
     /* FIXME: isn't it fatal? */
   else
-    dprint(2, "ircd:ircd.c:_ircd_got_local_user: new name %s", cl->lcnick);
+    dprint(2, "ircd:CLIENT: new local user %s", cl->lcnick);
   snprintf (mb, sizeof(mb), "%s@%s", cl->lcnick, Ircd->iface->name);
   Rename_Iface (cl->via->p.iface, mb);	/* rename iface to nick@net */
   cl->away[0] = 0;
@@ -2681,6 +2693,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
     pthread_mutex_lock (&IrcdLock);
     free_CLIENT (cl);
     pthread_mutex_unlock (&IrcdLock);
+    dprint(2, "ircd:CLIENT: %s: released %p using %p", clt->nick, cl, clt);
     cl = clt; /* replace CLIENT struct and skip token! */
   }
   else
@@ -2703,6 +2716,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
     *lnk = cl->via->link->prev;
   else
     ERROR("ircd:ircd_server_rb: cannot find %s in local clients list", cl->nick);
+  DBG("ircd server: adding %p prev %p", cl->via->link, Ircd->servers);
   cl->via->link->prev = Ircd->servers;	/* add it to local lists */
   Ircd->servers = cl->via->link;
   cl->via->p.dname = cl->lcnick;	/* it should be lower case for server */
@@ -2711,7 +2725,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
   if (cl->alt == NULL)			/* it's first instance */
 #endif
     Insert_Key (&Ircd->clients, cl->lcnick, cl, 1); //!
-  dprint(2, "ircd:ircd.c:ircd_server_rb: new name %s", cl->lcnick);
+  dprint(2, "ircd:CLIENT: local server link %s: %p", cl->lcnick, cl);
   cl->umode |= A_SERVER; //!
   peer->state = P_TALK;			/* we registered it */
   snprintf (buff, sizeof(buff), "%s@%s", cl->lcnick, Ircd->iface->name);
@@ -2857,9 +2871,9 @@ static CLIENT *_ircd_got_new_remote_server (peer_priv *pp, CLIENT *src,
 {
   CLIENT *cl;
 
-  dprint(5, "ircd:ircd.c:_ircd_got_new_remote_server: %s via %s", nick,
-	 pp->p.dname);
   cl = alloc_CLIENT();
+  dprint(2, "ircd:CLIENT: adding new remote server %s via %s: %p", nick,
+	 pp->p.dname, cl);
   if (ntok >= 0)
   {
     if (ntok >= pp->t)
@@ -2909,7 +2923,7 @@ static CLIENT *_ircd_got_new_remote_server (peer_priv *pp, CLIENT *src,
     ERROR("ircd:_ircd_got_new_remote_server: tree error on adding %s",
 	  cl->lcnick); /* TODO: isn't it fatal? */
   else
-    dprint(2, "ircd:ircd.c:_ircd_got_new_remote_server: new name %s", cl->lcnick);
+    dprint(2, "ircd:CLIENT: new remote server name %s", cl->lcnick);
   return cl;
 }
 
@@ -3158,7 +3172,7 @@ static CLIENT *_ircd_do_nickchange(CLIENT *tgt, peer_priv *pp,
     ERROR("ircd:_ircd_do_nickchange: tree error on removing %s", tgt->lcnick);
     //TODO: isn't it fatal?
   else
-    dprint(2, "ircd:ircd.c:_ircd_do_nickchange: del name %s", tgt->lcnick);
+    dprint(2, "ircd:CLIENT: nick change: del old name %s", tgt->lcnick);
   if (tgt->rfr != NULL && tgt->rfr->cs == tgt) { /* it was a nick holder */
     _ircd_bounce_collision(tgt->rfr);
     tgt->rfr = NULL;
@@ -3177,7 +3191,7 @@ static CLIENT *_ircd_do_nickchange(CLIENT *tgt, peer_priv *pp,
     ERROR("ircd:_ircd_do_nickchange: tree error on adding %s", tgt->lcnick);
     //TODO: isn't it fatal?
   else
-    dprint(2, "ircd:ircd.c:_ircd_do_nickchange: new name %s", tgt->lcnick);
+    dprint(2, "ircd:CLIENT: nick change: new name %s", tgt->lcnick);
 #ifdef USE_SERVICES
   //TODO: notify services about nick change?
 #endif
@@ -3422,13 +3436,14 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
       ERROR("ircd:ircd_nick_sb: tree error on removing %s", collision->lcnick);
       //TODO: isn't it fatal?
     else
-      dprint(2, "ircd:ircd.c:ircd_nick_sb: del name %s", collision->lcnick);
+      dprint(2, "ircd:CLIENT: del phantom name %s", collision->lcnick);
     collision->lcnick[0] = '\0';
     tgt->rfr = collision;
     while (collision) {			/* make it a nick holder now */
       collision->cs = tgt;		/* as we are about to insert it */
       collision = collision->pcl;
     }
+    dprint(2, "ircd:CLIENT: phantom %p tailed to holder %p", collision, tgt);
   }
   tgt->hops = on->hops + 1;
   unistrlower(tgt->user, argv[2], sizeof(tgt->user));
@@ -3457,10 +3472,10 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   _ircd_class_rin(link); /* add it into class global list */
   unistrlower(tgt->lcnick, tgt->nick, sizeof(tgt->lcnick));
   if (Insert_Key(&Ircd->clients, tgt->lcnick, tgt, 1))
-    ERROR("ircd:ircd_nick_sb: tree error on adding %s", tgt->lcnick);
+    ERROR("ircd:ircd_nick_sb: tree error on adding %s (%p)", tgt->lcnick, tgt);
     //TODO: isn't it fatal?
   else
-    dprint(2, "ircd:ircd.c:ircd_nick_sb: new name %s", tgt->lcnick);
+    dprint(2, "ircd:CLIENT: new remote name %s: %p", tgt->lcnick, tgt);
   ircd_sendto_servers_all(Ircd, pp, "NICK %s %hu %s %s %hu %s :%s",
 			  tgt->nick, tgt->hops, argv[2], argv[3],
 			  on->x.token + 1, argv[5], argv[6]);
@@ -3583,10 +3598,10 @@ static int ircd_service_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
   on->c.lients = link;
   unistrlower(tgt->lcnick, tgt->nick, sizeof(tgt->lcnick));
   if (Insert_Key(&Ircd->clients, tgt->lcnick, tgt, 1))
-    ERROR("ircd:ircd_service_sb: tree error on adding %s", tgt->lcnick);
+    ERROR("ircd:ircd_service_sb: tree error on adding %s (%p)", tgt->lcnick, tgt);
     //TODO: isn't it fatal?
   else
-    dprint(2, "ircd:ircd.c:ircd_service_sb: new name %s", tgt->lcnick);
+    dprint(2, "ircd:CLIENT: new remote service name %s: %p", tgt->lcnick, tgt);
   ircd_sendto_servers_mask(Ircd, pp, argv[2], ":%s SERVICE %s %hu %s %s %hu :%s",
 			   sender, tgt->nick, on->x.token + 1, argv[2], argv[3],
 			   tgt->hops, argv[5]);
@@ -3992,7 +4007,7 @@ static iftype_t _ircd_signal (INTERFACE *iface, ifsig_t sig)
 /* -- common functions ---------------------------------------------------- */
 void ircd_drop_nick (CLIENT *cl)
 {
-  dprint(5, "ircd:ircd.c:ircd_drop_nick: %s", cl->nick);
+  dprint(5, "ircd:CLIENT:ircd_drop_nick: %s: %p", cl->nick, cl);
   if (cl->umode & A_SERVER)
     free_CLIENT(cl);
   else if (cl->via != NULL && cl->via->p.state == P_QUIT)
@@ -4055,6 +4070,8 @@ void ircd_prepare_quit (CLIENT *client, peer_priv *via, const char *msg)
   if (client->rfr != NULL && client->rfr->cs == client) { /* it was nick holder */
     client->pcl = client->rfr;
     client->rfr = NULL;
+    dprint(2, "ircd:CLIENT: converted holder %s (%p) into phantom, prev %p",
+	   client->nick, client, client->pcl);
   }
   client->away[0] = '\0';		/* caller may not fill it */
   ircd_quit_all_channels (Ircd, client, 0, 1); /* remove and mark */
@@ -4097,8 +4114,10 @@ static inline void _ircd_squit_one (LINK *link)
     if (CLIENT_IS_SERVER (l->cl)) /* server is gone so free all */
     {
       pthread_mutex_lock (&IrcdLock);
-      if (l->cl != link->where)		/* don't remove server back */
+      if (l->cl != link->where) {	/* don't remove server back */
+	dprint(2, "ircd:CLIENT: del gone server %s: %p", l->cl->nick, l->cl);
 	free_CLIENT (l->cl);		/* see _ircd_do_squit */
+      }
       /* link is about to be destroyed so don't remove token of l */
       free_LINK (l);			/* see _ircd_do_squit */
       pthread_mutex_unlock (&IrcdLock);
@@ -4117,6 +4136,8 @@ static inline void _ircd_squit_one (LINK *link)
     if (l->cl->rfr != NULL && l->cl->rfr->cs == l->cl) { /* it was nick holder */
       l->cl->pcl = l->cl->rfr;
       l->cl->rfr = NULL;
+      dprint(2, "ircd:CLIENT: converting holder %s (%p) into phantom, prev %p",
+	     l->cl->nick, l->cl, l->cl->pcl);
     }
     strfcpy (l->cl->host, server->lcnick, sizeof(l->cl->host));
   }
@@ -4159,7 +4180,7 @@ static void _ircd_do_squit (LINK *link, peer_priv *via, const char *msg)
       ERROR("ircd:_ircd_do_squit: tree error on removing %s", link->cl->lcnick);
       // TODO: isn't it fatal?
     else
-      dprint (2, "ircd:ircd.c:_ircd_do_squit: del name %s", link->cl->lcnick);
+      dprint (2, "ircd:CLIENT: del remote server name %s", link->cl->lcnick);
 #if IRCD_MULTICONNECT
     if (link->cl->on_ack) /* make a clone with acks so we can delete this one */
     {
@@ -4172,6 +4193,8 @@ static void _ircd_do_squit (LINK *link, peer_priv *via, const char *msg)
       phantom->hold_upto = 1;
       phantom->on_ack = 0;	/* it will be freed by ircd_drop_ack */
       _ircd_move_acks(link->cl, phantom);
+      dprint(2, "ircd:CLIENT: added dummy phantom for %s: %p", phantom->nick,
+	     phantom);
     }
 #endif
     link->cl->lcnick[0] = '\0'; /* mark it to delete */
@@ -4186,6 +4209,7 @@ static inline void _ircd_lserver_out (LINK *l)
   for (s = &Ircd->servers; *s; s = &(*s)->prev)
     if ((*s) == l)
       break;
+  DBG("ircd server: trying unshift %p prev %p", l, l->prev);
   if (*s)
     *s = l->prev;
   else
@@ -4208,8 +4232,10 @@ static inline void _ircd_rserver_out (LINK *l)
     ERROR ("ircd:_ircd_rserver_out: server %s not found on %s!", l->cl->nick,
 	   l->where->lcnick);
   pthread_mutex_lock (&IrcdLock);
-  if (l->cl->lcnick[0] == '\0')		/* see _ircd_do_squit() */
+  if (l->cl->lcnick[0] == '\0') {	/* see _ircd_do_squit() */
+    dprint(2, "ircd:CLIENT: del gone server %s: %p", l->cl->nick, l->cl);
     free_CLIENT (l->cl);
+  }
   free_LINK (l);
   pthread_mutex_unlock (&IrcdLock);
 }
@@ -4645,7 +4671,7 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
       Ircd->s = TOKEN_ALLOC_SIZE;
       Ircd->token[0] = &ME;		/* set token 0 to ME */
       Insert_Key (&Ircd->clients, MY_NAME, &ME, 1); /* nothing to check? */
-      dprint(2, "ircd:ircd.c:_ircd_module_signal: new name %s", MY_NAME);
+      dprint(2, "ircd:CLIENT: added own name %s", MY_NAME);
       __ircd_have_started = 1;
       /* continue with S_FLUSH too */
     case S_FLUSH:
