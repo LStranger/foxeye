@@ -2703,6 +2703,7 @@ static void _dport_prehandler (pthread_t th, void **id, idx_t *as)
   a->ch = r->ch;
   a->as = *as;
   *id = a;
+  pthread_detach(th);
   /* as we don't have any interface to control th ATM we cannot cancel it */
 }
 

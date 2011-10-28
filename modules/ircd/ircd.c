@@ -1539,6 +1539,7 @@ static void _ircd_handler (char *cln, char *ident, const char *host, void *data)
 	break;				/* auth error */
     }
   peer->p.state = P_LOGIN;
+  pthread_detach(pthread_self());	/* don't let thread turn into zombie */
   Unset_Iface();			/* done so unlock bindtable */
   if (msg)				/* not allowed! */
     _ircd_peer_kill (peer, msg);
@@ -1755,6 +1756,7 @@ static int _ircd_uplink_req (INTERFACE *uli, REQUEST *req)
       _uplink->ms = 2;
       if (Peer_Put ((&_uplink->p), buff, &sz) <= 0) /* something went bad */
 	return _ircd_stop_uplink (uli);
+      pthread_join (_uplink->th, NULL);
       *ul->away = '\0';			/* clear what we filled before */
       *ul->fname = '\0';
       _uplink->br = _uplink->mr = 0;
