@@ -17,6 +17,7 @@ Fri Oct 28 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: added support for NICK after KILL.
 	* modules/ircd/ircd.c: added nick checking in case USER came after NICK
 	  (bug#100).
+	* modules/ircd/channels.c: fixed SIGSEGV on topic for holded channel.
 
 Mon Oct 24 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed local MODE broadcast on A_ANONYMOUS

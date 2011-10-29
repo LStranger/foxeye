@@ -2468,7 +2468,7 @@ MEMBER *ircd_find_member (IRCD *ircd, const char *chan, CLIENT *client)
   register CLIENT *cl;
   register MEMBER *m;
 
-  if (!ch)
+  if (!ch || !ch->users) /* either not exist or on hold */
     return NOSUCHCHANNEL;
   if (!(cl = client))
     return ch->users;
