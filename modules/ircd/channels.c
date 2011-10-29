@@ -1579,7 +1579,7 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
       if (!b)
 	i = 1;				/* so he/she allowed at last */
     }
-    if (x++ >= MAXCHANNELS)		/* joined too many channels already */
+    if (x >= MAXCHANNELS)		/* joined too many channels already */
       ircd_do_unumeric (cl, ERR_TOOMANYCHANNELS, cl, 0, NULL);
     else if (i > 0) {			/* so user can join, do it then */
       if (ch == NULL)			/* it's still not found */
@@ -1604,7 +1604,9 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	  ircd_sendto_servers_mask((IRCD *)srv->data, NULL, cmask,
 				   ":%s JOIN %s%c%s", cl->nick, ch->name,
 				   *smode ? '\007' : '\0', smode);
-      }
+	x++;
+      } else
+	x++;
     }
     chn = nextch;
     key = nextkey;
