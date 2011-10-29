@@ -373,6 +373,7 @@ static inline void _ircd_real_drop_nick(CLIENT **ptr)
     cl->rfr->x.rto = cl->x.rto;
   if (cl->x.rto != NULL)
     cl->x.rto->rfr = cl->rfr;
+  DBG("ircd:CLIENT: removed phantom from relation: %p => (%p) => %p", cl->rfr, cl, cl->x.rto);
   free_CLIENT(cl);
 }
 
@@ -809,6 +810,7 @@ __attribute__((warn_unused_result)) static inline CLIENT *
       if (cl->rfr == NULL)		/* it has no relations */
 	cl2->pcl = NULL;
       else if (cl->rfr->cs != cl) {	/* convert to nick holder */
+	DBG("ircd:CLIENT: clearing phantom relation: %p => (%p)", cl->rfr, cl->rfr->x.rto);
 	_ircd_try_drop_collision(&cl->rfr);
 	if (cl->rfr != NULL) {		/* still has previous nick */
 	  WARNING("ircd: previous nick %s of %s is lost due to collision",
@@ -1167,11 +1169,14 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	}
       } else {			/* clear any collision relations */
 	/* it's either not logged or phantom at this point */
-	if (cl->rfr != NULL)
+	if (cl->rfr != NULL) {
 	  _ircd_try_drop_collision(&cl->rfr);
+	  if (cl->rfr != NULL && cl->rfr->x.rto != cl)
+	    cl->rfr = NULL;	/* own relation was dropped */
+	}
 	/* cl->rfr is 'from' and cl->pcl is 'next holded' now */
-	if (cl->x.rto != NULL && cl->x.rto->rfr == cl)
-	  cl->x.rto->rfr = NULL; //TODO: make a debug notice on lost rel?
+	if (cl->x.rto != NULL)
+	  ERROR("ircd:CLIENT: impossible relation (%p) => %p", cl, cl->x.rto);
 	/* we have ->cs to itself for local client always, ->pcl is set above
 	   and ->x.rto is NULL for non-phantoms after leaving class */
 #if IRCD_MULTICONNECT
@@ -1181,14 +1186,19 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 #endif
 	  if (cl->pcl != NULL)
 	    _ircd_bounce_collision(cl->pcl);
-	  if (cl->rfr != NULL) //TODO: make a debug notice on lost rel?
+	  if (cl->rfr != NULL) { //TODO: make a debug notice on lost rel?
+	    DBG("ircd:CLIENT: clearing relation %p => (%p)", cl->rfr, cl);
+	    WARNING("ircd: next nick %s of %s is lost", cl->nick,
+		    cl->rfr->cs->nick);
 	    cl->rfr->x.rto = NULL; /* omit this reference */
+	  }
 	} else {
 	  register CLIENT *phantom;
 
 	  phantom = _ircd_get_phantom(cl->nick, cl->lcnick);
 	  phantom->x.rto = NULL;
 	  phantom->rfr = cl->rfr;
+	  DBG("ircd:CLIENT: new phantom relation: %p => %p", cl->rfr, phantom);
 	  phantom->hold_upto = cl->hold_upto;
 	  if (cl->pcl != NULL) {
 	    phantom->pcl = cl->pcl;
@@ -3183,6 +3193,8 @@ static CLIENT *_ircd_do_nickchange(CLIENT *tgt, peer_priv *pp,
   phantom->rfr = tgt->rfr;
   phantom->x.rto = tgt;
   tgt->rfr = phantom;
+  DBG("ircd:CLIENT: nick change: new phantom relations: %p => %p => %p",
+      phantom->rfr, phantom, tgt);
   phantom->hold_upto = Time + CHASETIMELIMIT; /* nick delay for changed nick */
 #if IRCD_MULTICONNECT
   _ircd_move_acks(tgt, phantom); /* move acks into the clone with old lcnick */
@@ -3318,6 +3330,7 @@ static int _ircd_remote_nickchange(CLIENT *tgt, peer_priv *pp,
       tgt->x.rto = phantom;		/* set relations */
       phantom->rfr = tgt;
       phantom->x.rto = NULL;
+      DBG("ircd:CLIENT: nick change collision KILL: %p => %p", tgt, phantom);
       Add_Request(I_PENDING, "*", 0, ":%s!%s@%s QUIT :Nick collision from %s",
 		  tgt->nick, tgt->user, tgt->host, pp->p.dname);
       tgt->host[0] = 0;			/* for collision check */
@@ -3340,6 +3353,8 @@ static int _ircd_remote_nickchange(CLIENT *tgt, peer_priv *pp,
     phantom->rfr = collision;
     phantom->x.rto = tgt;
     tgt->rfr = phantom;
+    DBG("ircd:CLIENT: nick change new relations: %p => %p => %p", collision,
+	phantom, tgt);
   }
   return 1;
 }
@@ -3433,6 +3448,7 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     phantom->x.rto = tgt;		/* set relations */
     tgt->rfr = phantom;
     New_Request(peer->iface, 0, ":%s NICK :%s", argv[0], tgt->nick);
+    DBG("ircd:CLIENT: collided NICK relations: %p => %p", phantom, tgt);
   } else if (collision != NULL) { /* we got new client collided with phantom */
     if (Delete_Key(Ircd->clients, collision->lcnick, collision) < 0)
       ERROR("ircd:ircd_nick_sb: tree error on removing %s", collision->lcnick);

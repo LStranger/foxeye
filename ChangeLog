@@ -12,6 +12,7 @@ TODO:
 --- [0.10.0]
 Fri Oct 28 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.c, modules/ircd/ircd.c: fixed unreleased pthread (bug#98).
+	* modules/ircd/ircd.c: fixed relations after client quit.
 
 Mon Oct 24 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed local MODE broadcast on A_ANONYMOUS
