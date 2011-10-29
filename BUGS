@@ -96,7 +96,7 @@
 #00097	24.10.2011  24.10.2011	sf:#3427820 silly remote invites to local channel
 #00098	27.10.2011  28.10.2011	some threads left as zombie, not joined
 #00099	27.10.2011		/mode #chan does not work outside of #chan
-#00100	29.10.2011		sf:#3429955 USER after NICK may create duplicate
+#00100	29.10.2011  29.10.2011	sf:#3429955 USER after NICK may create duplicate
 #00101	29.10.2011		sf:#3429957 channels are unavailable when on ACK
 #00102	29.10.2011		sf:#3429959 MODE !chan O isn't supported
 #00103	29.10.2011		sf:#3429978 already joined not ignored on counting

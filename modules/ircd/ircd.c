@@ -2131,6 +2131,37 @@ static int _ircd_got_local_user (CLIENT *cl)
   return 1;
 }
 
+/* returns 1 if nick available now
+   else sends numerics to client, resets nick and returns 0 */
+static int _ircd_nickname_available(CLIENT *cl, char *b)
+{
+  CLIENT *cl2;
+
+  cl2 = _ircd_find_client (b);
+  if (cl2)	/* check if that name is in use/on hold */
+  {
+    if (!cl2->hold_upto)
+    {
+      ircd_do_unumeric (cl, ERR_NICKNAMEINUSE, cl2, 0, NULL);
+      b[0] = 0;
+      return 0;
+    }
+    _ircd_try_drop_collision(&cl2);
+    if (cl == cl2)			/* client took own old nick back */
+      _ircd_force_drop_collision(&cl2); /* new nick cannot have tail in ->rfr */
+    //FIXME: add some #define for behavior below?
+    if (cl2 && cl2->x.rto != NULL)	/* it's phantom from nick change */
+      _ircd_force_drop_collision(&cl2); /* let's allow client to regain it */
+    if (cl2 != NULL)
+    {
+      ircd_do_unumeric (cl, ERR_UNAVAILRESOURCE, cl, 0, b);
+      b[0] = 0;
+      return 0;
+    }
+  }
+  return 1;
+}
+
 /* sets params; if ->nick already set then register new user */
 BINDING_TYPE_ircd_register_cmd (ircd_user);
 static int ircd_user (INTERFACE *srv, struct peer_t *peer, int argc, const char **argv)
@@ -2170,7 +2201,7 @@ static int ircd_user (INTERFACE *srv, struct peer_t *peer, int argc, const char 
 //  StrTrim(cl->fname);
   umode = unistrcut (cl->fname, sizeof(cl->fname), REALNAMELEN);
   cl->fname[umode] = '\0';
-  if (!cl->nick[0])
+  if (!cl->nick[0] || !_ircd_nickname_available(cl, cl->nick))
     return 1;
   return _ircd_got_local_user (cl);
 }
@@ -2267,36 +2298,12 @@ static int _ircd_validate_nickname (char *d, const char *name, size_t s)
 static int _ircd_check_nick_cmd (CLIENT *cl, char *b, const char *nick,
 				 size_t bs)
 {
-  CLIENT *cl2;
-
   if (!_ircd_validate_nickname (b, nick, bs))
   {
     ircd_do_unumeric (cl, ERR_ERRONEUSNICKNAME, cl, 0, nick);
     return 0;
   }
-  cl2 = _ircd_find_client (b);
-  if (cl2)	/* check if that name is in use/on hold */
-  {
-    if (!cl2->hold_upto)
-    {
-      ircd_do_unumeric (cl, ERR_NICKNAMEINUSE, cl2, 0, NULL);
-      b[0] = 0;
-      return 0;
-    }
-    _ircd_try_drop_collision(&cl2);
-    if (cl == cl2)			/* client took own old nick back */
-      _ircd_force_drop_collision(&cl2); /* new nick cannot have tail in ->rfr */
-    //FIXME: add some #define for behavior below?
-    if (cl2 && cl2->x.rto != NULL)	/* it's phantom from nick change */
-      _ircd_force_drop_collision(&cl2); /* let's allow client to regain it */
-    if (cl2 != NULL)
-    {
-      ircd_do_unumeric (cl, ERR_UNAVAILRESOURCE, cl, 0, b);
-      b[0] = 0;
-      return 0;
-    }
-  }
-  return 1;
+  return (_ircd_nickname_available(cl, b));
 }
 
 /* sets nick; if ->fname already set then register new user */
