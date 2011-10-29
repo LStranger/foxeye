@@ -201,19 +201,19 @@ static inline size_t _ircd_make_Xmode (const char *modeslist, char *buf,
 #define _ircd_make_wmode(a,b,c) _ircd_make_Xmode (_ircd_wmodes, a,b,c)
 #define _ircd_mode2cmode(a,b,c) _ircd_make_Xmode (_ircd_cmodes, a,b,c)
 
-static inline char *_ircd_make_cmode (char *buf, size_t bs, CHANNEL *ch, int ext)
+static inline char *_ircd_make_cmode (char *buf, size_t bs, CHANNEL *ch, int show)
 {
   register size_t i;
 
   i = _ircd_make_Xmode (_ircd_cmodes, buf, ch->mode, bs); /* add bool modes */
-  if (!ext) {
-    buf[i] = '\0';
-    return buf;
-  }
   if (i < bs - 3 && ch->limit)		/* reserve for "l X" */
     buf[i++] = 'l';
   if (i < bs - 3 && ch->key[0])		/* reserve for "k X" */
     buf[i++] = 'k';
+  if (!show) {
+    buf[i] = '\0';
+    return buf;
+  }
   if (ch->limit)			/* it's checked above */
     i += snprintf (&buf[i], bs - i, " %hu", ch->limit); /* add limit */
   if (i < bs - 2 && ch->key[0])		/* reserve for " X" */
