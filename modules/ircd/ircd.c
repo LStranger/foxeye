@@ -545,6 +545,10 @@ static inline CLIENT *_ircd_find_phantom(CLIENT *nick, peer_priv *via)
   return (resort);
 }
 
+/* declaration */
+static inline CLIENT *_ircd_get_phantom(const char *on, const char *lon)
+					__attribute__((warn_unused_result));
+
 /* executes message from server */
 static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv)
 {
@@ -593,7 +597,7 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
     }
 #if IRCD_MULTICONNECT
     //TODO: rewrite acks check for QUIT and NICK here!
-    if (peer && c && c->hold_upto && !(CLIENT_IS_SERVER(c)) &&
+    if (peer && c->hold_upto && !(CLIENT_IS_SERVER(c)) &&
 	(ack = ircd_check_ack(peer, c, NULL)) && /* sender has quited/renamed */
 	strcasecmp(argv[1], "NICK"))	/* ircd_nick_sb handles this case */
     {
@@ -605,14 +609,29 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
       return (1);
     }
 #endif
-    while (c != NULL && c->hold_upto)
-      c = c->x.rto;		/* if it's phantom then go to current nick */
-    if (c == NULL) {			/* sender has quited at last */
+    c2 = c;
+    while (c2 != NULL && c2->hold_upto)
+      c2 = c2->x.rto;		/* if it's phantom then go to current nick */
+    if (c2 == NULL) {			/* sender has quited at last */
       dprint(3, "ircd: sender [%s] of message %s is offline for us", argv[0],
 	     argv[1]);
-      //FIXME: handle remote ":killed NICK :someone" message as well
+#if IRCD_MULTICONNECT
+      /* handle remote ":killed NICK :someone" message as well */
+      if (peer != NULL && (peer->link->cl->umode & A_MULTI) &&
+	  argc == 3 && !strcmp(argv[1], "NICK")) {
+	New_Request(peer->p.iface, 0, "ACK NICK %s", argv[0]);
+	/* ack sent, add phantom for new nick after old nick phantom */
+	c2 = _ircd_get_phantom(argv[2], NULL);
+	c2->x.rto = c->x.rto;
+	if (c2->x.rto != NULL)
+	  c2->x.rto->rfr = c2;
+	c2->rfr = c;
+	c->x.rto = c2;
+      }
+#endif
       return (1);		/* just ignore it then */
-    } /* it's not phantom at this moment */
+    } else
+      c = c2;			/* it's not phantom at this moment */
     if (((CLIENT_IS_ME(c)) ||
 	 (!(CLIENT_IS_REMOTE(c)) && !(CLIENT_IS_SERVER(c)))) &&
 	peer != c->via) /* we should not get our or our users messages back */
