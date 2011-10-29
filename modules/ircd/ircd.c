@@ -545,164 +545,6 @@ static inline CLIENT *_ircd_find_phantom(CLIENT *nick, peer_priv *via)
   return (resort);
 }
 
-/* declaration */
-static inline CLIENT *_ircd_get_phantom(const char *on, const char *lon)
-					__attribute__((warn_unused_result));
-
-/* executes message from server */
-static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv)
-{
-  struct binding_t *b = NULL;
-  int i = 0;
-  CLIENT *c;
-  register CLIENT *c2;
-  int t;
-#if IRCD_MULTICONNECT
-  ACK *ack;
-#endif
-
-  if (Ircd->iface)
-  {
-    /* check if message source is known for me */
-    c = _ircd_find_client (argv[0]);
-    /* check if this link have phantom instead of real client on nick */
-    if (c == NULL || peer == NULL) ; /* skip check for internal call */
-    else if (c->hold_upto != 0)
-      /* link haven't got our NICK or KILL so track it */
-      c = _ircd_find_phantom(c, peer);
-    else if (c->rfr != NULL && c->rfr->cs == c && /* it's nick holder */
-	     (c2 = _ircd_find_phantom(c->rfr, peer)) != NULL &&
-	     c2->away[0] != '\0')
-      c = c2;			/* found collision originated from this link */
-    /* it's real client, check if message may come from the link */
-    else if (c->cs->via != peer)
-#if IRCD_MULTICONNECT
-    if (!(peer->link->cl->umode & A_MULTI)) /* else if (X && Y) */
-#endif
-    {
-      ERROR("ircd:invalid source %s from %s: invalid path", argv[0],
-	    peer->link->cl->lcnick);
-      if (CLIENT_IS_SERVER(c)) {
-	ircd_do_squit(peer->link, peer, "invalid message source path");
-	return (0);
-      }
-      return (ircd_recover_done(peer, "invalid message source path"));
-      //TODO: RFC2813:3.3 - KILL for (c) if it's a client instead?
-    }
-    if (c == NULL) {
-      ERROR("ircd:invalid source [%s] from [%s]", argv[0],
-	    peer ? peer->link->cl->lcnick : "internal call");
-      //TODO: drop link if argv[0] is server name (RFC2813)
-      return (0);
-    }
-#if IRCD_MULTICONNECT
-    //TODO: rewrite acks check for QUIT and NICK here!
-    if (peer && c->hold_upto && !(CLIENT_IS_SERVER(c)) &&
-	(ack = ircd_check_ack(peer, c, NULL)) && /* sender has quited/renamed */
-	strcasecmp(argv[1], "NICK"))	/* ircd_nick_sb handles this case */
-    {
-      /* some backfired messages need special care right now */
-      if (!strcasecmp (argv[1], "QUIT"))
-	ack->contrary = 1;
-      dprint(3, "ircd: message %s from %s seems to be delayed by %s", argv[1],
-	     argv[0], peer->p.dname);
-      return (1);
-    }
-#endif
-    c2 = c;
-    while (c2 != NULL && c2->hold_upto)
-      c2 = c2->x.rto;		/* if it's phantom then go to current nick */
-    if (c2 == NULL) {			/* sender has quited at last */
-      dprint(3, "ircd: sender [%s] of message %s is offline for us", argv[0],
-	     argv[1]);
-#if IRCD_MULTICONNECT
-      /* handle remote ":killed NICK :someone" message as well */
-      if (peer != NULL && (peer->link->cl->umode & A_MULTI) &&
-	  argc == 3 && !strcmp(argv[1], "NICK")) {
-	New_Request(peer->p.iface, 0, "ACK NICK %s", argv[0]);
-	/* ack sent, add phantom for new nick after old nick phantom */
-	c2 = _ircd_get_phantom(argv[2], NULL);
-	c2->x.rto = c->x.rto;
-	if (c2->x.rto != NULL)
-	  c2->x.rto->rfr = c2;
-	c2->rfr = c;
-	c->x.rto = c2;
-      }
-#endif
-      return (1);		/* just ignore it then */
-    } else
-      c = c2;			/* it's not phantom at this moment */
-    if (((CLIENT_IS_ME(c)) ||
-	 (!(CLIENT_IS_REMOTE(c)) && !(CLIENT_IS_SERVER(c)))) &&
-	peer != c->via) /* we should not get our or our users messages back */
-    {
-      ERROR ("ircd: message %s from %s seems looped back by %s", argv[1],
-	     argv[0], peer ? peer->p.dname : "internal call");
-      return (1);			/* ouch, it was looped back! */
-    }
-    t = client2token (c);
-    while ((b = Check_Bindtable (BTIrcdServerCmd, argv[1], U_ALL, U_ANYCH, b)))
-      if (!b->name)
-	i |= b->func (Ircd->iface, peer ? &peer->p : NULL, t, argv[0],
-		      c->lcnick, argv[1], argc - 2, &argv[2]);
-    return i;
-  }
-  return 0;
-}
-
-/* args: (ignore) numeric target text... */
-static inline int _ircd_do_server_numeric(peer_priv *peer, const char *sender,
-					  int id, int argc, const char **argv)
-{
-  CLIENT *tgt;
-  register struct binding_t *b;
-  size_t ptr;
-  int i, num;
-  char buf[MESSAGEMAX];
-
-  if ((tgt = ircd_find_client(argv[2], peer)) == NULL || CLIENT_IS_SERVER(tgt))
-  {
-    ERROR("ircd: target %s for numeric from %s not found!", argv[2], sender);
-    return 0;
-  }
-  for (i = 3, ptr = 0; i < argc - 1; i++)
-  {
-    if (ptr && ptr < sizeof(buf) - 1)
-      buf[ptr++] = ' ';
-    ptr += strfcpy(&buf[ptr], argv[i], sizeof(buf) - ptr);
-  }
-  num = atoi(argv[1]);
-  if (peer != NULL && num < 100) /* special care for transit - see orig. ircd */
-    num += 100;
-  snprintf(&buf[ptr], sizeof(buf) - ptr, "%s:%s", ptr ? " " : "", argv[i]);
-  b = Check_Bindtable(BTIrcdDoNumeric, argv[1], U_ALL, U_ANYCH, NULL);
-  if (b && !b->name &&
-      b->func(Ircd->iface, num, argv[2], tgt->umode, buf))
-    return 1;				/* aborted by binding */
-#if IRCD_MULTICONNECT
-  if (CLIENT_IS_REMOTE(tgt) && id != -1)
-  {
-    ircd_sendto_new(tgt, ":%s INUM %d %03d %s %s", sender, id, num, argv[2], buf);
-    ircd_sendto_old(tgt, ":%s %03d %s %s", sender, num, argv[2], buf);
-  }
-  else
-#endif
-    ircd_sendto_one(tgt, ":%s %03d %s %s", sender, num, argv[2], buf);
-  return 1;
-}
-
-/* passes numerics to target or executes message from server */
-static inline int _ircd_do_server_message (peer_priv *peer, int argc,
-					   const char **argv)
-{
-  /* some special support for numerics in transit */
-  if (argc >= 4 && match ("[0-9][0-9][0-9]", argv[1]) >= 0)
-    /* params: sender numeric target text... */
-    return _ircd_do_server_numeric(peer, argv[0], -1, argc, argv);
-  else
-    return _ircd_do_command (peer, argc, argv);
-}
-
 /* sublist receiver interface (for internal usage, I_TEMP) */
 static char *_ircd_sublist_buffer;	/* MESSAGEMAX sized! */
 
@@ -868,6 +710,160 @@ __attribute__((warn_unused_result)) static inline CLIENT *
 #endif
   /* fields c.hannels, hops, user, fname are irrelevant for phantoms */
   return (cl2);
+}
+
+/* executes message from server */
+static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv)
+{
+  struct binding_t *b = NULL;
+  int i = 0;
+  CLIENT *c;
+  register CLIENT *c2;
+  int t;
+#if IRCD_MULTICONNECT
+  ACK *ack;
+#endif
+
+  if (Ircd->iface)
+  {
+    /* check if message source is known for me */
+    c = _ircd_find_client (argv[0]);
+    /* check if this link have phantom instead of real client on nick */
+    if (c == NULL || peer == NULL) ; /* skip check for internal call */
+    else if (c->hold_upto != 0)
+      /* link haven't got our NICK or KILL so track it */
+      c = _ircd_find_phantom(c, peer);
+    else if (c->rfr != NULL && c->rfr->cs == c && /* it's nick holder */
+	     (c2 = _ircd_find_phantom(c->rfr, peer)) != NULL &&
+	     c2->away[0] != '\0')
+      c = c2;			/* found collision originated from this link */
+    /* it's real client, check if message may come from the link */
+    else if (c->cs->via != peer)
+#if IRCD_MULTICONNECT
+    if (!(peer->link->cl->umode & A_MULTI)) /* else if (X && Y) */
+#endif
+    {
+      ERROR("ircd:invalid source %s from %s: invalid path", argv[0],
+	    peer->link->cl->lcnick);
+      if (CLIENT_IS_SERVER(c)) {
+	ircd_do_squit(peer->link, peer, "invalid message source path");
+	return (0);
+      }
+      return (ircd_recover_done(peer, "invalid message source path"));
+      //TODO: RFC2813:3.3 - KILL for (c) if it's a client instead?
+    }
+    if (c == NULL) {
+      ERROR("ircd:invalid source [%s] from [%s]", argv[0],
+	    peer ? peer->link->cl->lcnick : "internal call");
+      //TODO: drop link if argv[0] is server name (RFC2813)
+      return (0);
+    }
+#if IRCD_MULTICONNECT
+    //TODO: rewrite acks check for QUIT and NICK here!
+    if (peer && c->hold_upto && !(CLIENT_IS_SERVER(c)) &&
+	(ack = ircd_check_ack(peer, c, NULL)) && /* sender has quited/renamed */
+	strcasecmp(argv[1], "NICK"))	/* ircd_nick_sb handles this case */
+    {
+      /* some backfired messages need special care right now */
+      if (!strcasecmp (argv[1], "QUIT"))
+	ack->contrary = 1;
+      dprint(3, "ircd: message %s from %s seems to be delayed by %s", argv[1],
+	     argv[0], peer->p.dname);
+      return (1);
+    }
+#endif
+    c2 = c;
+    while (c2 != NULL && c2->hold_upto)
+      c2 = c2->x.rto;		/* if it's phantom then go to current nick */
+    if (c2 == NULL) {			/* sender has quited at last */
+      dprint(3, "ircd: sender [%s] of message %s is offline for us", argv[0],
+	     argv[1]);
+#if IRCD_MULTICONNECT
+      /* handle remote ":killed NICK :someone" message as well */
+      if (peer != NULL && (peer->link->cl->umode & A_MULTI) &&
+	  argc == 3 && !strcmp(argv[1], "NICK")) {
+	New_Request(peer->p.iface, 0, "ACK NICK %s", argv[0]);
+	/* ack sent, add phantom for new nick after old nick phantom */
+	c2 = _ircd_get_phantom(argv[2], NULL);
+	c2->x.rto = c->x.rto;
+	if (c2->x.rto != NULL)
+	  c2->x.rto->rfr = c2;
+	c2->rfr = c;
+	c->x.rto = c2;
+      }
+#endif
+      return (1);		/* just ignore it then */
+    } else
+      c = c2;			/* it's not phantom at this moment */
+    if (((CLIENT_IS_ME(c)) ||
+	 (!(CLIENT_IS_REMOTE(c)) && !(CLIENT_IS_SERVER(c)))) &&
+	peer != c->via) /* we should not get our or our users messages back */
+    {
+      ERROR ("ircd: message %s from %s seems looped back by %s", argv[1],
+	     argv[0], peer ? peer->p.dname : "internal call");
+      return (1);			/* ouch, it was looped back! */
+    }
+    t = client2token (c);
+    while ((b = Check_Bindtable (BTIrcdServerCmd, argv[1], U_ALL, U_ANYCH, b)))
+      if (!b->name)
+	i |= b->func (Ircd->iface, peer ? &peer->p : NULL, t, argv[0],
+		      c->lcnick, argv[1], argc - 2, &argv[2]);
+    return i;
+  }
+  return 0;
+}
+
+/* args: (ignore) numeric target text... */
+static inline int _ircd_do_server_numeric(peer_priv *peer, const char *sender,
+					  int id, int argc, const char **argv)
+{
+  CLIENT *tgt;
+  register struct binding_t *b;
+  size_t ptr;
+  int i, num;
+  char buf[MESSAGEMAX];
+
+  if ((tgt = ircd_find_client(argv[2], peer)) == NULL || CLIENT_IS_SERVER(tgt))
+  {
+    ERROR("ircd: target %s for numeric from %s not found!", argv[2], sender);
+    return 0;
+  }
+  for (i = 3, ptr = 0; i < argc - 1; i++)
+  {
+    if (ptr && ptr < sizeof(buf) - 1)
+      buf[ptr++] = ' ';
+    ptr += strfcpy(&buf[ptr], argv[i], sizeof(buf) - ptr);
+  }
+  num = atoi(argv[1]);
+  if (peer != NULL && num < 100) /* special care for transit - see orig. ircd */
+    num += 100;
+  snprintf(&buf[ptr], sizeof(buf) - ptr, "%s:%s", ptr ? " " : "", argv[i]);
+  b = Check_Bindtable(BTIrcdDoNumeric, argv[1], U_ALL, U_ANYCH, NULL);
+  if (b && !b->name &&
+      b->func(Ircd->iface, num, argv[2], tgt->umode, buf))
+    return 1;				/* aborted by binding */
+#if IRCD_MULTICONNECT
+  if (CLIENT_IS_REMOTE(tgt) && id != -1)
+  {
+    ircd_sendto_new(tgt, ":%s INUM %d %03d %s %s", sender, id, num, argv[2], buf);
+    ircd_sendto_old(tgt, ":%s %03d %s %s", sender, num, argv[2], buf);
+  }
+  else
+#endif
+    ircd_sendto_one(tgt, ":%s %03d %s %s", sender, num, argv[2], buf);
+  return 1;
+}
+
+/* passes numerics to target or executes message from server */
+static inline int _ircd_do_server_message (peer_priv *peer, int argc,
+					   const char **argv)
+{
+  /* some special support for numerics in transit */
+  if (argc >= 4 && match ("[0-9][0-9][0-9]", argv[1]) >= 0)
+    /* params: sender numeric target text... */
+    return _ircd_do_server_numeric(peer, argv[0], -1, argc, argv);
+  else
+    return _ircd_do_command (peer, argc, argv);
 }
 
 #if IRCD_MULTICONNECT
