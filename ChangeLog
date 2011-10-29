@@ -17,6 +17,7 @@ Sat Oct 29 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed SIGSEGV on topic for holded channel.
 	* modules/ircd/servers.c: fixed handling acks for KILL and JOIN 0.
 	* modules/ircd/channels.c: fixed counter for joined channels (bug#103).
+	* modules/ircd/channels.c: fixed mode query (bug#99).
 
 Fri Oct 28 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.c, modules/ircd/ircd.c: fixed unreleased pthread (bug#98).

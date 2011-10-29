@@ -962,9 +962,6 @@ static inline int _ircd_mode_query_reply (CLIENT *cl, CHANNEL *ch)
   char cmode[KEYLEN+64]; /* A-Za-z num key */
   register MEMBER *memb;
 
-  memb = _ircd_is_on_channel (cl, ch);
-  if (!memb)
-    return ircd_do_cnumeric (cl, ERR_USERNOTINCHANNEL, ch, 0, cl->nick);
   if (ch->name[0] == '+')		/* nomode channel */
     return ircd_do_cnumeric (cl, ERR_NOCHANMODES, ch, 0, NULL);
   if (ch->creator)
