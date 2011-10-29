@@ -826,8 +826,8 @@ __attribute__((warn_unused_result)) static inline CLIENT *
       cl2->pcl = cl->pcl;
       cl->pcl = cl2;
     }
-    dprint(2, "ircd:CLIENT: added phantom to name %s: %p shift %p", cl2->lcnick,
-	   cl2, cl);
+    dprint(2, "ircd:CLIENT: added phantom to name %s: %p shift %p", cl->lcnick,
+	   cl2, cl2->pcl);
   } else {
     cl2->cs = cl2;
     cl2->pcl = NULL;			/* it's alone now */
@@ -3466,7 +3466,7 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
       collision->cs = tgt;		/* as we are about to insert it */
       collision = collision->pcl;
     }
-    dprint(2, "ircd:CLIENT: phantom %p tailed to holder %p", collision, tgt);
+    dprint(2, "ircd:CLIENT: phantom %p tailed to holder %p", tgt->rfr, tgt);
   }
   tgt->hops = on->hops + 1;
   unistrlower(tgt->user, argv[2], sizeof(tgt->user));
