@@ -872,7 +872,8 @@ static int ircd_kill_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   ack = ircd_check_ack(pp, tcl, NULL);
   if (ack != NULL) {			/* we got it backfired */
     ack->contrary = 1;
-    return (1);
+//    return (1);
+    WARNING("ircd:KILL via %s while waiting ACK for %s", peer->dname, argv[0]);
   }
 #endif
   while (tcl != NULL && tcl->hold_upto != 0) /* trace nickchanges now */
@@ -1036,6 +1037,7 @@ static int ircd_ack(INTERFACE *srv, struct peer_t *peer, unsigned short token,
 		    int argc, const char **argv)
 { /* args: <command> <target> [<channel>] */
   register struct peer_priv *pp = peer->iface->data; /* it's really peer */
+  const char *channame;
 
   if (!(pp->link->cl->umode & A_MULTI)) /* it's ambiguous from RFC2813 server */
     return (0);
@@ -1048,17 +1050,21 @@ static int ircd_ack(INTERFACE *srv, struct peer_t *peer, unsigned short token,
     return ircd_recover_done(pp, "Unexpected ACK");
   }
   /* check if parameters do match link->acks */
+  if (pp->acks->where == NULL)
+    channame = "(nil)";
+  else if (pp->acks->where == CHANNEL0)
+    channame = "0";
+  else
+    channame = pp->acks->where->name;
   if (argc == 3 && *argv[2] != '\0' &&
-      (pp->acks->where == NULL || strcmp(argv[2], pp->acks->where->name))) {
+      (pp->acks->where == NULL || strcmp(argv[2], channame))) {
     ERROR("ircd:got ACK %s on %s for unexpected channel %s (expected %s at %s)",
-	  argv[0], argv[1], argv[2], pp->acks->who->nick,
-	  (pp->acks->where ? pp->acks->where->name : "(nil)"));
+	  argv[0], argv[1], argv[2], pp->acks->who->nick, channame);
     if (ircd_recover_done(pp, "ACK for unexpected channel") == 0)
       return (0);
   } else if (pp->acks->where != NULL || strcmp(argv[1], pp->acks->who->nick)) {
     ERROR("ircd:got unexpected ACK %s on %s (expected %s %s)", argv[0], argv[1],
-	  pp->acks->who->nick,
-	  (pp->acks->where ? pp->acks->where->name : "(nil)"));
+	  pp->acks->who->nick, channame);
     if (ircd_recover_done(pp, "Unxepected ACK arguments") == 0)
       return (0);
   }
