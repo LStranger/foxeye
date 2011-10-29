@@ -528,7 +528,7 @@ static inline CLIENT *_ircd_find_phantom(CLIENT *nick, peer_priv *via)
 {
   CLIENT *resort = NULL;
 
-  dprint(5, "ircd:ircd.c:_ircd_find_phantom: %s", nick->nick);
+  dprint(5, "ircd:ircd.c:_ircd_find_phantom %s via %s", nick->nick, via->p.dname);
   if (via->link->cl->umode & A_SERVER)
     while (nick) {
 #if IRCD_MULTICONNECT
@@ -785,6 +785,7 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
 	New_Request(peer->p.iface, 0, "ACK NICK %s", argv[0]);
 	/* ack sent, add phantom for new nick after old nick phantom */
 	c2 = _ircd_get_phantom(argv[2], NULL);
+	c2->hold_upto = Time + CHASETIMELIMIT;
 	c2->x.rto = c->x.rto;
 	if (c2->x.rto != NULL)
 	  c2->x.rto->rfr = c2;
