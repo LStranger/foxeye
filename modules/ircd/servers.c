@@ -1039,12 +1039,29 @@ static int ircd_ack(INTERFACE *srv, struct peer_t *peer, unsigned short token,
 
   if (!(pp->link->cl->umode & A_MULTI)) /* it's ambiguous from RFC2813 server */
     return (0);
-  /* check number of parameters */
+  /* check number of parameters and if ack is expected */
   if (argc < 2) {
     ERROR("ircd:got ACK from %s with %d(<2) parameters", peer->dname, argc);
     return ircd_recover_done(pp, "Invalid number of parameters");
+  } else if (pp->acks == NULL) {
+    ERROR("ircd:got stray ACK %s from %s", argv[0], peer->dname);
+    return ircd_recover_done(pp, "Unexpected ACK");
   }
-  //TODO: check if parameters do match link->acks
+  /* check if parameters do match link->acks */
+  if (argc == 3 && *argv[2] != '\0' &&
+      (pp->acks->where == NULL || strcmp(argv[2], pp->acks->where->name))) {
+    ERROR("ircd:got ACK %s on %s for unexpected channel %s (expected %s at %s)",
+	  argv[0], argv[1], argv[2], pp->acks->who->nick,
+	  (pp->acks->where ? pp->acks->where->name : "(nil)"));
+    if (ircd_recover_done(pp, "ACK for unexpected channel") == 0)
+      return (0);
+  } else if (pp->acks->where != NULL || strcmp(argv[1], pp->acks->who->nick)) {
+    ERROR("ircd:got unexpected ACK %s on %s (expected %s %s)", argv[0], argv[1],
+	  pp->acks->who->nick,
+	  (pp->acks->where ? pp->acks->where->name : "(nil)"));
+    if (ircd_recover_done(pp, "Unxepected ACK arguments") == 0)
+      return (0);
+  }
   ircd_drop_ack((IRCD *)srv->data, pp);
   return (1);
 }
