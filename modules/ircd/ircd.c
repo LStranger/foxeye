@@ -367,7 +367,7 @@ static inline void _ircd_real_drop_nick(CLIENT **ptr)
 {
   register CLIENT *cl = *ptr;
 
-  dprint(2, "ircd:CLIENT: deleting phantom %s: %p => %p", cl->nick, cl, cl->pcl);
+  dprint(2, "ircd:CLIENT: deleting phantom %s: %p <= %p", cl->nick, cl, cl->pcl);
   *ptr = cl->pcl;
   if (cl->rfr != NULL)
     cl->rfr->x.rto = cl->x.rto;
@@ -812,11 +812,12 @@ __attribute__((warn_unused_result)) static inline CLIENT *
       else if (cl->rfr->cs != cl) {	/* convert to nick holder */
 	DBG("ircd:CLIENT: clearing phantom relation: %p => (%p)", cl->rfr, cl->rfr->x.rto);
 	_ircd_try_drop_collision(&cl->rfr);
-	if (cl->rfr != NULL) {		/* still has previous nick */
+	if (cl->rfr != NULL && cl->rfr->x.rto == cl) {
+	  /* client's previous nick is still kept on hold */
 	  WARNING("ircd: previous nick %s of %s is lost due to collision",
 		  cl->rfr->cs->lcnick, cl->lcnick);
 	  cl->rfr->x.rto = NULL;
-	}
+	} /* else it's not our previous nick */
 	cl2->pcl = NULL;
       } else				/* it's a nick holder already */
 	cl2->pcl = cl->rfr;
@@ -1172,7 +1173,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	if (cl->rfr != NULL) {
 	  _ircd_try_drop_collision(&cl->rfr);
 	  if (cl->rfr != NULL && cl->rfr->x.rto != cl)
-	    cl->rfr = NULL;	/* own relation was dropped */
+	    cl->rfr = NULL;	/* our relation was dropped */
 	}
 	/* cl->rfr is 'from' and cl->pcl is 'next holded' now */
 	if (cl->x.rto != NULL)
@@ -1198,7 +1199,9 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	  phantom = _ircd_get_phantom(cl->nick, cl->lcnick);
 	  phantom->x.rto = NULL;
 	  phantom->rfr = cl->rfr;
-	  DBG("ircd:CLIENT: new phantom relation: %p => %p", cl->rfr, phantom);
+	  if (phantom->rfr != NULL)
+	    phantom->rfr->x.rto = phantom;
+	  DBG("ircd:CLIENT: phantom relation changed: %p => (%p)%p", cl->rfr, cl, phantom);
 	  phantom->hold_upto = cl->hold_upto;
 	  if (cl->pcl != NULL) {
 	    phantom->pcl = cl->pcl;
@@ -3191,6 +3194,8 @@ static CLIENT *_ircd_do_nickchange(CLIENT *tgt, peer_priv *pp,
   }
   phantom = _ircd_get_phantom(tgt->nick, tgt->lcnick);
   phantom->rfr = tgt->rfr;
+  if (phantom->rfr != NULL)
+    phantom->rfr->x.rto = phantom;
   phantom->x.rto = tgt;
   tgt->rfr = phantom;
   DBG("ircd:CLIENT: nick change: new phantom relations: %p => %p => %p",
