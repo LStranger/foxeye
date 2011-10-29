@@ -201,11 +201,15 @@ static inline size_t _ircd_make_Xmode (const char *modeslist, char *buf,
 #define _ircd_make_wmode(a,b,c) _ircd_make_Xmode (_ircd_wmodes, a,b,c)
 #define _ircd_mode2cmode(a,b,c) _ircd_make_Xmode (_ircd_cmodes, a,b,c)
 
-static inline char *_ircd_make_cmode (char *buf, CHANNEL *ch, size_t bs)
+static inline char *_ircd_make_cmode (char *buf, size_t bs, CHANNEL *ch, int ext)
 {
   register size_t i;
 
   i = _ircd_make_Xmode (_ircd_cmodes, buf, ch->mode, bs); /* add bool modes */
+  if (!ext) {
+    buf[i] = '\0';
+    return buf;
+  }
   if (i < bs - 3 && ch->limit)		/* reserve for "l X" */
     buf[i++] = 'l';
   if (i < bs - 3 && ch->key[0])		/* reserve for "k X" */
@@ -960,13 +964,12 @@ static inline void _ircd_mode_broadcast (IRCD *ircd, int id, CLIENT *sender,
 static inline int _ircd_mode_query_reply (CLIENT *cl, CHANNEL *ch)
 {
   char cmode[KEYLEN+64]; /* A-Za-z num key */
-  register MEMBER *memb;
 
   if (ch->name[0] == '+')		/* nomode channel */
     return ircd_do_cnumeric (cl, ERR_NOCHANMODES, ch, 0, NULL);
   if (ch->creator)
     ircd_do_cnumeric (cl, RPL_UNIQOPIS, ch, 0, ch->creator->who->nick);
-  _ircd_make_cmode (cmode, ch, sizeof(cmode));
+  _ircd_make_cmode (cmode, sizeof(cmode), ch, _ircd_is_on_channel(cl, ch)?1:0);
   return ircd_do_cnumeric (cl, RPL_CHANNELMODEIS, ch, 0, cmode);
 }
 
@@ -2725,7 +2728,7 @@ void ircd_burst_channels (INTERFACE *to, NODE *channels)
       continue;
     if (ch->mode != A_ISON || ch->limit || ch->key[0]) /* do not-mask modes */
     {
-      _ircd_make_cmode (buff, ch, sizeof(buff));
+      _ircd_make_cmode (buff, sizeof(buff), ch, 1);
       New_Request (to, 0, "MODE %s +%s", ch->name, buff);
     }
     l = s = 0;				/* do masks */
