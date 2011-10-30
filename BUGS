@@ -98,6 +98,6 @@
 #00099	27.10.2011  29.10.2011	/mode #chan does not work outside of #chan
 #00100	29.10.2011  29.10.2011	sf:#3429955 USER after NICK may create duplicate
 #00101	29.10.2011		sf:#3429957 channels are unavailable when on ACK
-#00102	29.10.2011		sf:#3429959 MODE !chan O isn't supported
+#00102	29.10.2011  30.10.2011	sf:#3429959 MODE !chan O isn't supported
 #00103	29.10.2011  29.10.2011	sf:#3429978 already joined not ignored on counting
 #00104	30.10.2011		ircd:error on starting connect//after few attempts

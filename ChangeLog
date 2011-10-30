@@ -12,6 +12,7 @@ TODO:
 --- [0.10.0]
 Sun Oct 30 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed wrong putting channel on hold.
+	* modules/ircd/channels.c: implemented MODE !x O query (bug#102).
 
 Sat Oct 29 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: added support for NICK after KILL.

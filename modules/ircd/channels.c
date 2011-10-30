@@ -967,8 +967,6 @@ static inline int _ircd_mode_query_reply (CLIENT *cl, CHANNEL *ch)
 
   if (ch->name[0] == '+')		/* nomode channel */
     return ircd_do_cnumeric (cl, ERR_NOCHANMODES, ch, 0, NULL);
-  if (ch->creator)
-    ircd_do_cnumeric (cl, RPL_UNIQOPIS, ch, 0, ch->creator->who->nick);
   _ircd_make_cmode (cmode, sizeof(cmode), ch, _ircd_is_on_channel(cl, ch)?1:0);
   return ircd_do_cnumeric (cl, RPL_CHANNELMODEIS, ch, 0, cmode);
 }
@@ -985,12 +983,16 @@ static inline int _ircd_mode_mask_query_reply (INTERFACE *srv, CLIENT *cl,
     return ircd_do_cnumeric (cl, ERR_NOCHANMODES, ch, 0, NULL);
   b = Check_Bindtable (BTIrcdModechange, par, U_ALL, U_ANYCH, NULL);
   ma = NULL;
+  if (b == NULL && par[0] == 'O' && ch->creator != NULL)
+    return ircd_do_cnumeric (cl, RPL_UNIQOPIS, ch, 0, ch->creator->who->nick);
   if (!b || b->name || b->key[1] != '*') /* check for parameterized */
     return ircd_do_cnumeric (cl, ERR_UNKNOWNMODE, ch, 0, par);
   f = (_mch_func_t)b->func;		/* run binding */
-  if (!(mf = f (srv, cl->nick, mm, NULL, ch->mode, -1, ch->name[0], &ma)) ||
-      !ma)
+  mf = f (srv, cl->nick, mm, NULL, ch->mode, -1, ch->name[0], &ma);
+  if (mf == 0)
     return ircd_do_cnumeric (cl, ERR_CHANOPRIVSNEEDED, ch, 0, NULL);
+  if (ma == NULL)
+    return ircd_do_cnumeric (cl, ERR_UNKNOWNMODE, ch, 0, par);
   ma (srv, cl->nick, ch->name, -1, NULL); /* do report */
   return 1;
 }
@@ -2580,6 +2582,7 @@ static inline char *_ircd_ch_flush_umodes (INTERFACE *i, char *c, char *e)
     return c;
   ff = (modeflag (*)())b->func;
   mode = (ff (i, NULL, 0, 0) & ~(A_ISON | A_PINGED));
+  //FIXME: need to cycle all bindings by IRCD_SET_MODECHAR
   IRCD_SET_MODECHAR (mode, _ircd_umodes, *c);
   if (c < e)
     c++;
@@ -2598,10 +2601,12 @@ static inline char *_ircd_ch_flush_cmodes (INTERFACE *i, char *c, char *e)
     return c;
   ff = (_mch_func_t)b->func;	/* make _ircd_cmodes */
   mode = (ff (i, NULL, 0, NULL, 0, 0, '\0', &dummy) & ~(A_ISON | A_PINGED));
+  //FIXME: need to cycle all bindings by IRCD_SET_MODECHAR
   IRCD_SET_MODECHAR (mode, _ircd_cmodes, *c);
   ff = (_mch_func_t)b->func;	/* make Ircd_modechar_mask */
   mode = (ff (i, NULL, 0, "", 0, 0, '\0', &dummy) & ~(A_ISON | A_PINGED));
   Ircd_modechar_mask |= mode;
+  //FIXME: need to cycle all bindings by IRCD_SET_MODECHAR
   IRCD_SET_MODECHAR (mode, _ircd_wmodes, *c);
   if (c < e)
     c++;
