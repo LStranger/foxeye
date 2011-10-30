@@ -2368,10 +2368,10 @@ MEMBER *ircd_new_to_channel (IRCD *ircd, struct peer_priv *bysrv, const char *na
   if (!ch)
     ch = _ircd_new_channel (ircd, name, lcname);
 #if IRCD_MULTICONNECT
-  if (!ch->name[0])			/* channel was hold by acks */
+  if (ch->count == 0)			/* channel was hold by acks */
   {
-    strfcpy (ch->name, name, sizeof(ch->name)); /* update name now */
-    _ircd_validate_channel_name (ch->name);
+//    strfcpy (ch->name, name, sizeof(ch->name)); /* update name now */
+//    _ircd_validate_channel_name (ch->name);
     ch->mode = 0;			/* see ircd_del_from_channel() */
     Add_Request (I_LOG, "*", F_WARN,	/* send warning */
 		 "ircd: got an user %s to holded channel %s (%s)", cl->nick,
@@ -2448,7 +2448,7 @@ void ircd_del_from_channel (IRCD *ircd, MEMBER *memb, int tohold)
       CLEAR_MASKS (memb->chan->exempts);
       CLEAR_MASKS (memb->chan->invites);
 #if IRCD_MULTICONNECT
-      memb->chan->name[0] = '\0';	/* mark it for later */
+//      memb->chan->name[0] = '\0';	/* mark it for later */
       if (memb->chan->on_ack)
 	memb->chan->hold_upto = Time;	/* hold it while acks on it */
       else
