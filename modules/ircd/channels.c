@@ -2368,7 +2368,7 @@ MEMBER *ircd_new_to_channel (IRCD *ircd, struct peer_priv *bysrv, const char *na
   if (!ch)
     ch = _ircd_new_channel (ircd, name, lcname);
 #if IRCD_MULTICONNECT
-  if (ch->count == 0)			/* channel was hold by acks */
+  if (ch->count == 0 && ch->hold_upto != 0) /* channel was hold by acks */
   {
 //    strfcpy (ch->name, name, sizeof(ch->name)); /* update name now */
 //    _ircd_validate_channel_name (ch->name);
