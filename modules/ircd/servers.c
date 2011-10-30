@@ -752,7 +752,7 @@ static int ircd_kick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   }
 #if IRCD_MULTICONNECT
   if (pp->link->cl->umode & A_MULTI)
-    New_Request(peer->iface, 0, "ACK KICK %s :%s", argv[0], argv[1]);
+    New_Request(peer->iface, 0, "ACK KICK %s :%s", argv[1], argv[0]);
 #endif
   if (argc == 3)
     reason = argv[2];
