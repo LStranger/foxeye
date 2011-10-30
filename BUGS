@@ -100,4 +100,4 @@
 #00101	29.10.2011		sf:#3429957 channels are unavailable when on ACK
 #00102	29.10.2011  30.10.2011	sf:#3429959 MODE !chan O isn't supported
 #00103	29.10.2011  29.10.2011	sf:#3429978 already joined not ignored on counting
-#00104	30.10.2011		ircd:error on starting connect//after few attempts
+#00104	30.10.2011  30.10.2011	ircd:error on starting connect//after few attempts

@@ -1688,11 +1688,8 @@ static iftype_t _ircd_uplink_sig (INTERFACE *uli, ifsig_t sig)
       break;
     case S_TERMINATE:
       /* free everything including socket */
-      if (uplink->p.state < P_LOGIN)	/* there is a thread still */
-      {
-	pthread_cancel (uplink->th);
-	pthread_join (uplink->th, NULL); /* it never locks dispatcher */
-      }
+      pthread_cancel (uplink->th);
+      pthread_join (uplink->th, NULL); /* it never locks dispatcher */
       if (Connchain_Kill ((&uplink->p))) /* always true */
 	KillSocket (&uplink->p.socket);
 #if IRCD_MULTICONNECT
