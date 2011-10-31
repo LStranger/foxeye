@@ -10,6 +10,10 @@ TODO:
 	* core/socket.c: to add libidn support.
 
 --- [0.10.0]
+Mon Oct 31 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/clients.c, modules/ircd/servers.c: fixed KICK reason
+	  and target on A_ANONYMOUS channels.
+
 Sun Oct 30 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed wrong putting channel on hold.
 	* modules/ircd/channels.c: implemented MODE !x O query (bug#102).

@@ -413,10 +413,6 @@ static int ircd_kick_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 
   if (argc < 2)
     return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, NULL);
-  if (argc == 3)
-    reason = argv[2];
-  else
-    reason = peer->dname;
   lch = strchr (argv[0], ',');
   for (chn = nchn = (char *)argv[0], lcl = (char *)argv[1]; lcl;
 	lcl = nlcl, chn = nchn)
@@ -440,10 +436,20 @@ static int ircd_kick_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
       ircd_do_cnumeric (cl, ERR_USERNOTINCHANNEL, memb->chan, 0, lcl);
     else
     {
+      if (argc == 3)
+	reason = argv[2];
+      else if (memb->chan->mode & A_ANONYMOUS)
+	reason = "None";
+      else
+	reason = peer->dname;
       if (memb->chan->mode & A_ANONYMOUS) {
-	New_Request(cl->via->p.iface, 0, ":%s!%s@%s KICK %s %s :%s",
-		    peer->dname, user, host, chn, lcl, reason);
-	ircd_sendto_chan_butone(memb->chan, cl,
+//	New_Request(cl->via->p.iface, 0, ":%s!%s@%s KICK %s %s :%s",
+//		    peer->dname, user, host, chn, lcl, reason);
+	if (!CLIENT_IS_REMOTE(tgt))
+	  New_Request(tgt->via->p.iface, 0,
+		      ":anonymous!anonymous@anonymous. KICK %s %s :%s",
+		      chn, lcl, reason);
+	ircd_sendto_chan_butone(memb->chan, tgt,
 				":anonymous!anonymous@anonymous. KICK %s anonymous :%s",
 				chn, reason);
       } else

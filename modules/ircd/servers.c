@@ -754,10 +754,6 @@ static int ircd_kick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   if (pp->link->cl->umode & A_MULTI)
     New_Request(peer->iface, 0, "ACK KICK %s :%s", argv[1], argv[0]);
 #endif
-  if (argc == 3)
-    reason = argv[2];
-  else
-    reason = sender;
   cl = _ircd_find_client_lc((IRCD *)srv->data, lcsender);
   lch = strchr (argv[0], ',');
   for (chn = nchn = (char *)argv[0], lcl = (char *)argv[1]; lcl;
@@ -808,17 +804,33 @@ static int ircd_kick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 	tname = "anonymous";
       else
 	tname = lcl;
-      if (CLIENT_IS_SERVER(cl)) //TODO: can servers kick users?
-	ircd_sendto_chan_local (tm->chan, ":%s KICK %s %s :%s",
-				sender, chn, tname, reason);
-      else if (CLIENT_IS_SERVICE(cl))
-	ircd_sendto_chan_local (tm->chan, ":%s@%s KICK %s %s :%s",
-				sender, cl->cs->lcnick, chn, tname, reason);
+      if (argc == 3)
+	reason = argv[2];
       else if (tm->chan->mode & A_ANONYMOUS)
-	ircd_sendto_chan_local (tm->chan,
+	reason = "None";
+      else
+	reason = sender;
+      if (CLIENT_IS_SERVER(cl)) { //TODO: can servers kick users?
+	ircd_sendto_chan_butone(tm->chan, tgt, ":%s KICK %s %s :%s",
+				sender, chn, tname, reason);
+	if (!CLIENT_IS_REMOTE(tgt))
+	  New_Request(tgt->via->p.iface, 0, ":%s KICK %s %s :%s",
+		      sender, chn, lcl, reason);
+      } else if (CLIENT_IS_SERVICE(cl)) {
+	ircd_sendto_chan_butone(tm->chan, tgt, ":%s@%s KICK %s %s :%s",
+				sender, cl->cs->lcnick, chn, tname, reason);
+	if (!CLIENT_IS_REMOTE(tgt))
+	  New_Request(tgt->via->p.iface, 0, ":%s@%s KICK %s %s :%s",
+		      sender, cl->cs->lcnick, chn, lcl, reason);
+      } else if (tm->chan->mode & A_ANONYMOUS) {
+	ircd_sendto_chan_butone(tm->chan, tgt,
 				":anonymous@anonymous!anonymous. KICK %s anonymous :%s",
 				chn, reason);
-      else
+	if (!CLIENT_IS_REMOTE(tgt))
+	  New_Request(tgt->via->p.iface, 0,
+		      ":anonymous!anonymous@anonymous. KICK %s %s :%s",
+		      chn, lcl, reason);
+      } else
 	ircd_sendto_chan_local (tm->chan, ":%s!%s@%s KICK %s %s :%s",
 				sender, cl->user, cl->host, chn, lcl, reason);
 #ifdef USE_SERVICES
