@@ -316,8 +316,7 @@ static int ircd_squit_sb(INTERFACE *srv, struct peer_t *peer, unsigned short tok
       if (l->cl == tgt)
 	break;
     if (l == NULL) {			/* ambiguous sender */
-      ircd_do_squit(((struct peer_priv *)peer->iface->data)->link, pp,
-		    "Invalid SQUIT message");
+      ircd_do_squit(pp->link, pp, "Invalid SQUIT message");
       return 0;				/* kill our peer instead */
     }
     ircd_do_squit(l, pp, argv[1]);
@@ -328,7 +327,7 @@ static int ircd_squit_sb(INTERFACE *srv, struct peer_t *peer, unsigned short tok
     if (CLIENT_IS_LOCAL(tgt)) {		/* squit if it's local link */
       ircd_sendto_wallops((IRCD *)srv->data, NULL, me, "SQUIT %s from %s: %s",
 			  argv[0], cl->nick, argv[1]);
-      ircd_do_squit(tgt->via->link, pp, argv[1]); /* do job */
+      ircd_do_squit(tgt->via->link, NULL, argv[1]); /* do job */
     } else				/* or else forward it to it's links */
       ircd_sendto_remote(tgt, ":%s SQUIT %s :%s", cl->nick, argv[0], argv[1]);
   }
