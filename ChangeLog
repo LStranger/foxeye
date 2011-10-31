@@ -13,6 +13,7 @@ TODO:
 Mon Oct 31 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/clients.c, modules/ircd/servers.c: fixed KICK reason
 	  and target on A_ANONYMOUS channels.
+	* modules/ircd/servers.c: fixed foreign SQUIT query (bug#105).
 
 Sun Oct 30 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed wrong putting channel on hold.

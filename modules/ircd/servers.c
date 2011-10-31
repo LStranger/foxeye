@@ -287,30 +287,31 @@ static int ircd_squit_sb(INTERFACE *srv, struct peer_t *peer, unsigned short tok
     ERROR("ircd:got SQUIT from %s with %d != 2 parameters", peer->dname, argc);
     return ircd_recover_done(pp, "SQUIT need more parameters");
   }
-#if IRCD_MULTICONNECT
-  if (pp->link->cl->umode & A_MULTI)
-    New_Request(peer->iface, 0, "ACK SQUIT %s", argv[0]);
-#endif
   tgt = ircd_find_client(argv[0], pp);	/* in case of backfired it's NULL */
   if (tgt == NULL || !CLIENT_IS_SERVER(tgt))
 #if IRCD_MULTICONNECT
   {
-    if (tgt == NULL && (pp->link->cl->umode & A_MULTI))
+    if (tgt == NULL && (pp->link->cl->umode & A_MULTI)) {
+      New_Request(peer->iface, 0, "ACK SQUIT %s", argv[0]);
       return (1);
       //TODO: log duplicate?
-    else
+    } else
 #endif
       return ircd_recover_done(pp, "No such server");
 #if IRCD_MULTICONNECT
   }
-  ack = ircd_check_ack(pp, tgt, NULL);
-  if (ack != NULL) {
-    ack->contrary = 1;
-    return (1); /* ignore the message */
-  }
 #endif
   cl = _ircd_find_client_lc((IRCD *)srv->data, lcsender);
   if (CLIENT_IS_SERVER(cl)) {
+#if IRCD_MULTICONNECT
+    if (pp->link->cl->umode & A_MULTI)
+      New_Request(peer->iface, 0, "ACK SQUIT %s", argv[0]);
+#endif
+    ack = ircd_check_ack(pp, tgt, NULL);
+    if (ack != NULL) {
+      ack->contrary = 1;
+      return (1); /* ignore the message */
+    }
     for (l = cl->c.lients; l; l = l->prev)
       if (l->cl == tgt)
 	break;
