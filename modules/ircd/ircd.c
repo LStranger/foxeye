@@ -1950,13 +1950,19 @@ static void _ircd_do_init_uplinks (void)
     while (*c)				/* for each autoconnect */
     {
       char *cc, *hl;
+      peer_priv *peer;
 
       cc = gettoken (c, NULL);
-      if (_ircd_find_client(c)) {	/* already connected, go to next */
+      unistrlower(hosts, c, sizeof(hosts));
+      pthread_mutex_lock(&IrcdLock);
+      for (peer = IrcdPeers; peer != NULL; peer = peer->p.priv)
+	if (strcmp(peer->p.dname, hosts) == 0)
+	  break;
+      pthread_mutex_unlock(&IrcdLock);
+      if (peer != NULL) {		/* already connected, go to next */
 	c = cc;
 	continue;
-      } //FIXME: check in IrcdPeers list instead: lower info hosts[]
-      // then compare with every peer->p.dname while IrcdLock is on
+      }
       lid = FindLID (c);
       c = cc;
       while (Get_Request());		/* we need queue to be empty */
