@@ -3007,7 +3007,6 @@ static int ircd_server_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
     }
   }
 #endif
-  // FIXME: can it be that cl isn't A_SERVER?
   if (cl)
     return _ircd_server_duplicate_link (cl->via, pp, lcsender, argv[0]);
   /* check parameters */
@@ -4125,10 +4124,11 @@ CLIENT *ircd_find_client_nt(const char *name, peer_priv *via)
    and kills peer if it's local */
 void ircd_prepare_quit (CLIENT *client, peer_priv *via, const char *msg)
 {
-//  register LINK *s;
-
   dprint(5, "ircd:ircd.c:ircd_prepare_quit: %s", client->nick);
-  //FIXME: should I check if it's not phantom and not server?
+  if (client->hold_upto != 0 || CLIENT_IS_SERVER(client)) {
+    ERROR("ircd:ircd_prepare_quit: %s isn't online user", client->nick);
+    return;
+  }
   if (CLIENT_IS_REMOTE (client))
     _ircd_remote_user_gone(client);
   else
@@ -4141,9 +4141,6 @@ void ircd_prepare_quit (CLIENT *client, peer_priv *via, const char *msg)
   }
   client->away[0] = '\0';		/* caller may not fill it */
   ircd_quit_all_channels (Ircd, client, 0, 1); /* remove and mark */
-//  for (s = Ircd->servers; s; s = s->prev)
-//    if (s->cl->via != via)		/* don't send it back */
-//      s->cl->via->p.iface->ift |= I_PENDING; /* all linked servers need notify */
 }
 
 /* clears link->cl and notifies local users about lost server */
