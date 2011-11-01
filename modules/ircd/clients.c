@@ -317,8 +317,7 @@ static int ircd_topic_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char
   memb = _ircd_is_on_channel(cl, ch);
 #ifdef IRCD_PUBLIC_TOPIC
   /* private and secret channels should be not visible such way - RFC2811 */
-  if ((ch->mode & (A_SECRET | A_TOPICLOCK | A_NOOUTSIDE)) &&
-      memb == NULL)
+  if ((ch->mode & (A_SECRET | A_NOOUTSIDE)) && memb == NULL)
 #else
   if (memb == NULL)
 #endif
@@ -329,6 +328,10 @@ static int ircd_topic_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char
       return ircd_do_cnumeric (cl, RPL_TOPIC, ch, 0, ch->topic);
     return ircd_do_cnumeric (cl, RPL_NOTOPIC, ch, 0, NULL);
   }
+#ifdef IRCD_PUBLIC_TOPIC
+  if (memb == NULL)
+    return ircd_do_unumeric (cl, ERR_NOTONCHANNEL, cl, 0, argv[0]);
+#endif
   if ((ch->mode & A_TOPICLOCK) && !(memb->mode & (A_ADMIN | A_OP)))
   {
     if (ch->name[0] == '+')

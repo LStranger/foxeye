@@ -12,6 +12,8 @@ TODO:
 --- [0.10.0]
 Tue Nov  1 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: added time corrections handler to ircd.
+	* modules/ircd/clients.c: disabled changing of topic outside of channel
+	  (bug#106).
 
 Mon Oct 31 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/clients.c, modules/ircd/servers.c: fixed KICK reason
