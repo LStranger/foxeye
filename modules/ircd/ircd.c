@@ -3906,6 +3906,23 @@ static void _istats_m (INTERFACE *srv, const char *rq, modeflag umode)
   }
 }
 
+
+/* -- "time-shift" binding to work out TZ corrections --------------------- */
+BINDING_TYPE_time_shift (ts_ircd);
+static void ts_ircd (int drift)
+{
+  register peer_priv *peer;
+
+  pthread_mutex_lock (&IrcdLock);
+  for (peer = IrcdPeers; peer != NULL; peer = peer->p.priv) {
+    peer->p.last_input += drift; /* correct time for keep-alive */
+    if (peer->noidle > peer->p.last_input) /* so it was TZ change */
+      peer->noidle = peer->p.last_input; /* correct idle time too */
+  }
+  pthread_mutex_unlock (&IrcdLock);
+}
+
+
 /* -- common network interface -------------------------------------------- */
 static int _ircd_request (INTERFACE *cli, REQUEST *req)
 {
@@ -4641,6 +4658,7 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
       Delete_Binding ("ircd-server-cmd", (Function)&ircd_nick_sb, NULL);
 //      Delete_Binding ("connect", &connect_ircd, NULL);
       Delete_Binding ("inspect-client", (Function)&incl_ircd, NULL);
+      Delete_Binding ("time-shift", (Function)&ts_ircd, NULL);
       Delete_Binding ("connchain-grow", &_ccfilter_P_init, NULL);
 #if IRCD_USES_ICONV
       Delete_Binding ("connchain-grow", &_ccfilter_U_init, NULL);
@@ -4768,6 +4786,7 @@ SigFunction ModuleInit (char *args)
   Add_Binding ("ircd-server-cmd", "nick", 0, 0, (Function)&ircd_nick_sb, NULL);
 //  Add_Binding ("connect", "ircd", 0, 0, &connect_ircd, NULL);
   Add_Binding ("inspect-client", "ircd", 0, 0, (Function)&incl_ircd, NULL);
+  Add_Binding ("time-shift", "*", 0, 0, (Function)&ts_ircd, NULL);
   Add_Binding ("connchain-grow", "P", 0, 0, &_ccfilter_P_init, NULL);
 #if IRCD_USES_ICONV
   Add_Binding ("connchain-grow", "U", 0, 0, &_ccfilter_U_init, NULL);

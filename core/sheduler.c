@@ -311,6 +311,7 @@ static int Sheduler (INTERFACE *ifc, REQUEST *req)
     drift = Time - lasttime;
     if (drift < 0 || drift > MAXDRIFT)	/* it seems system time was changed */
     {
+      drift--;				/* assume 1 second passed */
       if (lasttime)			/* if it's on start then it's ok */
       {
 	WARNING ("system time was slipped by %d seconds!", drift);
