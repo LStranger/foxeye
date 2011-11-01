@@ -17,6 +17,7 @@ Tue Nov  1 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: added check if autoconnect already in progress.
 	* modules/ircd/ircd.c: added stupidity check into ircd_prepare_quit().
 	* core/connchain.c: implemented "sticky" connchain links.
+	* modules/ircd/channels.c: fixed +-o on !chan again.
 
 Mon Oct 31 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/clients.c, modules/ircd/servers.c: fixed KICK reason

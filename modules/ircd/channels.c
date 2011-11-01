@@ -391,10 +391,16 @@ static modeflag imch_o(INTERFACE *srv, const char *rq, modeflag rchmode,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
-  if (target && ((rchmode & A_OP) || !rchmode))
+  if (!target)
+    return 0;
+  if (!rchmode)
     return A_OP;
-  else if (target && (tmode & A_ADMIN))
-    return A_ADMIN;			/* +-o on admin will do +-O */
+  if (tmode & A_ADMIN) {
+    if (rchmode & A_ADMIN)
+      return A_ADMIN;			/* +-o on admin will do +-O */
+    return A_PINGED; /* else: mark of ERR_UNIQOPPRIVSNEEDED */
+  } else if (rchmode & (A_ADMIN | A_OP))
+    return A_OP;
   return 0;
 }
 
