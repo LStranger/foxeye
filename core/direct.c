@@ -1369,7 +1369,7 @@ static void *_accept_port (void *input_data)
 //	else
 //	  charset = "US-ASCII";
 //	conv = Get_Conversion(charset);
-	if (!strcmp(buf, "OTHER")) {
+	if (!strcmp(buf, "OTHER") || !isalnum(ident[0])) {
 //	  buf[0] = '=';
 //	  Do_Conversion();
 	  ident[0] = '=';

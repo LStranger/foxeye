@@ -316,8 +316,8 @@ static int ircd_topic_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char
   ch = memb->chan;
   memb = _ircd_is_on_channel(cl, ch);
 #ifdef IRCD_PUBLIC_TOPIC
-  /* private and secret channels should be not visible such way - RFC2811 */
-  if ((ch->mode & (A_SECRET | A_NOOUTSIDE)) && memb == NULL)
+  /* secret channels should be not visible such way - RFC2811 */
+  if ((ch->mode & A_SECRET) && memb == NULL)
 #else
   if (memb == NULL)
 #endif

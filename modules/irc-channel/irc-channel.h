@@ -101,6 +101,8 @@ typedef struct NICK
   char *lname;			/* only once */
   struct NICK *prev_TSL;	/* previous "The Same Lname" */
   char *host;			/* nick!user@host */
+//  char *nick;			/* nick\0user@host */
+//  char *uhost;		/* pointer into above after prefix */
   LINK *channels;
   netsplit *split;		/* not NULL if it's on netsplit or netjoined */
   struct IRC *net;

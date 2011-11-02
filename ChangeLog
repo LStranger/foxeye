@@ -10,6 +10,9 @@ TODO:
 	* core/socket.c: to add libidn support.
 
 --- [0.10.0]
+Wed Nov  2 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/direct.c: added test for non-alnum first char of ident.
+
 Tue Nov  1 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: added time corrections handler to ircd.
 	* modules/ircd/clients.c: disabled changing of topic outside of channel
