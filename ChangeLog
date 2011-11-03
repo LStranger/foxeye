@@ -13,6 +13,9 @@ TODO:
 Thu Nov  3 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc/irc.c: corrected "time-shift" binding.
 	* modules/logs/logs.c: added "time-shift" binding.
+	* core/socket.c, core/foxeye.h: implemented "strict backresolv" feature
+	  to ignore resolved hostname of incoming connect if it does not resolve
+	  into the same IP.
 
 Wed Nov  2 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.c: added test for non-alnum first char of ident.

@@ -172,7 +172,7 @@ void free ();
 #endif
 
 /*
- * IRC restrictions
+ * IRC restrictions. Can be changed but not advisable to.
  */
 
 #define LNAMELEN	32	/* Lname max width */
@@ -440,6 +440,7 @@ typedef enum
 
 typedef short idx_t;
 #define	SOCKETMAX	1024	/* max number of opened inet sockets */
+#define STRICT_BACKRESOLV 1	/* define to ignore host IP=>host=>IP != IP */
 
 /* main.c defines */
 #define	CONSOLE_LOGLEV (F_PRIV | F_CMDS | F_CONN | F_USERS | F_BOOT | F_WARN | \

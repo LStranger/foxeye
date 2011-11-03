@@ -659,7 +659,45 @@ idx_t AnswerSocket (idx_t listen)
     goto done;			/* no domains for Unix sockets */
   Socket[idx].ipname = _make_socket_ipname(&addr, hname, sizeof(hname));
   i = getnameinfo (&addr.sa, len, hname, sizeof(hname), NULL, 0, 0);
+#ifdef STRICT_BACKRESOLV
+  if (i == 0) {
+    /* make direct resolving of hname and compare it with addr */
+    struct addrinfo *ai, *aii;
+    static struct addrinfo hints = { .ai_family = AF_INET, .ai_socktype = 0,
+				       .ai_protocol = 0, .ai_flags = 0 };
+
+#ifdef ENABLE_IPV6
+    hints.ai_family = addr.sa.sa_family;
+#endif
+    i = getaddrinfo (hname, NULL, &hints, &ai);
+    if (i == 0) {
+      for (aii = ai; aii != NULL; aii = aii->next) {
+	inet_addr_t *ha = (inet_addr_t *)aii->ai_addr;
+
+#ifdef ENABLE_IPV6
+	if (ha->sa.sa_family == AF_INET6) {
+	  if (memcmp(&ha->s_in6.sin6_addr, &addr.s_in6.sin6_addr,
+		     sizeof(addr.s_in6.sin6_addr)) == 0)
+	    break;
+	} else if (ha->sa.sa_family == AF_INET)
+#endif
+	  if (memcmp(&ha->s_in.sin_addr.s_addr, &addr.s_in.sin_addr.s_addr,
+		     sizeof(addr.s_in.sin_addr.s_addr)) == 0)
+	    break;
+      }
+      freeaddrinfo (ai);
+      if (aii == NULL) {
+	DBG("socket:AnswerSocket: none of domain %s resolves match %s", hname,
+	    Socket[idx].ipname);
+	i = -1;
+      }
+    } else
+      DBG("socket:AnswerSocket: domain %s does not resolve, using %s", hname,
+	  Socket[idx].ipname);
+  }
+#endif
   if (i == 0)			/* subst canonical name */
+    //TODO: idna_to_unicode_lzlz()
     Socket[idx].domain = safe_strdup (hname);
   else				/* error of getnameinfo() */
     Socket[idx].domain = safe_strdup(Socket[idx].ipname);
