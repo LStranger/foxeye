@@ -784,5 +784,6 @@ SigFunction ModuleInit (char *args)
   autolog_register();
   _autolog_mass = Add_Iface (I_LOG, "*", &_autolog_mass_signal,
 			     &_autolog_mass_request, NULL);
+  //TODO: "time-shift" binding
   return &module_autolog_signal;
 }

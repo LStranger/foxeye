@@ -10,6 +10,10 @@ TODO:
 	* core/socket.c: to add libidn support.
 
 --- [0.10.0]
+Thu Nov  3 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/irc/irc.c: corrected "time-shift" binding.
+	* modules/logs/logs.c: added "time-shift" binding.
+
 Wed Nov  2 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.c: added test for non-alnum first char of ident.
 

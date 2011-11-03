@@ -1715,8 +1715,10 @@ static void ts_irc (int drift)
 {
   register irc_server *serv;
 
-  for (serv = IrcServers; serv; serv = serv->next)
+  for (serv = IrcServers; serv; serv = serv->next) {
     serv->last_output += drift;		/* correct it for keep-alive */
+    serv->p.last_input += drift;
+  }
 }
 
 

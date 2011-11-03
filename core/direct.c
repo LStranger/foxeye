@@ -28,6 +28,7 @@
 #include <fcntl.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <ctype.h>
 
 #include "socket.h"
 #include "direct.h"

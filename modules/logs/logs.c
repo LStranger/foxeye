@@ -1030,6 +1030,16 @@ static void logrotate_reset (void)
 	      "*", "*", "*");
 }
 
+BINDING_TYPE_time_shift(ts_logs);
+static void ts_logs(int shift)
+{
+  register logfile_t *log;
+
+  for (log = Logfiles; log; log = log->next)
+    log->timestamp += shift;
+}
+
+
 /*
  * this function must receive signals:
  *  S_TERMINATE - unload module,
@@ -1075,6 +1085,7 @@ static iftype_t module_log_signal (INTERFACE *iface, ifsig_t sig)
 	KillShedule (I_MODULE, "logs", S_TIMEOUT, "*", "*", "*", "*", "*");
       for (log = Logfiles; log; log = log->next)
 	logfile_signal (log->iface, S_TERMINATE);
+      Delete_Binding("time-shift", (Function)&ts_logs, NULL);
       UnregisterVariable ("logfile-lock-attempts");
       UnregisterVariable ("logrotate-path");
       UnregisterVariable ("logrotate-time");
@@ -1111,6 +1122,7 @@ SigFunction ModuleInit (char *args)
   CheckVersion;
   Add_Help ("logs");
   module_log_regall();			/* variables and function */
+  Add_Binding("time-shift", "*", 0, 0, (Function)&ts_logs, NULL);
   logrotate_reset();			/* shedule - logs rotation */
   lastrotated = Time - 3600 * atoi (logrotate_hr) + 60 * atoi (logrotate_min);
   localtime_r (&lastrotated, &tm);
