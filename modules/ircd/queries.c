@@ -1208,10 +1208,15 @@ static inline int _ircd_query_ping (IRCD *ircd, CLIENT *cl, struct peer_priv *vi
     tgt = ircd_find_client (argv[0], via);
     origin = cl->nick;
   }
+  /* stupid clients may send any trash here instead of target name */
   if (tgt == NULL || tgt == cl || CLIENT_IS_ME(tgt)) {
     register CLIENT *me = ircd_find_client(NULL, NULL);
-//    ircd_sendto_one (cl, ":%s PONG %s %s", me->lcnick, me->lcnick, argv[0]);
-    ircd_sendto_one (cl, "PONG %s %s", me->lcnick, argv[0]);
+
+    if (!CLIENT_IS_SERVER(cl) && !CLIENT_IS_REMOTE(cl))
+      /* few of clients are broken and wait prefix here ignoring RFC */
+      ircd_sendto_one (cl, ":%s PONG %s %s", me->lcnick, me->lcnick, argv[0]);
+    else
+      ircd_sendto_one (cl, "PONG %s %s", me->lcnick, argv[0]);
   } else
 //    New_Request (tgt->cs->via->p.iface, 0, ":%s PING %s %s", cl->nick, origin,
 //		 tgt->nick);

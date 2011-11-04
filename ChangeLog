@@ -13,6 +13,8 @@ Fri Nov  4 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c, modules/ircd/queries.c: changed bindtable
 	  "ircd-lost-client" into more common "ircd-client" one, WHOWAS should
 	  be aware of nickchanges too from now on.
+	* modules/ircd/queries.c: forced sending prefix to local clients on
+	  PONG as some clients are broken and think PONG always is prefixed.
 
 Thu Nov  3 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc/irc.c: corrected "time-shift" binding.
