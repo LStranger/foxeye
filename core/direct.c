@@ -1373,8 +1373,8 @@ static void *_accept_port (void *input_data)
 	if (!strcmp(buf, "OTHER") || !isalnum(ident[0])) {
 //	  buf[0] = '=';
 //	  Do_Conversion();
-	  ident[0] = '=';
 	  memmove(&ident[1], ident, 62);
+	  ident[0] = '=';
 	  ident[63] = '\0';
 	}
 //	} else

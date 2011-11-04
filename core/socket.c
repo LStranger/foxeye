@@ -43,6 +43,10 @@
 # include <sys/filio.h>
 #endif
 
+#ifdef HAVE_LIBIDN
+# include <idna.h>
+#endif
+
 #ifndef SIGPOLL
 # define SIGPOLL SIGURG
 #endif
@@ -371,6 +375,9 @@ int SetupSocket(idx_t idx, const char *domain, const char *bind_to,
   inet_addr_t addr;
   struct linger ling;
   char hname[NI_MAXHOST+1];
+#ifdef HAVE_LIBIDN
+  char *idndomain;
+#endif
 
   /* check for errors! */
   if (idx < 0 || idx >= _Snum || Pollfd[idx].fd < 0)
@@ -483,7 +490,13 @@ int SetupSocket(idx_t idx, const char *domain, const char *bind_to,
     else
       hints.ai_flags = 0;
 #endif
-    //TODO: idna_to_ascii_lz
+#ifdef HAVE_LIBIDN
+    i = idna_to_ascii_lz(domain, &idndomain, IDNA_USE_STD3_ASCII_RULES);
+    if (i == IDNA_SUCCESS) {
+      i = getaddrinfo(idndomain, NULL, &hints, &ai);
+      free(idndomain);
+    } else //TODO: debug diagnostics?
+#endif
     i = getaddrinfo (domain, NULL, &hints, &ai);
     if (i == 0)
     {
@@ -547,15 +560,29 @@ int SetupSocket(idx_t idx, const char *domain, const char *bind_to,
   {
     Socket[idx].ipname = _make_socket_ipname(&addr, hname, sizeof(hname));
     i = getnameinfo (&addr.sa, len, hname, sizeof(hname), NULL, 0, 0);
-    if (i == 0)			/* no errors */
+#ifdef HAVE_LIBIDN
+    idndomain = NULL;
+#endif
+    if (i == 0) {		/* no errors */
+#ifdef HAVE_LIBIDN
+      i = idna_to_unicode_lzlz(hname, &idndomain, 0);
+      if (i == IDNA_SUCCESS)
+	domain = idndomain;
+      else //TODO: debug errors
+#endif
       domain = hname;
-      //TODO: idna_to_unicode_lzlz()
-    else if (domain == NULL)	/* else make it not NULL */
+    } else if (domain == NULL)	/* else make it not NULL */
       domain = Socket[idx].ipname;
   }
   if (callback != NULL)
-    return callback(&addr.sa, callback_data);
+    i = callback(&addr.sa, callback_data);
+  else
+    i = 0;
   Socket[idx].domain = safe_strdup (domain);
+#ifdef HAVE_LIBIDN
+  if (idndomain != NULL)
+    free(idndomain);
+#endif
   return 0;
 }
 
@@ -668,10 +695,14 @@ idx_t AnswerSocket (idx_t listen)
 
 #ifdef ENABLE_IPV6
     hints.ai_family = addr.sa.sa_family;
+    if (hints.ai_family == AF_INET6)
+      hints.ai_flags = AI_V4MAPPED;
+    else
+      hints.ai_flags = 0;
 #endif
     i = getaddrinfo (hname, NULL, &hints, &ai);
     if (i == 0) {
-      for (aii = ai; aii != NULL; aii = aii->next) {
+      for (aii = ai; aii != NULL; aii = aii->ai_next) {
 	inet_addr_t *ha = (inet_addr_t *)aii->ai_addr;
 
 #ifdef ENABLE_IPV6
@@ -696,10 +727,18 @@ idx_t AnswerSocket (idx_t listen)
 	  Socket[idx].ipname);
   }
 #endif
-  if (i == 0)			/* subst canonical name */
-    //TODO: idna_to_unicode_lzlz()
+  if (i == 0) {			/* subst canonical name */
+#ifdef HAVE_LIBIDN
+    char *dechost;
+
+    i = idna_to_unicode_lzlz(hname, &dechost, 0);
+    if (i == IDNA_SUCCESS) {
+      Socket[idx].domain = safe_strdup(dechost);
+      free(dechost);
+    } else //TODO: debug errors
+#endif
     Socket[idx].domain = safe_strdup (hname);
-  else				/* error of getnameinfo() */
+  } else			/* error of getnameinfo() */
     Socket[idx].domain = safe_strdup(Socket[idx].ipname);
 done:
   Socket[idx].ready = TRUE;

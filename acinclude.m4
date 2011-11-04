@@ -222,3 +222,41 @@ yes
     esac
 fi
 ])
+
+AC_DEFUN([AC_CHECK_LIBIDN],
+[AC_ARG_WITH(libidn, AC_HELP_STRING([--with-libidn=[DIR]],
+                                     [Support IDN (needs GNU Libidn)]),
+	libidn=$withval, libidn=yes)
+    if test "$libidn" != "no" ; then
+	if test "$libidn" != "yes" ; then
+	    dnl check if supplied path gives valid result
+	    save_LDFLAGS="${LDFLAGS}"
+	    save_CPPFLAGS="${CPPFLAGS}"
+	    LDFLAGS="${LDFLAGS} -L$libidn/lib"
+	    CPPFLAGS="${CPPFLAGS} -I$libidn/include"
+	    AC_CHECK_HEADER(idna.h,
+			AC_CHECK_LIB(idn, stringprep_check_version,
+				    [LIBIDN_CFLAGS=-I$libidn/include
+				     LIBIDN_LIBS="-L$libidn/lib -lidn"],
+				    libidn=no),
+			[libidn=no])
+	    LDFLAGS="save_LDFLAGS"
+	    CPPFLAGS="save_CPPFLAGS"
+	else
+	    dnl check with pkg-config first
+	    PKG_CHECK_MODULES(LIBIDN, libidn >= 0.0.0, [libidn=yes], [libidn=no])
+	    dnl check for default paths if not found by pkg-config
+	    if test "$libidn" != "yes" ; then
+		AC_CHECK_HEADER(idna.h,
+			    AC_CHECK_LIB(idn, stringprep_check_version,
+					[LIBIDN_LIBS="-lidn"], [libidn=no]),
+			    [libidn=no])
+	    fi
+	fi
+    fi
+    if test "$libidn" != "no" ; then
+	AC_DEFINE(HAVE_LIBIDN, 1, [Define to 1 if you want IDN support.])
+    fi
+    AC_MSG_CHECKING([if Libidn should be used])
+    AC_MSG_RESULT($libidn)
+])
