@@ -77,20 +77,26 @@
     send control messages (commands).
       Matching: user nick.  (channel userflags are ignored)
 
--     "iirrccdd--lloosstt--cclliieenntt" MASK
+-     "iirrccdd--cclliieenntt"    MASK
   (int) void func (INTERFACE *_s_r_v, const char *_f_r_o_m, const char *_l_c_n_i_c_k,
-		   const char *_n_i_c_k, const char *_u_s_e_r, const char *_h_o_s_t,
-		   const char *_f_n_a_m_e, modeflag _u_m, unsigned int _l_e_f_t);
-    Used when connection to user _n_i_c_k (who had connection parameters _u_s_e_r
-    and _h_o_s_t, full name _f_n_a_m_e, umode _u_m, and was connected to server _f_r_o_m
-    before connection was lost) was dropped for some reason. Binding is
-    used for services too, in that case parameters user and host will be
-    empty. Parameter _l_e_f_t is total number of clients known for the server
-    at this time, that number includes every server, service, user, and
-    also every incomplete connection and every nick, remembered due to
-    network splits or nick collision reasons. Converted to lower case
-    _n_i_c_k is also supplied for binding as _l_c_n_i_c_k. _s_r_v is IRCD interface
-    which can be used to send control messages (commands).
+		   const char *_n_i_c_k, const char *_n_n_i_c_k, const char *_u_s_e_r,
+		   const char *_h_o_s_t, const char *_f_n_a_m_e, modeflag _u_m,
+		   unsigned int _l_e_f_t);
+    Used when list of names in the network was changed, i.e. either user
+    or service succesfully entered network, left network, or user changed
+    their nick name. Binding is supplied with last seen _n_i_c_k of client,
+    connection parameters _u_s_e_r and _h_o_s_t, full name _f_n_a_m_e, umode _u_m, and
+    server which client was connected _f_r_o_m before the change happened.
+    If that is new client then binding gets _n_i_c_k equal to NULL. In that
+    case or in case of nick change _n_n_i_c_k will contain new user nick or
+    service name. As binding can be used for services too, in that case
+    parameters _u_s_e_r and _h_o_s_t will be empty strings. Parameter _l_e_f_t is
+    total number of clients known for the server at the event time, that
+    number includes every server, service, user, incomplete connection,
+    and every nick, remembered due to network splits or nick collision
+    reasons. Converted to lower case _n_i_c_k is also supplied for binding as
+    _l_c_n_i_c_k. _s_r_v is IRCD interface which can be used to send control
+    messages (commands).
       Macthing: user nick.  (userflags are ignored)
 
 -     "iirrccdd--ddoo--nnuummeerriicc" UNIQ

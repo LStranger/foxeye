@@ -583,7 +583,7 @@ int SetupSocket(idx_t idx, const char *domain, const char *bind_to,
   if (idndomain != NULL)
     free(idndomain);
 #endif
-  return 0;
+  return (i);
 }
 
 static void _answer_cleanup(void *data)

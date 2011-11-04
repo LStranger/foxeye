@@ -80,7 +80,7 @@ static struct bindtable_t *BTIrcdRegisterCmd;
 static struct bindtable_t *BTIrcdClientFilter;
 static struct bindtable_t *BTIrcdLocalClient;
 //static struct bindtable_t *BTIrcdSetClient;
-static struct bindtable_t *BTIrcdLostClient;
+static struct bindtable_t *BTIrcdClient;
 static struct bindtable_t *BTIrcdDoNumeric;
 static struct bindtable_t *BTIrcdCollision;
 
@@ -408,13 +408,14 @@ static inline void _ircd_free_token (unsigned short int i)
   Ircd->token[i] = NULL;
 }
 
-static inline void _ircd_bt_lost_client(CLIENT *cl, const char *server)
+static inline void _ircd_bt_client(CLIENT *cl, const char *on, const char *nn,
+				   const char *server)
 {
   struct binding_t *b = NULL;
 
-  while ((b = Check_Bindtable(BTIrcdLostClient, cl->nick, U_ALL, U_ANYCH, b)))
+  while ((b = Check_Bindtable(BTIrcdClient, cl->nick, U_ALL, U_ANYCH, b)))
     if (b->name == NULL)
-      b->func(Ircd->iface, server, cl->lcnick, cl->nick, cl->user, cl->host,
+      b->func(Ircd->iface, server, cl->lcnick, on, nn, cl->user, cl->host,
 	      cl->fname, cl->umode, IrcdCli_num);
 }
 
@@ -452,7 +453,7 @@ static inline void _ircd_peer_kill (peer_priv *peer, const char *msg)
     if (CLIENT_IS_SERVER(peer->link->cl))
       ;//TODO: BTIrcdUnlinked
     else
-      _ircd_bt_lost_client(peer->link->cl, MY_NAME); /* "ircd-lost-client" */
+      _ircd_bt_client(peer->link->cl, peer->link->cl->nick, NULL, MY_NAME);
   } else if (peer->p.state == P_IDLE)
     peer->link->cl->umode |= A_UPLINK;	/* only for registering uplink */
   if (peer->t > 0) {
@@ -1013,7 +1014,7 @@ static void _ircd_remote_user_gone(CLIENT *cl)
     ERROR("ircd: client %s from %s is not in class", cl->nick, cl->cs->lcnick);
   } else
     _ircd_class_out(l);
-  _ircd_bt_lost_client(cl, cl->cs->lcnick); /* do bindtable ircd-lost-client */
+  _ircd_bt_client(cl, cl->nick, NULL, cl->cs->lcnick); /* do bindtable */
   cl->cs = cl;		/* abandon server */
   /* converts active user into phantom on hold for this second */
   cl->hold_upto = Time;
@@ -2124,6 +2125,7 @@ static int _ircd_got_local_user (CLIENT *cl)
   while ((b = Check_Bindtable (BTIrcdLocalClient, cl->nick, uf, U_ANYCH, b)))
     if (!b->name)			/* do lusers and custom messages */
       b->func (Ircd->iface, &cl->via->p);
+  _ircd_bt_client(cl, NULL, cl->nick, MY_NAME);
 #if IRCD_USES_ICONV
   ircd_do_unumeric (cl, RPL_CODEPAGE, cl, 0,
 		    Conversion_Charset (cl->via->p.iface->conv));
@@ -3203,6 +3205,7 @@ static CLIENT *_ircd_do_nickchange(CLIENT *tgt, peer_priv *pp,
     tgt->via->p.iface->ift |= I_PENDING;
   Add_Request(I_PENDING, "*", 0, ":%s!%s@%s NICK %s", tgt->nick, tgt->user,
 	      tgt->host, nn);
+  _ircd_bt_client(tgt, tgt->nick, nn, pp ? pp->link->cl->lcnick : MY_NAME);
   /* change our data now */
   if (casechange) {
     strfcpy(tgt->nick, nn, sizeof(tgt->nick));
@@ -3530,7 +3533,7 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 #ifdef USE_SERVICES
   //TODO: notify services about new client?
 #endif
-  //TODO: BTIrcdGotRemote
+  _ircd_bt_client(tgt, NULL, tgt->nick, on->lcnick);
   return 1;
 }
 
@@ -4191,7 +4194,7 @@ static inline void _ircd_squit_one (LINK *link)
 		 l->cl->user, l->cl->host, link->where->lcnick, server->lcnick);
 		 /* send split message */
     _ircd_class_out (l);		/* remove from global class list */
-    _ircd_bt_lost_client(l->cl, server->lcnick); /* "ircd-lost-client" */
+    _ircd_bt_client(l->cl, l->cl->nick, NULL, server->lcnick); /* "ircd-client" */
     l->cl->hold_upto = Time + _ircd_hold_period; /* put it in temp. unavailable list */
     l->cl->x.rto = NULL;		/* convert active user into phantom */
     l->cl->cs = l->cl;			/* it holds key for itself */
@@ -4760,7 +4763,7 @@ SigFunction ModuleInit (char *args)
 //  BTIrcdUnlinked = Add_Bindtable ("ircd-lost-server", B_MASK);
   BTIrcdLocalClient = Add_Bindtable ("ircd-local-client", B_MASK);
 //  BTIrcdGotRemote = Add_Bindtable ("ircd-got-client", B_MASK);
-  BTIrcdLostClient = Add_Bindtable ("ircd-lost-client", B_MASK);
+  BTIrcdClient = Add_Bindtable ("ircd-client", B_MASK);
   BTIrcdCollision = Add_Bindtable ("ircd-collision", B_UNIQMASK);
   BTIrcdAuth = Add_Bindtable ("ircd-auth", B_MASK);
   BTIrcdServerCmd = Add_Bindtable ("ircd-server-cmd", B_KEYWORD);

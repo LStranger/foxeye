@@ -2,6 +2,11 @@
 
 Changes in version 0.10 since 0.9:
 
+- IDN (international domain names) support.
+
+- Optional feature (enabled by default) to not trust DNS PTR record for
+    incoming connection until it have appropriate A counterpart.
+
 - Removed '--enable-profile' from confugure script since gprof cannot
     handle code linked in runtime with dlopen().
 

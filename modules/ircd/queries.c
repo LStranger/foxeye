@@ -1380,16 +1380,18 @@ static void _igotc_lu_mo (INTERFACE *srv, struct peer_t *peer)
 
 
 /* ---------------------------------------------------------------------------
-   "ircd-lost-client" binding for user connection stop */
-BINDING_TYPE_ircd_lost_client(_ilostc_ww);
-static void _ilostc_ww(INTERFACE *srv, const char *from, const char *lcnick,
-		       const char *nick, const char *user, const char *host,
-		       const char *fname, modeflag um, unsigned int left)
+   "ircd-client" binding for user connection stop or nickchange */
+BINDING_TYPE_ircd_client(_icchg_ww);
+static void _icchg_ww(INTERFACE *srv, const char *from, const char *lcnick,
+		      const char *nick, const char *nn, const char *user,
+		      const char *host, const char *fname, modeflag um, unsigned int left)
 {
   whowas_t *ww, *wwp;
   CLIENT *where;
 
   if (um & (A_SERVER|A_SERVICE))
+    return;
+  if (nick == NULL)
     return;
   /* check if we are at end of array and want to grow it */
   if (IrcdWhowasPtr == IrcdWhowasSize && left < (INT_MAX / 2 - SOCKETMAX) &&
@@ -1546,7 +1548,7 @@ void ircd_queries_proto_end (void)
   Delete_Binding ("ircd-server-cmd", (Function)&ircd_summon_sb, NULL);
   Delete_Binding ("ircd-server-cmd", (Function)&ircd_users_sb, NULL);
   Delete_Binding ("ircd-local-client", (Function)&_igotc_lu_mo, NULL);
-  Delete_Binding ("ircd-lost-client", (Function)&_ilostc_ww, NULL);
+  Delete_Binding ("ircd-client", (Function)&_icchg_ww, NULL);
   Delete_Binding ("ircd-stats-reply", (Function)&_istats_o, NULL);
   Delete_Binding ("ircd-stats-reply", (Function)&_istats_u, NULL);
   Destroy_Tree (&IrcdWhowasTree, NULL);
@@ -1604,7 +1606,7 @@ void ircd_queries_proto_start (void)
   Add_Binding ("ircd-server-cmd", "summon", U_HALFOP, 0, (Function)&ircd_summon_sb, NULL);
   Add_Binding ("ircd-server-cmd", "users", U_HALFOP, 0, (Function)&ircd_users_sb, NULL);
   Add_Binding ("ircd-local-client", "*", 0, 0, (Function)&_igotc_lu_mo, NULL);
-  Add_Binding ("ircd-lost-client", "*", 0, 0, (Function)&_ilostc_ww, NULL);
+  Add_Binding ("ircd-client", "*", 0, 0, (Function)&_icchg_ww, NULL);
   Add_Binding ("ircd-stats-reply", "o", 0, 0, (Function)&_istats_o, NULL);
   Add_Binding ("ircd-stats-reply", "u", 0, 0, (Function)&_istats_u, NULL);
   _ircd_time_started = Time;
