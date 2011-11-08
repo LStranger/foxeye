@@ -9,6 +9,10 @@ TODO:
 	* core/socket.c: to make socket limit extendible.
 
 --- [0.10.0]
+Tue Nov  8 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/socket.c, doc/modules.api: implemented resolving of UID and PID
+	  of connected process in case of UNIX socket connection.
+
 Fri Nov  4 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c, modules/ircd/queries.c: changed bindtable
 	  "ircd-lost-client" into more common "ircd-client" one, WHOWAS should

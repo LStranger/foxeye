@@ -682,8 +682,25 @@ idx_t AnswerSocket (idx_t listen)
   fcntl (sockfd, F_SETFL, O_NONBLOCK | O_ASYNC);
 #endif
   DBG ("socket:AnswerSocket: %hd (fd=%d)", idx, sockfd);
-  if (Socket[listen].port == 0)
-    goto done;			/* no domains for Unix sockets */
+  if (Socket[listen].port == 0) {
+    struct ucred credentials;
+
+    i = sizeof(struct ucred);
+    if (!getsockopt(sockfd, SOL_SOCKET, SO_PEERCRED, &credentials, &i)) {
+      snprintf(hname, sizeof(hname), "%u", credentials.pid);
+      Socket[idx].domain = safe_strdup(hname);
+#if ! defined(UID_MAX) || UID_MAX > USHRT_MAX
+      if (credentials.uid > USHRT_MAX) {
+	DBG("socket:AnswerSocket: UID %d is too big", (int)credentials.uid);
+	credentials.uid = USHRT_MAX;
+      }
+#endif
+      Socket[idx].port = credentials.uid;
+    } else
+      DBG("socket:AnswerSocket: could not retrieve credentials for UNIX socket %hd",
+	  sockfd);
+    goto done;
+  }
   Socket[idx].ipname = _make_socket_ipname(&addr, hname, sizeof(hname));
   i = getnameinfo (&addr.sa, len, hname, sizeof(hname), NULL, 0, 0);
 #ifdef STRICT_BACKRESOLV

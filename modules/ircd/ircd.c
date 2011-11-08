@@ -502,7 +502,7 @@ static inline void _ircd_recalculate_hops (void)
 	    else if (l->cl->alt == NULL && t->via != l->cl->via)
 	      l->cl->alt = t->via; /* don't set alt the same as via */
 	  }
-	  else if (l->cl->hops < Ircd->s)
+	  else if (l->cl->hops == Ircd->s)
 	    l->cl->hops = hops + 1; /* reset hops for users */
       }
     hops++; /* do next iteration */
