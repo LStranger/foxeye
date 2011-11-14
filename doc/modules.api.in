@@ -1065,7 +1065,7 @@ Sockets API:
     Returns domain name for socket _i_d_x. If _p is not NULL then also puts
     port of the socket in *_p. If socket is opened in listen mode then
     returns own domain and port. If socket is answered to M_UNIX listener
-    then function returns PID of process that connected to it (it text
+    then function may return PID of process that connected to it (it text
     form) and UID of that process owner in *_p. If no matched socket found
     then _p will be left untouched and function returns empty string
     but no NULL.

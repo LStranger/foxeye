@@ -9,6 +9,9 @@ TODO:
 	* core/socket.c: to make socket limit extendible.
 
 --- [0.10.0]
+Mon Nov 14 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/tcl/modtcl.c: fixed setting of Tcl encoding for UTF-8.
+
 Tue Nov  8 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/socket.c, doc/modules.api: implemented resolving of UID and PID
 	  of connected process in case of UNIX socket connection.

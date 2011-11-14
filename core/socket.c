@@ -683,6 +683,7 @@ idx_t AnswerSocket (idx_t listen)
 #endif
   DBG ("socket:AnswerSocket: %hd (fd=%d)", idx, sockfd);
   if (Socket[listen].port == 0) {
+#ifdef SO_PEERCRED
     struct ucred credentials;
 
     i = sizeof(struct ucred);
@@ -699,6 +700,8 @@ idx_t AnswerSocket (idx_t listen)
     } else
       DBG("socket:AnswerSocket: could not retrieve credentials for UNIX socket %hd",
 	  sockfd);
+//#else -- to add support for getpeerucred (Solaris) and getpeereid (*BSD)
+#endif
     goto done;
   }
   Socket[idx].ipname = _make_socket_ipname(&addr, hname, sizeof(hname));

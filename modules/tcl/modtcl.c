@@ -1180,7 +1180,8 @@ SigFunction ModuleInit (char *args)
     if (Tcl_SetSystemEncoding(Interp, enc) != TCL_OK)
       Add_Request(I_LOG, "*", F_BOOT, "Warning: charset %s unknown for Tcl: %s",
 		  enc, Tcl_GetStringResult (Interp));
-  }
+  } else
+    Tcl_SetSystemEncoding(Interp, "utf-8");
   _Tcl_Conversion = Get_Conversion("UTF-8");
 #endif
   /* add interface from TCL to core */
