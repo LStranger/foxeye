@@ -713,6 +713,26 @@ __attribute__((warn_unused_result)) static inline CLIENT *
   return (cl2);
 }
 
+static inline int _ircd_is_server_name (const char *lcc)
+{
+  if (!strchr (lcc, '.'))		/* it should have at least one dot */
+    return 0;
+  for ( ; *lcc; lcc++)
+    switch (*lcc)
+    {
+      case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g':
+      case 'h': case 'i': case 'j': case 'k': case 'l': case 'm': case 'n':
+      case 'o': case 'p': case 'q': case 'r': case 's': case 't': case 'u':
+      case 'v': case 'w': case 'x': case 'y': case 'z': case '0': case '1':
+      case '2': case '3': case '4': case '5': case '6': case '7': case '8':
+      case '9': case '.': case '-':
+	break;
+      default:
+	return 0;
+    }
+  return 1;
+}
+
 /* executes message from server */
 static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv)
 {
@@ -756,7 +776,9 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
     if (c == NULL) {
       ERROR("ircd:invalid source [%s] from [%s]", argv[0],
 	    peer ? peer->link->cl->lcnick : "internal call");
-      //TODO: drop link if argv[0] is server name (RFC2813)
+      /* drop link if argv[0] is server name (RFC2813) */
+      if (peer && _ircd_is_server_name(argv[0]))
+	ircd_do_squit(peer->link, peer, "invalid source");
       return (0);
     }
 #if IRCD_MULTICONNECT
@@ -1040,8 +1062,10 @@ static void _ircd_remote_user_gone(CLIENT *cl)
 static iftype_t _ircd_client_signal (INTERFACE *cli, ifsig_t sig)
 {
   peer_priv *peer = cli->data;
-  const char *reason;
+  const char *reason, *host;
+  INTERFACE *tmp;
   size_t sw;
+  char nstr[MB_LEN_MAX*NICKLEN+2];
   char buff[STRING];
 
   dprint(5, "ircd:ircd.c:_ircd_client_signal: name=%s sig=%d",
@@ -1050,7 +1074,50 @@ static iftype_t _ircd_client_signal (INTERFACE *cli, ifsig_t sig)
   {
     case S_REPORT:
       //TODO...
-      //host isn't valid if not P_LOGIN nor P_TALK
+      tmp = Set_Iface(cli);
+      if (peer->link == NULL) {
+	printl(buff, sizeof(buff), ReportFormat, 0, NULL, NULL, NULL,
+	       NULL, 0, peer->p.socket + 1, (int)(Time - peer->started),
+	       "unknown connection (startup)");
+	New_Request(tmp, F_REPORT, "%s", buff);
+	Unset_Iface();
+	break;
+      }
+      if (peer->link->cl->umode & (A_OP | A_HALFOP))
+	nstr[0] = '*';
+      else if (peer->link->cl->umode & A_RESTRICTED)
+	nstr[0] = '=';
+      else
+	nstr[0] = ' ';
+      strfcpy(&nstr[1], peer->link->cl->nick, sizeof(nstr) - 1);
+      if (peer->p.state == P_LOGIN || peer->p.state == P_TALK)
+	host = peer->link->cl->host;
+      else
+	host = NULL;		/*host isn't valid if not P_LOGIN nor P_TALK */
+      switch (peer->p.state) {
+      case P_TALK:
+	if (CLIENT_IS_SERVER(peer->link->cl))
+	  reason = "active server connection";
+#ifdef USE_SERVICES
+	else if (CLIENT_IS_SERVICE(peer->link->cl))
+	  reason = "active service connection";
+#endif
+	else
+	  reason = "active client connection";
+	break;
+      case P_LASTWAIT:
+      case P_QUIT:
+	reason = "link is terminating";
+	break;
+      default:
+	reason = "registering";
+      }
+      printl(buff, sizeof(buff), ReportFormat, 0, nstr, host,
+	     CLIENT_IS_SERVER(peer->link->cl) ? peer->link->cl->lcnick :
+						peer->link->cl->x.class->name,
+	     NULL, 0, peer->p.socket + 1, (int)(Time - peer->noidle), reason);
+      New_Request(tmp, F_REPORT, "%s", buff);
+      Unset_Iface();
       break;
     case S_TERMINATE:
       switch (peer->p.state)
@@ -2842,26 +2909,6 @@ static inline int _ircd_remote_server_is_allowed (const char *net,
     ircd_do_squit (pp->link, NULL, "Q-Lined Server");
     return 0;
   }
-  return 1;
-}
-
-static inline int _ircd_is_server_name (const char *lcc)
-{
-  if (!strchr (lcc, '.'))		/* it should have at least one dot */
-    return 0;
-  for ( ; *lcc; lcc++)
-    switch (*lcc)
-    {
-      case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g':
-      case 'h': case 'i': case 'j': case 'k': case 'l': case 'm': case 'n':
-      case 'o': case 'p': case 'q': case 'r': case 's': case 't': case 'u':
-      case 'v': case 'w': case 'x': case 'y': case 'z': case '0': case '1':
-      case '2': case '3': case '4': case '5': case '6': case '7': case '8':
-      case '9': case '.': case '-':
-	break;
-      default:
-	return 0;
-    }
   return 1;
 }
 

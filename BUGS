@@ -103,3 +103,5 @@
 #00104	30.10.2011  30.10.2011	ircd:error on starting connect//after few attempts
 #00105	31.10.2011  31.10.2011	tranzit SQUIT query splits query path
 #00106	31.10.2011  01.11.2011	sf:#3430926 topic is changeable outside of channel
+#00107	14.11.2011		sf:#3437903 twilight mode should be avoided
+#00108	16.11.2011		rusnet-ircd silently accepts SQUIT query too

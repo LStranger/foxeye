@@ -9,6 +9,10 @@ TODO:
 	* core/socket.c: to make socket limit extendible.
 
 --- [0.10.0]
+Fri Nov 18 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/ircd.c: implemented dropping link if message source
+	  seems to be server but unknown to us (see RFC2813).
+
 Mon Nov 14 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/tcl/modtcl.c: fixed setting of Tcl encoding for UTF-8.
 

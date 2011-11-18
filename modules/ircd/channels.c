@@ -1533,8 +1533,10 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
       ircd_do_unumeric (cl, ERR_NOSUCHCHANNEL, cl, 0, chn);
     else if (!ch)			/* OK, user is allowed to create */
       i = 1;
+#ifdef IRCD_ALLOW_TWILIGHT_JOIN
     else if (cl->umode & A_OP)		/* IRCop can override some modes */
       i = 1;
+#endif
     else if (ch->limit && ch->count >= ch->limit) /* out of channel limit */
       ircd_do_cnumeric (cl, ERR_CHANNELISFULL, ch, 0, NULL);
     else if (ch->key[0] && safe_strcmp (ch->key, key)) /* check key */
