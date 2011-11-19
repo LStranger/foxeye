@@ -1271,7 +1271,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 #endif
 	  if (cl->pcl != NULL)
 	    _ircd_bounce_collision(cl->pcl);
-	  if (cl->rfr != NULL) { //TODO: make a debug notice on lost rel?
+	  if (cl->rfr != NULL) {
 	    DBG("ircd:CLIENT: clearing relation %p => (%p)", cl->rfr, cl);
 	    WARNING("ircd: next nick %s of %s is lost", cl->nick,
 		    cl->rfr->cs->nick);

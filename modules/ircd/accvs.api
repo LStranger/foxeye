@@ -5,8 +5,10 @@
   Interfaces: accepts messages for I_SERVICE with name <network> to run
   them as if they came anywhere else from (_s_r_v below) but as exception
   message can be some numeric and in that case it will be forwarded to
-  target user thru "ircd-do-numeric" bindtable. If message has no prefix
-  then the server itself will be assumed as message source.
+  target user thru "ircd-do-numeric" bindtable, that message will be put
+  at end of target's queue. If message has no prefix then the server
+  itself will be assumed as message source.
+
   accepts messages for I_CLIENT with name <name>@<network> to send them
   to valid recipient in network (note: if <name> is "" then recipient is
   every local user and if <name> is "*.*" then recipient is every local
@@ -25,8 +27,8 @@
     locked on start so at first you have to call Unset_Iface() and then
     perform all your checks. Connection chain for peer is initialized so
     you can send something there (but that is not advisable because it
-    may ruin IRC protocol). If bindings denying access for that client
-    then it should return 0 and leave reason message into _m_s_g.
+    may ruin IRC protocol). If binding denies access for that client then
+    it should return 0 and leave reason message into _m_s_g.
       Matching: host.  (userflags are ignored)
       Matching stops after first access failure.
 
@@ -246,9 +248,23 @@
       Matching: anything.  (userflags are ignored)
 
 -     "ircd-set-message-targets" MASK
-  int func (INTERFACE *serv, const char *sender, const char *target,
-	    int (*next)(INTERFACE *serv, const char *mask,
+  int func (INTERFACE *srv, const char *sender, const char *target,
+	    int (*next)(INTERFACE *srv, const char *mask,
 			const char **lcname, modeflag *mf, int **mark,
 			void **iter));
     Used when........
       Matching: anything.  (userflags are ignored)
+
+-     "ircd-check-send" MATCHCASE
+  int func(INTERFACE *srv, struct peer_t *tgt, modeflag tum, char *msg,
+	   size_t ms);
+    Used when message msg in buffer of size ms is about to be sent to a
+    local link tgt which has mode tum at this moment. Binding can either
+    leave message intact, or rewrite the message, or put another message
+    for client using either interface pointer in tgt or IRCD interface
+    srv. Note that message msg is in client's encoding. Also note that
+    message which is sent using interface pointer in tgt will miss any
+    filtering (through "ircd-do-numeric" bindtable for example) but the
+    "ircd-check-send" filtering on next send. Returns 0 if the message
+    should be discarded.
+      Matching: message type (command).  (userflags are ignored)
