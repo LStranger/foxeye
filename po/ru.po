@@ -1,19 +1,22 @@
-# Copyright (C) YEAR Free Software Foundation, Inc.
-# FIRST AUTHOR <EMAIL@@ADDRESS>, YEAR.
+# translation of ru.po to Russian
+# Copyright (C) 2011 Free Software Foundation, Inc.
 #
-#, fuzzy
+# FIRST AUTHOR <EMAIL@@ADDRESS>, YEAR.
+# Andriy Grytsenko <andrej@rep.kiev.ua>, 2011.
 msgid ""
 msgstr ""
-"Project-Id-Version: foxeye 0.10\n"
+"Project-Id-Version: ru\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2011-08-09 13:18+0300\n"
-"PO-Revision-Date: 2000-09-28 23:49+0200\n"
-"Last-Translator: Andrej Gritsenko <andrej@rep.kiev.ua>\n"
+"PO-Revision-Date: 2011-11-19 04:13+0200\n"
+"Last-Translator: Andriy Grytsenko <andrej@rep.kiev.ua>\n"
 "Language-Team: Russian <ru@li.org>\n"
 "Language: ru\n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=koi8-r\n"
+"Content-Type: text/plain; charset=KOI8-R\n"
 "Content-Transfer-Encoding: 8bit\n"
+"X-Generator: KBabel 1.11.4\n"
+"Plural-Forms:  nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
 #: core/direct.c:121
 msgid "joined this botnet channel."
@@ -26,7 +29,7 @@ msgstr ""
 
 #: core/direct.c:144
 msgid "left this botnet channel."
-msgstr ""
+msgstr "вышел с этого канала."
 
 #: core/direct.c:336
 msgid "no reason."
@@ -35,7 +38,7 @@ msgstr ""
 #: core/direct.c:376 core/direct.c:393 core/direct.c:2076 core/direct.c:2078
 #: core/init.c:1870
 msgid "Usage: "
-msgstr ""
+msgstr "Использование:"
 
 #: core/direct.c:385
 #, c-format
@@ -45,7 +48,7 @@ msgstr "Нет подходящей команды: %s"
 #: core/direct.c:455
 #, c-format
 msgid "Logged in: %s."
-msgstr ""
+msgstr "Зашёл: %s."
 
 #: core/direct.c:528 core/direct.c:548
 msgid "session lost"
@@ -112,11 +115,11 @@ msgstr ""
 
 #: core/direct.c:1940
 msgid "messages"
-msgstr ""
+msgstr "сообщения"
 
 #: core/direct.c:1943
 msgid "commands"
-msgstr ""
+msgstr "команды"
 
 #: core/direct.c:1946
 msgid "connections/shares"
@@ -140,15 +143,15 @@ msgstr "отладка"
 
 #: core/direct.c:1961
 msgid "boot diagnostics"
-msgstr ""
+msgstr "запуск"
 
 #: core/direct.c:1964
 msgid "errors"
-msgstr ""
+msgstr "ошибки"
 
 #: core/direct.c:1967
 msgid "warnings"
-msgstr ""
+msgstr "предупреждения"
 
 #: core/direct.c:1970
 msgid "public"
@@ -350,11 +353,11 @@ msgstr ""
 
 #: core/init.c:1820
 msgid "Success"
-msgstr ""
+msgstr "Успешно"
 
 #: core/init.c:1822
 msgid "Fail"
-msgstr ""
+msgstr "Неудачно"
 
 #: core/init.c:1855
 #, c-format
@@ -394,13 +397,13 @@ msgid ""
 msgstr ""
 
 #: core/main.c:387
-#, fuzzy, c-format
+#, c-format
 msgid ""
 "Copyright (C) 1999-2010 Andriy Gritsenko.\n"
 "\n"
 "OS: %s %s on %s.\n"
 msgstr ""
-"Copyright © 1999-2006 Андрей Гриценко\n"
+"Copyright © 1999-2010 Андрей Гриценко\n"
 "\n"
 "Операционная система: %s %s на %s.\n"
 
@@ -454,7 +457,7 @@ msgstr ""
 #: modules/irc-channel/chmanagement.c:1529
 #: modules/irc-channel/chmanagement.c:1596 modules/modes/modes.c:582
 msgid "Permission denied."
-msgstr ""
+msgstr "Нет прав."
 
 #: core/list.c:2546
 msgid "You set no default service yet."
@@ -474,7 +477,7 @@ msgstr "оператор"
 
 #: core/list.c:2575 core/list.c:2588 core/list.c:2661 core/list.c:2674
 msgid "half op"
-msgstr ""
+msgstr "полуоператор"
 
 #: core/list.c:2580
 #, c-format
@@ -823,11 +826,11 @@ msgstr ""
 
 #: modules/irc/irc.c:387
 msgid ": denied"
-msgstr ""
+msgstr ": запрещено"
 
 #: modules/irc/irc.c:388
 msgid ", retrying.."
-msgstr ""
+msgstr ", новая попытка..."
 
 #: modules/irc/irc.c:414
 #, c-format
@@ -960,8 +963,3 @@ msgstr ""
 msgid "TCL: executing %s returned error: %s"
 msgstr ""
 
-#~ msgid "other crap"
-#~ msgstr "прочее"
-
-#~ msgid "botnet master"
-#~ msgstr "оператор ботсети"
