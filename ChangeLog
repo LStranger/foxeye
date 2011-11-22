@@ -9,6 +9,9 @@ TODO:
 	* core/socket.c: to make socket limit extendible.
 
 --- [0.10.0]
+Tue Nov 22 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/socket.c: added unlink of UNIX listener on terminating.
+
 Fri Nov 18 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: implemented dropping link if message source
 	  seems to be server but unknown to us (see RFC2813).

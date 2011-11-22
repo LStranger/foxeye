@@ -251,6 +251,7 @@ ssize_t WriteSocket (idx_t idx, const char *buf, size_t *ptr, size_t *sw)
 
 int KillSocket (idx_t *idx)
 {
+  char *unixsocket;
   int fd;
   idx_t i = *idx;
 
@@ -263,6 +264,11 @@ int KillSocket (idx_t *idx)
   dprint (5, "socket:KillSocket: fd=%d", Pollfd[i].fd);
   pthread_kill(__main_thread, SIGPOLL); /* break poll() in main thread */
   pthread_mutex_lock (&LockPoll);
+  unixsocket = Socket[i].domain;
+  if (Socket[i].ipname == NULL && unixsocket != NULL && Socket[i].port == 0)
+    Socket[i].domain = NULL;	/* UNIX socket */
+  else
+    unixsocket = NULL;		/* INET socket */
   Socket[i].port = 0;
   FREE (&Socket[i].ipname);
   FREE (&Socket[i].domain);
@@ -273,6 +279,14 @@ int KillSocket (idx_t *idx)
   if (fd >= 0) {		/* CloseSocket(i) */
     shutdown (fd, SHUT_RDWR);
     close (fd);
+  }
+  if (unixsocket != NULL) {
+    int cancelstate;		/* unlink() may be cancellation point */
+
+    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancelstate);
+    unlink(unixsocket);
+    FREE(&unixsocket);
+    pthread_setcancelstate(cancelstate, NULL);
   }
   return 0;
 }
