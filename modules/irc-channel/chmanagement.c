@@ -898,8 +898,16 @@ int ircch_parse_modeline (IRC *net, CHANNEL *chan, LINK *origin, char *prefix,
 	/* check for modelocks and reverse modechange */
 	if (!(orf & U_OWNER))		/* owner may change any modes */
 	{
+	  LINK *tgt_save = target;
+
 	  if (mf == '-' && (mch & chan->mlock))
 	  {
+	    if (!target) {
+	      Add_Request(I_LOG, "*", F_WARN,
+			  "Server mode -%c on %s should be reversed", mc,
+			  chan->chi->name);
+	      target = chan->nicks;
+	    }
 	    if (mch & A_LIMIT)
 	    {
 	      snprintf (buf, sizeof(buf), "%d", chan->limit);
@@ -910,8 +918,16 @@ int ircch_parse_modeline (IRC *net, CHANNEL *chan, LINK *origin, char *prefix,
 	    else
 	      _push_mode (net, target, &mbuf, mch, 1, NULL);
 	  }
-	  else if (mf == '+' && (mch & chan->munlock))
+	  else if (mf == '+' && (mch & chan->munlock)) {
+	    if (!target) {
+	      Add_Request(I_LOG, "*", F_WARN,
+			  "Server mode +%c on %s should be reversed", mc,
+			  chan->chi->name);
+	      target = chan->nicks;
+	    }
 	    _push_mode (net, target, &mbuf, mch, 0, NULL);
+	  }
+	  target = tgt_save;
 	}
 	/* apply changes */
 	if (mch & A_KEYSET)

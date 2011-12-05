@@ -9,6 +9,10 @@ TODO:
 	* core/socket.c: to make socket limit extendible.
 
 --- [0.10.0]
+Mon Dec  5 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/irc-channel/chmanagement.c: fixed SIGSEGV on server
+	  modechange reversing.
+
 Tue Nov 22 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/socket.c: added unlink of UNIX listener on terminating.
 

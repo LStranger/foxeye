@@ -1,14 +1,13 @@
 # translation of ru.po to Russian
 # Copyright (C) 2011 Free Software Foundation, Inc.
 #
-# FIRST AUTHOR <EMAIL@@ADDRESS>, YEAR.
-# Andriy Grytsenko <andrej@rep.kiev.ua>, 2011.
+# Andriy Grytsenko <andrej@rep.kiev.ua>, 2000, 2011.
 msgid ""
 msgstr ""
-"Project-Id-Version: ru\n"
+"Project-Id-Version: foxeye 0.10\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2011-08-09 13:18+0300\n"
-"PO-Revision-Date: 2011-11-19 04:13+0200\n"
+"PO-Revision-Date: 2011-11-22 19:21+0200\n"
 "Last-Translator: Andriy Grytsenko <andrej@rep.kiev.ua>\n"
 "Language-Team: Russian <ru@li.org>\n"
 "Language: ru\n"
