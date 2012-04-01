@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2010-2012  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -4657,7 +4657,7 @@ static void _ircd_register_all (void)
   RegisterInteger ("ircd-hold-period", &_ircd_hold_period);
   RegisterInteger ("ircd-serverclass-pingf", &_ircd_server_class_pingf);
   ircd_queries_register();
-  RegisterFunction ("ircd", &func_ircd, "charset [host/]port");
+  RegisterFunction ("ircd", &func_ircd, "[-charset ][host/]port");
 }
 
 /*

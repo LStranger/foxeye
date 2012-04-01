@@ -105,3 +105,5 @@
 #00106	31.10.2011  01.11.2011	sf:#3430926 topic is changeable outside of channel
 #00107	14.11.2011		sf:#3437903 twilight mode should be avoided
 #00108	16.11.2011		rusnet-ircd silently accepts SQUIT query too
+#00109	01.04.2012		SIGSEGV in listener for ircd on ircd termination
+#00110	01.04.2012		ircd/bin/foxeye -crg ircd/ircd produces bad bang
