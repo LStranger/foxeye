@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2005-2012  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -772,6 +772,8 @@ int ircch_parse_modeline (IRC *net, CHANNEL *chan, LINK *origin, char *prefix,
       list = NULL;
       mch = 0;
       target = origin;
+      if (!target)		/* we need a target for modechange reverse */
+	target = chan->nicks;
       schr = NULL;
       switch (mc)
       {
@@ -848,6 +850,10 @@ int ircch_parse_modeline (IRC *net, CHANNEL *chan, LINK *origin, char *prefix,
       {
 	/* bad modechange! */
 	WARNING ("ircch_parse_modeline: invalid char '%c' ignored", mc);
+	continue;
+      }
+      if (target == NULL) {
+	WARNING("ircch_parse_modeline: invalid target '%s' ignored", schr);
 	continue;
       }
       snprintf (buf, sizeof(buf), "%s %c%c%s%s", chan->chi->name, mf, mc,

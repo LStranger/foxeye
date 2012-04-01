@@ -1073,7 +1073,6 @@ static iftype_t _ircd_client_signal (INTERFACE *cli, ifsig_t sig)
   switch (sig)
   {
     case S_REPORT:
-      //TODO...
       tmp = Set_Iface(cli);
       if (peer->link == NULL) {
 	printl(buff, sizeof(buff), ReportFormat, 0, NULL, NULL, NULL,
@@ -1097,20 +1096,20 @@ static iftype_t _ircd_client_signal (INTERFACE *cli, ifsig_t sig)
       switch (peer->p.state) {
       case P_TALK:
 	if (CLIENT_IS_SERVER(peer->link->cl))
-	  reason = "active server connection";
+	  reason = "active IRCD server connection";
 #ifdef USE_SERVICES
 	else if (CLIENT_IS_SERVICE(peer->link->cl))
-	  reason = "active service connection";
+	  reason = "active IRCD service connection";
 #endif
 	else
-	  reason = "active client connection";
+	  reason = "active IRCD client connection";
 	break;
       case P_LASTWAIT:
       case P_QUIT:
-	reason = "link is terminating";
+	reason = "(IRCD) link is terminating";
 	break;
       default:
-	reason = "registering";
+	reason = "(IRCD) registering";
       }
       printl(buff, sizeof(buff), ReportFormat, 0, nstr, host,
 	     CLIENT_IS_SERVER(peer->link->cl) ? peer->link->cl->lcnick :

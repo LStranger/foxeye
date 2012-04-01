@@ -96,3 +96,6 @@ ${top_srcdir}/core/static.h:
 	    echo "{ NULL, NULL }"; \
 	    echo "};"; \
 	    echo "#endif") >>$@
+
+.PHONY: all static modules clean distclean install install-strip uninstall \
+	dist distdir

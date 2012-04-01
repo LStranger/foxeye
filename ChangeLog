@@ -9,6 +9,10 @@ TODO:
 	* core/socket.c: to make socket limit extendible.
 
 --- [0.10.0]
+Sun Apr  1 2012 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/irc-channel/chmanagement.c: fixed SIGSEGV yet again on server
+	  modechange reversing.
+
 Mon Dec  5 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc-channel/chmanagement.c: fixed SIGSEGV on server
 	  modechange reversing.

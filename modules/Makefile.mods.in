@@ -117,3 +117,7 @@ dist distdir:
 	    ln $(srcdir)/$$file $(mdistdir) 2> /dev/null \
 	    || cp -p $(srcdir)/$$file $(mdistdir); \
 	done
+
+.PHONY: all static modules clean install-help install-docs \
+	install install-strip uninstall-help uninstall-docs uninstall \
+	dist distdir
