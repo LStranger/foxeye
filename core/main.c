@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2012  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -314,6 +314,8 @@ static int _get_RunPath (char *callpath)
 
   if (safe_strchr (callpath, '/'))		/* call by path */
   {
+    register char *src, *dst;
+
     if (callpath[0] == '/')			/* absolute path */
       buff[0] = 0;
     else if (!getcwd (buff, sizeof(buff) - 7))
@@ -321,6 +323,21 @@ static int _get_RunPath (char *callpath)
     else					/* path from current */
       strfcpy (&buff[strlen(buff)], "/", 2);	/* insert '/' */
     strfcat (buff, callpath, sizeof(buff));	/* generate full path */
+    src = dst = buff;
+    while (*src) {
+      if (src[0] == '.' && src[1] == '.' && src[2] == '/' && dst != buff) {
+	while (--dst != buff) /* skip last path part */
+	  if (dst[-1] == '/')
+	    break;
+	src += 3;
+      } else if (src != buff && *src == '/') {
+	/* duplicate '/' */
+	src++;
+      } else while (*src != '\0')
+	if ((*dst++ = *src++) == '/')
+	  break;
+    }
+    *dst = '\0';
   }
   else
   {
@@ -486,18 +503,6 @@ int main (int argc, char *argv[])
       snprintf (&Path[pl], sizeof(Path) - pl, "/%s", buff);
       Config = safe_strdup (Path);
     }
-    if (Config)
-    {
-      char *ch = strrchr (Config, '/');
-
-      *ch = 0;				/* isolate path from name */
-      if (chdir (Config))		/* check if path is accessible */
-      {
-	perror ("cannot chdir");
-	return 1;			/* fatal error */
-      }
-      *ch = '/';
-    }
   }
   /* check the parameters */
   if (Config == NULL && O_DEFAULTCONF == FALSE)
@@ -553,6 +558,17 @@ int main (int argc, char *argv[])
   {
     perror ("get run path");
     return 1;
+  }
+  if (Config)
+  {
+    char *ch = strrchr (Config, '/');
+
+    *ch = 0;				/* isolate path from name */
+    if (chdir (Config)) {		/* check if path is accessible */
+      perror ("cannot chdir");
+      return 1;				/* fatal error */
+    }
+    *ch = '/';
   }
   /* set console interface */
   if (pipe (Fifo_Inp) || pipe (Fifo_Out))
