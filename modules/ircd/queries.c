@@ -26,6 +26,7 @@
 #include <conversion.h>
 
 #include <fcntl.h>
+#include <errno.h>
 
 #include "ircd.h"
 #include "numerics.h"
@@ -368,8 +369,11 @@ static size_t _ircd_check_motd (void)
   struct stat st;
   struct tm tm;
 
-  if (stat (_ircd_motd_file, &st) < 0)
+  if (stat(_ircd_motd_file, &st) < 0) {
+    /* we are in main chain now so strerror() should be safe */
+    dprint(3, "ircd: cannot stat MOTD file: %s", strerror(errno));
     return 0;
+  }
   if (IrcdMotdTime == st.st_mtime)
     return IrcdMotdSize;
   IrcdMotdTime = st.st_mtime;

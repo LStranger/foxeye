@@ -15,6 +15,7 @@ Wed Apr  4 2012 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c, core/lua/lua.c, modules/ircd/queries.c: eliminated
 	  unused variables.
 	* modules/ircd/ircd.c: fixed SIGSEGV on incomplete ircd setup (bug#109).
+	* modules/ircd/queries.c: added debug message into motd file check.
 
 Sun Apr  1 2012 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc-channel/chmanagement.c: fixed SIGSEGV yet again on server
