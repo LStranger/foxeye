@@ -4102,11 +4102,11 @@ static iftype_t _ircd_signal (INTERFACE *iface, ifsig_t sig)
       }
       Destroy_Tree (&Ircd->clients, &_ircd_catch_undeleted_cl);
       Ircd->iface = NULL;
-      if (iface)
-      {
+      if (iface) {
 	iface->ift |= I_DIED; /* it will free Ircd */
 	iface->data = NULL; /* module owns it */
-      }
+      } else
+	WARNING("ircd:cannot find main interface for termination!");
       break;
     case S_TIMEOUT:
       _ircd_do_init_uplinks();
@@ -4720,10 +4720,7 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
 #endif
       Delete_Binding ("ircd-stats-reply", (Function)&_istats_l, NULL);
       Delete_Binding ("ircd-stats-reply", (Function)&_istats_m, NULL);
-      if (Ircd->iface != NULL)	/* it might be already terminated? */
-	_ircd_signal (Ircd->iface, S_TERMINATE);
-      else
-	ERROR("ircd:cannot find main interface for termination!");
+      _ircd_signal (Ircd->iface, S_TERMINATE);
       ircd_channel_proto_end(&Ircd->channels);
       ircd_client_proto_end();
       ircd_server_proto_end();
