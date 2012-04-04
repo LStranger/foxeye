@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2012  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -908,6 +908,7 @@ void PollSockets(int check_out)
   }
   SChanged = 0;			/* we consumed changes */
   pthread_mutex_unlock (&LockPoll);
+  x = 0;
   if (_pfdset > 0)
     x = poll(_pollfd, (unsigned int)_pfdset, check_out ? 10 : POLL_TIMEOUT);
   pthread_mutex_lock (&LockPoll);
