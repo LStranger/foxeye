@@ -395,11 +395,11 @@ static int _tcl_send_request (ClientData cd, Tcl_Interp *tcl, int argc, TCLARGS 
   s = Do_Conversion(_Tcl_Conversion, &ptr, sizeof(message)-1, t, &s);
   if (ptr == message)
     message[s] = '\0';
-  t = ptr;
 #endif
   to = ArgString (argv[1], &x);		/* target of message */
   DBG("_tcl_send_request:to=%s mode=%s msg=%s", to, c, t);
 #ifdef HAVE_TCL_SETSYSTEMENCODING
+  t = ptr;
   ptr = target;
   s = x;
   s = Do_Conversion(_Tcl_Conversion, &ptr, sizeof(target)-1, to, &s);

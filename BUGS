@@ -107,3 +107,4 @@
 #00108	16.11.2011		rusnet-ircd silently accepts SQUIT query too
 #00109	01.04.2012		SIGSEGV in listener for ircd on ircd termination
 #00110	01.04.2012		ircd/bin/foxeye -crg ircd/ircd produces bad bang
+#00111	03.04.2012		'MOTD File is missing' while it presents
