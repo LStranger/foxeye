@@ -12,6 +12,8 @@ TODO:
 Wed Apr  4 2012 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/main.c: fixed making of run path (bug#110).
 	* core/socket.c: fixed uninitialized variable in PollSockets().
+	* core/dispatcher.c, core/lua/lua.c, modules/ircd/queries.c: eliminated
+	  unused variables.
 
 Sun Apr  1 2012 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc-channel/chmanagement.c: fixed SIGSEGV yet again on server

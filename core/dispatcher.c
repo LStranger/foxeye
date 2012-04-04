@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2012  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -1343,7 +1343,7 @@ static void errors_handler (int signo)
 int dispatcher (INTERFACE *start_if)
 {
   struct sigaction act;
-  unsigned int i = 0, count = 0, max = 0;
+  unsigned int i = 0, max = 0;
   int limit = 0;
   int pidfd;
   pid_t pid;
@@ -1519,30 +1519,7 @@ int dispatcher (INTERFACE *start_if)
       PollSockets((i < _Inum) ? 1 : 0); /* sleep up to 200 ms */
       /* some cleanup stuff */
       i = 0;
-      count = 0;
     }
-#if 0
-    if (!i)
-    {
-      /* check forced queues */
-      for (; count < max; count++)
-      {
-	register int n;
-
-	pthread_mutex_lock (&LockIface);
-	n = Interface[count]->a.qsize;
-	pthread_mutex_unlock (&LockIface);
-	if (n > ((int)max >> 2) + 1)	/* criteria for forcing */
-	  break;
-      }
-      if (count < max)
-      {
-	iface_run (count++);		/* run forced and go on */
-	continue;
-      }
-      /* all queue depth ok! */
-    }
-#endif
     /* check all interfaces */
     iface_run (i);
     i++;

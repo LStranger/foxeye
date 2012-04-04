@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2006-2012  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -1081,8 +1081,6 @@ static int lua_register_variable (const char *name, void *var, size_t size)
 BINDING_TYPE_unregister (lua_unregister_variable);
 static int lua_unregister_variable (const char *name)
 {
-  lua_fedata_t *data;
-
   _lua_getfoxeye (Lua); /* T */
   _lua_getdata (Lua, 1); /* T D */
   _lua_fe_name (name); /* T D k */		/* convert name /-/_/ */
@@ -1093,7 +1091,6 @@ static int lua_unregister_variable (const char *name)
     lua_pop (Lua, 4);
     return 0;
   }
-  data = lua_touserdata (Lua, -1);
   lua_pop (Lua, 1); /* T D k */
   lua_pushnil (Lua); /* T D k nil */
   dprint (5, "lua:lua_unregister_variable: unregistering \"%s\"",

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2010-2012  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -1392,7 +1392,6 @@ static void _icchg_ww(INTERFACE *srv, const char *from, const char *lcnick,
 		      const char *host, const char *fname, modeflag um, unsigned int left)
 {
   whowas_t *ww, *wwp;
-  CLIENT *where;
 
   if (um & (A_SERVER|A_SERVICE))
     return;
@@ -1439,7 +1438,6 @@ static void _icchg_ww(INTERFACE *srv, const char *from, const char *lcnick,
   strfcpy(ww->fname, fname, sizeof(ww->fname));
   strfcpy(ww->user, user, sizeof(ww->user));
   strfcpy(ww->host, host, sizeof(ww->host));
-  where = _ircd_find_client_lc((IRCD *)srv->data, from);
   strfcpy(ww->fromsrv, from, sizeof(ww->fromsrv));
   ww->wason = Time;
   /* done */
