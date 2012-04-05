@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2003-2012  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -252,7 +252,7 @@ static ssize_t textlog_add_buf_nots (logfile_t *log, char *text, size_t sz, size
 static inline int _getmirccolor (const char **p)
 {
   register int n = **p - '0', n2;
-  
+
   if (n < 0 || n > 9)
     return -1;
   (*p)++;
@@ -584,6 +584,7 @@ static int add_to_log (INTERFACE *iface, REQUEST *req)
   log = (logfile_t *)iface->data;
   if (!req || !(req->flag & log->level))
     return REQ_OK;
+  //TODO: if current date differs of log->lastmsg then add date message
   if (log->colormode > 0)		/* html mode */
     x = textlog2html ((line = buff), req->string, sizeof(buff), req->flag);
   else if (log->colormode < 0)		/* nocolor mode */
@@ -618,19 +619,14 @@ static int add_to_log (INTERFACE *iface, REQUEST *req)
 #define L_HTML 128
 
 
-static time_t get_rotatetime (int fd, int mode)
+static time_t get_rotatetime (time_t mtime, int mode)
 {
-  struct stat st;
   struct tm tm;
   long int tmp;
 
-  if (fd < 0)
-    st.st_mtime = Time;
-  else if (fstat (fd, &st))
-    return 0;
   tmp = 3600 * atoi (logrotate_hr) + 60 * atoi (logrotate_min);
-  st.st_mtime -= tmp;
-  localtime_r (&st.st_mtime, &tm);
+  mtime -= tmp;
+  localtime_r (&mtime, &tm);
   tm.tm_sec = tm.tm_min = tm.tm_hour = 0;
   switch (mode)
   {
@@ -683,7 +679,7 @@ static void do_rotate (logfile_t *log)
   if (lseek (log->fd, 0, SEEK_END) == 0) /* we will not rotate empty file */
   {
     dprint (3, "logs/logs.c:do_rotate: nothing to do on %s", log->path);
-    log->rotatetime = get_rotatetime (-1, log->rmode);
+    log->rotatetime = get_rotatetime (Time, log->rmode);
     return;
   }
   localtime_r (&log->lastmsg, &tm);
@@ -792,7 +788,7 @@ static void do_rotate (logfile_t *log)
     }
   }
   dprint (3, "logs/logs.c:do_rotate: finished on %s", log->path);
-  log->rotatetime = get_rotatetime (-1, log->rmode);
+  log->rotatetime = get_rotatetime (Time, log->rmode);
   log->fd = open_log_file (log->path);
 }
 
@@ -965,9 +961,9 @@ static ScriptFunction (cfg_logfile)
     strcpy (mask, "*");
   log->iface = Add_Iface (I_LOG | I_FILE, mask, &logfile_signal, &add_to_log,
 			  log);
-  fstat (fd, &st);	/* if's impossible to get an error here? */
+  fstat (fd, &st);	/* is it impossible to get an error here? */
   log->lastmsg = st.st_mtime;
-  log->rotatetime = get_rotatetime (log->fd, log->rmode);
+  log->rotatetime = get_rotatetime (st.st_mtime, log->rmode);
   if (log->rotatetime <= lastrotated)
     do_rotate (log);
   dprint (3, "log:cgf_logfile: success on %s", log->path);
@@ -1021,7 +1017,7 @@ static void logrotate_reset (void)
   if (x == 0)
     strcpy (logrotate_hr, "0");
   else if (x > 23)
-    strcpy (logrotate_hr, "24");
+    strcpy (logrotate_hr, "23");
   x = atoi (logrotate_time+2);
   if (x > 59)
     x = 59;
@@ -1124,7 +1120,7 @@ SigFunction ModuleInit (char *args)
   module_log_regall();			/* variables and function */
   Add_Binding("time-shift", "*", 0, 0, (Function)&ts_logs, NULL);
   logrotate_reset();			/* shedule - logs rotation */
-  lastrotated = Time - 3600 * atoi (logrotate_hr) + 60 * atoi (logrotate_min);
+  lastrotated = Time - (3600 * atoi (logrotate_hr) + 60 * atoi (logrotate_min));
   localtime_r (&lastrotated, &tm);
   lastrotated = Time - tm.tm_sec - 60 * tm.tm_min - 3600 * tm.tm_hour;
   return (&module_log_signal);

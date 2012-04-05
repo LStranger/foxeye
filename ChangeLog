@@ -9,6 +9,9 @@ TODO:
 	* core/socket.c: to make socket limit extendible.
 
 --- [0.10.0]
+Thu Apr  5 2012 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/logs/logs.c: fixed wrong rotation time calculation on start.
+
 Wed Apr  4 2012 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/main.c: fixed making of run path (bug#110).
 	* core/socket.c: fixed uninitialized variable in PollSockets().
