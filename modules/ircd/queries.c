@@ -543,9 +543,6 @@ const char ircd_version_flags[] = {
 #ifdef IRCD_SQUIT_YOUNGEST
 'B',
 #endif
-#ifdef ENABLE_DEBUG
-'D',
-#endif
 #ifdef IRCD_ENABLE_REHASH
 'E',
 #endif

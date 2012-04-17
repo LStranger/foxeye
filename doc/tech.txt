@@ -57,3 +57,4 @@ events		OWN	list of custom events
 nick		irc	list of nicks for network
 net-parms	irc	saved list of network parameters
 umode		irc	set this mode on registration
+hub		ircd	list of allowed servers behind this

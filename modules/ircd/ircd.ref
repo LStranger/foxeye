@@ -295,7 +295,6 @@ Meaning of letters in VERSION reply:
 
    A  - Opers can see all users in /trace
    B  - SQUIT youngest server instead of oldest on duplicate connection
-   D  - Server debugmode enabled
    E  - Opers can rehash server
    i  - Multiple encoding support is enabled
    I  - Users will not automatically be attributed with user mode "i"
