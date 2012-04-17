@@ -7,8 +7,12 @@ TODO:
 	* core/wtmp.c: to handle errors somehow?
 	* core/direct.c: to add support for charset and comments in motd file.
 	* core/socket.c: to make socket limit extendible.
+	* core/lib.c: to fail if unable to set desired locale.
 
 --- [0.10.0]
+Tue Apr 17 2012 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/lib.c: fixed case with charset in lowercase on setting locale.
+
 Thu Apr  5 2012 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/logs/logs.c: fixed wrong rotation time calculation on start.
 

@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 1996-8 Michael R. Elkins <me@cs.hmc.edu>
  * Copyright (C) 1999 Thomas Roessler <roessler@guug.de>
- * Copyright (C) 1999-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2012  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -178,8 +178,13 @@ void foxeye_setlocale (void)
 {
   int changed = 1;
   char new_locale[SHORT_STRING];
+  register char *c;
 
   snprintf (new_locale, sizeof(new_locale), "%s.%s", locale, Charset);
+  for (c = &new_locale[strlen(locale)];
+       c < &new_locale[sizeof(new_locale)] && *c != 0; c++)
+    if ((*c & 0xe0) == 0x60) /* uppercase the charset */
+      *c &= 0xdf;
   DBG ("current locale is %s", setlocale (LC_ALL, NULL));
   DBG ("trying set locale to %s", new_locale);
   if (setlocale (LC_ALL, new_locale) == NULL)
@@ -188,7 +193,7 @@ void foxeye_setlocale (void)
     snprintf (new_locale, sizeof(new_locale), "%s.%s", locale, CHARSET_8BIT);
     if (setlocale (LC_ALL, new_locale) == NULL)
     {
-      char *c, *deflocale;
+      char *deflocale;
 
       deflocale = setlocale (LC_ALL, "");
       ERROR ("init: failed to set locale to %s, reverted to default %s!",
