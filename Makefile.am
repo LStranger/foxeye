@@ -7,7 +7,7 @@ AUTOMAKE_OPTIONS = foreign 1.5
 
 SUBDIRS = doc intl help po scripts tree modules core ui
 
-EXTRA_DIST = debian/c* debian/rules
+EXTRA_DIST = debian/c* debian/rules debian/lintian-override
 
 kit: distdir
 	-rm -rf $(distdir)/modules/[^M]* $(distdir)/core/*.c $(distdir)/scripts/[^M]* $(distdir)/tree/*.c $(distdir)/help/[^M]* $(distdir)/po/[^M]*

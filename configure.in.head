@@ -82,6 +82,8 @@ AC_ARG_ENABLE(debug,
     if test "x$enableval" = xno; then
 	dnl enable optimization - this is default too
 	ac_cv_add_optimization=yes
+	dnl Adding -s (strip) to linker
+	AC_CHECK_LDFLAG(fe_cv_add_s, -s, LDFLAGS)
     else
 	dnl disable optimization and add extra warnings if it's debug compilation
 	if test "$enableval" = info; then
@@ -95,8 +97,6 @@ AC_ARG_ENABLE(debug,
     ], [ac_cv_add_optimization=yes
 ])
 if test $ac_cv_add_optimization = yes; then
-    dnl Adding -s (strip) to linker
-    AC_CHECK_LDFLAG(fe_cv_add_s, -s, LDFLAGS)
     dnl Compiler specific options
     case "$CC" in
 	c99*)

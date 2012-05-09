@@ -38,6 +38,7 @@
 #00038	08.07.2010  15.07.2010	.restart gives lot of junk free()!
 #00039	08.07.2010  08.07.2010	irc_mode: either strange server or I'm dumb
 #00040	08.07.2010  08.07.2010	foxeye in free(): warning: junk pointer...
+#00041	----        ----	----
 #00042	09.07.2010  24.08.2010	mask for banned aren't searched in listfile
 #00043	10.07.2010  10.07.2010	wRAR.() has quit irc () - since 08.07!
 #00044	12.07.2010  15.07.2010	it gives voices on ops!

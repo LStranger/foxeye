@@ -1,0 +1,2 @@
+# /usr/bin/foxeye-$(VERSION) has symlink /usr/bin/foxeye with manpage
+foxeye binary: binary-without-manpage usr/bin/foxeye-*
