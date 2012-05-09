@@ -35,7 +35,7 @@ dist:
 	@echo "*** Scanning for include statements"
 	@autoheader
 	@echo "*** Building Makefile templates"
-	@automake
+	@automake --add-missing --copy --include-deps 2>/dev/null
 	@echo "*** Building ./configure script"
 	@autoconf
 	@sed 's/ core / /g' < configure > configure.tmp
