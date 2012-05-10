@@ -10,6 +10,10 @@ TODO:
 	* core/lib.c: to fail if unable to set desired locale.
 
 --- [0.10.0]
+Wed May  9 2012 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* configure: fixed --enable-debug=info mode.
+	* debian/*: updated debian packaging.
+
 Tue Apr 17 2012 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/lib.c: fixed case with charset in lowercase on setting locale.
 

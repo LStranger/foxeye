@@ -391,6 +391,7 @@ static size_t _ircd_check_motd (void)
   close (fd);
   localtime_r (&IrcdMotdTime, &tm);
   strftime (IrcdMotdTimeStr, sizeof(IrcdMotdTimeStr), "%c", &tm);
+  /* TODO: support charset definition as ##$charset <name> in first line ? */
   for (i = 0; i < IrcdMotdSize; i++)
   {
     if (IrcdMotd[i] == '\r')
