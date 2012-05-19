@@ -25,7 +25,7 @@ build-stamp: configure-stamp
 clean: 
 	dh_testdir
 	dh_testroot
-	rm -f build-stamp configure-stamp
+	rm -f build-stamp configure-stamp install-stamp
 	test ! -f Makefile || $(MAKE) clean
 	dh_clean config.log config.status Makefile
 
