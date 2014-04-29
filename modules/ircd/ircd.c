@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2012  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2010-2014  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -2023,7 +2023,7 @@ static void _ircd_do_init_uplinks (void)
       unistrlower(hosts, c, sizeof(hosts));
       pthread_mutex_lock(&IrcdLock);
       for (peer = IrcdPeers; peer != NULL; peer = peer->p.priv)
-	if (strcmp(peer->p.dname, hosts) == 0)
+	if (safe_strcmp(peer->p.dname, hosts) == 0)
 	  break;
       pthread_mutex_unlock(&IrcdLock);
       if (peer != NULL) {		/* already connected, go to next */

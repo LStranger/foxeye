@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2012  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2006-2014  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -30,6 +30,15 @@
 # define luaL_register(a,b,c) luaL_openlib (a,b,c,0)
 # define lua_pushinteger lua_pushnumber
 # define luaL_openlibs lua_baselibopen
+# define luaL_newstate lua_open
+#endif
+
+#ifndef LUA_VERSION_NUM
+# define LUA_VERSION_NUM 500
+#endif
+
+#if LUA_VERSION_NUM > 501
+# define lua_equal(L,idx1,idx2) lua_compare(L,(idx1),(idx2),LUA_OPEQ)
 #endif
 
 #include "init.h"
@@ -1054,7 +1063,7 @@ static int lua_set_fevar (lua_State *L) /* T k v -> T (T[k]=v) : a[b] = c */
   return 0;
 }
 
-static const luaL_reg luatable_vars[] = {
+static const luaL_Reg luatable_vars[] = {
   { "__index", lua_get_fevar },
   { "__newindex", lua_set_fevar },
   { NULL, NULL }
@@ -1226,16 +1235,32 @@ static iftype_t lua_module_signal (INTERFACE *iface, ifsig_t sig)
 SigFunction ModuleInit (char *args)
 {
   CheckVersion;
-  Lua = lua_open();
+  Lua = luaL_newstate();
   luaL_openlibs (Lua);	/* open standard libraries */
+#if LUA_VERSION_NUM > 501
+  lua_newtable (Lua); /* T */
+  luaL_setfuncs (Lua, luatable_foxeye, 0); /* T */
+  lua_setglobal (Lua, "foxeye"); /* */
+  lua_newtable (Lua);
+  luaL_setfuncs (Lua, luatable_foxeye_client, 0);
+  lua_setglobal (Lua, "foxeye.client");
+  lua_newtable (Lua);
+  luaL_setfuncs (Lua, luatable_net, 0);
+  lua_setglobal (Lua, "net");
+#else
   luaL_register (Lua, "foxeye", luatable_foxeye);
   luaL_register (Lua, "foxeye.client", luatable_foxeye_client);
   luaL_register (Lua, "net", luatable_net);
   lua_pop (Lua, 3);	/* remove three above from stack */
+#endif
   lua_getglobal (Lua, "foxeye"); /* T */
   if (luaL_newmetatable (Lua, "fe_vars")) /* T m */
     /* set all methods here */
+#if LUA_VERSION_NUM > 501
+    luaL_setfuncs (Lua, luatable_vars, 0); /* T m */
+#else
     luaL_register (Lua, NULL, luatable_vars); /* T m -- nothing to stack! */
+#endif
   lua_setmetatable (Lua, 1); /* T */
   lua_pushstring (Lua, "__data"); /* T d */
   lua_newtable (Lua); /* T d D */
