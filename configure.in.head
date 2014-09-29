@@ -200,18 +200,11 @@ fi
 dnl Some substitutions for modules/Makefile.mods
 case `eval "${MAKE-make} -v -f NoFile 2>/dev/null"` in
     GNU*)
-	MAKEIFGNU="ifdef"
-	MAKEELSE="else"
-	MAKEENDIF="endif"
+	MAKE_IS_GNU=true
 	;;
     *)
-	MAKEIFGNU=".ifndef"
-	MAKEELSE=".else"
-	MAKEENDIF=".endif"
 esac
-AC_SUBST(MAKEIFGNU)
-AC_SUBST(MAKEELSE)
-AC_SUBST(MAKEENDIF)
+AM_CONDITIONAL([MAKE_IS_GNU], [test x$MAKE_IS_GNU = xtrue])
 
 dnl AM_ICONV uses strange variable ac_t in reports so reset it now
 ac_t=

@@ -2,7 +2,7 @@
 # Makefile for module compilation.
 #
 # This file is part of FoxEye distribution.
-# Copiright (C) 1999-2010 Andrej Gritsenko <andrej@rep.kiev.ua>
+# Copiright (C) 1999-2014 Andrej Gritsenko <andrej@rep.kiev.ua>
 
 SHELL = /bin/sh
 
@@ -22,27 +22,25 @@ CFLAGS = -c @CFLAGS@ $(DEFS) $(INCLUDES) @CPPFLAGS@
 LDFLAGS = @LDFLAGS@
 MODLIBS = @MODLIBS@
 
-@MAKEIFGNU@ MAKE # GNU make
-FILENAME = $(shell /usr/bin/basename `pwd`)
-CFILES = $(wildcard *.c)
-HFILES = $(wildcard *.h)
-HELPFILES = $(wildcard *.help)
-DOCFILES = $(wildcard *.ref)
-OBJS = $(CFILES:%.c=%.o)
-FILENAMESUB = $(shell echo $(FILENAME) | sed 's/-/_/g')
-EXTRAMODLIBS = $(shell ($(MODLIBS); echo $$MODLIBS_$(FILENAMESUB)))
-@MAKEELSE@ # BSD make
-FILENAME != /usr/bin/basename $(.CURDIR)
-ALLFILES != /bin/ls
-CFILES = ${ALLFILES:M*.c}
-HFILES = ${ALLFILES:M*.h}
-HELPFILES = ${ALLFILES:M*.help}
-DOCFILES = ${ALLFILES:M*.ref}
-OBJS = ${CFILES:S/.c$/.o/}
-FILENAMESUB = ${FILENAME:S/-/_/g}
-EXTRAMODLIBS != $(MODLIBS); echo $$MODLIBS_$(FILENAMESUB)
-^ := $>
-@MAKEENDIF@
+# GNU make
+@MAKE_IS_GNU_TRUE@FILENAME = $(shell /usr/bin/basename `pwd`)
+@MAKE_IS_GNU_TRUE@CFILES = $(wildcard *.c)
+@MAKE_IS_GNU_TRUE@HFILES = $(wildcard *.h)
+@MAKE_IS_GNU_TRUE@HELPFILES = $(wildcard *.help)
+@MAKE_IS_GNU_TRUE@DOCFILES = $(wildcard *.ref)
+@MAKE_IS_GNU_TRUE@OBJS = $(CFILES:%.c=%.o)
+@MAKE_IS_GNU_TRUE@FILENAMESUB = $(shell echo $(FILENAME) | sed 's/-/_/g')
+@MAKE_IS_GNU_TRUE@EXTRAMODLIBS = $(shell ($(MODLIBS); echo $$MODLIBS_$(FILENAMESUB)))
+# BSD make
+@MAKE_IS_GNU_FALSE@FILENAME != /usr/bin/basename $(.CURDIR)
+@MAKE_IS_GNU_FALSE@ALLFILES != /bin/ls
+@MAKE_IS_GNU_FALSE@CFILES = ${ALLFILES:M*.c}
+@MAKE_IS_GNU_FALSE@HFILES = ${ALLFILES:M*.h}
+@MAKE_IS_GNU_FALSE@HELPFILES = ${ALLFILES:M*.help}
+@MAKE_IS_GNU_FALSE@DOCFILES = ${ALLFILES:M*.ref}
+@MAKE_IS_GNU_FALSE@OBJS = ${CFILES:S/.c$/.o/}
+@MAKE_IS_GNU_FALSE@FILENAMESUB = ${FILENAME:S/-/_/g}
+@MAKE_IS_GNU_FALSE@EXTRAMODLIBS != $(MODLIBS); echo $$MODLIBS_$(FILENAMESUB)
 
 srcdir = @srcdir@
 top_srcdir = ../..
@@ -60,7 +58,7 @@ clean:
 	rm -f *.o *.so core *~
 
 $(FILENAME).so: $(OBJS)
-	@LD@ $(LDFLAGS) -o $@ $^ $(EXTRAMODLIBS)
+	@LD@ $(LDFLAGS) -o $@ $(OBJS) $(EXTRAMODLIBS)
        
 .c.o: $(HFILES) ${top_srcdir}/core/modules.h ${top_srcdir}/core/foxeye.h ${top_srcdir}/core/protos.h
 	@CC@ -o $@ $(CFLAGS) -D_STATIC_INIT=modinit_$(FILENAMESUB) $<
