@@ -10,6 +10,13 @@ TODO:
 	* core/lib.c: to fail if unable to set desired locale.
 
 --- [0.10.0]
+Mon Sep 29 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/Makefile: replaced obsolete INCLUDES with AM_CPPFLAGS.
+
+Tue Apr 29 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/lua/lua.c: fixed compatibility with Lua 5.2.
+	* configure, modules/Makefile.mods: simplified usage of MAKE_IS_GNU.
+
 Wed Oct 17 2012 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* Makefile: removed debian/* stuff from distro (see Debian Rules).
 

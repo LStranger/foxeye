@@ -14,7 +14,7 @@ foxeye_LDADD = @LD_MODS@ $(LIBOBJS) $(INTLOBJS) $(LTLIBINTL) $(LIBICONV) \
 	@STATICLIBS@ -L$(top_srcdir)/tree -ltree $(LIBIDN_LIBS)
 foxeye_DEPENDENCIES = $(LIBOBJS) $(INTLOBJS)
 
-INCLUDES = @ICONV_INCLUDES@ -I$(top_srcdir)/tree $(LIBIDN_CFLAGS)
+AM_CPPFLAGS = @ICONV_INCLUDES@ -I$(top_srcdir)/tree $(LIBIDN_CFLAGS)
 DEFS = @DEFS@ -DLOCALEDIR=\"$(localedir)\" -DMODULESDIR=\"$(pkglibdir)\" \
 	-DHELPDIR=\"$(helpdir)\"
 
