@@ -17,7 +17,7 @@ SUBLIB_TARGET = $(SUBLIB_SONAME).$(AGEVER)
 sublib_SOURCES = direct.c dispatcher.c help.c init.c lib.c modules.c \
 	sheduler.c socket.c list.c wtmp.c conversion.c connchain.c
 sublib_OBJS = $(sublib_SOURCES:.c=.o)
-sublib_LLIBS = $(ALL_LIBADD) $(LIBS) -Wl,-soname,$(SUBLIB_SONAME)
+sublib_LLIBS = $(ALL_LIBADD) $(LIBS) -Wl,-soname,$(SUBLIB_SONAME) -Wl,-rpath,$(pkglibdir)
 $(SUBLIB_TARGET): $(sublib_OBJS) $(top_builddir)/tree/libtree.a
 	@CCLIB@ $(AM_CFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $(sublib_OBJS) $(sublib_LLIBS)
 $(foxeye_SUBLIB): $(SUBLIB_TARGET)
@@ -42,7 +42,7 @@ foxeye_LDADD += -L$(top_builddir)/core -lfoxeye
 endif
 
 AM_CPPFLAGS = @ICONV_INCLUDES@ -I$(top_srcdir)/tree $(LIBIDN_CFLAGS)
-DEFS = @DEFS@ -DLOCALEDIR=\"$(localedir)\" -DMODULESDIR=\"$(pkglibdir)\" \
+DEFS = @DEFS@ -DLOCALEDIR=\"$(localedir)\" -DMODULESDIR=\"$(pkglibdir)/modules\" \
 	-DHELPDIR=\"$(helpdir)\"
 
 libfoxeyeincdir = $(includedir)/foxeye
@@ -54,11 +54,11 @@ CLEANFILES = static.h $(SUBLIB_TARGET) $(foxeye_SUBLIB)
 
 install-exec-local:
 if ! STATICBUILD
-	$(mkinstalldirs) $(DESTDIR)$(libdir)
+	$(mkinstalldirs) $(DESTDIR)$(pkglibdir)
 	@echo Installing the common library
-	@$(INSTALL) $(SUBLIB_TARGET) $(DESTDIR)$(libdir)/$(SUBLIB_TARGET)
+	@$(INSTALL) $(SUBLIB_TARGET) $(DESTDIR)$(pkglibdir)/$(SUBLIB_TARGET)
 	@for p in $(SUBLIB_SONAME) $(foxeye_SUBLIB); do \
-		@LN_S@ $(SUBLIB_TARGET) $(DESTDIR)$(libdir)/$$p; \
+		@LN_S@ $(SUBLIB_TARGET) $(DESTDIR)$(pkglibdir)/$$p; \
 	done
 endif
 	@if test -h $(DESTDIR)$(bindir)/@PACKAGE@; then \
@@ -71,8 +71,8 @@ endif
 uninstall-local:
 if ! STATICBUILD
 	@for p in $(SUBLIB_SONAME) $(foxeye_SUBLIB); do \
-		if test -L $(DESTDIR)$(libdir)/$$p; then \
-			rm -f $(DESTDIR)$(libdir)/$$p; \
+		if test -L $(DESTDIR)$(pkglibdir)/$$p; then \
+			rm -f $(DESTDIR)$(pkglibdir)/$$p; \
 		fi; \
 	done
 endif

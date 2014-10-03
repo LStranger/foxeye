@@ -26,6 +26,7 @@ Fri Oct  3 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* configure, modules/tcl/accvs.m4: fixed static compilation.
 	* modules/Makefile*: fixed make distcheck.
 	* core/Makefile: fixed build shared lib when libtree.a not ready.
+	* core/Makefile, modules/Makefile.mods: moved library out of the way.
 
 Mon Sep 29 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/Makefile: replaced obsolete INCLUDES with AM_CPPFLAGS.

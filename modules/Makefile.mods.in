@@ -12,13 +12,15 @@ pkglibdir = @libdir@/@PACKAGE@
 datadir = @prefix@/share
 pkgdatadir = $(datadir)/@PACKAGE@
 helpdir = $(pkglibdir)/help
+modulesdir = $(pkglibdir)/modules
 docdir = $(datadir)/doc/@PACKAGE@-@VERSION@
 
 INCLUDES = -I${top_srcdir}/tree -I${top_srcdir}/core -I${top_srcdir}/ui
 INSTALL = @INSTALL@ -m 644
 mkinstalldirs = $(SHELL) ${top_srcdir}/mkinstalldirs
 DEFS = @DEFS@ -DSCRIPTSDIR=\"$(pkgdatadir)\" -D_STATIC_INIT=modinit_$(FILENAMESUB)
-COMPILE = @CC@ -c @CFLAGS@ $(DEFS) $(INCLUDES) @CPPFLAGS@
+CC = @CC@
+COMPILE = $(CC) -c @CFLAGS@ $(DEFS) $(INCLUDES) @CPPFLAGS@
 LINK = @CCLIB@ @CFLAGS@ @LDFLAGS@
 MODLIBS = @MODLIBS@
 
@@ -85,10 +87,10 @@ install-docs:
 	done
 
 install install-strip: modules install-help install-docs
-	$(mkinstalldirs) $(DESTDIR)$(pkglibdir)
+	$(mkinstalldirs) $(DESTDIR)$(modulesdir)
 	@if test -f $(FILENAME).so; then \
-	    echo "   $(DESTDIR)$(pkglibdir)/$(FILENAME).so"; \
-	    $(INSTALL) $(FILENAME).so $(DESTDIR)$(pkglibdir)/$(FILENAME).so; \
+	    echo "   $(DESTDIR)$(modulesdir)/$(FILENAME).so"; \
+	    $(INSTALL) $(FILENAME).so $(DESTDIR)$(modulesdir)/$(FILENAME).so; \
 	else :; fi
 
 uninstall-help:
@@ -105,9 +107,9 @@ uninstall-docs:
 	done
 
 uninstall: uninstall-help uninstall-docs
-	@if test -f $(DESTDIR)$(pkglibdir)/$(FILENAME).so; then \
-	    echo "  rm -f $(DESTDIR)$(pkglibdir)/$(FILENAME).so"; \
-	    rm -f $(DESTDIR)$(pkglibdir)/$(FILENAME).so; \
+	@if test -f $(DESTDIR)$(modulesdir)/$(FILENAME).so; then \
+	    echo "  rm -f $(DESTDIR)$(modulesdir)/$(FILENAME).so"; \
+	    rm -f $(DESTDIR)$(modulesdir)/$(FILENAME).so; \
 	else :; fi
 
 dist distdir:

@@ -1,5 +1,7 @@
 #!/usr/bin/make -f
 
+DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
+
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
 %:
@@ -17,3 +19,6 @@ override_dh_install:
 override_dh_makeshlibs:
 	# modules are not shared libs so disable processing for them
 	dh_makeshlibs -X/foxeye/
+
+override_dh_shlibdeps:
+	dh_shlibdeps -lusr/lib/$(DEB_HOST_MULTIARCH)/foxeye

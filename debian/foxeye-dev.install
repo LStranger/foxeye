@@ -1,2 +1,2 @@
 usr/include/foxeye
-usr/lib/*/libfoxeye.so
+usr/lib/*/foxeye/libfoxeye.so
