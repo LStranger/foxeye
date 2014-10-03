@@ -14,7 +14,7 @@ Vcs-Browser: http://sourceforge.net/p/foxeye/code/ci/master/tree/
 Package: foxeye
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: Universal modular network agent - binary package.
+Description: Universal modular network agent - binary package
  FoxEye now is multipurpose modular client or service for client-server type
  networks: IRC, ICQ, etc.  All you need to make IRC bot or ICQ client is few
  modules that implement functionality you want.
@@ -24,7 +24,7 @@ Description: Universal modular network agent - binary package.
 Package: foxeye-dev
 Architecture: any
 Depends: ${misc:Depends}, foxeye (= ${binary:Version})
-Description: Universal modular network agent - development package.
+Description: Universal modular network agent - development package
  FoxEye now is multipurpose modular client or service for client-server type
  networks: IRC, ICQ, etc.  All you need to make IRC bot or ICQ client is few
  modules that implement functionality you want.
@@ -36,7 +36,7 @@ Section: debug
 Priority: extra
 Architecture: any
 Depends: ${misc:Depends}, foxeye (= ${binary:Version})
-Description: Universal modular network agent - debugging symbols.
+Description: Universal modular network agent - debugging symbols
  FoxEye now is multipurpose modular client or service for client-server type
  networks: IRC, ICQ, etc.  All you need to make IRC bot or ICQ client is few
  modules that implement functionality you want.
