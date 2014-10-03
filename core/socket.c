@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2012  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2014  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -602,7 +602,7 @@ int SetupSocket(idx_t idx, const char *domain, const char *bind_to,
 
 static void _answer_cleanup(void *data)
 {
-  idx_t idx = (idx_t)(int)data;
+  idx_t idx = (idx_t)(ssize_t)data;
 
   KillSocket(&idx);
 }
@@ -684,7 +684,7 @@ idx_t AnswerSocket (idx_t listen)
   if (sockfd < 0)
     return (E_AGAIN);
   /* add thread cleanup here in case if thread is cancelled */
-  pthread_cleanup_push(&_answer_cleanup, (void *)(int)idx);
+  pthread_cleanup_push(&_answer_cleanup, (void *)(ssize_t)idx);
   fcntl (sockfd, F_SETOWN, _mypid);
 #ifdef HAVE_SYS_FILIO_H		/* non-BSDish systems have not O_ASYNC flag */
   {

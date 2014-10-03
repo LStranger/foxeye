@@ -34,6 +34,7 @@ Fri Oct  3 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* configure.in: renamed into configure.ac (configure.in is deprecated).
 	* core/foxeye.h, core/list.c, core/wtmp.c, modules/autolog/autolog.c, modules/irc-ctcp/dcc.c, modules/logs/logs.c:
 	  fixed calls to strerror_r() - return code should be checked.
+	* core/socket.c: corrected casts from short to pointer.
 
 Mon Sep 29 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/Makefile: replaced obsolete INCLUDES with AM_CPPFLAGS.
