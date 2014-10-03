@@ -266,6 +266,7 @@ else
     dnl Check for -rdynamic option to LDFLAGS
     AC_CHECK_LDFLAG(fe_cv_add_rdynamic, -rdynamic, LDFLAGS)
 fi
+AM_CONDITIONAL([STATICBUILD], [test x$fe_cv_static = xyes])
 
 dnl Checks for library functions.
 AC_CHECK_FUNCS(rename sigaction strncasecmp towlower)

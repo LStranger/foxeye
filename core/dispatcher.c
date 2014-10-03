@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2012  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2014  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -18,13 +18,13 @@
  * This file is part of FoxEye's source: main loop and interfaces API.
  */
 
+#define DISPATCHER_C 1
+
 #include "foxeye.h"
 
 #include <signal.h>
 #include <errno.h>
 #include <fcntl.h>
-
-#define DISPATCHER_C 1
 
 #include "init.h"
 #include "wtmp.h"
