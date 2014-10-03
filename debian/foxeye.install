@@ -1,0 +1,4 @@
+usr/bin/
+usr/lib/*/foxeye
+usr/lib/*/libfoxeye.so.*
+usr/share/

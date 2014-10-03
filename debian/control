@@ -1,10 +1,14 @@
 Source: foxeye
 Section: net
-Priority: extra
-Maintainer: Andriy Grytsenko (LStranger) <andrej@rep.kiev.ua>
-Build-Depends: debhelper (>= 7), tcl-dev, liblua5.1-0-dev, gettext
-Standards-Version: 3.9.3
+Priority: optional
+Maintainer: Andriy Grytsenko <andrej@rep.kiev.ua>
+Build-Depends:
+ debhelper (>= 8.9.0~), pkg-config, tcl-dev,
+ liblua5.1-dev | liblua5.2-dev, gettext, libidn11-dev
+Standards-Version: 3.9.6
 Homepage: http://foxeye.sf.net
+Vcs-Git: git://git.code.sf.net/p/foxeye/code
+Vcs-Browser: http://sourceforge.net/p/foxeye/code/ci/master/tree/
 
 Package: foxeye
 Architecture: any
@@ -15,6 +19,16 @@ Description: Universal modular network agent - binary package.
  modules that implement functionality you want.
  .
  This package contains main daemon and few modules.
+
+Package: foxeye-dev
+Architecture: any
+Depends: ${misc:Depends}, foxeye (= ${binary:Version})
+Description: Universal modular network agent - development package.
+ FoxEye now is multipurpose modular client or service for client-server type
+ networks: IRC, ICQ, etc.  All you need to make IRC bot or ICQ client is few
+ modules that implement functionality you want.
+ .
+ This package contains development headers required to create modules.
 
 Package: foxeye-dbg
 Section: debug

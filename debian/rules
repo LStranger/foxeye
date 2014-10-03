@@ -1,80 +1,19 @@
 #!/usr/bin/make -f
-# -*- makefile -*-
-# debian/rules that uses debhelper.
-# This file was originally written by Joey Hess and Craig Small as example.
-# Tuned by Andriy Grytsenko.
 
-# Uncomment this to turn on verbose mode.
-#export DH_VERBOSE=1
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
+%:
+	dh ${@} --parallel
 
-configure: configure-stamp
-configure-stamp:
-	dh_testdir
-	./configure --prefix=/usr --enable-debug=info
-	touch $@
+override_dh_auto_configure:
+	dh_auto_configure -- --enable-debug=info
 
-build-arch: build-stamp
-build-indep: build-stamp
-build: build-arch build-indep
-build-stamp: configure-stamp
-	dh_testdir
-	$(MAKE)
-	touch $@
-
-clean: 
-	dh_testdir
-	dh_testroot
-	rm -f build-stamp configure-stamp install-stamp
-	test ! -f Makefile || $(MAKE) clean
-	dh_clean config.log config.status Makefile
-
-install: install-stamp
-install-stamp: build-stamp
-	dh_testdir
-	dh_testroot
-	dh_prep
-	dh_installdirs
-	$(MAKE) DESTDIR=$(CURDIR)/debian/foxeye docdir=/usr/share/doc/foxeye install
-	mkdir -p debian/foxeye/usr/share/lintian/overrides
-	install debian/lintian-override debian/foxeye/usr/share/lintian/overrides/foxeye
-	touch $@
-
-# Build architecture-independent files here.
-binary-indep: install
-# We have nothing to do by default.
-
-# Build architecture-dependent files here.
-binary-arch: install
-	dh_testdir
-	dh_testroot
-	dh_installchangelogs ChangeLog
-	dh_installdocs README
-#	dh_installexamples
-#	dh_install
-#	dh_installmenu
-#	dh_installdebconf
-#	dh_installlogrotate
-#	dh_installemacsen
-#	dh_installpam
-#	dh_installmime
-#	dh_python
-#	dh_installinit
-#	dh_installcron
-#	dh_installinfo
-#	dh_installman
-	dh_link
-	dh_compress
-	dh_fixperms
+override_dh_strip:
 	dh_strip --dbg-package=foxeye-dbg
-#	dh_perl
-#	dh_makeshlibs
-	dh_shlibdeps
-	dh_installdeb
-	dh_gencontrol
-	dh_md5sums
-	dh_builddeb
 
-binary: binary-indep binary-arch
-.PHONY: build-indep build-arch build clean binary-indep binary-arch binary \
-	install configure
+override_dh_install:
+	dh_install --fail-missing
+
+override_dh_makeshlibs:
+	# modules are not shared libs so disable processing for them
+	dh_makeshlibs -X/foxeye/
