@@ -30,6 +30,7 @@ Fri Oct  3 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* foxeye.pc: added file for pkgconfig.
 	* modules/irc-channel/irc-channel.c: fixed spelling error (splitted).
 	* modules/ircd/ircd.c: fixed spelling error (succesfully).
+	* configure.in: renamed into configure.ac (configure.in is deprecated).
 
 Mon Sep 29 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/Makefile: replaced obsolete INCLUDES with AM_CPPFLAGS.

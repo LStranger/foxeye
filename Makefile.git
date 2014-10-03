@@ -6,8 +6,8 @@ dist:
 	@echo "It will be deleted before making the distribution"
 	@echo ""
 	@echo "*** Concatenating configure tests into configure.in"
-	@-rm -f configure.in
-	@cat configure.in.head modules/*/accvs.m4 configure.in.tail >configure.in 2>/dev/null || echo -n ""
+	@-rm -f configure.ac
+	@cat configure.ac.head modules/*/accvs.m4 configure.ac.tail >configure.ac 2>/dev/null || echo -n ""
 	@echo "*** Concatenating config variables into core/foxeye.h"
 	@-rm -f core/foxeye.h
 	@cat core/foxeye.h.in modules/*/accvs.cfg >core/foxeye.h 2>/dev/null || echo -n ""
