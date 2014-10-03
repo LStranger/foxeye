@@ -4736,7 +4736,7 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
       iface->ift |= I_DIED;
       KillTimer(_uplinks_timer);
       _uplinks_timer = -1;
-      Add_Request(I_LOG, "*", F_BOOT, "module ircd terminated succesfully");
+      Add_Request(I_LOG, "*", F_BOOT, "module ircd terminated successfully");
       return I_DIED;
     case S_SHUTDOWN:
       for (pp = IrcdPeers; pp; pp = pp->p.priv) /* just notify everyone */
