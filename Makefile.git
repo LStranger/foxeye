@@ -32,14 +32,14 @@ dist:
 	@autopoint > /dev/null
 	@echo "*** Retrieving configure tests needed by configure.in"
 	@aclocal -I m4
-	@echo "*** Scanning for include statements"
-	@autoheader
-	@echo "*** Building Makefile templates"
-	@automake --copy --add-missing --include-deps 2> /dev/null
 	@echo "*** Building ./configure script"
 	@autoconf
 	@sed 's/ core / /g' < configure > configure.tmp
 	@-rm -f configure && mv configure.tmp configure && chmod +x configure
+	@echo "*** Scanning for include statements"
+	@autoheader
+	@echo "*** Building Makefile templates"
+	@automake --copy --add-missing --include-deps 2> /dev/null
 	@-rm -f config.cache config.h
 	@rm -rf autom4te*.cache
 	@echo "*** Create date/time stamp"
