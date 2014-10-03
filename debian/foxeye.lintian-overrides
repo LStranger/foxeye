@@ -1,2 +1,6 @@
 # /usr/bin/foxeye-$(VERSION) has symlink /usr/bin/foxeye with manpage
 foxeye binary: binary-without-manpage usr/bin/foxeye-*
+# usr/lib/x86_64-linux-gnu/foxeye/modules/modes.so is false positive
+foxeye binary: hardening-no-fortify-functions usr/lib/*/foxeye/modules/modes.so
+# "tcl" is a module name, not language name
+foxeye binary: capitalization-error-in-description tcl Tcl
