@@ -22,6 +22,7 @@ Fri Oct  3 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/Makefile.mods: added using libfoxeye.so.0.0.0 on linking.
 	* configure, core/Makefile, modules/Makefile.mods: fixed linking bugs,
 	  added -Wl,-O1 -Wl,-z,defs to dynamic linking options.
+	* configure: moved flags not needed for linker from CFLAGS to CPPFLAGS.
 
 Mon Sep 29 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/Makefile: replaced obsolete INCLUDES with AM_CPPFLAGS.
