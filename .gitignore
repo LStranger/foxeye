@@ -13,10 +13,11 @@ configure
 configure.in
 core/foxeye
 ABOUT-NLS
-config.h*
-config.log
-config.rpath
-config.status
+autom4te.cache
+config.*
+depcomp
+install-sh
+missing
 stamp-h*
 */.deps
 doc/foxeye.1
