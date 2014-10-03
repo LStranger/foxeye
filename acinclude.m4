@@ -150,7 +150,8 @@ else
 	    ac_iconv_bin=iconv
 	fi
 	dnl set LC_ALL due to configure might set it to C
-	if test x`echo -n проба|LC_ALL= LC_CTYPE=uk_UA.KOI8-U $ac_iconv_bin -t ascii//translit 2>/dev/null` != xproba; then
+	dnl if test x`echo -n проба|LC_ALL= LC_CTYPE=uk_UA.KOI8-U $ac_iconv_bin -t ascii//translit 2>/dev/null` != xproba; then
+	if test x`echo -n п©я─п╬п╠п╟|LC_ALL= LC_CTYPE=uk_UA.UTF-8 $ac_iconv_bin -t ascii//translit 2>/dev/null` != xproba; then
 	    AC_MSG_RESULT(no)
 	    AC_MSG_WARN(Your iconv doesn't support Cyrillic translit!)
 	else
