@@ -55,7 +55,7 @@ CLEANFILES = static.h $(SUBLIB_TARGET) $(foxeye_SUBLIB)
 install-exec-local:
 if ! STATICBUILD
 	$(mkinstalldirs) $(DESTDIR)$(pkglibdir)
-	@echo Installing the common library
+	@echo Installing the common library and symlinks.
 	@$(INSTALL) $(SUBLIB_TARGET) $(DESTDIR)$(pkglibdir)/$(SUBLIB_TARGET)
 	@for p in $(SUBLIB_SONAME) $(foxeye_SUBLIB); do \
 		@LN_S@ $(SUBLIB_TARGET) $(DESTDIR)$(pkglibdir)/$$p; \
@@ -70,6 +70,7 @@ endif
 
 uninstall-local:
 if ! STATICBUILD
+	rm -f $(DESTDIR)$(pkglibdir)/$(SUBLIB_TARGET)
 	@for p in $(SUBLIB_SONAME) $(foxeye_SUBLIB); do \
 		if test -L $(DESTDIR)$(pkglibdir)/$$p; then \
 			rm -f $(DESTDIR)$(pkglibdir)/$$p; \
