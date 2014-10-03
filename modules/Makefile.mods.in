@@ -28,7 +28,6 @@ MODLIBS = @MODLIBS@
 @MAKE_IS_GNU_TRUE@HFILES = $(wildcard *.h)
 @MAKE_IS_GNU_TRUE@HELPFILES = $(wildcard *.help)
 @MAKE_IS_GNU_TRUE@DOCFILES = $(wildcard *.ref)
-@MAKE_IS_GNU_TRUE@OBJS = $(CFILES:%.c=%.o)
 @MAKE_IS_GNU_TRUE@FILENAMESUB = $(shell echo $(FILENAME) | sed 's/-/_/g')
 @MAKE_IS_GNU_TRUE@EXTRAMODLIBS = $(shell ($(MODLIBS); echo $$MODLIBS_$(FILENAMESUB)))
 # BSD make
@@ -38,7 +37,6 @@ MODLIBS = @MODLIBS@
 @MAKE_IS_GNU_FALSE@HFILES = ${ALLFILES:M*.h}
 @MAKE_IS_GNU_FALSE@HELPFILES = ${ALLFILES:M*.help}
 @MAKE_IS_GNU_FALSE@DOCFILES = ${ALLFILES:M*.ref}
-@MAKE_IS_GNU_FALSE@OBJS = ${CFILES:S/.c$/.o/}
 @MAKE_IS_GNU_FALSE@FILENAMESUB = ${FILENAME:S/-/_/g}
 @MAKE_IS_GNU_FALSE@EXTRAMODLIBS != $(MODLIBS); echo $$MODLIBS_$(FILENAMESUB)
 
@@ -48,6 +46,7 @@ top_builddir = ../..
 subdir := modules/$(FILENAME)
 mdistdir := ${top_builddir}/@PACKAGE@-@VERSION@/$(subdir)
 
+OBJS = $(CFILES:.c=.o)
 DISTFILES = $(CFILES) $(HFILES) $(HELPFILES) $(DOCFILES)
 
 all static: $(OBJS)
