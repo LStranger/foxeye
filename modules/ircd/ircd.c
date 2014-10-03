@@ -22,8 +22,8 @@
  */
 
 #include "foxeye.h"
-#if IRCD_USES_ICONV == 0 || (defined(HAVE_ICONV) && (IRCD_NEEDS_TRANSLIT == 0 || defined(HAVE_CYRILLIC_TRANSLIT)))
 #include "modules.h"
+#if IRCD_USES_ICONV == 0 || (defined(HAVE_ICONV) && (IRCD_NEEDS_TRANSLIT == 0 || defined(HAVE_CYRILLIC_TRANSLIT)))
 #include "init.h"
 #include "list.h"
 #include "sheduler.h"
