@@ -8,7 +8,6 @@ TODO:
 	* core/direct.c: to add support for charset and comments in motd file.
 	* core/socket.c: to make socket limit extendible.
 	* core/lib.c: to fail if unable to set desired locale.
-	* *.so*: build with -Wl,-z,defs if not static and available.
 	* *Makefile: allow third-party modules builds.
 
 --- [0.10.0]
@@ -21,6 +20,8 @@ Fri Oct  3 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/Makefile.mods: simplified form of OBJS a little.
 	* modules/Makefile: recreate Makefile when Makefile.in changed.
 	* modules/Makefile.mods: added using libfoxeye.so.0.0.0 on linking.
+	* configure, core/Makefile, modules/Makefile.mods: fixed linking bugs,
+	  added -Wl,-O1 -Wl,-z,defs to dynamic linking options.
 
 Mon Sep 29 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/Makefile: replaced obsolete INCLUDES with AM_CPPFLAGS.

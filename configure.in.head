@@ -64,7 +64,7 @@ if test "$ac_cv_c_inline" != no ; then
 fi
 
 dnl Default linker for the modules
-LD="${CC}"
+CCLIB="\$(CC)"
 
 dnl Checks for options to CFLAGS
 AC_CHECK_LDFLAG(fe_cv_add_wnotrigraphs, -Wno-trigraphs, CFLAGS)
@@ -82,8 +82,8 @@ AC_ARG_ENABLE(debug,
     if test x"$fe_enable_debug" = xno; then
 	dnl enable optimization - this is default
 	ac_cv_add_optimization=yes
-	dnl Adding -s (strip) to linker
-	AC_CHECK_LDFLAG(fe_cv_add_s, -s, LDFLAGS)
+	dnl Adding -S (strip debug) to linker
+	AC_CHECK_LDFLAG(fe_cv_add_s, [-Wl,-S], LDFLAGS)
     else
 	dnl disable optimization and add extra warnings if it's debug compilation
 	if test x"$fe_enable_debug" = xinfo; then
@@ -158,16 +158,16 @@ fi ])
 if test "$fe_cv_static" = no; then
     case "$host_os" in
 	linux*)
-	    LD="${LD} -shared -nostartfiles"
+	    CCLIB="${CCLIB} -shared -nostartfiles"
 	    AC_CHECK_LDFLAG(fe_cv_fpic, [-fpic], CPPFLAGS)
 	    ;;
 	freebsd*)
-	    LD="${LD} -shared"
+	    CCLIB="${CCLIB} -shared"
 	    CPPFLAGS="-fpic ${CPPFLAGS}"
 	    AC_DEFINE(_FREEBSD, 1, [Define to 1 if on FreeBSD.])
 	    ;;
 	openbsd* | netbsd*)
-	    LD="ld -x -Bshareable"
+	    CCLIB="${CCLIB} -Wl,-x -Wl,-Bshareable"
 	    CPPFLAGS="-fpic ${CPPFLAGS}"
 	    AC_DEFINE(_OPENBSD, 1, [Define to 1 if on OpenBSD.])
 	    ;;
@@ -178,18 +178,18 @@ if test "$fe_cv_static" = no; then
 	    ;;
 	solaris*)
 #	    LD="ld -G -z text"
-	    LD="ld -G"
+	    CCLIB="${CCLIB} -Wl,-G"
+	    AC_CHECK_LDFLAG(fe_cv_add_wl_z_text, [-Wl,-z,text], LDFLAGS)
 	    AC_CHECK_LDFLAG(fe_cv_add_wl_e, [-Wl,-E], LDFLAGS)
 	    ;;
 	sunos*)
-	    LD="ld"
+	    dnl LD="ld"
 	    CPPFLAGS="-fPIC ${CPPFLAGS}"
 	    AC_CHECK_LIB(dl,main)
 	    ;;
 	hpux)
-	    LD="ld -b"
+	    CCLIB="${CCLIB} -Wl,-b, -Wl,-E"
 	    CPPFLAGS="-fPIC ${CPPFLAGS}"
-	    LDFLAGS="-Wl,-E ${LDFLAGS}"
 	    AC_DEFINE(_HPUX, 1, [Define to 1 if on HP-UX.])
 	    ;;
 	*)
@@ -257,14 +257,17 @@ if test "$fe_cv_static" = yes; then
     EXTRA_HDR='${top_srcdir}/core/static.h'
     CFLAGS="${CFLAGS} -DSTATIC"
     LD_MODS="../modules/*/*.o"
-    LD="${CC}"
-    AC_CHECK_LDFLAG(fe_cv_add_static, -static, LDFLAGS)
+    dnl LD="${CC}"
+    AC_CHECK_LDFLAG(fe_cv_add_static, [-Wl,-static], LDFLAGS)
     if test $fe_cv_add_static = no; then
-	AC_CHECK_LDFLAG(fe_cv_add_Bstatic, -Bstatic, LDFLAGS)
+	AC_CHECK_LDFLAG(fe_cv_add_Bstatic, [-Wl,-Bstatic], LDFLAGS)
     fi
 else
     dnl Check for -rdynamic option to LDFLAGS
     AC_CHECK_LDFLAG(fe_cv_add_rdynamic, -rdynamic, LDFLAGS)
+    dnl Try to be more strict on dynamic objects
+    AC_CHECK_LDFLAG(fe_cv_add_O1, [-Wl,-O1], LDFLAGS)
+    AC_CHECK_LDFLAG(fe_cv_add_z_defs, [-Wl,-z,defs], LDFLAGS)
 fi
 AM_CONDITIONAL([STATICBUILD], [test x$fe_cv_static = xyes])
 
@@ -306,7 +309,7 @@ GENDATE="`LC_TIME=C date +'%B %Y'`"
 AC_SUBST(GENDATE)
 AC_DEFINE_UNQUOTED(COMPILETIME, "`LC_TIME=C date`", [The compilation time string.])
 
-AC_SUBST(LD)
+AC_SUBST(CCLIB)
 AC_SUBST(LD_MODS)
 AC_SUBST(BASENAME)
 AC_SUBST(EXTRA_HDR)

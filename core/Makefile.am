@@ -19,9 +19,9 @@ sublib_SOURCES = direct.c dispatcher.c help.c init.c lib.c modules.c \
 sublib_OBJS = $(sublib_SOURCES:.c=.o)
 sublib_LLIBS = $(ALL_LIBADD) $(LIBS) -Wl,-soname,$(SUBLIB_SONAME)
 $(SUBLIB_TARGET): $(sublib_OBJS)
-	@LD@ $(AM_CFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $(sublib_OBJS) $(sublib_LLIBS)
+	@CCLIB@ $(AM_CFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $(sublib_OBJS) $(sublib_LLIBS)
 $(foxeye_SUBLIB): $(SUBLIB_TARGET)
-	$(LN_S) $< $@ 2>/dev/null || true
+	@LN_S@ $< $@ 2>/dev/null || true
 
 foxeye_SOURCES = main.c
 
@@ -55,7 +55,7 @@ if ! STATICBUILD
 	@echo Installing the common library
 	@$(INSTALL) $(SUBLIB_TARGET) $(DESTDIR)$(libdir)/$(SUBLIB_TARGET)
 	@for p in $(SUBLIB_SONAME) $(foxeye_SUBLIB); do \
-		$(LN_S) $(SUBLIB_TARGET) $(DESTDIR)$(libdir)/$$p; \
+		@LN_S@ $(SUBLIB_TARGET) $(DESTDIR)$(libdir)/$$p; \
 	done
 endif
 	@if test -h $(DESTDIR)$(bindir)/@PACKAGE@; then \

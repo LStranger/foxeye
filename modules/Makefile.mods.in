@@ -19,7 +19,7 @@ INSTALL = @INSTALL@ -m 644
 mkinstalldirs = $(SHELL) ${top_srcdir}/mkinstalldirs
 DEFS = @DEFS@ -DSCRIPTSDIR=\"$(pkgdatadir)\" -D_STATIC_INIT=modinit_$(FILENAMESUB)
 COMPILE = @CC@ -c @CFLAGS@ $(DEFS) $(INCLUDES) @CPPFLAGS@
-LINK = @LD@ @CFLAGS@ @LDFLAGS@
+LINK = @CCLIB@ @CFLAGS@ @LDFLAGS@
 MODLIBS = @MODLIBS@
 
 # GNU make
@@ -56,11 +56,14 @@ modules: $(FILENAME).so
 clean:
 	rm -f *.o *.so core *~
 
-$(FILENAME).so: $(OBJS)
+$(FILENAME).so: $(top_builddir)/core/libfoxeye.so $(OBJS)
 	$(LINK) -o $@ $(OBJS) $(EXTRAMODLIBS) -L$(top_builddir)/core -lfoxeye
 
 .c.o: $(HFILES) ${top_srcdir}/core/modules.h ${top_srcdir}/core/foxeye.h ${top_srcdir}/core/protos.h
 	$(COMPILE) -o $@ $<
+
+$(top_builddir)/core/libfoxeye.so:
+	@cd $(top_builddir)/core; $(MAKE) libfoxeye.so
 
 install-help:
 	$(mkinstalldirs) $(DESTDIR)$(helpdir)
