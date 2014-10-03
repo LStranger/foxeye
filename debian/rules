@@ -15,6 +15,7 @@ override_dh_strip:
 
 override_dh_install:
 	dh_install --fail-missing
+	mv debian/foxeye/usr/share/doc/foxeye-* debian/foxeye/usr/share/doc/foxeye
 
 override_dh_makeshlibs:
 	# modules are not shared libs so disable processing for them
