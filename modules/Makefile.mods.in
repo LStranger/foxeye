@@ -17,9 +17,9 @@ docdir = $(datadir)/doc/@PACKAGE@-@VERSION@
 INCLUDES = -I${top_srcdir}/tree -I${top_srcdir}/core -I${top_srcdir}/ui
 INSTALL = @INSTALL@ -m 644
 mkinstalldirs = $(SHELL) ${top_srcdir}/mkinstalldirs
-DEFS = @DEFS@ -DSCRIPTSDIR=\"$(pkgdatadir)\"
-CFLAGS = -c @CFLAGS@ $(DEFS) $(INCLUDES) @CPPFLAGS@
-LDFLAGS = @LDFLAGS@
+DEFS = @DEFS@ -DSCRIPTSDIR=\"$(pkgdatadir)\" -D_STATIC_INIT=modinit_$(FILENAMESUB)
+COMPILE = @CC@ -c @CFLAGS@ $(DEFS) $(INCLUDES) @CPPFLAGS@
+LINK = @LD@ @CFLAGS@ @LDFLAGS@
 MODLIBS = @MODLIBS@
 
 # GNU make
@@ -57,10 +57,10 @@ clean:
 	rm -f *.o *.so core *~
 
 $(FILENAME).so: $(OBJS)
-	@LD@ $(LDFLAGS) -o $@ $(OBJS) $(EXTRAMODLIBS)
-       
+	$(LINK) -o $@ $(OBJS) $(EXTRAMODLIBS) -L$(top_builddir)/core -lfoxeye
+
 .c.o: $(HFILES) ${top_srcdir}/core/modules.h ${top_srcdir}/core/foxeye.h ${top_srcdir}/core/protos.h
-	@CC@ -o $@ $(CFLAGS) -D_STATIC_INIT=modinit_$(FILENAMESUB) $<
+	$(COMPILE) -o $@ $<
 
 install-help:
 	$(mkinstalldirs) $(DESTDIR)$(helpdir)

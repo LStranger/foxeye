@@ -20,6 +20,7 @@ Fri Oct  3 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* Makefile: removed useless target 'kit'.
 	* modules/Makefile.mods: simplified form of OBJS a little.
 	* modules/Makefile: recreate Makefile when Makefile.in changed.
+	* modules/Makefile.mods: added using libfoxeye.so.0.0.0 on linking.
 
 Mon Sep 29 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/Makefile: replaced obsolete INCLUDES with AM_CPPFLAGS.
