@@ -6,3 +6,8 @@ LANG = C
 AUTOMAKE_OPTIONS = foreign 1.5
 
 SUBDIRS = doc intl help po scripts tree modules core ui
+
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = foxeye.pc
+
+EXTRA_DIST = foxeye.pc.in

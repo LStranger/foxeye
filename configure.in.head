@@ -333,5 +333,6 @@ AC_CONFIG_FILES(Makefile \
 	intl/Makefile \
 	ui/Makefile \
 	po/Makefile.in \
-	doc/foxeye.1)
+	doc/foxeye.1 \
+	foxeye.pc)
 

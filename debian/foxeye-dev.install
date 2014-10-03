@@ -1,2 +1,3 @@
 usr/include/foxeye
 usr/lib/*/foxeye/libfoxeye.so
+usr/lib/*/pkgconfig
