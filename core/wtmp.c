@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2001-2014  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -424,8 +424,14 @@ void RotateWtmp (void)
     if (fd >= 0 && (dst = open (path, O_RDWR | O_CREAT,
 				S_IRUSR | S_IWUSR)) < 0) /* wtmp.tmp */
     {
-      strerror_r (errno, errb, sizeof(errb));
+#if _GNU_SOURCE
+      register const char *str = strerror_r (errno, errb, sizeof(errb));
+      ERROR ("wtmp: couldn't create %s: %s", path, str);
+#else
+      if (strerror_r(errno, errb, sizeof(errb)) != 0)
+        strfcpy(errb, "(failed to decode error)", sizeof(errb));
       ERROR ("wtmp: couldn't create %s: %s", path, errb);
+#endif
     }
     if (dst >= 0)
       while ((k = read (fd, buff, sizeof(buff))) > 0)
@@ -449,8 +455,14 @@ void RotateWtmp (void)
       if (unlink (path2) ||			/* wtmp.gone */
 	  rename (path, path2))			/* wtmp.tmp --> wtmp.gone */
       {
-	strerror_r (errno, errb, sizeof(errb));
+#if _GNU_SOURCE
+	register const char *str = strerror_r (errno, errb, sizeof(errb));
+	ERROR ("wtmp: couldn't rewrite %s: %s", path2, str);
+#else
+	if (strerror_r(errno, errb, sizeof(errb)) != 0)
+	  strfcpy(errb, "(failed to decode error)", sizeof(errb));
 	ERROR ("wtmp: couldn't rewrite %s: %s", path2, errb);
+#endif
       }
       else
 	DBG ("wtmp: success on %s.", path2);
@@ -536,8 +548,14 @@ void RotateWtmp (void)
     }
     else
     {
-      strerror_r (errno, errb, sizeof(errb));
+#if _GNU_SOURCE
+      register const char *str = strerror_r (errno, errb, sizeof(errb));
+      ERROR ("wtmp: cannot open %s: %s", path, str);
+#else
+      if (strerror_r(errno, errb, sizeof(errb)) != 0)
+        strfcpy(errb, "(failed to decode error)", sizeof(errb));
       ERROR ("wtmp: cannot open %s: %s", path, errb);
+#endif
     }
     /* add events to wtmp.gone in normal order */
     if (dst >= 0)
@@ -592,8 +610,14 @@ void RotateWtmp (void)
     snprintf (path, sizeof(path), "%s.%d", wfp, i);
     if (rename (path, path2))
     {
-      strerror_r (errno, errb, sizeof(errb));
+#if _GNU_SOURCE
+      register const char *str = strerror_r (errno, errb, sizeof(errb));
+      WARNING ("wtmp: couldn't rotate %s -> %s: %s!", path, path2, str);
+#else
+      if (strerror_r(errno, errb, sizeof(errb)) != 0)
+        strfcpy(errb, "(failed to decode error)", sizeof(errb));
       WARNING ("wtmp: couldn't rotate %s -> %s: %s!", path, path2, errb);
+#endif
     }
     else
       DBG ("wtmp: rotated %s -> %s.", path, path2);
@@ -601,8 +625,14 @@ void RotateWtmp (void)
   /* rotate $Wtmp -> $Wtmp.1 */
   if (wfps && rename (wfp, path))
   {
-    strerror_r (errno, errb, sizeof(errb));
+#if _GNU_SOURCE
+    register const char *str = strerror_r (errno, errb, sizeof(errb));
+    ERROR ("wtmp: couldn't rotate %s -> %s: %s!", wfp, path, str);
+#else
+    if (strerror_r(errno, errb, sizeof(errb)) != 0)
+      strfcpy(errb, "(failed to decode error)", sizeof(errb));
     ERROR ("wtmp: couldn't rotate %s -> %s: %s!", wfp, path, errb);
+#endif
   }
   else if (wfps)
     DBG ("wtmp: rotated %s -> %s.", wfp, path);

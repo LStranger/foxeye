@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003-2012  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2003-2014  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -211,9 +211,16 @@ static ssize_t textlog_add_buf (logfile_t *log, char *text, size_t sz,
     {
       if (ts >= 0)			/* ts < 0 means quiet */
       {
-	strerror_r (x, log->buf, sizeof(log->buf));
+#if _GNU_SOURCE
+	register const char *str = strerror_r (x, log->buf, sizeof(log->buf));
+	ERROR ("Couldn't sync logfile %s (%s), abort logging to it.",
+	       log->path, str);
+#else
+	if (strerror_r(x, log->buf, sizeof(log->buf)) != 0)
+	  snprint(log->buf, sizeof(log->buf), "(failed to decode err=%d)", x);
 	ERROR ("Couldn't sync logfile %s (%s), abort logging to it.",
 	       log->path, log->buf);
+#endif
       }
       return -1;
     }
@@ -672,8 +679,14 @@ static void do_rotate (logfile_t *log)
   dprint (5, "logs/logs.c:do_rotate: start for %s", log->path);
   if (x)
   {
-    strerror_r (x, path, sizeof(path));
+#if _GNU_SOURCE
+    register const char *str = strerror_r (x, path, sizeof(path));
+    ERROR ("Couldn't rotate %s: %s", log->path, str);
+#else
+    if (strerror_r(x, path, sizeof(path)) != 0)
+      snprint(path, sizeof(path), "(failed to decode err=%d)", x);
     ERROR ("Couldn't rotate %s: %s", log->path, path);
+#endif
     return;
   }
   if (lseek (log->fd, 0, SEEK_END) == 0) /* we will not rotate empty file */
@@ -781,8 +794,14 @@ static void do_rotate (logfile_t *log)
     }
     if (errno != EXDEV)			/* couldn't move/copy file */
     {
-      strerror_r (errno, buffer, sizeof(buffer));
+#if _GNU_SOURCE
+      register const char *str = strerror_r (errno, buffer, sizeof(buffer));
+      ERROR ("Couldn't rotate %s to %s: %s", log->path, path, str);
+#else
+      if (strerror_r(errno, buffer, sizeof(buffer)) != 0)
+        strfcpy(buffer, "(failed to decode error)", sizeof(buffer));
       ERROR ("Couldn't rotate %s to %s: %s", log->path, path, buffer);
+#endif
       log->fd = open_log_file (log->path);
       return;				/* reopen log, don't update time */
     }

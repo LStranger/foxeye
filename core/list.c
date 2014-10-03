@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2014  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -2231,8 +2231,14 @@ static int _save_listfile (const char *filename, int quiet)
     snprintf (buff, sizeof(buff), "%s~", filename);
     unlink (buff);
     if (rename (filename, buff) && !quiet) {	/* creating backup */
-      strerror_r(errno, buff, sizeof(buff));
+#if _GNU_SOURCE
+      register const char *str = strerror_r(errno, buff, sizeof(buff));
+      ERROR("Cannot create backup of Listfile: %s", str);
+#else
+      if (strerror_r(errno, buff, sizeof(buff)) != 0)
+        strfcpy(buff, "(failed to decode error)", sizeof(buff));
       ERROR("Cannot create backup of Listfile: %s", buff);
+#endif
     }
   }
   fd = open(filename, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP);
@@ -2336,8 +2342,14 @@ static int _save_listfile (const char *filename, int quiet)
     unlink (filename);				/* error - file corrupted */
     snprintf (buff, sizeof(buff), "%s~", filename);
     if (rename (buff, filename) && !quiet) {	/* restoring from backup */
-      strerror_r(errno, buff, sizeof(buff));
+#if _GNU_SOURCE
+      register const char *str = strerror_r(errno, buff, sizeof(buff));
+      ERROR("Failed to restore Listfile from backup: %s", str);
+#else
+      if (strerror_r(errno, buff, sizeof(buff)) != 0)
+        strfcpy(buff, "(failed to decode error)", sizeof(buff));
       ERROR("Failed to restore Listfile from backup: %s", buff);
+#endif
     }
     return (-1);
   }

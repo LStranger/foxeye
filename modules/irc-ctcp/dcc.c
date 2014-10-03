@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2011  Andriy N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2006-2014  Andriy N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -465,8 +465,14 @@ static void isend_handler (char *lname, char *ident, const char *host, void *dat
   scd->f = f = fopen (dcc->filename, "rb"); /* try to open file */
   if (f == NULL)
   {
-    strerror_r (errno, buff, sizeof(buff));
+#if _GNU_SOURCE
+    register const char *str = strerror_r (errno, buff, sizeof(buff));
+    ERROR ("DCC SEND: cannot open file %s: %s.", dcc->filename, str);
+#else
+    if (strerror_r(errno, buff, sizeof(buff)) != 0)
+      strfcpy(buff, "(failed to decode error)", sizeof(buff));
     ERROR ("DCC SEND: cannot open file %s: %s.", dcc->filename, buff);
+#endif
     goto done;
   }
   bs = ircdcc_blocksize;

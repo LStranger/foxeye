@@ -9,6 +9,7 @@ TODO:
 	* core/socket.c: to make socket limit extendible.
 	* core/lib.c: to fail if unable to set desired locale.
 	* *Makefile: allow third-party modules builds.
+	* modules/ircd: to test if both locales are valid and fail.
 
 --- [0.10.0]
 Fri Oct  3 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
@@ -31,6 +32,8 @@ Fri Oct  3 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc-channel/irc-channel.c: fixed spelling error (splitted).
 	* modules/ircd/ircd.c: fixed spelling error (succesfully).
 	* configure.in: renamed into configure.ac (configure.in is deprecated).
+	* core/foxeye.h, core/list.c, core/wtmp.c, modules/autolog/autolog.c, modules/irc-ctcp/dcc.c, modules/logs/logs.c:
+	  fixed calls to strerror_r() - return code should be checked.
 
 Mon Sep 29 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/Makefile: replaced obsolete INCLUDES with AM_CPPFLAGS.

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2011  Andrej N. Gritsenko <andrej@@rep.kiev.ua>
+ * Copyright (C) 2006-2014  Andrej N. Gritsenko <andrej@@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -136,9 +136,16 @@ static int __flush_autolog (autolog_t *log, int quiet)
   {
     if (!quiet)
     {
-      strerror_r (x, log->d->buf, sizeof(log->d->buf));
+#if _GNU_SOURCE
+      register const char *str = strerror_r (x, log->d->buf, sizeof(log->d->buf));
+      ERROR ("Couldn't write to logfile %s (%s), abort logging to it.",
+             log->d->path, str);
+#else
+      if (strerror_r(x, log->d->buf, sizeof(log->d->buf)) != 0)
+        snprint(log->d->buf, sizeof(log->d->buf), "(failed to decode err=%d)", x);
       ERROR ("Couldn't write to logfile %s (%s), abort logging to it.",
 	     log->d->path, log->d->buf);
+#endif
     }
     return -1;
   }
