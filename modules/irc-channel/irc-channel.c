@@ -2808,7 +2808,7 @@ static int irc_rpl_links (INTERFACE *iface, char *svname, char *me,
     return -1;		/* impossible... */
   else if (!(split = _ircch_netsplit_find (net, parv[1])))
     return 0;		/* server isn't in split */
-  dprint (5, "ircch: got reply for splitted server %s", parv[1]);
+  dprint (5, "ircch: got reply for split server %s", parv[1]);
   (*split)->stage = 3;
   _ircch_net_got_activity (net, NULL);
   return 1;

@@ -28,6 +28,7 @@ Fri Oct  3 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/Makefile: fixed build shared lib when libtree.a not ready.
 	* core/Makefile, modules/Makefile.mods: moved library out of the way.
 	* foxeye.pc: added file for pkgconfig.
+	* modules/irc-channel/irc-channel.c: fixed spelling error (splitted).
 
 Mon Sep 29 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/Makefile: replaced obsolete INCLUDES with AM_CPPFLAGS.
