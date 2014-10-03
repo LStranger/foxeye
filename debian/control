@@ -5,7 +5,7 @@ Maintainer: Andriy Grytsenko <andrej@rep.kiev.ua>
 Build-Depends:
  debhelper (>= 8.9.0~), pkg-config, tcl-dev,
  liblua5.1-dev | liblua5.2-dev, gettext,
- libidn11-dev, zlib1g-dev
+ libidn11-dev, zlib1g-dev, locales-all
 Standards-Version: 3.9.6
 Homepage: http://foxeye.sf.net
 Vcs-Git: git://git.code.sf.net/p/foxeye/code
@@ -15,19 +15,29 @@ Package: foxeye
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Universal modular network agent - binary package
- FoxEye now is multipurpose modular client or service for client-server type
- networks: IRC, ICQ, etc.  All you need to make IRC bot or ICQ client is few
- modules that implement functionality you want.
+ FoxEye is a multipurpose generic modular base to create clients or servers
+ for client-server type networks such as IRC, ICQ, etc.  All what you need
+ to make an IRC bot or ICQ client is few modules that implement functionality
+ you require.  The FoxEye written in pure C with small resource requirements
+ in mind.
  .
- This package contains main daemon and few modules.
+ This package contains main daemon and few modules.  Available modules are:
+ autolog, irc, irc-channel, irc-ctcp, ircd, logs, lua, modes, tcl, ziplink.
+ With this set of modules FoxEye can serve two purposes:
+  - IRC bot (similar to Eggdrop);
+  - IRC server (ircd, RFC2810...2813 compliant).
+ More purposes are under development now and third-party modules are available
+ to create using foxeye-dev package.
 
 Package: foxeye-dev
 Architecture: any
 Depends: ${misc:Depends}, foxeye (= ${binary:Version})
 Description: Universal modular network agent - development package
- FoxEye now is multipurpose modular client or service for client-server type
- networks: IRC, ICQ, etc.  All you need to make IRC bot or ICQ client is few
- modules that implement functionality you want.
+ FoxEye is a multipurpose generic modular base to create clients or servers
+ for client-server type networks such as IRC, ICQ, etc.  All what you need
+ to make an IRC bot or ICQ client is few modules that implement functionality
+ you require.  The FoxEye written in pure C with small resource requirements
+ in mind.
  .
  This package contains development headers required to create modules.
 
@@ -37,8 +47,10 @@ Priority: extra
 Architecture: any
 Depends: ${misc:Depends}, foxeye (= ${binary:Version})
 Description: Universal modular network agent - debugging symbols
- FoxEye now is multipurpose modular client or service for client-server type
- networks: IRC, ICQ, etc.  All you need to make IRC bot or ICQ client is few
- modules that implement functionality you want.
+ FoxEye is a multipurpose generic modular base to create clients or servers
+ for client-server type networks such as IRC, ICQ, etc.  All what you need
+ to make an IRC bot or ICQ client is few modules that implement functionality
+ you require.  The FoxEye written in pure C with small resource requirements
+ in mind.
  .
  This package contains the debugging symbols.
