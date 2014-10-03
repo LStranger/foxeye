@@ -18,12 +18,15 @@ sublib_SOURCES = direct.c dispatcher.c help.c init.c lib.c modules.c \
 	sheduler.c socket.c list.c wtmp.c conversion.c connchain.c
 sublib_OBJS = $(sublib_SOURCES:.c=.o)
 sublib_LLIBS = $(ALL_LIBADD) $(LIBS) -Wl,-soname,$(SUBLIB_SONAME)
-$(SUBLIB_TARGET): $(sublib_OBJS)
+$(SUBLIB_TARGET): $(sublib_OBJS) $(top_builddir)/tree/libtree.a
 	@CCLIB@ $(AM_CFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $(sublib_OBJS) $(sublib_LLIBS)
 $(foxeye_SUBLIB): $(SUBLIB_TARGET)
 	@LN_S@ $< $@ 2>/dev/null || true
 
 foxeye_SOURCES = main.c
+
+$(top_builddir)/tree/libtree.a:
+	@cd $(top_builddir)/tree; $(MAKE) libtree.a
 
 ALL_LIBADD = $(LIBOBJS) $(INTLOBJS) $(LTLIBINTL) $(LIBICONV) \
 	-L$(top_builddir)/tree -ltree $(LIBIDN_LIBS)

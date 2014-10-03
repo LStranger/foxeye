@@ -25,6 +25,7 @@ Fri Oct  3 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* configure: moved flags not needed for linker from CFLAGS to CPPFLAGS.
 	* configure, modules/tcl/accvs.m4: fixed static compilation.
 	* modules/Makefile*: fixed make distcheck.
+	* core/Makefile: fixed build shared lib when libtree.a not ready.
 
 Mon Sep 29 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/Makefile: replaced obsolete INCLUDES with AM_CPPFLAGS.
