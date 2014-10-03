@@ -17,6 +17,7 @@ Fri Oct  3 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  moved core functions into libfoxeye.so.0.0.0, in case if confugured
 	  for non-static compilation.
 	* modules/ircd/ircd.c: fixed static compilation of module 'ircd'.
+	* Makefile: removed useless target 'kit'.
 
 Mon Sep 29 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/Makefile: replaced obsolete INCLUDES with AM_CPPFLAGS.
