@@ -146,6 +146,8 @@ if test "$have_tcl" != no; then
     fi
     dnl now i want check for tcl version
     fe_tcl_save_LIBS="${LIBS}"
+    fe_tcl_save_LDFLAGS="${LDFLAGS}"
+    LDFLAGS=
     LIBS="$fe_tcl_libs $LIBS"
     try_lib=`echo $fe_tcl_libs | sed -e 's/^.*-ltcl/tcl/' -e 's/ .*//'`
     AC_CHECK_LIB([$try_lib], Tcl_CreateObjCommand, [
@@ -159,5 +161,6 @@ if test "$have_tcl" != no; then
     AC_CHECK_FUNCS(Tcl_SetSystemEncoding)
     AC_CHECK_FUNCS(Tcl_EvalObjv)
     LIBS="${fe_tcl_save_LIBS}"
+    LDFLAGS="${fe_tcl_save_LDFLAGS}"
 fi
 

@@ -258,9 +258,9 @@ if test "$fe_cv_static" = yes; then
     CPPFLAGS="${CPPFLAGS} -DSTATIC"
     LD_MODS="../modules/*/*.o"
     dnl LD="${CC}"
-    AC_CHECK_LDFLAG(fe_cv_add_static, [-Wl,-static], LDFLAGS)
+    AC_CHECK_LDFLAG(fe_cv_add_static, [-static], LDFLAGS)
     if test $fe_cv_add_static = no; then
-	AC_CHECK_LDFLAG(fe_cv_add_Bstatic, [-Wl,-Bstatic], LDFLAGS)
+	AC_CHECK_LDFLAG(fe_cv_add_Bstatic, [-Bstatic], LDFLAGS)
     fi
 else
     dnl Check for -rdynamic option to LDFLAGS
