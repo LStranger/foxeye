@@ -17,19 +17,21 @@ DISTFILES = Makefile.in Makefile.mods.in
 
 AUTOMAKE = @AUTOMAKE@
 
-all: Makefile Makefile.mods static
+all check: Makefile Makefile.mods static
+
+dvi installcheck:
 
 clean:
 	@for x in *; do \
-	    test -d $$x && $(MAKE) -C $$x -f ../Makefile.mods clean; \
+	    test -d $$x && $(MAKE) -C $$x -f ../Makefile.mods clean || continue; \
 	done
-	rm -f *.o core *~ ${top_srcdir}/core/static.h install-sh
+	rm -f *.o core *~ $(top_builddir)/core/static.h install-sh
 
 distclean: clean
 	rm -f Makefile Makefile.mods
 
 modules install install-strip uninstall:
-	@test -f install-sh || @LN_S@ ../install-sh .
+	@test -L install-sh || @LN_S@ $(top_srcdir)/install-sh .
 	@if test "x$(LD_MODS)" = "x"; then \
 	set fnord $(MAKEFLAGS); amf=$$2; \
 	for subdir in *; do \
@@ -69,11 +71,12 @@ dist distdir: Makefile Makefile.mods
 	done
 	@dists="$(DISTFILES)"; \
 	for file in $$dists; do \
+	    test -f $(distdir)/$$file || \
 	    ln $(srcdir)/$$file $(distdir) 2> /dev/null \
 	    || cp -p $(srcdir)/$$file $(distdir); \
 	done
 
-${top_srcdir}/core/static.h:
+$(top_builddir)/core/static.h:
 	@(echo "/* Generated file. Do not edit! */"; \
 	    echo ""; \
 	    echo "#ifndef _MODULES_C"; \
@@ -98,4 +101,4 @@ ${top_srcdir}/core/static.h:
 	    echo "#endif") >>$@
 
 .PHONY: all static modules clean distclean install install-strip uninstall \
-	dist distdir
+	dist distdir check dvi installcheck
