@@ -19,6 +19,7 @@ Fri Oct  3 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed static compilation of module 'ircd'.
 	* Makefile: removed useless target 'kit'.
 	* modules/Makefile.mods: simplified form of OBJS a little.
+	* modules/Makefile: recreate Makefile when Makefile.in changed.
 
 Mon Sep 29 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/Makefile: replaced obsolete INCLUDES with AM_CPPFLAGS.

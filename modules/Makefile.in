@@ -2,7 +2,7 @@
 # Makefile for base modules directory for recursive compilation.
 #
 # This file is part of FoxEye distribution.
-# Copiright (C) 1999-2010 Andrej Gritsenko <andrej@rep.kiev.ua>
+# Copiright (C) 1999-2014 Andrej Gritsenko <andrej@rep.kiev.ua>
 
 SHELL = @SHELL@
 @FORCE_GMAKE@
@@ -17,7 +17,7 @@ DISTFILES = Makefile.in Makefile.mods.in
 
 AUTOMAKE = @AUTOMAKE@
 
-all: static
+all: Makefile Makefile.mods static
 
 clean:
 	@for x in *; do \
