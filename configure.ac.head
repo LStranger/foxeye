@@ -178,8 +178,8 @@ if test "$fe_cv_static" = no; then
 	    ;;
 	solaris*)
 #	    LD="ld -G -z text"
-	    CCLIB="${CCLIB} -Wl,-G"
-	    AC_CHECK_LDFLAG(fe_cv_add_wl_z_text, [-Wl,-z,text], LDFLAGS)
+	    dnl A hack is here - we block -Wl,-z,defs which wants main()
+	    CCLIB="${CCLIB} -Wl,-G -Wl,-z,nodefs"
 	    AC_CHECK_LDFLAG(fe_cv_add_wl_e, [-Wl,-E], LDFLAGS)
 	    ;;
 	sunos*)

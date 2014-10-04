@@ -11,6 +11,11 @@ TODO:
 	* *Makefile: allow third-party modules builds.
 	* modules/ircd: to test if both locales are valid and fail.
 
+--- [0.10.1]
+Sat Oct  4 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* configure, core/Makefile: fixed build on Solaris: its ld fails with
+	  -Wl,-z,defs on shared library, it requires main().
+
 --- [0.10.0] ok
 Fri Oct  3 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* configure, core/Makefile, core/main.c, core/foxeye.h, core/dispatcher.c:

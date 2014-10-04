@@ -21,7 +21,7 @@ sublib_LLIBS = $(ALL_LIBADD) $(LIBS) -Wl,-soname,$(SUBLIB_SONAME)
 $(SUBLIB_TARGET): $(sublib_OBJS) $(top_builddir)/tree/libtree.a
 	@CCLIB@ $(AM_CFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $(sublib_OBJS) $(sublib_LLIBS)
 $(foxeye_SUBLIB): $(SUBLIB_TARGET)
-	@LN_S@ $< $@ 2>/dev/null || true
+	@LN_S@ $(SUBLIB_TARGET) $@ 2>/dev/null || true
 
 foxeye_SOURCES = main.c
 
