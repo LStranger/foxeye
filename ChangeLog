@@ -15,6 +15,7 @@ TODO:
 Sat Oct  4 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* configure, core/Makefile: fixed build on Solaris: its ld fails with
 	  -Wl,-z,defs on shared library, it requires main().
+	* modules/ircd/ircd.c: added "+hub" dcc command for command line setup.
 
 --- [0.10.0] ok
 Fri Oct  3 2014 Andriy Gritsenko <andrej@rep.kiev.ua>

@@ -4638,6 +4638,39 @@ const char *ircd_mark_wallops(void)
   return (MY_NAME);
 }
 
+/* -- command line interface ---------------------------------------------- */
+                /* .+hub server mask */
+BINDING_TYPE_dcc (dc__phub);
+static int dc__phub (struct peer_t *dcc, char *args)
+{
+  char *c, *r;
+  struct clrec_t *u;
+  int ret;
+
+  if (!args)
+    return 0;				/* need exactly 2 args */
+  r = gettoken (args, &c);
+  if (!*r)
+    return 0;				/* need exactly 2 args */
+  u = Lock_Clientrecord (args);
+  if (!u)
+  {
+    New_Request (dcc->iface, 0, "Server %s not found", args);
+    if (*r)
+      *c = ' ';
+    return 0;
+  }
+  args = safe_strdup(Get_Field(u, NULL, NULL)); /* unalias the name */
+  ret = Grow_Field (u, "hub", r);
+  Unlock_Clientrecord (u);
+  if (ret)
+    New_Request (dcc->iface, 0, "Added hub mask \"%s\" for %s.", r, args);
+  else
+    New_Request (dcc->iface, 0, "Failed to add hub mask \"%s\" for %s.", r, args);
+  FREE(&args);
+  *c = ' ';
+  return 1;
+}
 
 /* -- common module interface --------------------------------------------- */
 static void _ircd_register_all (void)
@@ -4720,6 +4753,7 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
 #endif
       Delete_Binding ("ircd-stats-reply", (Function)&_istats_l, NULL);
       Delete_Binding ("ircd-stats-reply", (Function)&_istats_m, NULL);
+      Delete_Binding ("dcc", &dc__phub, NULL);
       _ircd_signal (Ircd->iface, S_TERMINATE);
       ircd_channel_proto_end(&Ircd->channels);
       ircd_client_proto_end();
@@ -4846,6 +4880,7 @@ SigFunction ModuleInit (char *args)
   Add_Binding ("ircd-stats-reply", "l", 0, 0, (Function)&_istats_l, NULL);
   Add_Binding ("ircd-stats-reply", "m", 0, 0, (Function)&_istats_m, NULL);
   Add_Help("ircd");
+  Add_Binding ("dcc", "+hub", U_MASTER, U_MASTER, &dc__phub, NULL);
   Ircd = safe_calloc (1, sizeof(IRCD));
   ircd_channel_proto_start (Ircd);
   ircd_client_proto_start();
