@@ -59,6 +59,7 @@ if ! STATICBUILD
 	@echo Installing the common library and symlinks.
 	@$(INSTALL) $(SUBLIB_TARGET) $(DESTDIR)$(pkglibdir)/$(SUBLIB_TARGET)
 	@for p in $(SUBLIB_SONAME) $(foxeye_SUBLIB); do \
+		test -L $(DESTDIR)$(pkglibdir)/$$p || \
 		@LN_S@ $(SUBLIB_TARGET) $(DESTDIR)$(pkglibdir)/$$p; \
 	done
 endif
