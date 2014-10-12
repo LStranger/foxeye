@@ -112,4 +112,4 @@
 #00112	11.06.2012		it's possible to get 2 FE running on bugged host
 #00113	----------		need optimization: time() eats CPU
 #00114	23.05.2013		after ConnResetByPeer on uplink _ircd_uplinks==3
-#00115	05.10.2014		old FSF address everywhere
+#00115	05.10.2014  12.10.2014	old FSF address everywhere
