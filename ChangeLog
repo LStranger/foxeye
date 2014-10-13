@@ -12,6 +12,9 @@ TODO:
 	* modules/ircd: to test if both locales are valid and fail.
 
 --- [0.10.1]
+Mon Oct 13 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/servers.c: fixed ircd_test_id() bits updating.
+
 Sun Oct 12 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* *: updated old FSF address in all files.
 

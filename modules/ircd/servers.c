@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2011-2014  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -181,21 +181,30 @@ int ircd_test_id(CLIENT *cl, int id)
     DBG("ircd:ircd_test_id: %d > %d", id, cl->last_id);
     if (cl->last_id == -1) ;	/* fresh start */
     else if (id > cl->last_id + ID_MAP_MASK) {
+      /* id either is in zone before wrap, or jumped ahead */
       if (cl->last_id >= ID_MAP_MASK) { /* seems overflowed */
 	ERROR("ircd: overflow in bit cache from %s, messages may be lost",
 	      cl->lcnick);
 	memset(cl->id_cache, 0, sizeof(cl->id_cache));
+      } else if (id <= (IRCD_ID_MAXVAL - ID_MAP_MASK + cl->last_id))
+	/* wrapped, but too old to be in range */
+	WARNING("ircd: probably lost ID %d from %s, skipping anyway", id,
+		cl->lcnick);
+	return (0);
       } else if (bit_test((bitstr_t *)cl->id_cache, (id & ID_MAP_MASK)) == 0) {
+	/* seems to be in upper (wrapped) part, mark it */
 	bit_set((bitstr_t *)cl->id_cache, (id & ID_MAP_MASK));
 	return (1);
       } else
-	return (0);		/* it seems restarted */
+	return (0);		/* it seems duplicated */
     } else if (id > cl->last_id + 2) { /* few messages skipped */
+      cl->last_id++;		/* don't clear last received one */
       lastid = (cl->last_id | ID_MAP_MASK);
-      if (id > lastid) {
+      if (id > lastid) {	/* id is in next block */
 	bit_nclear((bitstr_t *)cl->id_cache, (cl->last_id & ID_MAP_MASK),
-		   ID_MAP_MASK);
+		   ID_MAP_MASK); /* clear previous block bits */
 	lastid = (id & ID_MAP_MASK);
+	/* clear new block bits */
 	if (lastid == 1)
 	  bit_clear((bitstr_t *)cl->id_cache, 0);
 	else if (lastid > 1)
@@ -207,12 +216,14 @@ int ircd_test_id(CLIENT *cl, int id)
       bit_clear((bitstr_t *)cl->id_cache, (id - 1) & ID_MAP_MASK);
   } else if (id < cl->last_id - ID_MAP_MASK) { /* lost or restarted one */
     DBG("ircd:ircd_test_id: %d restarted(?) after %d", id, cl->last_id);
-    if (id <= ID_MAP_MASK) {	/* counter restarted */
+    if (id <= ID_MAP_MASK) {	/* counter seems wrapped */
       lastid = (cl->last_id & ID_MAP_MASK);
+      /* clear previous (wrapped) block bits */
       if (lastid == ID_MAP_MASK - 1)
 	bit_clear((bitstr_t *)cl->id_cache, ID_MAP_MASK);
       else if (lastid < ID_MAP_MASK)
-	bit_nclear((bitstr_t *)cl->id_cache, lastid, ID_MAP_MASK);
+	bit_nclear((bitstr_t *)cl->id_cache, lastid + 1, ID_MAP_MASK);
+      /* clear new (after wrap) block bits */
       if (id == 1)
 	bit_clear((bitstr_t *)cl->id_cache, 0);
       else if (id > 1)
