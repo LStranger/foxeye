@@ -12,6 +12,9 @@ TODO:
 	* modules/ircd: to test if both locales are valid and fail.
 
 --- [0.10.1]
+Sun Oct 19 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* Makefile: changed to use XZ compression for distro tarball.
+
 Mon Oct 13 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/servers.c: fixed ircd_test_id() bits updating.
 

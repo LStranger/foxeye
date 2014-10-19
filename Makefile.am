@@ -3,7 +3,7 @@
 
 LANG = C
 
-AUTOMAKE_OPTIONS = foreign 1.5
+AUTOMAKE_OPTIONS = foreign 1.5 no-dist-gzip dist-xz
 
 SUBDIRS = doc intl help po scripts tree modules core ui
 
