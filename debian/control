@@ -14,6 +14,7 @@ Vcs-Browser: http://sourceforge.net/p/foxeye/code/ci/master/tree/
 Package: foxeye
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
+Provides: ircd
 Description: Universal modular network agent - binary package
  FoxEye is a multipurpose generic modular base to create clients or servers
  for client-server type networks such as IRC, ICQ, etc.  All what you need

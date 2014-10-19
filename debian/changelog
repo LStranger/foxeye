@@ -1,5 +1,11 @@
-foxeye (0.10.0.29) unstable; urgency=low
+foxeye (0.10.1-2) UNRELEASED; urgency=low
 
-  * Initial release.
+  * debian/control: add Provides: ircd for main package.
 
- -- Andriy Grytsenko <andrej@rep.kiev.ua>  Sun, 14 Nov 2010 19:26:49 +0200
+ -- Andriy Grytsenko <andrej@rep.kiev.ua>  Sun, 19 Oct 2014 22:22:22 +0300
+
+foxeye (0.10.1-1) unstable; urgency=low
+
+  * Initial release into Debian (Closes: #763940).
+
+ -- Andriy Grytsenko <andrej@rep.kiev.ua>  Sat, 04 Oct 2014 03:00:00 +0300
