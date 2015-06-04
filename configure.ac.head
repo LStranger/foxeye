@@ -136,7 +136,7 @@ AC_CACHE_CHECK([whether you need static compiling], fe_cv_static,
 [  fe_cv_static="$fe_enable_static"
 if test "$fe_cv_static" = no; then
     case "$host_os" in
-	linux* | freebsd* | openbsd* | netbsd*)
+	linux* | kfreebsd | freebsd* | openbsd* | netbsd*)
 	    ;;
 	bsd*)
 	    AC_MSG_RESULT(BSD/OS, ok)
@@ -157,7 +157,7 @@ fi ])
 
 if test "$fe_cv_static" = no; then
     case "$host_os" in
-	linux*)
+	linux* | kfreebsd)
 	    CCLIB="${CCLIB} -shared -nostartfiles"
 	    AC_CHECK_LDFLAG(fe_cv_fpic, [-fpic], CPPFLAGS)
 	    ;;

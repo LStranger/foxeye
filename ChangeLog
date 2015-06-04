@@ -12,6 +12,9 @@ TODO:
 	* modules/ircd: to test if both locales are valid and fail.
 
 --- [0.10.1]
+Thu Jul  4 2015 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* configure: added support for GNU/kFreeBSD.
+
 Sun Oct 19 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* Makefile: changed to use XZ compression for distro tarball.
 
