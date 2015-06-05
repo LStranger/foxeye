@@ -935,7 +935,7 @@ static inline int _ircd_query_info (IRCD *ircd, CLIENT *cl, struct peer_priv *vi
 		    VERSION ".");
   ircd_do_unumeric (cl, RPL_INFO, cl, 0, "Birth date: " COMPILETIME ".");
   /* other info */
-  ircd_do_unumeric (cl, RPL_INFO, cl, 0, "Copyright 1999 - 2011 "
+  ircd_do_unumeric (cl, RPL_INFO, cl, 0, "Copyright 1999 - 2015 "
 		    "Andriy Grytsenko and others.");
   ircd_do_unumeric (cl, RPL_INFO, cl, 0, "This program is free software;"
 		    " you can redistribute it and/or modify it under the terms"

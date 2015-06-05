@@ -14,6 +14,8 @@ TODO:
 --- [0.10.1]
 Thu Jul  4 2015 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* configure: added support for GNU/kFreeBSD.
+	* core/main.c, modules/ircd/queries.c: updated year in copyright info
+	  messages.
 
 Sun Oct 19 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* Makefile: changed to use XZ compression for distro tarball.
@@ -35,7 +37,7 @@ Sat Oct  4 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  -Wl,-z,defs on shared library, it requires main().
 	* modules/ircd/ircd.c: added "+hub" dcc command for command line setup.
 
---- [0.10.0] ok
+--- [0.10.0] end
 Fri Oct  3 2014 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* configure, core/Makefile, core/main.c, core/foxeye.h, core/dispatcher.c:
 	  moved core functions into libfoxeye.so.0.0.0, in case if confugured
@@ -845,7 +847,7 @@ Sat Jun  4 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/foxeye.h, core/direct.*, core/conversion.c, core/init.c, core/list.c, modules/irc-channel/irc-channel.c:
 	  rearranged structures for alignment sake.
 
---- [0.9b] ok
+--- [0.9b] end
 Sun Apr 24 2011 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/socket.c: fixed detection when remote end closed connection.
 
@@ -1021,7 +1023,7 @@ Sun Nov 14 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* debian/*: debianized.
 	* config.guess: updated.
 
---- [0.9a] ok
+--- [0.9a] end
 Sat Nov 13 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/socket.c: replaced gethostbyname() and gethostbyaddr() with
 	  getaddrinfo() and getnameinfo() as first are not reentrant so we
@@ -1194,7 +1196,7 @@ Sat Aug 21 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  records on listfile loading.
 	* core/sheduler.c, core/wtmp.c: fixed attempt of Wtmp rotation.
 
---- [0.8a] ok
+--- [0.8a] end
 Fri Aug 20 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.c: fixed incorrect ident socket checking.
 	* modules/irc-channel/irc-channel.c: removed wrong topic reporting on
@@ -1296,7 +1298,7 @@ Wed Jul 28 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/init.c, doc/modules.api, modules/irc-ctcp/dcc.c: changed mode
 	  B_MATCHCASE to be case-sensitive first word to mask matching.
 
---- [0.7a] ok
+--- [0.7a] end
 Tue Jul 27 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/init.c: modified RunBinding(): last parameter can be empty
 	  string not NULL.
@@ -1358,7 +1360,7 @@ Tue Jul 20 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  asked for unknown topic in table.
 	* core/main.c, core/direct.c, core/foxeye.h: got rid of I_TELNET.
 
---- [0.6a] ok
+--- [0.6a] end
 Fri Jul 16 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc/irc.help, modules/irc-channel/irc-channel.help, modules/irc-ctcp/irc-ctcp.help:
 	  fixed wrong names of formats.
@@ -1438,7 +1440,7 @@ Sat Jul 10 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/list.*, doc/modules.api, modules/irc/irc.c: changed second
 	  argument of Get_Hostlist() to lid_t so we can find bans with it too.
 
---- [0.5a] ok
+--- [0.5a] end
 Fri Jul  9 2010 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/init.c: fixed difference between help and config maker (bug#34).
 	* modules/irc-channel/irc-channel.c: found crazy leftover in netsplit
@@ -1617,7 +1619,7 @@ Wed Oct  1 2008 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc-channel/irc-channel.c: fixed wrong behavior in case of
 	  duplicate split.
 
---- [0.4a] ok
+--- [0.4a] end
 Mon Sep 29 2008 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/init.c: changed dc_restart() to work via SIGINT.
 
@@ -1743,7 +1745,7 @@ Fri Oct 20 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.*, doc/modules.api: changed handler call of Listen_Port()
 	  to get a pointer to socket ID since it may lead to undefined state.
 
---- [0.3g] ok
+--- [0.3g] end
 Thu Oct 19 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.c: fixed unconst 4th parameters of Add_Request().
 	* core/list.c: fixed some LID's user_chr's allocations.
@@ -1984,7 +1986,7 @@ Sun Feb  5 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  few coredump fixes.
 	* modules/irc/*: added irc_lcs() helper to correct casemapping.
 
---- [0.2.1] ok
+--- [0.2.1] end
 Sat Feb  4 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/list.c, core/Makefile: done some cleanup.
 
@@ -1997,7 +1999,7 @@ Fri Feb  3 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  Inspect_Client() - they have to work with network type instead of
 	  network name.
 
---- [0.2.0] ok
+--- [0.2.0] end
 Sun Jan 29 2006 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/list.c: reverted to case-sensitive Find_Clientrecord().
 	* core/foxeye.h: fixed size of HOSTMASKLEN and minor constants.
@@ -2176,7 +2178,7 @@ Sat Jan 15 2005 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* configure.in: need autoconf >= 2.50.
 	* modules/irc: renamed from irc-common.
 
---- [0.1.2] ok
+--- [0.1.2] end
 Wed May 22 2004 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/lib.c, core/protos.h, modules/irc-common/irc.c: moved
 	  parce_ircparam() into module.
@@ -2187,7 +2189,7 @@ Mon Mar 22 2004 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.*, core/init.c, core/list.c, core/main.c: changed
 	  session_t to peer_t as more associative.
 
---- [0.1.1] ok
+--- [0.1.1] end
 Tue Nov 11 2003 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.c: we should not get default hostname for listen, fixed.
 	* core/dispatcher.c: fixed tree names error.
@@ -2291,7 +2293,7 @@ Fri Aug 16 2002 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* doc/help.format, core/dcc.c, core/init.h: removed "botnetnick"
 	  variable (for multiserver capability).
 
---- [0.1.0] ok
+--- [0.1.0] end
 Sat May 25 2002 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dcc.c, core/init.*, core/dispatcher.c, core/wtmp.c, core/lib.c:
 	  improved functionality and fixed some holes.

@@ -418,11 +418,11 @@ msgstr ""
 #: core/main.c:409
 #, c-format
 msgid ""
-"Copyright (C) 1999-2010 Andriy Gritsenko.\n"
+"Copyright (C) 1999-2015 Andriy Gritsenko.\n"
 "\n"
 "OS: %s %s on %s.\n"
 msgstr ""
-"Copyright (C) 1999-2010 Andriy Gritsenko.\n"
+"Copyright (C) 1999-2015 Andriy Gritsenko.\n"
 "\n"
 "S.O.: %s %s en %s.\n"
 
