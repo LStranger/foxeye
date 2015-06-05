@@ -9,6 +9,12 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
 override_dh_auto_configure:
 	dh_auto_configure -- --enable-debug=info
+	# make reproducible build: replace dates with ones from debian/changelog
+	CHANGELOG_DATE="`grep -m1 '^ --' debian/changelog|sed s/^.*\>\ \ //`"; \
+	COMPILETIME=`LANG=C date -d "$$CHANGELOG_DATE"`; \
+	GENDATE=`LC_TIME=C date +'%B %Y' -d "$$CHANGELOG_DATE"`; \
+	sed -i "s/#define COMPILETIME .*$$/#define COMPILETIME \"$$COMPILETIME\"/" config.h; \
+	sed -i "s/.TH \"FoxEye\" 1 \"[^\"]*\"/.TH \"FoxEye\" 1 \"$$GENDATE\"/" doc/foxeye.1
 
 override_dh_strip:
 	dh_strip --dbg-package=foxeye-dbg
