@@ -12,7 +12,10 @@ TODO:
 	* modules/ircd: to test if both locales are valid and fail.
 
 --- [0.10.1]
-Thu Jul  4 2015 Andriy Gritsenko <andrej@rep.kiev.ua>
+Tue Jun  9 2015 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* configure: added support for GNU/Hurd.
+
+Thu Jun  4 2015 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* configure: added support for GNU/kFreeBSD.
 	* core/main.c, modules/ircd/queries.c: updated year in copyright info
 	  messages.

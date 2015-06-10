@@ -136,7 +136,7 @@ AC_CACHE_CHECK([whether you need static compiling], fe_cv_static,
 [  fe_cv_static="$fe_enable_static"
 if test "$fe_cv_static" = no; then
     case "$host_os" in
-	linux* | kfreebsd | freebsd* | openbsd* | netbsd*)
+	linux* | kfreebsd* | gnu | freebsd* | openbsd* | netbsd*)
 	    ;;
 	bsd*)
 	    AC_MSG_RESULT(BSD/OS, ok)
@@ -157,7 +157,7 @@ fi ])
 
 if test "$fe_cv_static" = no; then
     case "$host_os" in
-	linux* | kfreebsd)
+	linux* | kfreebsd* | gnu)
 	    CCLIB="${CCLIB} -shared -nostartfiles"
 	    AC_CHECK_LDFLAG(fe_cv_fpic, [-fpic], CPPFLAGS)
 	    ;;
@@ -235,11 +235,11 @@ if test "$fe_cv_static" = no; then
 fi
 
 dnl Checks for threads.
-AC_CHECK_LDFLAG(fe_cv_add_pthread, -pthread, CFLAGS)
 AC_SEARCH_LIBS(pthread_cancel, [c_r pthread], [fe_cv_have_pthreads=yes],
     [AC_MSG_ERROR([you cannot compile without threads support.
       Install pthreads library and then run configure again.])
 ])
+AC_CHECK_LDFLAG(fe_cv_add_pthread, -pthread, CFLAGS)
 
 dnl Checks for header files.
 AC_HEADER_DIRENT

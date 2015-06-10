@@ -1,6 +1,7 @@
 foxeye (0.10.1-2) UNRELEASED; urgency=low
 
-  * debian/control: add Provides: ircd for main package.
+  * debian/control: added Provides: ircd for main package.
+  * debian/rules: adjusted dates in build to make build reproducible.
 
  -- Andriy Grytsenko <andrej@rep.kiev.ua>  Sun, 19 Oct 2014 22:22:22 +0300
 
