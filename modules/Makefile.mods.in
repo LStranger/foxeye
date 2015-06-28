@@ -21,7 +21,7 @@ mkinstalldirs = $(SHELL) ${top_srcdir}/mkinstalldirs
 DEFS = @DEFS@ -DSCRIPTSDIR=\"$(pkgdatadir)\" -D_STATIC_INIT=modinit_$(FILENAMESUB)
 CC = @CC@
 COMPILE = $(CC) -c @CFLAGS@ $(DEFS) $(INCLUDES) @CPPFLAGS@
-LINK = @CCLIB@ @CFLAGS@ @LDFLAGS@
+LINK = @CCLIB@ @CFLAGS@ @LIB_LDFLAGS@
 MODLIBS = @MODLIBS@
 
 # GNU make

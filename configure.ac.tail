@@ -2,4 +2,9 @@ if test x"$MODLIBS" = x; then
     MODLIBS=true
 fi
 
+dnl strip -fPIE from LDFLAGS and CFLAGS, Linux hardening pushes it everywhere
+LIB_LDFLAGS=`echo "$LDFLAGS" | sed s/-fPIE//g | sed s/-pie//g`
+CFLAGS=`echo "$CFLAGS" | sed s/-fPIE/-fPIC/g`
+AC_SUBST(LIB_LDFLAGS)
+
 AC_OUTPUT

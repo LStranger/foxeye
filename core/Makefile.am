@@ -19,7 +19,7 @@ sublib_SOURCES = direct.c dispatcher.c help.c init.c lib.c modules.c \
 sublib_OBJS = $(sublib_SOURCES:.c=.o)
 sublib_LLIBS = $(ALL_LIBADD) $(LIBS) -Wl,-soname,$(SUBLIB_SONAME)
 $(SUBLIB_TARGET): $(sublib_OBJS) $(top_builddir)/tree/libtree.a
-	@CCLIB@ $(AM_CFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $(sublib_OBJS) $(sublib_LLIBS)
+	@CCLIB@ $(AM_CFLAGS) $(CFLAGS) @LIB_LDFLAGS@ -o $@ $(sublib_OBJS) $(sublib_LLIBS)
 $(foxeye_SUBLIB): $(SUBLIB_TARGET)
 	@LN_S@ $(SUBLIB_TARGET) $@ 2>/dev/null || true
 
