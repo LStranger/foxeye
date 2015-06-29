@@ -12,8 +12,15 @@ TODO:
 	* modules/ircd: to test if both locales are valid and fail.
 
 --- [0.10.1]
+Mon Jun 29 2015 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/Makefile, modules/Makefile.mods: added explisit '-lc' for shared
+	  objects linking.
+
 Sun Jun 28 2015 Andriy Gritsenko <andrej@rep.kiev.ua>
-	* configure: removed -nostartfiles from linker call, it was wrong.
+	* configure, core/Makefile, modules/Makefile.mods: removed the option
+	  -nostartfiles from linker call on Linux, it was wrong one.
+	* configure, modules/Makefile.mods: added compatibility with automake
+	  that is newer than 1.13.
 
 Tue Jun  9 2015 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* configure: added support for GNU/Hurd.

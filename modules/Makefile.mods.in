@@ -59,7 +59,7 @@ clean:
 	rm -f *.o *.so core *~
 
 $(FILENAME).so: $(top_builddir)/core/libfoxeye.so $(OBJS)
-	$(LINK) -o $@ $(OBJS) $(EXTRAMODLIBS) -L$(top_builddir)/core -lfoxeye
+	$(LINK) -o $@ $(OBJS) $(EXTRAMODLIBS) -L$(top_builddir)/core -lfoxeye -lc
 
 .c.o: $(HFILES) ${top_srcdir}/core/modules.h ${top_srcdir}/core/foxeye.h ${top_srcdir}/core/protos.h
 	$(COMPILE) -o $@ $<
