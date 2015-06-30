@@ -22,6 +22,7 @@ DEFS = @DEFS@ -DSCRIPTSDIR=\"$(pkgdatadir)\" -D_STATIC_INIT=modinit_$(FILENAMESU
 CC = @CC@
 COMPILE = $(CC) -c @CFLAGS@ $(DEFS) $(INCLUDES) @CPPFLAGS@
 LINK = @CCLIB@ @CFLAGS@ @LIB_LDFLAGS@
+LIBS = @ADD_LC@ @MOD_LIBS@ @LTLIBINTL@
 MODLIBS = @MODLIBS@
 
 # GNU make
@@ -42,8 +43,6 @@ MODLIBS = @MODLIBS@
 @MAKE_IS_GNU_FALSE@FILENAMESUB = ${FILENAME:S/-/_/g}
 @MAKE_IS_GNU_FALSE@EXTRAMODLIBS != $(MODLIBS); echo $$MODLIBS_$(FILENAMESUB)
 
-EXTRAMODLIBS += @ADD_LC@
-
 srcdir = @srcdir@
 top_srcdir = ../..
 top_builddir = ../..
@@ -61,7 +60,7 @@ clean:
 	rm -f *.o *.so core *~
 
 $(FILENAME).so: $(top_builddir)/core/libfoxeye.so $(OBJS)
-	$(LINK) -o $@ $(OBJS) $(EXTRAMODLIBS) -L$(top_builddir)/core -lfoxeye
+	$(LINK) -o $@ $(OBJS) $(LIBS) $(EXTRAMODLIBS) -L$(top_builddir)/core -lfoxeye
 
 .c.o: $(HFILES) ${top_srcdir}/core/modules.h ${top_srcdir}/core/foxeye.h ${top_srcdir}/core/protos.h
 	$(COMPILE) -o $@ $<

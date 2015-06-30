@@ -47,6 +47,10 @@
 # include <idna.h>
 #endif
 
+#ifndef HAVE_SYS_IOCTL
+# include <sys/ioctl.h>
+#endif
+
 #ifndef SIGPOLL
 # define SIGPOLL SIGURG
 #endif
@@ -59,6 +63,11 @@
 
 /* solaris have this name as macro so drop it now */
 #undef sun
+
+/* OS X treats NI_MAXHOST as optional */
+#ifndef NI_MAXHOST
+# define NI_MAXHOST 1025
+#endif
 
 /*
  * Sequence:		socket.domain:	pollfd.fd:

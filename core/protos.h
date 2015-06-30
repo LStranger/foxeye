@@ -108,6 +108,7 @@ void safe_realloc (void **, size_t);
 void safe_free (void **);
 #ifdef HAVE_INLINE
 #if __GNUC__ >= 4
+#pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat-security" /* for F_SIGNAL "string" */
 #endif
 	__attribute__((nonnull(2)))
@@ -116,7 +117,7 @@ static inline void Send_Signal (iftype_t i, const char *m, ifsig_t s)
   Add_Request (i, m, F_SIGNAL, (char *)s);
 }
 #if __GNUC__ >= 4
-#pragma GCC diagnostic error "-Wformat-nonliteral"
+#pragma GCC diagnostic pop
 #endif
 #else
 char *safe_strdup (const char *) __attribute__((warn_unused_result));
@@ -278,4 +279,18 @@ int rw_trywrlock (rwlock_t *);
 int rw_unlock (rwlock_t *);
 int rwlock_destroy (rwlock_t *);
 # endif
+#endif
+
+#ifndef CLOCK_REALTIME
+/* clock_gettime is not implemented on OS X */
+#define CLOCK_REALTIME 0
+static inline int clock_gettime(int clk_id, struct timespec* t)
+{
+    struct timeval now;
+    int rv = gettimeofday(&now, NULL);
+    if (rv) return rv;
+    t->tv_sec  = now.tv_sec;
+    t->tv_nsec = now.tv_usec * 1000;
+    return 0;
+}
 #endif

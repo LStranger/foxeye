@@ -137,7 +137,7 @@ AC_CACHE_CHECK([whether you need static compiling], fe_cv_static,
 [  fe_cv_static="$fe_enable_static"
 if test "$fe_cv_static" = no; then
     case "$host_os" in
-	linux* | kfreebsd* | gnu | freebsd* | openbsd* | netbsd*)
+	linux* | kfreebsd* | gnu | freebsd* | openbsd* | netbsd* | darwin*)
 	    ;;
 	bsd*)
 	    AC_MSG_RESULT(BSD/OS, ok)
@@ -157,11 +157,24 @@ if test "$fe_cv_static" = no; then
 fi ])
 
 ADD_LC=
+MOD_LIBS=
+SONAME_KEY=soname
+SONAME_PREFIX=
 if test "$fe_cv_static" = no; then
     case "$host_os" in
 	linux* | kfreebsd* | gnu)
 	    CCLIB="${CCLIB} -shared"
 	    AC_CHECK_LDFLAG(fe_cv_fpic, [-fpic], CPPFLAGS)
+	    ;;
+	darwin*)
+	    CCLIB="${CCLIB} -shared"
+	    AC_CHECK_LDFLAG(fe_cv_fpic, [-fPIC], CPPFLAGS)
+	    dnl Homebrew installs headers and libs under /usr/local in OS X
+	    CPPFLAGS="-I/usr/local/bin ${CPPFLAGS}"
+	    MOD_LIBS=-L/usr/local/lib
+	    LIBS="${MOD_LIBS} ${LIBS}"
+	    SONAME_KEY=install_name
+	    SONAME_PREFIX="@rpath/"
 	    ;;
 	freebsd*)
 	    CCLIB="${CCLIB} -shared"
@@ -207,6 +220,9 @@ if test "$fe_cv_static" = no; then
     esac
 fi
 AC_SUBST(ADD_LC)
+AC_SUBST(SONAME_KEY)
+AC_SUBST(SONAME_PREFIX)
+AC_SUBST(MOD_LIBS)
 
 dnl Some substitutions for modules/Makefile.mods
 case `eval "${MAKE-make} -v -f NoFile 2>/dev/null"` in
@@ -258,6 +274,7 @@ AC_HEADER_SYS_WAIT
 AC_HEADER_TIME
 AC_CHECK_HEADERS(unistd.h dlfcn.h crypt.h getopt.h limits.h posix1_lim.h)
 AC_CHECK_HEADERS(fcntl.h strings.h stdint.h sys/filio.h thread.h wctype.h)
+AC_CHECK_HEADERS(sys/ioctl.h)
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_PID_T

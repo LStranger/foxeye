@@ -17,7 +17,8 @@ SUBLIB_TARGET = $(SUBLIB_SONAME).$(AGEVER)
 sublib_SOURCES = direct.c dispatcher.c help.c init.c lib.c modules.c \
 	sheduler.c socket.c list.c wtmp.c conversion.c connchain.c
 sublib_OBJS = $(sublib_SOURCES:.c=.o)
-sublib_LLIBS = $(ALL_LIBADD) $(LIBS) @ADD_LC@ -Wl,-soname,$(SUBLIB_SONAME)
+sublib_LLIBS = $(ALL_LIBADD) $(LIBS) @ADD_LC@ \
+	-Wl,-@SONAME_KEY@,@SONAME_PREFIX@$(SUBLIB_SONAME)
 $(SUBLIB_TARGET): $(sublib_OBJS) $(top_builddir)/tree/libtree.a
 	@CCLIB@ $(AM_CFLAGS) $(CFLAGS) @LIB_LDFLAGS@ -o $@ $(sublib_OBJS) $(sublib_LLIBS)
 $(foxeye_SUBLIB): $(SUBLIB_TARGET)
@@ -38,7 +39,7 @@ foxeye_SOURCES += $(sublib_SOURCES)
 foxeye_LDADD += $(ALL_LIBADD)
 else
 foxeye_DEPENDENCIES += $(foxeye_SUBLIB)
-foxeye_LDADD += -L$(top_builddir)/core -lfoxeye
+foxeye_LDADD += $(LTLIBINTL) -L$(top_builddir)/core -lfoxeye
 foxeye_LDFLAGS = -Wl,-rpath,$(pkglibdir)
 endif
 

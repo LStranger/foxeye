@@ -12,6 +12,10 @@ TODO:
 	* modules/ircd: to test if both locales are valid and fail.
 
 --- [0.10.1]
+Tue Jun 30 2015 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* configure, core/Makefile, modules/Makefile.mods, core/protos.h, core/socket.c:
+	  make it buildable on Mac OS X.
+
 Mon Jun 29 2015 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/Makefile, modules/Makefile.mods: added explisit '-lc' for shared
 	  objects linking when needed.
