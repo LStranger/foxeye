@@ -14,7 +14,7 @@ TODO:
 --- [0.10.1]
 Mon Jun 29 2015 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/Makefile, modules/Makefile.mods: added explisit '-lc' for shared
-	  objects linking.
+	  objects linking when needed.
 	* configure: fixed build using '-Wl,-z,defs' on Solaris.
 
 Sun Jun 28 2015 Andriy Gritsenko <andrej@rep.kiev.ua>

@@ -2,7 +2,7 @@
 # Makefile for module compilation.
 #
 # This file is part of FoxEye distribution.
-# Copiright (C) 1999-2014 Andrej Gritsenko <andrej@rep.kiev.ua>
+# Copiright (C) 1999-2015 Andrej Gritsenko <andrej@rep.kiev.ua>
 
 SHELL = /bin/sh
 
@@ -17,7 +17,7 @@ docdir = $(datadir)/doc/@PACKAGE@-@VERSION@
 
 INCLUDES = -I${top_srcdir}/tree -I${top_srcdir}/core -I${top_srcdir}/ui
 INSTALL = @INSTALL@ -m 644
-mkinstalldirs = $(SHELL) ${top_srcdir}/@MKINSTALLDIRS@
+MKDIR_P = @MKDIR_P@
 DEFS = @DEFS@ -DSCRIPTSDIR=\"$(pkgdatadir)\" -D_STATIC_INIT=modinit_$(FILENAMESUB)
 CC = @CC@
 COMPILE = $(CC) -c @CFLAGS@ $(DEFS) $(INCLUDES) @CPPFLAGS@
@@ -61,7 +61,7 @@ clean:
 	rm -f *.o *.so core *~
 
 $(FILENAME).so: $(top_builddir)/core/libfoxeye.so $(OBJS)
-	$(LINK) -o $@ $(OBJS) $(EXTRAMODLIBS) -L$(top_builddir)/core -lfoxeye -lc
+	$(LINK) -o $@ $(OBJS) $(EXTRAMODLIBS) -L$(top_builddir)/core -lfoxeye
 
 .c.o: $(HFILES) ${top_srcdir}/core/modules.h ${top_srcdir}/core/foxeye.h ${top_srcdir}/core/protos.h
 	$(COMPILE) -o $@ $<
@@ -70,7 +70,7 @@ $(top_builddir)/core/libfoxeye.so:
 	@cd $(top_builddir)/core; $(MAKE) libfoxeye.so
 
 install-help:
-	$(mkinstalldirs) $(DESTDIR)$(helpdir)
+	$(MKDIR_P) $(DESTDIR)$(helpdir)
 	@list='$(HELPFILES)'; for p in $$list; do \
 	    if test -f $$p; then \
 		hp=`echo $$p|sed s/.help$$//`; \
@@ -80,7 +80,7 @@ install-help:
 	done
 
 install-docs:
-	$(mkinstalldirs) $(DESTDIR)$(docdir)
+	$(MKDIR_P) $(DESTDIR)$(docdir)
 	@list='$(DOCFILES)'; for p in $$list; do \
 	    if test -f $$p; then \
 		echo "   $(DESTDIR)$(docdir)/$$p"; \
@@ -89,7 +89,7 @@ install-docs:
 	done
 
 install install-strip: modules install-help install-docs
-	$(mkinstalldirs) $(DESTDIR)$(modulesdir)
+	$(MKDIR_P) $(DESTDIR)$(modulesdir)
 	@if test -f $(FILENAME).so; then \
 	    echo "   $(DESTDIR)$(modulesdir)/$(FILENAME).so"; \
 	    $(INSTALL) $(FILENAME).so $(DESTDIR)$(modulesdir)/$(FILENAME).so; \
@@ -115,7 +115,7 @@ uninstall: uninstall-help uninstall-docs
 	else :; fi
 
 dist distdir:
-	@$(mkinstalldirs) $(mdistdir)
+	@$(MKDIR_P) $(mdistdir)
 	@dists="$(DISTFILES)"; \
 	for file in $$dists; do \
 	    ln $(srcdir)/$$file $(mdistdir) 2> /dev/null \

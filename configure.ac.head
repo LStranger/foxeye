@@ -9,6 +9,7 @@ AC_CANONICAL_HOST
 dnl Checks for programs.
 AC_PROG_MAKE_SET
 AC_PROG_INSTALL
+AC_PROG_MKDIR_P
 AC_PROG_RANLIB
 AC_PROG_LN_S
 AC_PATH_PROG(BASENAME, basename)
@@ -330,14 +331,6 @@ AM_GNU_GETTEXT
 AC_SYS_LONG_FILE_NAMES
 
 AC_CHECK_LIBIDN
-
-dnl Automake 1.14 and above has no mkinstalldirs supplied
-if test -x mkinstalldirs; then
-    MKINSTALLDIRS=mkinstalldirs
-else
-    MKINSTALLDIRS="install-sh -d"
-fi
-AC_SUBST(MKINSTALLDIRS)
 
 AC_CONFIG_FILES(Makefile \
         doc/Makefile \

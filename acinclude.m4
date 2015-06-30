@@ -261,3 +261,42 @@ AC_DEFUN([AC_CHECK_LIBIDN],
     AC_MSG_CHECKING([if Libidn should be used])
     AC_MSG_RESULT($libidn)
 ])
+
+dnl autoconf prior to 2.60 doesn't have this macro
+m4_ifndef([AC_PROG_MKDIR_P], [
+    AC_DEFUN([AC_PROG_MKDIR_P], [
+AC_MSG_CHECKING([for a thread-safe mkdir -p])
+if test -z "$MKDIR_P"; then
+  AC_CACHE_VAL([ac_cv_path_mkdir], [
+      for ac_prog in mkdir gmkdir; do
+         for ac_exec_ext in '' $ac_executable_extensions; do
+           case `"$as_dir/$ac_prog$ac_exec_ext" --version 2>&1` in #(
+             'mkdir (GNU coreutils) '* | \
+             'mkdir (coreutils) '* | \
+             'mkdir (fileutils) '4.1*)
+               ac_cv_path_mkdir=$as_dir/$ac_prog$ac_exec_ext
+               break 3;;
+           esac
+         done
+       done])
+  if test "${ac_cv_path_mkdir+set}" = set; then
+    MKDIR_P="$ac_cv_path_mkdir -p"
+  else
+    # As a last resort, use the slow shell script.  Don't cache a
+    # value for MKDIR_P within a source directory, because that will
+    # break other packages using the cache if that directory is
+    # removed, or if the value is a relative name.
+    test -d ./--version && rmdir ./--version
+    dnl automake prior to 1.13 use mkinstalldirs instead of install_sh -d
+    if test -n "$ac_aux_dir" && test -x "$ac_aux_dir/mkinstalldirs"; then
+      MKDIR_P="$ac_aux_dir/mkinstalldirs"
+    elif test -x ./mkinstalldirs; then
+      MKDIR_P="\$(top_srcdir)/mkinstalldirs"
+    else
+      MKDIR_P="$ac_install_sh -d"
+    fi
+  fi
+fi
+AC_SUBST([MKDIR_P])
+AC_MSG_RESULT([$MKDIR_P])
+])])
