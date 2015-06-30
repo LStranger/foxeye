@@ -186,7 +186,7 @@ int ircd_test_id(CLIENT *cl, int id)
 	ERROR("ircd: overflow in bit cache from %s, messages may be lost",
 	      cl->lcnick);
 	memset(cl->id_cache, 0, sizeof(cl->id_cache));
-      } else if (id <= (IRCD_ID_MAXVAL - ID_MAP_MASK + cl->last_id))
+      } else if (id <= (IRCD_ID_MAXVAL - ID_MAP_MASK + cl->last_id)) {
 	/* wrapped, but too old to be in range */
 	WARNING("ircd: probably lost ID %d from %s, skipping anyway", id,
 		cl->lcnick);
