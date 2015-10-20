@@ -47,7 +47,7 @@
 # include <idna.h>
 #endif
 
-#ifndef HAVE_SYS_IOCTL
+#ifdef HAVE_SYS_IOCTL_H
 # include <sys/ioctl.h>
 #endif
 
