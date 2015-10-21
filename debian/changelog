@@ -1,9 +1,15 @@
-foxeye (0.10.1-2) UNRELEASED; urgency=low
+foxeye (0.10.2-1) unstable; urgency=low
 
   * debian/control: added Provides: ircd for main package.
+  * debian/copyright: updated licenses - intl/* is LGPL-2+.
   * debian/rules: adjusted dates in build to make build reproducible.
+  * Added supplied docs into foxeye-dev package.
+  * Updated to upstream version 0.10.2:
+    - added support for GNU/kFreeBSD and GNU/Hurd OS;
+    - removed -nostartfiles from Linux linker flags (Closes: #790298);
+    - fixed build with Automake 1.14 and newer.
 
- -- Andriy Grytsenko <andrej@rep.kiev.ua>  Sun, 19 Oct 2014 22:22:22 +0300
+ -- Andriy Grytsenko <andrej@rep.kiev.ua>  Wed, 21 Oct 2015 22:22:22 +0300
 
 foxeye (0.10.1-1) unstable; urgency=low
 

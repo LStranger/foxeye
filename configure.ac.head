@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 AC_PREREQ(2.51)
-AC_INIT([FoxEye], 0.10.1,, foxeye, [http://foxeye.sf.net])
+AC_INIT([FoxEye], 0.10.2,, foxeye, [http://foxeye.sf.net])
 AM_CONFIG_HEADER(config.h)
 AM_INIT_AUTOMAKE
 
