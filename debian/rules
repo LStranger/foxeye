@@ -11,8 +11,8 @@ override_dh_auto_configure:
 	dh_auto_configure -- --enable-debug=info
 	# make reproducible build: replace dates with ones from debian/changelog
 	CHANGELOG_DATE="`grep -m1 '^ --' debian/changelog|sed s/^.*\>\ \ //`"; \
-	COMPILETIME=`LANG=C date -d "$$CHANGELOG_DATE"`; \
-	GENDATE=`LC_TIME=C date +'%B %Y' -d "$$CHANGELOG_DATE"`; \
+	COMPILETIME=`LANG=C LC_TIME=C LC_ALL=C date -u -d "$$CHANGELOG_DATE"`; \
+	GENDATE=`LANG=C LC_TIME=C LC_ALL=C date +'%B %Y' -u -d "$$CHANGELOG_DATE"`; \
 	sed -i "s/#define COMPILETIME .*$$/#define COMPILETIME \"$$COMPILETIME\"/" config.h; \
 	sed -i "s/.TH \"FoxEye\" 1 \"[^\"]*\"/.TH \"FoxEye\" 1 \"$$GENDATE\"/" doc/foxeye.1
 
