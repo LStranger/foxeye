@@ -11,6 +11,11 @@ TODO:
 	* *Makefile: allow third-party modules builds.
 	* modules/ircd: to test if both locales are valid and fail.
 
+--- [0.10.2]
+Thu Mar  3 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* configure: use -fPIC instead of -fpic on 64 bit Linux systems,
+	  otherwise it fails on some archs.
+
 --- [0.10.1] end
 Tue Jun 30 2015 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* configure, core/Makefile, modules/Makefile.mods, core/protos.h, core/socket.c:

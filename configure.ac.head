@@ -164,7 +164,15 @@ if test "$fe_cv_static" = no; then
     case "$host_os" in
 	linux* | kfreebsd* | gnu)
 	    CCLIB="${CCLIB} -shared"
-	    AC_CHECK_LDFLAG(fe_cv_fpic, [-fpic], CPPFLAGS)
+	    dnl use -fpic on 32 bit systems and -fPIC on 64 bit systems
+	    case "$ac_cv_build" in
+		*64*)
+		    AC_CHECK_LDFLAG(fe_cv_fpic, [-fPIC], CPPFLAGS)
+		    ;;
+		*)
+		    AC_CHECK_LDFLAG(fe_cv_fpic, [-fpic], CPPFLAGS)
+		    ;;
+	    esac
 	    ;;
 	darwin*)
 	    CCLIB="${CCLIB} -shared"
