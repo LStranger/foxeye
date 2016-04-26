@@ -105,6 +105,7 @@ Which modules are available?
    tcl		- support for scripts in Tcl language
    ircd		- standard (RFC2813) IRC server
    ziplink	- support for compressed connections
+   openssl	- support of SSL for every connection
     Were planned to implement some other modules but they are either pending
     or unrequested. Feel free to write them or ask someone to implement:
    botnet	- implementation of network of bots
@@ -128,7 +129,6 @@ Which modules are available?
    perl		- support for scripting in Perl language
    python	- support for scrypting in Python language
    seen		- implementation of commands whois, find, and seen
-   ssl		- support of SSL for every connection
    su		- enables change of user on chat subsystem
    syslog	- support for logging some messages to syslog
    ui		- support for generic user interface (text or GUI)

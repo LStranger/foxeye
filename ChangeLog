@@ -12,6 +12,9 @@ TODO:
 	* modules/ircd: to test if both locales are valid and fail.
 
 --- [0.10.2]
+Tue Apr 26 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/openssl: new module to handle connects using OpenSSL.
+
 Thu Mar  3 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* configure: use -fPIC instead of -fpic on 64 bit Linux systems,
 	  otherwise it fails on some archs.
