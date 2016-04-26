@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2005-2016  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -1403,7 +1403,7 @@ static void _ircch_join_channel(IRC *net, char *chname)
     if (oldkey) {
       New_Request (net->neti, 0, "JOIN %.*s %s", inb, buf, oldkey);
       FREE(&oldkey);
-    } else
+    } else if (inb)
       New_Request (net->neti, 0, "JOIN %.*s", inb, buf);
     inb = 0;
     if (ns == 0) {
