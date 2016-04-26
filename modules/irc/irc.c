@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2004-2016  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -824,7 +824,9 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
 		return _irc_try_server (serv, NULL, 0, NULL); /* abort it */
 	      }
 	Connchain_Grow ((&serv->p), 'x');	/* RAW -> TXT filter */
-	_irc_send (serv, thebuf); /* no errors should be here yet */
+	if (_irc_send (serv, thebuf) == 0)
+	  /* some filters may need handshake so queue a request for later */
+	  New_Request (iface, F_QUICK, "%s", thebuf);
       }
       else if (serv->p.socket < 0 || sw != E_AGAIN)
       {
