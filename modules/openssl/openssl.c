@@ -54,8 +54,8 @@ static struct connchain_buffer *sslbuflist = NULL;
 static SSL_CTX *ctx = NULL;
 static bool _initialized = FALSE;
 
-static char ssl_certificate_file[PATH_MAX+1];
-static char ssl_key_file[PATH_MAX+1];
+static char ssl_certificate_file[PATH_MAX+1] = "";
+static char ssl_key_file[PATH_MAX+1] = "";
 
 static void _freesslbuff(struct connchain_buffer **buf)
 {
@@ -205,9 +205,10 @@ static ssize_t _ccfilter_S_send(struct connchain_i **ch, idx_t id, const char *s
   }
   /* ready to process input data */
   i = SSL_write(buf->ssl, str, *sz);
-  if (i > 0)			/* some data were processed */
+  if (i > 0) {			/* some data were processed */
     *sz -= i;
-  else if (i < 0) {		/* processing not available now */
+    dprint(6, "openssl: pushed data: [%-*.*s]", (int)i, (int)i, str);
+  } else if (i < 0) {		/* processing not available now */
     DBG("openssl: SSL_write error code %d", SSL_get_error(buf->ssl, (int)i));
     i = 0;
   }
@@ -404,6 +405,9 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
     break;
   case S_REG:
     Add_Request (I_INIT, "*", F_REPORT, "module openssl");
+    RegisterString("openssl-certificate-file", ssl_certificate_file,
+		   sizeof(ssl_certificate_file), 0);
+    RegisterString("openssl-key-file", ssl_key_file, sizeof(ssl_key_file), 0);
     break;
   case S_TIMEOUT:
     /* delayed init */
@@ -461,10 +465,10 @@ SigFunction ModuleInit (char *args)
     return (NULL);
   }
   _initialized = FALSE;
+  Add_Help("openssl");
   RegisterString("openssl-certificate-file", ssl_certificate_file,
 		 sizeof(ssl_certificate_file), 0);
   RegisterString("openssl-key-file", ssl_key_file, sizeof(ssl_key_file), 0);
-  Add_Help("openssl");
   Add_Binding("connchain-grow", "S", 0, 0, &_ccfilter_S_init, NULL);
   Add_Binding("connchain-grow", "s", 0, 0, &_ccfilter_s_init, NULL);
   /* schedule init */
