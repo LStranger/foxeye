@@ -250,6 +250,8 @@ function module
    modes        - implementation of commands +ban, -ban, and few more.
    tcl          - support for scripts in Tcl language.
    ziplink      - support for compressed (Zlib) connections.
+   openssl      - support for encrypted (OpenSSL) connections.
+   syslog       - logging messages using syslog.
  See also %yhelp module%n.
 
 # -----------------------

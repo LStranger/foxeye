@@ -1,0 +1,15 @@
+# first section is usage
+# second section is that config maker will put into config
+# third section is full help
+
+module syslog
+:%*
+:
+:This module provides logging messages using syslog interface.
+
+set syslog-facility
+:%* <string>
+:Syslog messages facility name.
+:Defines which facility will be used for logging messages, see %^syslog%^(3)
+ for details.
+ Default: "local0".

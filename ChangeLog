@@ -20,6 +20,7 @@ Tue Apr 26 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  in case if connection chain contains some filters.
 	* modules/irc-channel/irc-channel.c: fixed empty "JOIN" message to IRC
 	  server if there are no channels to autojoin.
+	* modules/syslog: new module to logging messages using syslog.
 
 Thu Mar  3 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* configure: use -fPIC instead of -fpic on 64 bit Linux systems,

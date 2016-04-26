@@ -106,6 +106,7 @@ Which modules are available?
    ircd		- standard (RFC2813) IRC server
    ziplink	- support for compressed connections
    openssl	- support of SSL for every connection
+   syslog	- support for logging some messages to syslog
     Were planned to implement some other modules but they are either pending
     or unrequested. Feel free to write them or ask someone to implement:
    botnet	- implementation of network of bots
@@ -130,6 +131,5 @@ Which modules are available?
    python	- support for scrypting in Python language
    seen		- implementation of commands whois, find, and seen
    su		- enables change of user on chat subsystem
-   syslog	- support for logging some messages to syslog
    ui		- support for generic user interface (text or GUI)
    upnp		- support for UPnP listening port forwarding
