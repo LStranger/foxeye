@@ -875,7 +875,9 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
       serv->pmsgout = NULL;
 		/* "Connection reset by peer" */
 		/* note: I wonder if terminator might not send QUIT here yet */
-      KillSocket (&serv->p.socket);
+      if (Connchain_Kill ((&serv->p)) &&	/* condition to avoid warn */
+	  serv->p.socket >= 0)
+        KillSocket (&serv->p.socket);
       if (serv->next)
 	serv->next->prev = serv->prev;
       if (serv->prev)
