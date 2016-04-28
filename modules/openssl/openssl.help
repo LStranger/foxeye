@@ -25,3 +25,12 @@ set openssl-key-file
 :Defines path to to the file containing OpenSSL private key required for
  server-side connection.
  Default: "".
+
+set openssl-enable-server-bypass
+:$* <yes|no>
+:Enable or not bypass OpenSSL on server side.
+:If this variable is set to %^yes%^ then when client connected to the server
+ with OpenSSL support (with 'S' filter in the chain) and does not send any
+ SSL sequence then filter will be removed and client will have plain (unsecure)
+ connection. If set to %^no%^ then only secure connection is allowed for such
+ server.

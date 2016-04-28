@@ -26,6 +26,10 @@ Thu Apr 28 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/queries.c, modules/ircd/channels.c, modules/ircd/ircd.c, modules/ircd/numerics.h:
 	  added special support for SSL connections: numeric on WHOIS and user
 	  mode flag 'z'.
+	* modules/openssl/openssl.c: implemented "bypass mode" for OpenSSL
+	  server connection - it will remove filter if incoming connection does
+	  not use SSL/TLS so not encrypted connections are possible on that
+	  port as well.
 
 Tue Apr 26 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/openssl: new module to handle connects using OpenSSL.

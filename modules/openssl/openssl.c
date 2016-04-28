@@ -46,6 +46,7 @@ struct connchain_buffer {
   ssize_t error;
   SSL *ssl;
   struct sslbuff in, out;
+  bool check_done;
 };
 
 /* global list of buffers, need it in case of module termination */
@@ -56,6 +57,7 @@ static bool _initialized = FALSE;
 
 static char ssl_certificate_file[PATH_MAX+1] = "";
 static char ssl_key_file[PATH_MAX+1] = "";
+static bool ssl_enable_bypass = FALSE;
 
 static void _freesslbuff(struct connchain_buffer **buf)
 {
@@ -114,13 +116,11 @@ static ssize_t _ssl_try_send_buffers(struct connchain_i **ch, idx_t id,
       DBG("openssl: BIO_read error code %zd", i); */
   }
   so = buf->out.inbuf - buf->out.bufptr;
-  if (so == 0)			/* nothing to send */
-    return 0;
   i = Connchain_Put(ch, id, &buf->out.buf[buf->out.bufptr], &so);
   /* DBG("openssl: tried to send data, size=%zu sent=%zd", so, i); */
   if (i < 0)
     return (i);
-  if (i > 0)
+  if (i > 0 && buf->out.inbuf > 0)
     dprint(6, "openssl: sent encrypted data, size=%zd", i);
   if (so == 0)			/* done */
     buf->out.bufptr = buf->out.inbuf = 0;
@@ -129,8 +129,9 @@ static ssize_t _ssl_try_send_buffers(struct connchain_i **ch, idx_t id,
   return i;
 }
 
-/* does chain part of _ccfilter_S_recv() job */
-static void _ssl_check_input_from_chain(struct connchain_i **ch, idx_t id,
+/* does chain part of _ccfilter_S_recv() job
+   returns FALSE if filter should be terminated */
+static bool _ssl_check_input_from_chain(struct connchain_i **ch, idx_t id,
 					struct connchain_buffer **b)
 {
   struct connchain_buffer *buf = *b;
@@ -139,7 +140,25 @@ static void _ssl_check_input_from_chain(struct connchain_i **ch, idx_t id,
   if (buf->saved_chain == NULL) { /* read data from chain if there is a room */
     if ((*b)->error)
       i = (*b)->error;
-    else if (buf->in.inbuf < sizeof(buf->in.buf)) {
+    else if (!buf->check_done) {
+      if (buf->in.inbuf < 2)
+	i = Connchain_Get(ch, id, &buf->in.buf[buf->in.inbuf], 2 - buf->in.inbuf);
+      else
+	i = 0;
+      if (i < 0)
+	(*b)->error = i;
+      else
+	buf->in.inbuf += i;
+      if (buf->in.inbuf == 2) {
+	if (buf->in.buf[0] == 0x16 && buf->in.buf[1] == 3)
+	  /* SSL stream version 3 */
+	  buf->check_done = TRUE;
+	else
+	  /* it's not a SSL stream */
+	  return (FALSE);
+      }
+      i = 0;
+    } else if (buf->in.inbuf < sizeof(buf->in.buf)) {
       if ((i = Connchain_Get(ch, id, &buf->in.buf[buf->in.bufptr],
 			     (sizeof(buf->in.buf) - buf->in.inbuf))) < 0)
 	(*b)->error = i;
@@ -164,6 +183,7 @@ static void _ssl_check_input_from_chain(struct connchain_i **ch, idx_t id,
 	buf->in.bufptr += i;
     }
   }
+  return (TRUE);
 }
 
 /* send into saved_chain while in early state and reject data
@@ -197,9 +217,10 @@ static ssize_t _ccfilter_S_send(struct connchain_i **ch, idx_t id, const char *s
       return (0);
     return Connchain_Put (ch, id, str, sz); /* bounce test to next link */
   } else if (!SSL_is_init_finished(buf->ssl)) {
-    DBG("openssl: handshake is in progress");
     SSL_do_handshake(buf->ssl);
-    _ssl_check_input_from_chain(ch, id, b); /* SSL may wait for data */
+    if (!_ssl_check_input_from_chain(ch, id, b)) /* SSL may wait for data */
+      return Connchain_Put (ch, id, str, sz); /* if not SSL then bypass data */
+    DBG("openssl: handshake is in progress");
     if (!SSL_is_init_finished(buf->ssl))
       return (0);
   }
@@ -249,13 +270,23 @@ static ssize_t _ccfilter_S_recv(struct connchain_i **ch, idx_t id, char *str,
       buf->in.bufptr += i;
     return (i);
   }
+  if (!_ssl_check_input_from_chain(ch, id, b)) { /* not a SSL data */
+    i = (buf->in.inbuf - buf->in.bufptr);
+    if (i > (ssize_t)sz)
+      i = sz;
+    memcpy(str, &buf->in.buf[buf->in.bufptr], i);
+    if (buf->in.bufptr + i == buf->in.inbuf)
+      Connchain_Shrink (buf->peer, *ch);
+    else
+      buf->in.bufptr += i;
+    return (i);
+  }
   if (!SSL_is_init_finished(buf->ssl)) { /* check for handshake */
     SSL_do_handshake(buf->ssl);
     i = _ssl_try_send_buffers(ch, id, buf, TRUE); /* SSL may have data to send */
     if (i < 0)
       return (i);
   }
-  _ssl_check_input_from_chain(ch, id, b);
   i = SSL_read(buf->ssl, str, sz);
   if (i <= 0) {			/* some error in SSL_read */
     /* DBG("openssl: SSL_read error code %d", SSL_get_error(buf->ssl, (int)i)); */
@@ -326,6 +357,7 @@ static int _ccfilter_S_init (struct peer_t *peer,
   *b = buf = _make_buffer(peer, recv, send);
   /* start handshake as server side */
   SSL_set_accept_state(buf->ssl);
+  buf->check_done = !ssl_enable_bypass;
   return (1);
 }
 
@@ -342,6 +374,7 @@ static int _ccfilter_s_init (struct peer_t *peer,
   *b = buf = _make_buffer(peer, recv, send);
   /* start handshake as client side */
   SSL_set_connect_state(buf->ssl);
+  buf->check_done = TRUE; /* no check is possible on client side */
   return (1);
 }
 
@@ -362,6 +395,7 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
   case S_TERMINATE:
     UnregisterVariable("openssl-certificate-file");
     UnregisterVariable("openssl-key-file");
+    UnregisterVariable("openssl-enable-server-bypass");
     Delete_Binding("connchain-grow", &_ccfilter_S_init, NULL);
     Delete_Binding("connchain-grow", &_ccfilter_s_init, NULL);
     if (ShutdownR == NULL)
@@ -408,6 +442,7 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
     RegisterString("openssl-certificate-file", ssl_certificate_file,
 		   sizeof(ssl_certificate_file), 0);
     RegisterString("openssl-key-file", ssl_key_file, sizeof(ssl_key_file), 0);
+    RegisterBoolean("openssl-enable-server-bypass", &ssl_enable_bypass);
     break;
   case S_TIMEOUT:
     /* delayed init */
@@ -469,6 +504,7 @@ SigFunction ModuleInit (char *args)
   RegisterString("openssl-certificate-file", ssl_certificate_file,
 		 sizeof(ssl_certificate_file), 0);
   RegisterString("openssl-key-file", ssl_key_file, sizeof(ssl_key_file), 0);
+  RegisterBoolean("openssl-enable-server-bypass", &ssl_enable_bypass);
   Add_Binding("connchain-grow", "S", 0, 0, &_ccfilter_S_init, NULL);
   Add_Binding("connchain-grow", "s", 0, 0, &_ccfilter_s_init, NULL);
   /* schedule init */
