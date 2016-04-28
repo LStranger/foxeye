@@ -1623,9 +1623,6 @@ static void _ircd_handler (char *cln, char *ident, const char *host, void *data)
 #endif
   peer->p.dname = &cl->nick[0];
   peer->noidle = 0;
-  /* special support for SSL connection: set an userflag */
-  if (Connchain_Check(&peer->p, 'S') < 0)
-    cl->umode = A_SSL;
   /* find class, validate user... "ircd-auth" bindtable */
   Set_Iface (peer->p.iface);		/* lock bindtable access */
   b = NULL;
@@ -2179,6 +2176,9 @@ static int _ircd_got_local_user (CLIENT *cl)
     else if (cl->user[0] == '=')
       cl->user[0] = '^';
   }
+  /* special support for SSL connection: set an userflag */
+  if (Connchain_Check(&cl->via->p, 'S') < 0)
+    cl->umode |= A_SSL;
   ircd_make_umode (mb, cl->umode, sizeof(mb));
   ircd_sendto_servers_all (Ircd, NULL, "NICK %s 1 %s %s 1 +%s :%s",
 			   cl->nick, cl->user, cl->host, mb, cl->fname);
