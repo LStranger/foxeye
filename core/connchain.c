@@ -153,6 +153,27 @@ int Connchain_Grow (struct peer_t *peer, char c)
   return 1;
 }
 
+int Connchain_Shrink (struct peer_t *peer, struct connchain_i *chain)
+{
+  struct connchain_i **chkp;
+  struct connchain_i *this;
+
+  if (chain == NULL)
+    return 0;				/* dummy call */
+  for (chkp = &peer->connchain; (this = *chkp) != NULL; chkp = &this->next)
+    if (this->next == chain)
+      break;
+  if (this == NULL)
+    return 0;
+  /* we found the item, let skip it */
+  *chkp = chain;
+  this->next = NULL;
+  if (Connchain_Get (&this, -1, NULL, 0)) /* kill it */
+    return 1;
+  /* never reached */
+  return 1;
+}
+
 int Connchain_Check (struct peer_t *peer, char c)
 {
   connchain_i *chk;

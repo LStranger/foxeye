@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2016  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -70,6 +70,7 @@ int Connect_Host (const char *, unsigned short, pthread_t *, idx_t *,
 
 int Connchain_Grow (struct peer_t *, char);
 int Connchain_Check (struct peer_t *, char);
+int Connchain_Shrink (struct peer_t *, struct connchain_i *);
 ssize_t Connchain_Put (struct connchain_i **, idx_t, const char *, size_t *)
 			__attribute__((warn_unused_result));
 ssize_t Connchain_Get (struct connchain_i **, idx_t, char *, size_t)

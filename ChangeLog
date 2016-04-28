@@ -16,6 +16,8 @@ Thu Apr 28 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/connchain.c: removed "sticky" filters from connchain processing,
 	  it will never work that way because chain anyway should be made from
 	  scratch.
+	* core/connchain.*: added new API Connchain_Shrink to use by recv()
+	  callback from filter to perform suicide.
 
 Tue Apr 26 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/openssl: new module to handle connects using OpenSSL.

@@ -1231,6 +1231,15 @@ Connection chain API:
     add a filter into connection chain.
 	Reenterability: none
 
+  int CCoonnnncchhaaiinn__SShhrriinnkk (struct peer_t *_p_e_e_r, struct connchain_i *_c_h_a_i_n);
+    Removes current connchain filter from the _p_e_e_r's connection chain.
+    This function may be called only from recv() callback of the filter
+    and it should get parameter _c_h_a_i_n passed to the callback. The filter
+    and its data will be released after this call therefore it should be
+    the last call before return from the callback if filter wanted to do
+    such suicide. Returns 1 in case of success.
+	Reenterability: none
+
   ssize_t CCoonnnncchhaaiinn__PPuutt (struct connchain_i **_c_c, idx_t _i_d_x, const char *_l_i_n_e,
 			 size_t *_s);
     Tries to filter and send data of size _s from buffer _l_i_n_e through next
