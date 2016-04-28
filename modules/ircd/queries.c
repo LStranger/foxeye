@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2012  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2010-2016  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -37,6 +37,7 @@ static char _ircd_admin_email[SHORT_STRING] = "lame@lame.org";
 extern char _ircd_description_string[]; /* in ircd.c */
 
 static struct bindtable_t *BTIrcdStatsReply;
+static struct bindtable_t *BTIrcdWhois;
 
 /* ---------------------------------------------------------------------------
  * Common internal functions.
@@ -964,12 +965,13 @@ static int ircd_info_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   DO_SERVER_QUERY (_ircd_query_info);
 }
 
-static void _ircd_do_whois (CLIENT *cl, CLIENT *tgt, CLIENT *me)
+static void _ircd_do_whois (IRCD *ircd, CLIENT *cl, CLIENT *tgt, CLIENT *me)
 {
   MEMBER *m;
   size_t ptr;
   char mc;
   char buf[IRCMSGLEN];
+  register struct binding_t *b;
 
   ircd_do_unumeric (cl, RPL_WHOISUSER, tgt, 0, tgt->fname);
   if (!CLIENT_IS_REMOTE (tgt)) {
@@ -1017,6 +1019,9 @@ static void _ircd_do_whois (CLIENT *cl, CLIENT *tgt, CLIENT *me)
     ircd_do_unumeric (cl, RPL_WHOISCHARSET, tgt, 0,
 		      Conversion_Charset (tgt->via->p.iface->conv));
 #endif
+  while ((b = Check_Bindtable (BTIrcdWhois, tgt->nick, U_ALL, U_ANYCH, NULL)))
+    if (b->name == NULL)
+      b->func (ircd, cl->nick, tgt->nick, tgt->host, tgt->umode);
 }
 
 static inline int _ircd_query_whois (IRCD *ircd, CLIENT *cl, struct peer_priv *via,
@@ -1052,7 +1057,7 @@ static inline int _ircd_query_whois (IRCD *ircd, CLIENT *cl, struct peer_priv *v
       if (n++ >= MAXWHOIS)
 	ircd_do_unumeric (cl, ERR_TOOMANYTARGETS, tgt, 0, "Ignoring request.");
       else
-	_ircd_do_whois (cl, tgt, me);
+	_ircd_do_whois (ircd, cl, tgt, me);
     }
     else if (strpbrk (c, "*?"))
     {
@@ -1070,7 +1075,7 @@ static inline int _ircd_query_whois (IRCD *ircd, CLIENT *cl, struct peer_priv *v
 	      _ircd_is_on_the_same_channel (cl, tgt))
 	    if (simple_match (c, tgt->lcnick) >= 0)
 	    {
-	      _ircd_do_whois (cl, tgt, me);
+	      _ircd_do_whois (ircd, cl, tgt, me);
 	      n++;
 	    }
 	}
@@ -1574,6 +1579,7 @@ void ircd_queries_proto_start (void)
   ircd_queries_register();
   //TODO: fail to start if no admin email set?
   BTIrcdStatsReply = Add_Bindtable ("ircd-stats-reply", B_KEYWORD);
+  BTIrcdWhois = Add_Bindtable ("ircd-whois", B_MASK);
   Add_Binding ("ircd-client-cmd", "names", 0, 0, &ircd_names_cb, NULL);
   Add_Binding ("ircd-client-cmd", "list", 0, 0, &ircd_list_cb, NULL);
   Add_Binding ("ircd-client-cmd", "motd", 0, 0, &ircd_motd_cb, NULL);

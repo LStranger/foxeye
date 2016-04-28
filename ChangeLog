@@ -18,6 +18,8 @@ Thu Apr 28 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  scratch.
 	* core/connchain.*: added new API Connchain_Shrink to use by recv()
 	  callback from filter to perform suicide.
+	* modules/ircd/queries.c: added new bindtable "ircd-whois" to expand
+	  WHOIS query reply.
 
 Tue Apr 26 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/openssl: new module to handle connects using OpenSSL.

@@ -247,13 +247,29 @@
     be careful and do checks.
       Matching: anything.  (userflags are ignored)
 
--     "ircd-set-message-targets" MASK
-  int func (INTERFACE *srv, const char *sender, const char *target,
-	    int (*next)(INTERFACE *srv, const char *mask,
-			const char **lcname, modeflag *mf, int **mark,
-			void **iter));
-    Used when........
-      Matching: anything.  (userflags are ignored)
+-     "iirrccdd--sseett--mmeessssaaggee--ttaarrggeettss" MASK
+  int func (INTERFACE *_s_r_v, const char *_s_e_n_d_e_r, const char *_t_a_r_g_e_t,
+	    int (*_n_e_x_t)(INTERFACE *_s_r_v, const char *_m_a_s_k,
+			const char **_l_c_n_a_m_e, modeflag *_m_f, int **_m_a_r_k,
+			void **_i_t_e_r));
+    Used when server processes some message not for exact target name but
+    for a mask _t_a_r_g_e_t. Binding can process matching using function _n_e_x_t
+    which receives input _s_r_v, some _m_a_s_k that binding makes from _t_a_r_g_e_t,
+    and pointer _i_t_e_r to the iterator data (which should be set to NULL
+    initially). The function _n_e_x_t will return 0 when list is exhausted,
+    otherwise it will return 1 and set found client data: nick converted
+    to lower case _l_c_n_a_m_e and current modes _m_f for the original reguest
+    context. Binding also gets requestor nick _s_e_n_d_e_r. If binding decides
+    that found client matches criteria then it should set _m_a_r_k to 1.
+      Matching: target mask.  (userflags are ignored)
+
+-     "iirrccdd--wwhhooiiss"     MASK
+  (int) void func(INTERFACE *_s_r_v, const char *_s_e_n_d_e_r, const char *_t_a_r_g_e_t,
+		  const char *_t_h_o_s_t, modeflag _t_u_m_f);
+    Used when server replies to a WHOIS query from some _s_e_n_d_e_r for some
+    _t_a_r_g_e_t which has host _t_h_o_s_t and user mode _t_u_m_f. Binding can send some
+    numeric reply to client using IRCD interface _s_r_v.
+      Matching: target.  (userflags are ignored)
 
 -     "ircd-check-send" MATCHCASE
   int func(INTERFACE *srv, struct peer_t *tgt, modeflag tum, char *msg,
