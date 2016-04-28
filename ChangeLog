@@ -20,6 +20,9 @@ Thu Apr 28 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  callback from filter to perform suicide.
 	* modules/ircd/queries.c: added new bindtable "ircd-whois" to expand
 	  WHOIS query reply.
+	* modules/ircd/ircd.c: added one more parameter to the "ircd-auth"
+	  binding to make it possible to change modeflag (may be needed e.g. in
+	  case of restricted connection or whatever).
 
 Tue Apr 26 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/openssl: new module to handle connects using OpenSSL.

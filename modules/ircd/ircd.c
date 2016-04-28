@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2014  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2010-2016  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -131,7 +131,8 @@ static inline CLASS *_ircd_get_new_class (const char *name, const char *parms)
 }
 
 BINDING_TYPE_ircd_auth(_ircd_class_in);
-static int _ircd_class_in (struct peer_t *peer, char *user, char *host, const char **msg)
+static int _ircd_class_in (struct peer_t *peer, char *user, char *host,
+			   const char **msg, modeflag *umode)
 {
   LINK *link = ((peer_priv *)peer->iface->data)->link; /* really peer->link */
   struct clrec_t *cl;
@@ -1629,7 +1630,7 @@ static void _ircd_handler (char *cln, char *ident, const char *host, void *data)
   while ((b = Check_Bindtable (BTIrcdAuth, host, U_ALL, U_ANYCH, b)))
     if (b->name == NULL)		/* only internal allowed */
     {
-      int res = b->func (&peer->p, ident, host, &msg);
+      int res = b->func (&peer->p, ident, host, &msg, &cl->umode);
       Set_Iface (peer->p.iface);	/* regain lock */
       if (res == 0)
 	break;				/* auth error */

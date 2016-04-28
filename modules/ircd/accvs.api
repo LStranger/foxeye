@@ -19,7 +19,8 @@
   case conversions (but still case-insensitive for channel names).
 
 -     "iirrccdd--aauutthh"      MASK
-  int func(struct peer_t *_p_e_e_r, char *_u_s_e_r, char *_h_o_s_t, const char **_m_s_g);
+  int func(struct peer_t *_p_e_e_r, char *_u_s_e_r, char *_h_o_s_t, const char **_m_s_g,
+	   modeflag *_u_m_o_d_e);
     Used when listening socked just accepted connection from someone _p_e_e_r
     and binding gets their _u_s_e_r and _h_o_s_t for authentication check (for
     example, check if host is in SPAM hosts database). Binding is called
@@ -28,7 +29,8 @@
     perform all your checks. Connection chain for peer is initialized so
     you can send something there (but that is not advisable because it
     may ruin IRC protocol). If binding denies access for that client then
-    it should return 0 and leave reason message into _m_s_g.
+    it should return 0 and leave reason message into _m_s_g. The binding may
+    also set some modeflag in initial _u_m_o_d_e if needed.
       Matching: host.  (userflags are ignored)
       Matching stops after first access failure.
 
