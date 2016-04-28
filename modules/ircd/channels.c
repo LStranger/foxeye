@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2010-2016  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -854,6 +854,17 @@ static modeflag iumch_s(INTERFACE *srv, const char *rq, modeflag rumode,
 			int add)
 {
   return 1; /* not supported, obsolete flag */
+}
+
+/* special SSL support */
+BINDING_TYPE_ircd_umodechange(iumch_z);
+static modeflag iumch_z(INTERFACE *srv, const char *rq, modeflag rumode,
+			int add)
+{
+  if (!rumode || /* it's a test */
+      (rumode & A_SERVER)) /* or servermode */
+    return A_SSL;
+  return 0; /* cannot be changed */
 }
 
 
@@ -2931,6 +2942,7 @@ void ircd_channel_proto_end (NODE **tree)
   Delete_Binding ("ircd-umodechange", (Function)&iumch_o, NULL);
   Delete_Binding ("ircd-umodechange", (Function)&iumch_O, NULL);
   Delete_Binding ("ircd-umodechange", (Function)&iumch_s, NULL);
+  Delete_Binding ("ircd-umodechange", (Function)&iumch_z, NULL);
   Delete_Binding ("ircd-check-modechange", &ichmch_r, NULL);
   _ircd_internal_logger_sig (_ircd_internal_logger, S_TERMINATE); /* stop &* */
   Destroy_Tree (tree, &_ircd_catch_undeleted_ch);
@@ -2985,6 +2997,7 @@ void ircd_channel_proto_start (IRCD *ircd)
   Add_Binding ("ircd-umodechange", "o", 0, 0, (Function)&iumch_o, NULL);
   Add_Binding ("ircd-umodechange", "O", 0, 0, (Function)&iumch_O, NULL);
   Add_Binding ("ircd-umodechange", "s", 0, 0, (Function)&iumch_s, NULL);
+  Add_Binding ("ircd-umodechange", "z", 0, 0, (Function)&iumch_z, NULL);
   Add_Binding ("ircd-check-modechange", "*", 0, 0, &ichmch_r, NULL);
   /* create common local channels */
   _ircd_log_channel (ircd, "&KILLS",

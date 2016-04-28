@@ -1623,6 +1623,9 @@ static void _ircd_handler (char *cln, char *ident, const char *host, void *data)
 #endif
   peer->p.dname = &cl->nick[0];
   peer->noidle = 0;
+  /* special support for SSL connection: set an userflag */
+  if (Connchain_Check(&peer->p, 'S') < 0)
+    cl->umode = A_SSL;
   /* find class, validate user... "ircd-auth" bindtable */
   Set_Iface (peer->p.iface);		/* lock bindtable access */
   b = NULL;

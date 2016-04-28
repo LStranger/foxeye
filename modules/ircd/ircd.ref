@@ -452,3 +452,18 @@ Transition from ircd.conf to foxeye configuration.
    can be used for that purpose the same way in the future), servers have
    unlimited maximum number of links and sendQ, and ping frequency is
    defined in config variable 'ircd-serverclass-pingf'.
+
+
+Special support for SSL connections.
+
+   There is some support included if module that supports SSL ('openssl'
+ usually) is enabled and activated on connection. The support includes:
+
+   1. Usermode flag 'z' is added if SSL is active.
+
+   2. Additional WHOIS numeric reply is added:
+
+       336    RPL_WHOISSECURE
+              "<nick> :is using encrypted connection"
+
+         - Returned to client in reply to WHOIS command.
