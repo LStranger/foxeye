@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2008-2016  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -47,19 +47,6 @@ static pthread_mutex_t CC_Mutex = PTHREAD_MUTEX_INITIALIZER;
 
 ALLOCATABLE_TYPE (connchain_i, _CC_, next) /* alloc_connchain_i(), free_... */
 
-/* remember 'sticky' on adding, remove on killing, reinsert on restart
-   as SSL need to be first always */
-struct cc_sticky {
-  struct cc_sticky *next;
-  struct peer_t *peer;
-  struct connchain_i *chain;
-};
-
-typedef struct cc_sticky __cc_sticky;
-ALLOCATABLE_TYPE (__cc_sticky, _CCS_, next)
-
-static struct cc_sticky *_CC_Sticks = NULL;
-
 /* send raw data into socket, *chain and *b are undefined here */
 static ssize_t _connchain_send (struct connchain_i **chain, idx_t idx,
 				const char *data, size_t *sz,
@@ -102,51 +89,12 @@ static ssize_t _connchain_recv (struct connchain_i **chain, idx_t idx,
   return i;
 }
 
-/* bouncers for old sticky subchain */
-static ssize_t _connchain_sendb(struct connchain_i **chain, idx_t idx,
-				const char *data, size_t *sz,
-				struct connchain_buffer **b)
-{
-  return (Connchain_Put(chain, idx, data, sz));
-}
-
-static ssize_t _connchain_recvb(struct connchain_i **chain, idx_t idx,
-				char *data, size_t sz,
-				struct connchain_buffer **b)
-{
-  register ssize_t i;
-
-  if (data == NULL)	/* termination requested */
-    i = E_NOSOCKET;
-  else
-    i = Connchain_Get(chain, idx, data, sz);
-  if (i < 0)		/* error, next link seems terminated */
-    *chain = NULL;	/* unlink sticky chain */
-  return (i);
-}
-
 /* allocate starting link structure */
 static void _connchain_create (struct peer_t *peer)
 {
-  struct cc_sticky *ccs;
-
   pthread_mutex_lock(&CC_Mutex);
   peer->connchain = alloc_connchain_i();
-  for (ccs = _CC_Sticks; ccs; ccs = ccs->next)
-    if (ccs->peer == peer)
-      break;
   pthread_mutex_unlock(&CC_Mutex);
-  if (ccs != NULL) {		/* move "sticky" chain here */
-    memcpy(peer->connchain, ccs->chain, sizeof(struct connchain_i));
-    ccs->chain->recv = &_connchain_recvb; /* bounce old chain */
-    ccs->chain->send = &_connchain_sendb;
-    ccs->chain->next = peer->connchain;
-    ccs->chain->tc = 0;
-    ccs->chain->buf = NULL;
-    ccs->chain = peer->connchain; /* and forget old chain pointer */
-    dprint (2, "connchain.c: moved \"sticky\" chain into %p", peer->connchain);
-    return;
-  }
   peer->connchain->recv = &_connchain_recv;
   peer->connchain->send = &_connchain_send;
   /* ignoring ->buf since we don't need it for _this_ link */
@@ -163,7 +111,6 @@ static void _connchain_create (struct peer_t *peer)
 int Connchain_Grow (struct peer_t *peer, char c)
 {
   connchain_i *chain;
-  struct cc_sticky *ccs;
   char tc[2];
   struct binding_t *b;
 
@@ -185,14 +132,10 @@ int Connchain_Grow (struct peer_t *peer, char c)
   tc[1] = 0;
   b = NULL;				/* start from scratch */
   pthread_mutex_lock(&CC_Mutex);
-  for (ccs = _CC_Sticks; ccs; ccs = ccs->next)
-    if (ccs->peer == peer)
-      break;
   chain = alloc_connchain_i();		/* allocate link struct */
   pthread_mutex_unlock(&CC_Mutex);
   while ((b = Check_Bindtable (BT_CChain, tc, U_ALL, U_ANYCH, b)))
     if (!b->name &&			/* internal only? trying to init */
-	(!b->key[1] || !ccs) &&		/* no duplicate sticky possible */
 	b->func (peer, &chain->recv, &chain->send, &chain->buf))
       break;				/* found a working binding! */
   if (b == NULL)			/* no handler found there! */
@@ -207,16 +150,6 @@ int Connchain_Grow (struct peer_t *peer, char c)
   chain->tc = c;
   peer->connchain = chain;
   dprint (2, "connchain.c: created link %c: %p", c, chain);
-  if (b->key[1]) {			/* sticky one */
-    pthread_mutex_lock(&CC_Mutex);
-    ccs = alloc___cc_sticky();
-    ccs->next = _CC_Sticks;
-    _CC_Sticks = ccs;
-    ccs->peer = peer;
-    ccs->chain = chain;
-    pthread_mutex_unlock(&CC_Mutex);
-    dprint (2, "connchain.c: added \"sticky\" %c for %p", c, chain);
-  }
   return 1;
 }
 
@@ -273,8 +206,6 @@ ssize_t Connchain_Put (connchain_i **chain, idx_t idx, const char *buf, size_t *
 ssize_t Connchain_Get (connchain_i **chain, idx_t idx, char *buf, size_t sz)
 {
   ssize_t i;
-  struct cc_sticky *ccs;
-  register struct cc_sticky **ccsp;
 
   if (chain == NULL || *chain == NULL)		/* it's error or dead */
     return E_NOSOCKET;
@@ -285,17 +216,8 @@ ssize_t Connchain_Get (connchain_i **chain, idx_t idx, char *buf, size_t sz)
   if(Connchain_Get (&(*chain)->next, idx, NULL, 0))i=i; /* it's dead, kill next */
   dprint (2, "connchain.c: destroying link %p", *chain);
   pthread_mutex_lock(&CC_Mutex);
-  for (ccsp = &_CC_Sticks; (ccs = *ccsp) != NULL; ccsp = &ccs->next)
-    if (ccs->chain == *chain)
-      break;
-  if (ccs != NULL) {
-    *ccsp = ccs->next;
-    free___cc_sticky(ccs);
-  }
   free_connchain_i (*chain);
   pthread_mutex_unlock(&CC_Mutex);
-  if (ccs != NULL)
-    dprint (2, "connchain.c: destroyed \"sticky\" link");
   *chain = NULL;
   return i;
 }
