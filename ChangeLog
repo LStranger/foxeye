@@ -19,6 +19,7 @@ Fri Apr 29 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  can filter recipients using bindings on this bindtable.
 	* modules/ircd/ircd.c: added check with "ircd-client-filter" bindtable
 	  before "ircd-register-cmd" processing as well.
+	* modules/ircd/ircd.c: added support for Lname_IsOn() for ircd network.
 
 Thu Apr 28 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/connchain.c: removed "sticky" filters from connchain processing,

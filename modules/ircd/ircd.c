@@ -3838,6 +3838,64 @@ static modeflag incl_ircd(const char *net, const char *public,
   return 0;
 }
 
+/* this one should be the fastest way to get MY_NAME */
+BINDING_TYPE_ison(ison_ircd);
+static int ison_ircd(const char *net, const char *public, const char *lname,
+		     const char **name)
+{
+  CLASS *cl;
+  MEMBER *ch;
+  CLIENT *cli;
+  CHANNEL *chi;
+
+  /* ignoring parameter net, we are only-one-network */
+  if (lname == NULL)			/* own name requested */
+  {
+    if (name)
+      *name = MY_NAME;
+    return (1);
+  }
+  /* search for lname may be slow but what else? */
+  for (cl = Ircd->users; cl; cl = cl->next)
+    if (strcmp(lname, cl->name) == 0)	/* found match */
+      break;
+  if (public == NULL)			/* global state requested */
+  {
+    if (cl == NULL)			/* last chance, check for server */
+    {
+      unsigned short int i;
+      for (i = 0; i < Ircd->s; i++)
+	if (strcmp(lname, Ircd->token[i]->nick) == 0) /* found match */
+	{
+	  if (name)
+	    *name = lname;
+	  return (1);
+	}
+      return (0);
+    }
+    if (cl->glob == NULL)		/* empty class? is that possible? */
+      return (0);
+    if (name)
+      *name = cl->glob->nick;
+    return (1);
+  }
+  if (cl == NULL || cl->glob == NULL)
+    return (0);
+  /* find class in public may be slow as well */
+  chi = _ircd_find_channel_c (public);
+  if (chi == NULL)
+    return (0);
+  for (cli = cl->glob; cli; cli = cli->pcl)
+    for (ch = cli->c.hannels; ch; ch = ch->prevchan)
+      if (ch->chan == chi)		/* found match */
+      {
+	if (name)
+	  *name = cli->nick;
+	return (1);
+      }
+  return (0);
+}
+
 
 /* -- connchain filters --------------------------------------------------- */
 struct connchain_buffer { char c; };
@@ -4896,6 +4954,7 @@ SigFunction ModuleInit (char *args)
   Add_Binding ("ircd-server-cmd", "nick", 0, 0, (Function)&ircd_nick_sb, NULL);
 //  Add_Binding ("connect", "ircd", 0, 0, &connect_ircd, NULL);
   Add_Binding ("inspect-client", "ircd", 0, 0, (Function)&incl_ircd, NULL);
+  Add_Binding ("ison", "ircd", 0, 0, (Function)&ison_ircd, NULL);
   Add_Binding ("time-shift", "*", 0, 0, (Function)&ts_ircd, NULL);
   Add_Binding ("connchain-grow", "P", 0, 0, &_ccfilter_P_init, NULL);
 #if IRCD_USES_ICONV
