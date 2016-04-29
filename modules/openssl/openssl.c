@@ -426,15 +426,15 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
     tmp = Set_Iface(iface);
     if ((buf = sslbuflist)) do {
 	if (buf->peer->dname && *buf->peer->dname)
-	  New_Request(tmp, F_REPORT, "OpenSSL link: used on peer %s.",
-		      buf->peer->dname);
+	  New_Request(tmp, F_REPORT, _("OpenSSL link: used on peer %s as %s."),
+		      buf->peer->dname, SSL_CIPHER_get_version(SSL_get_current_cipher(buf->ssl)));
 	else
-	  New_Request(tmp, F_REPORT, "OpenSSL link: used on nonamed peer (%hd).",
-		      buf->peer->socket);
+	  New_Request(tmp, F_REPORT, _("OpenSSL link: used on nonamed peer (%hd) as %s."),
+		      buf->peer->socket, SSL_CIPHER_get_version(SSL_get_current_cipher(buf->ssl)));
 	buf = buf->next;
       } while (buf);
     else
-      New_Request(tmp, F_REPORT, "Module openssl: not used.");
+      New_Request(tmp, F_REPORT, _("Module openssl: not used."));
     Unset_Iface();
     break;
   case S_REG:

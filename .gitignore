@@ -34,6 +34,5 @@ po/POTFILES.in
 po/*.sed
 po/*.sin
 po/*.header
-po/foxeye.pot
 po/Rules-quot
 po/*.gmo
