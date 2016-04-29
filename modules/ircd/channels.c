@@ -796,7 +796,8 @@ static modeflag imch_I(INTERFACE *srv, const char *rq, modeflag rchmode,
 /* "ircd-umodechange" */
 BINDING_TYPE_ircd_umodechange(iumch_a);
 static modeflag iumch_a(INTERFACE *srv, const char *rq, modeflag rumode,
-			int add)
+			int add, void (**ma)(char *vhost, const char *host,
+					     size_t vhs, int add))
 {
   if (!rumode || /* it's a test */
       (rumode & A_SERVER)) /* or servermode */
@@ -806,21 +807,24 @@ static modeflag iumch_a(INTERFACE *srv, const char *rq, modeflag rumode,
 
 BINDING_TYPE_ircd_umodechange(iumch_i);
 static modeflag iumch_i(INTERFACE *srv, const char *rq, modeflag rumode,
-			int add)
+			int add, void (**ma)(char *vhost, const char *host,
+					     size_t vhs, int add))
 {
   return A_INVISIBLE;
 }
 
 BINDING_TYPE_ircd_umodechange(iumch_w);
 static modeflag iumch_w(INTERFACE *srv, const char *rq, modeflag rumode,
-			int add)
+			int add, void (**ma)(char *vhost, const char *host,
+					     size_t vhs, int add))
 {
   return A_WALLOP;
 }
 
 BINDING_TYPE_ircd_umodechange(iumch_r);
 static modeflag iumch_r(INTERFACE *srv, const char *rq, modeflag rumode,
-			int add)
+			int add, void (**ma)(char *vhost, const char *host,
+					     size_t vhs, int add))
 {
   if (add || !rumode) /* cannot be removed */
     return A_RESTRICTED;
@@ -829,7 +833,8 @@ static modeflag iumch_r(INTERFACE *srv, const char *rq, modeflag rumode,
 
 BINDING_TYPE_ircd_umodechange(iumch_o);
 static modeflag iumch_o(INTERFACE *srv, const char *rq, modeflag rumode,
-			int add)
+			int add, void (**ma)(char *vhost, const char *host,
+					     size_t vhs, int add))
 {
   if (!add || /* only can be deopped */
       !rumode || /* or it's a test */
@@ -840,7 +845,8 @@ static modeflag iumch_o(INTERFACE *srv, const char *rq, modeflag rumode,
 
 BINDING_TYPE_ircd_umodechange(iumch_O);
 static modeflag iumch_O(INTERFACE *srv, const char *rq, modeflag rumode,
-			int add)
+			int add, void (**ma)(char *vhost, const char *host,
+					     size_t vhs, int add))
 {
   if (!add || /* only can be deopped */
       !rumode || /* or it's a test */
@@ -851,7 +857,8 @@ static modeflag iumch_O(INTERFACE *srv, const char *rq, modeflag rumode,
 
 BINDING_TYPE_ircd_umodechange(iumch_s);
 static modeflag iumch_s(INTERFACE *srv, const char *rq, modeflag rumode,
-			int add)
+			int add, void (**ma)(char *vhost, const char *host,
+					     size_t vhs, int add))
 {
   return 1; /* not supported, obsolete flag */
 }
@@ -859,7 +866,8 @@ static modeflag iumch_s(INTERFACE *srv, const char *rq, modeflag rumode,
 /* special SSL support */
 BINDING_TYPE_ircd_umodechange(iumch_z);
 static modeflag iumch_z(INTERFACE *srv, const char *rq, modeflag rumode,
-			int add)
+			int add, void (**ma)(char *vhost, const char *host,
+					     size_t vhs, int add))
 {
   if (!rumode || /* it's a test */
       (rumode & A_SERVER)) /* or servermode */
@@ -928,13 +936,13 @@ static inline void _ircd_mode_broadcast (IRCD *ircd, int id, CLIENT *sender,
   else if (ch->mode & A_ANONYMOUS) {
     if (!CLIENT_IS_REMOTE(sender))
       New_Request(sender->via->p.iface, 0, ":%s!%s@%s MODE %s %s%s",
-		  sender->nick, sender->user, sender->host, ch->name, modepass,
+		  sender->nick, sender->user, sender->vhost, ch->name, modepass,
 		  buff);
     ircd_sendto_chan_butone(ch, sender, ":anonymous!anonymous@anonymous. MODE %s %s%s",
 			    ch->name, modepass, buff);
   } else
     ircd_sendto_chan_local (ch, ":%s!%s@%s MODE %s %s%s", sender->nick,
-			    sender->user, sender->host, ch->name, modepass,
+			    sender->user, sender->vhost, ch->name, modepass,
 			    buff);
 #ifdef USE_SERVICES
   //TODO: notify local services too
@@ -1018,7 +1026,7 @@ static inline int _ircd_mode_mask_query_reply (INTERFACE *srv, CLIENT *cl,
 
 BINDING_TYPE_ircd_client_cmd(ircd_mode_cb); /* huge one as hell */
 static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char *user,
-			char *host, int argc, const char **argv)
+			char *host, char *vhost, int argc, const char **argv)
 { /* args: <target> [modes...] */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl;
   CHANNEL *ch;
@@ -1314,6 +1322,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 #define static register
 	  BINDING_TYPE_ircd_umodechange ((*f));
 #undef static
+	  void (*ma)(char *, const char *, size_t, int) = NULL;
 
 	  charstr[0] = *c;
 	  charstr[1] = '\0';
@@ -1326,7 +1335,11 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	  while (b)			/* cycle thru all */
 	  {
 	    if (!b->name && (f = (modeflag (*)())b->func))
-	      mf |= f (srv, peer->dname, cl->umode, add);
+	    {
+	      mf |= f (srv, peer->dname, cl->umode, add, &ma);
+	      if (ma)			/* update vhost */
+		ma (cl->vhost, cl->host, sizeof(cl->vhost), add);
+	    }
 	    b = Check_Bindtable (BTIrcdUmodechange, charstr, U_ALL, U_ANYCH, b);
 	  }
 	  mf &= ~(A_ISON | A_PINGED);
@@ -1426,17 +1439,17 @@ static inline void _ircd_join_0_local (IRCD *ircd, CLIENT *cl, char *key)
   {
     if ((ch = cl->c.hannels->chan)->mode & A_QUIET)
       New_Request (cl->via->p.iface, 0, ":%s!%s@%s PART %s :%s", cl->nick,
-		   cl->user, cl->host, ch->name, key);
+		   cl->user, cl->vhost, ch->name, key);
     else if (ch->mode & A_ANONYMOUS)
     {
       New_Request (cl->via->p.iface, 0, ":%s!%s@%s PART %s :%s", cl->nick,
-		   cl->user, cl->host, ch->name, key);
+		   cl->user, cl->vhost, ch->name, key);
       ircd_sendto_chan_butone (ch, cl, ":anonymous!anonymous@anonymous. PART %s :anonymous",
 			       ch->name);
     }
     else
       ircd_sendto_chan_local (ch, ":%s!%s@%s PART %s :%s", cl->nick,
-			      cl->user, cl->host, ch->name, key);
+			      cl->user, cl->vhost, ch->name, key);
 #ifdef USE_SERVICES
     //TODO: inform services
 #endif
@@ -1448,7 +1461,7 @@ static inline void _ircd_join_0_local (IRCD *ircd, CLIENT *cl, char *key)
 
 BINDING_TYPE_ircd_client_cmd(ircd_join_cb);
 static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char *user,
-			char *host, int argc, const char **argv)
+			char *host, char *vhost, int argc, const char **argv)
 { /* args: <channel> [,<channel> ...] [<key> [,<key> ... ]] | 0 */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl;
   CHANNEL *ch;
@@ -1467,6 +1480,7 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
   char cnfc[2];
   char lcchname[MB_LEN_MAX*CHANNAMELEN+1];
   char lcb[MB_LEN_MAX*NICKLEN+IDENTLEN+HOSTLEN+3];
+  char lcbv[MB_LEN_MAX*NICKLEN+IDENTLEN+HOSTLEN+3];
   char bufforservers[MB_LEN_MAX*IRCMSGLEN];
 
   if (argc == 0)
@@ -1512,6 +1526,7 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
     mf = 0;
     cnfc[0] = chn[0];
     lcb[0] = '\0';
+    lcbv[0] = '\0';
     unistrlower(lcchname, chn, sizeof(lcchname));
     _ircd_validate_channel_name(lcchname);
     ch = _ircd_find_channel ((IRCD *)srv->data, lcchname);
@@ -1561,8 +1576,11 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
       if (!mm)
       {
 	snprintf (lcb, sizeof(lcb), "%s!%s@%s", cl->lcnick, cl->user, cl->host);
+	if (cl->umode & A_MASKED)
+	  snprintf (lcbv, sizeof(lcbv), "%s!%s@%s", cl->lcnick, cl->user, cl->vhost);
 	for (cm = ch->invites; cm; cm = cm->next)
-	  if (simple_match (cm->what, lcb) > 0) //TODO: check expiration
+	  if ((lcbv[0] && simple_match (cm->what, lcbv) > 0) ||
+	      simple_match (cm->what, lcb) > 0) //TODO: check expiration
 	    break;
 	if (!cm)			/* not found */
 	  i = -ircd_do_cnumeric (cl, ERR_INVITEONLYCHAN, ch, 0, NULL);
@@ -1578,13 +1596,17 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
       {
 	if (!*lcb)			/* it might be done by check above */
 	  snprintf (lcb, sizeof(lcb), "%s!%s@%s", cl->lcnick, cl->user, cl->host);
+	if (!*lcbv && (cl->umode & A_MASKED))
+	  snprintf (lcbv, sizeof(lcbv), "%s!%s@%s", cl->lcnick, cl->user, cl->vhost);
 	for (cm = ch->bans; cm; cm = cm->next)
-	  if (simple_match (cm->what, lcb) > 0)
+	  if ((lcbv[0] && simple_match (cm->what, lcbv) > 0) ||
+	      simple_match (cm->what, lcb) > 0)
 	    break;			/* found ban */
 	if (cm)
 	{
 	  for (cm = ch->exempts; cm; cm = cm->next)
-	    if (simple_match (cm->what, lcb) > 0)
+	    if ((lcbv[0] && simple_match (cm->what, lcbv) > 0) ||
+		simple_match (cm->what, lcb) > 0)
 	      break;			/* found exception */
 	  if (!cm)
 	    i = -ircd_do_cnumeric (cl, ERR_BANNEDFROMCHAN, ch, 0, NULL);
@@ -2009,6 +2031,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 #define static register
 	  BINDING_TYPE_ircd_umodechange ((*f));
 #undef static
+	  void (*ma)(char *, const char *, size_t, int) = NULL;
 
 	  charstr[0] = *c;
 	  charstr[1] = '\0';
@@ -2023,7 +2046,11 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	  while (b)			/* cycle thru all */
 	  {
 	    if (!b->name && (f = (modeflag (*)())b->func))
-	      mf |= f (srv, pp->p.dname, (src->umode | A_SERVER), add);
+	    {
+	      mf |= f (srv, pp->p.dname, (src->umode | A_SERVER), add, &ma);
+	      if (ma)			/* update vhost */
+		ma (tgt->vhost, tgt->host, sizeof(tgt->vhost), add);
+	    }
 	    b = Check_Bindtable (BTIrcdUmodechange, charstr, U_ALL, U_ANYCH, b);
 	  }
 	  if (!mf)
@@ -2329,7 +2356,7 @@ MEMBER *ircd_add_to_channel (IRCD *ircd, struct peer_priv *bysrv, CHANNEL *ch,
     {
       if (!CLIENT_IS_ME(cl) && !CLIENT_IS_REMOTE(cl))
 	New_Request (cl->via->p.iface, 0, ":%s!%s@%s JOIN %s", cl->nick,
-		     cl->user, cl->host, ch->name);
+		     cl->user, cl->vhost, ch->name);
       ircd_sendto_chan_butone (ch, cl, ":anonymous!anonymous@anonymous. JOIN %s",
 			       ch->name); /* broadcast for users */
     }
@@ -2342,7 +2369,7 @@ MEMBER *ircd_add_to_channel (IRCD *ircd, struct peer_priv *bysrv, CHANNEL *ch,
 	sz += strfcpy (&madd[sz], cl->nick, sizeof(madd) - sz);
       }
       ircd_sendto_chan_local (ch, ":%s!%s@%s JOIN %s", cl->nick, cl->user,
-			      cl->host, ch->name); /* broadcast for users */
+			      cl->vhost, ch->name); /* broadcast for users */
       if (*smode) {			/* we have a mode provided */
 	/* don't send client mode to client as NAMES will do it */
 	if (bysrv)
@@ -2351,7 +2378,7 @@ MEMBER *ircd_add_to_channel (IRCD *ircd, struct peer_priv *bysrv, CHANNEL *ch,
 				  madd);
 	else
 	  ircd_sendto_chan_butone(ch, cl, ":%s!%s@%s MODE %s +%s%s", cl->nick,
-				  cl->user, cl->host, ch->name, smode, madd);
+				  cl->user, cl->vhost, ch->name, smode, madd);
       }
       madd[0] = 0;
       if (modeadd && ch->count > 1)	/* mode of channel was updated */
@@ -2362,7 +2389,7 @@ MEMBER *ircd_add_to_channel (IRCD *ircd, struct peer_priv *bysrv, CHANNEL *ch,
 				  bysrv->link->cl->lcnick, ch->name, madd);
 	else
 	  ircd_sendto_chan_butone(ch, cl, ":%s!%s@%s MODE %s +%s", cl->nick,
-				  cl->user, cl->host, ch->name, madd);
+				  cl->user, cl->vhost, ch->name, madd);
       }
     }
 #ifdef USE_SERVICES
@@ -2371,7 +2398,7 @@ MEMBER *ircd_add_to_channel (IRCD *ircd, struct peer_priv *bysrv, CHANNEL *ch,
   }
   else if (!CLIENT_IS_ME(cl) && !CLIENT_IS_REMOTE(cl)) /* notify only sender */
     New_Request (cl->via->p.iface, 0, ":%s!%s@%s JOIN %s", cl->nick, cl->user,
-		 cl->host, ch->name);
+		 cl->vhost, ch->name);
   return memb;
 }
 
@@ -2595,12 +2622,13 @@ static inline char *_ircd_ch_flush_umodes (INTERFACE *i, char *c, char *e)
 #define static register
   BINDING_TYPE_ircd_umodechange ((*ff));
 #undef static
+  void (*ma)(char *, const char *, size_t, int);
 
   if (!(b = Check_Bindtable (BTIrcdUmodechange, c, U_ALL, U_ANYCH, NULL)) ||
       b->name)
     return c;
   ff = (modeflag (*)())b->func;
-  mode = (ff (i, NULL, 0, 0) & ~(A_ISON | A_PINGED));
+  mode = (ff (i, NULL, 0, 0, &ma) & ~(A_ISON | A_PINGED));
   //FIXME: need to cycle all bindings by IRCD_SET_MODECHAR
   IRCD_SET_MODECHAR (mode, _ircd_umodes, *c);
   if (c < e)
@@ -2823,7 +2851,7 @@ char *ircd_make_umode (char *buf, modeflag umode, size_t bufsize)
   return buf;
 }
 
-modeflag ircd_char2umode(INTERFACE *srv, const char *sname, char c)
+modeflag ircd_char2umode(INTERFACE *srv, const char *sname, char c, CLIENT *tgt)
 {
   struct binding_t *b;
   modeflag mf = 0;
@@ -2831,13 +2859,18 @@ modeflag ircd_char2umode(INTERFACE *srv, const char *sname, char c)
 #define static register
   BINDING_TYPE_ircd_umodechange ((*f));
 #undef static
+  void (*ma)(char *, const char *, size_t, int);
 
   charstr[0] = c;
   charstr[1] = '\0';
   b = Check_Bindtable (BTIrcdUmodechange, charstr, U_ALL, U_ANYCH, NULL);
   while (b) {			/* cycle thru all */
     if (!b->name)
-      mf |= (f = (modeflag (*)())b->func) (srv, sname, A_SERVER, 1);
+    {
+      mf |= (f = (modeflag (*)())b->func) (srv, sname, A_SERVER, 1, &ma);
+      if (ma)
+	ma (tgt->vhost, tgt->host, sizeof(tgt->vhost), 1);
+    }
     b = Check_Bindtable (BTIrcdUmodechange, charstr, U_ALL, U_ANYCH, b);
   }
   return (mf & ~(A_ISON | A_PINGED));

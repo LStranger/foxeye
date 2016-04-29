@@ -20,6 +20,9 @@ Fri Apr 29 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: added check with "ircd-client-filter" bindtable
 	  before "ircd-register-cmd" processing as well.
 	* modules/ircd/ircd.c: added support for Lname_IsOn() for ircd network.
+	* modules/ircd/*: added support for visible host (A_MASKED user mode).
+	  No actual user mode implemented, only data space preserved, support
+	  should be implemented by network-specific module.
 
 Thu Apr 28 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/connchain.c: removed "sticky" filters from connchain processing,

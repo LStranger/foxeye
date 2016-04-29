@@ -106,7 +106,7 @@ static int ichmsg_ircd (modeflag umode, modeflag mmode, char *msg)
 
 BINDING_TYPE_ircd_client_cmd(ircd_oper_cb);
 static int ircd_oper_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char *user,
-			char *host, int argc, const char **argv)
+			char *host, char *vhost, int argc, const char **argv)
 { /* args: <name> <password> */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl;
   struct clrec_t *u;
@@ -173,7 +173,7 @@ static int ircd_oper_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 
 BINDING_TYPE_ircd_client_cmd(ircd_quit_cb);
 static int ircd_quit_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char *user,
-			char *host, int argc, const char **argv)
+			char *host, char *vhost, int argc, const char **argv)
 { /* args: [<Quit Message>] */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl;
   char msg[STRING];
@@ -191,8 +191,8 @@ static int ircd_quit_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
   ircd_sendto_servers_all_ack ((IRCD *)srv->data, cl, NULL, NULL,
 			       ":%s QUIT :%s", peer->dname, msg);
   ircd_prepare_quit (cl, cl->via, msg);
-  Add_Request (I_PENDING, "*", 0, ":%s!%s@%s QUIT :%s", peer->dname, cl->user,
-	       cl->host, msg);
+  Add_Request (I_PENDING, "*", 0, ":%s!%s@%s QUIT :%s", peer->dname, user,
+	       vhost, msg);
   cl->hold_upto = Time;
   cl->host[0] = '\0';			/* for collision check */
   return 1;
@@ -200,7 +200,7 @@ static int ircd_quit_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 
 BINDING_TYPE_ircd_client_cmd(ircd_squit_cb);
 static int ircd_squit_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char *user,
-			 char *host, int argc, const char **argv)
+			 char *host, char *vhost, int argc, const char **argv)
 { /* args: <server> <comment> */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl;
   CLIENT *tgt;
@@ -232,7 +232,7 @@ static int ircd_squit_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char
 
 BINDING_TYPE_ircd_client_cmd(ircd_part_cb);
 static int ircd_part_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char *user,
-			char *host, int argc, const char **argv)
+			char *host, char *vhost, int argc, const char **argv)
 { /* args: <channel>[,<channel> ...] [<Part Message>] */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl;
   char *c;
@@ -261,20 +261,20 @@ static int ircd_part_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
     {
       if ((memb->chan->mode & A_QUIET)) /* notify only sender */
 	New_Request (peer->iface, 0, ":%s!%s@%s PART %s :%s", cl->nick, user,
-		     host, memb->chan->name, msg);
+		     vhost, memb->chan->name, msg);
       else				/* notify local users */
       {
 	if (memb->chan->mode & A_ANONYMOUS)
 	{
 	  New_Request (peer->iface, 0, ":%s!%s@%s PART %s :%s", cl->nick, user,
-		       host, memb->chan->name, msg);
+		       vhost, memb->chan->name, msg);
 	  ircd_sendto_chan_butone (memb->chan, cl,
 				   ":anonymous!anonymous@anonymous. PART %s :anonymous",
 				   memb->chan->name);
 	}
 	else
 	  ircd_sendto_chan_local (memb->chan, ":%s!%s@%s PART %s :%s", cl->nick,
-				  user, host, memb->chan->name, msg);
+				  user, vhost, memb->chan->name, msg);
       }
 #ifdef USE_SERVICES
       //TODO: notify services
@@ -300,7 +300,7 @@ static int ircd_part_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 
 BINDING_TYPE_ircd_client_cmd(ircd_topic_cb);
 static int ircd_topic_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char *user,
-			 char *host, int argc, const char **argv)
+			 char *host, char *vhost, int argc, const char **argv)
 { /* args: <channel> [<topic>] */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl;
   MEMBER *memb;
@@ -344,7 +344,7 @@ static int ircd_topic_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char
     ircd_sendto_chan_local(ch, ":anonymous!anonymous@anonymous. TOPIC %s :%s",
 			   ch->name, ch->topic);
   else
-    ircd_sendto_chan_local(ch, ":%s!%s@%s TOPIC %s :%s", peer->dname, user, host,
+    ircd_sendto_chan_local(ch, ":%s!%s@%s TOPIC %s :%s", peer->dname, user, vhost,
 			   ch->name, ch->topic);
   if (ch->mode & A_INVISIBLE)		/* it's local channel */
     return 1;
@@ -369,7 +369,7 @@ static int ircd_topic_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char
 
 BINDING_TYPE_ircd_client_cmd(ircd_invite_cb);
 static int ircd_invite_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char *user,
-			  char *host, int argc, const char **argv)
+			  char *host, char *vhost, int argc, const char **argv)
 { /* args: <nickname> <channel> */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl, *tgt;
   MEMBER *memb;
@@ -395,7 +395,7 @@ static int ircd_invite_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, cha
       return (1); /* TODO: send some numeric to client? */
     ircd_sendto_one (tgt, ":%s INVITE %s %s", peer->dname, argv[0], argv[1]);
   } else
-    ircd_sendto_one (tgt, ":%s!%s@%s INVITE %s %s", peer->dname, user, host,
+    ircd_sendto_one (tgt, ":%s!%s@%s INVITE %s %s", peer->dname, user, vhost,
 		     argv[0], argv[1]);
   if (!CLIENT_IS_REMOTE(tgt) && memb != NOSUCHCHANNEL)
     ircd_add_invited (tgt, memb->chan);
@@ -406,7 +406,7 @@ static int ircd_invite_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, cha
 
 BINDING_TYPE_ircd_client_cmd(ircd_kick_cb);
 static int ircd_kick_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char *user,
-			char *host, int argc, const char **argv)
+			char *host, char *vhost, int argc, const char **argv)
 { /* args: <channel>[,<channel> ...] <user>[,<user> ...] [<comment>] */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl, *tgt;
   MEMBER *memb, *tm;
@@ -447,7 +447,7 @@ static int ircd_kick_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 	reason = peer->dname;
       if (memb->chan->mode & A_ANONYMOUS) {
 //	New_Request(cl->via->p.iface, 0, ":%s!%s@%s KICK %s %s :%s",
-//		    peer->dname, user, host, chn, lcl, reason);
+//		    peer->dname, user, vhost, chn, lcl, reason);
 	if (!CLIENT_IS_REMOTE(tgt))
 	  New_Request(tgt->via->p.iface, 0,
 		      ":anonymous!anonymous@anonymous. KICK %s %s :%s",
@@ -457,7 +457,7 @@ static int ircd_kick_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 				chn, reason);
       } else
 	ircd_sendto_chan_local (memb->chan, ":%s!%s@%s KICK %s %s :%s",
-				peer->dname, user, host, chn, lcl, reason);
+				peer->dname, user, vhost, chn, lcl, reason);
 #ifdef USE_SERVICES
       //TODO: inform services
 #endif
@@ -480,7 +480,7 @@ static int ircd_kick_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 
 BINDING_TYPE_ircd_client_cmd(ircd_servlist_cb);
 static int ircd_servlist_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char *user,
-			    char *host, int argc, const char **argv)
+			    char *host, char *vhost, int argc, const char **argv)
 { /* args: [<mask>[ <type>]] */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl;
   CLIENT *tgt;
@@ -530,21 +530,21 @@ static inline void _ircd_who_reply (CLIENT *rq, CLIENT *srv, CLIENT *tgt,
     else
       ch[0] = ircd_mode2whochar (m->mode);
     snprintf (buf, sizeof(buf), "%s %s %s %s %s %c%s%s :%hu %s", m->chan->name,
-	      tgt->user, tgt->host, srv->lcnick, tgt->nick,
+	      tgt->user, tgt->vhost, srv->lcnick, tgt->nick,
 	      (tgt->umode & A_AWAY) ? 'G' : 'H',
 	      (tgt->umode & (A_OP | A_HALFOP)) ? "*" : "", ch, tgt->hops - 1,
 	      tgt->fname);
   }
   else
     snprintf (buf, sizeof(buf), "* %s %s %s %s %c%s :%hu %s", tgt->user,
-	      tgt->host, srv->lcnick, tgt->nick, (tgt->umode & A_AWAY) ? 'G' : 'H',
+	      tgt->vhost, srv->lcnick, tgt->nick, (tgt->umode & A_AWAY) ? 'G' : 'H',
 	      (tgt->umode & (A_OP | A_HALFOP)) ? "*" : "", tgt->hops - 1, tgt->fname);
   ircd_do_unumeric (rq, RPL_WHOREPLY, rq, 0, buf);
 }
 
 BINDING_TYPE_ircd_client_cmd(ircd_who_cb);
 static int ircd_who_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
-		       char *user, char *host, int argc, const char **argv)
+		       char *user, char *host, char *vhost, int argc, const char **argv)
 { /* args: [<mask>[ "o"]] */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl;
   const char *mask = NULL;
@@ -599,6 +599,7 @@ static int ircd_who_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 		  break;
 	  if (mc)
 	    if (!mask || smatched >= 0 || simple_match (mask, tgt->host) >= 0 ||
+		((tgt->umode & A_MASKED) && simple_match (mask, tgt->vhost) >= 0) ||
 		simple_match (mask, tgt->lcnick) >= 0 ||
 		simple_match (mask, tgt->fname) >= 0) //TODO: LC search?
 	      _ircd_who_reply (cl, (i == 0) ? me : tgt->cs, tgt, NULL);
@@ -623,7 +624,7 @@ static int ircd_who_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 #ifdef IRCD_ENABLE_KILL
 BINDING_TYPE_ircd_client_cmd(ircd_kill_cb);
 static int ircd_kill_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
-			char *user, char *host, int argc, const char **argv)
+			char *user, char *host, char *vhost, int argc, const char **argv)
 { /* args: <nickname> <comment> */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl, *tcl;
   char reason[MB_LEN_MAX*TOPICLEN+HOSTMASKLEN];
@@ -641,7 +642,7 @@ static int ircd_kill_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
       !(CLIENT_IS_LOCAL(tcl) && (cl->umode & A_HALFOP))) /* local - only local */
     return ircd_do_unumeric(cl, ERR_NOPRIVILEGES, cl, 0, NULL);
   len = unistrcut(argv[1], sizeof(reason), TOPICLEN);
-  snprintf(reason, sizeof(reason), "%s!%s (%.*s)", cl->host, cl->nick, len,
+  snprintf(reason, sizeof(reason), "%s!%s (%.*s)", cl->vhost, cl->nick, len,
 	   argv[1]);			/* make the message with reason */
   //TODO: implement LOCAL_KILL_ONLY option
   if (!CLIENT_IS_REMOTE(tcl))
@@ -654,7 +655,7 @@ static int ircd_kill_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
   tcl->hold_upto = Time + CHASETIMELIMIT; /* make 'nick delay' */
   for (c = NextWord(reason); c > reason && c[-1] != '!'; c--); /* find nick */
   Add_Request(I_PENDING, "*", 0, ":%s!%s@%s QUIT :Killed by %s", tcl->nick,
-	      tcl->user, tcl->host, c);
+	      tcl->user, tcl->vhost, c);
   tcl->host[0] = 0;		/* for collision check */
   Add_Request(I_LOG, "*", F_MODES, "KILL %s :%s", tcl->nick, reason);
   return (1);
@@ -663,7 +664,7 @@ static int ircd_kill_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 
 BINDING_TYPE_ircd_client_cmd(ircd_away_cb);
 static int ircd_away_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
-			char *user, char *host, int argc, const char **argv)
+			char *user, char *host, char *vhost, int argc, const char **argv)
 { /* args: [<text>] */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl;
   register size_t len;
@@ -690,7 +691,7 @@ static int ircd_away_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 #ifdef IRCD_ENABLE_REHASH
 BINDING_TYPE_ircd_client_cmd(ircd_rehash_cb);
 static int ircd_rehash_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
-			  char *user, char *host, int argc, const char **argv)
+			  char *user, char *host, char *vhost, int argc, const char **argv)
 { /* args: none */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl;
   static char cmd[] = ".rehash";
@@ -706,7 +707,7 @@ static int ircd_rehash_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 #ifdef IRCD_ENABLE_DIE
 BINDING_TYPE_ircd_client_cmd(ircd_die_cb);
 static int ircd_die_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
-		       char *user, char *host, int argc, const char **argv)
+		       char *user, char *host, char *vhost, int argc, const char **argv)
 { /* args: none */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl;
   static char cmd[] = ".die";
@@ -722,7 +723,7 @@ static int ircd_die_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 #ifdef IRCD_ENABLE_RESTART
 BINDING_TYPE_ircd_client_cmd(ircd_restart_cb);
 static int ircd_restart_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
-			   char *user, char *host, int argc, const char **argv)
+			   char *user, char *host, char *vhost, int argc, const char **argv)
 { /* args: none */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl;
   static char cmd[] = ".restart";
@@ -737,7 +738,7 @@ static int ircd_restart_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 
 BINDING_TYPE_ircd_client_cmd(ircd_userhost_cb);
 static int ircd_userhost_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
-			    char *user, char *host, int argc, const char **argv)
+			    char *user, char *host, char *vhost, int argc, const char **argv)
 { /* args: <nickname>[ ...] */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl, *tgt;
   int i;
@@ -759,7 +760,7 @@ static int ircd_userhost_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
       if (tgt == NULL || CLIENT_IS_SERVER(tgt))
 	continue;
       if ((s + strlen(tgt->nick) + strlen(tgt->user) +
-	  strlen(tgt->host)) >= (sizeof(buf) - 5)) {
+	  strlen(tgt->vhost)) >= (sizeof(buf) - 5)) {
 	ircd_do_unumeric(cl, RPL_USERHOST, cl, 0, buf);
 	s = 0;
       }
@@ -775,7 +776,7 @@ static int ircd_userhost_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 	buf[s++] = '+';
       s += strfcpy(&buf[s], tgt->user, sizeof(buf) - s);
       buf[s++] = '@';
-      s += strfcpy(&buf[s], tgt->host, sizeof(buf) - s);
+      s += strfcpy(&buf[s], tgt->vhost, sizeof(buf) - s);
     }
   }
   if (s)
@@ -785,7 +786,7 @@ static int ircd_userhost_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 
 BINDING_TYPE_ircd_client_cmd(ircd_ison_cb);
 static int ircd_ison_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
-			char *user, char *host, int argc, const char **argv)
+			char *user, char *host, char *vhost, int argc, const char **argv)
 { /* args: <nickname>[ ...] */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl, *tgt;
   int i;
@@ -821,7 +822,7 @@ static int ircd_ison_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 #if IRCD_USES_ICONV
 BINDING_TYPE_ircd_client_cmd(ircd_charset_cb);
 static int ircd_charset_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
-			   char *user, char *host, int argc, const char **argv)
+			   char *user, char *host, char *vhost, int argc, const char **argv)
 { /* args: [<charset>] */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl;
   struct conversion_t *conv;

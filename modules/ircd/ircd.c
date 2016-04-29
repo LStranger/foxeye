@@ -706,6 +706,7 @@ __attribute__((warn_unused_result)) static inline CLIENT *
   strfcpy(cl2->nick, on, sizeof(cl2->nick));
   cl2->via = NULL;			/* no structures for this */
   cl2->host[0] = 0;			/* mark it to drop later */
+  cl2->vhost[0] = 0;
   cl2->away[0] = 0;			/* it's used by nick tracking */
   cl2->umode = 0;
 #if IRCD_MULTICONNECT
@@ -1001,7 +1002,7 @@ static CLIENT *_ircd_check_nick_collision(char *nick, size_t nsz, peer_priv *pp,
     ircd_prepare_quit(collided, pp, "nick collision");
     collided->hold_upto = Time + CHASETIMELIMIT;
     Add_Request(I_PENDING, "*", 0, ":%s!%s@%s QUIT :Nick collision from %s",
-		collided->nick, collided->user, collided->host, onserv);
+		collided->nick, collided->user, collided->vhost, onserv);
     collided->host[0] = '\0';		/* for collision check */
     Add_Request(I_LOG, "*", F_MODES, "KILL %s :Nick collision from %s",
 		collided->nick, onserv);
@@ -1154,7 +1155,7 @@ static iftype_t _ircd_client_signal (INTERFACE *cli, ifsig_t sig)
 	    ircd_prepare_quit (peer->link->cl, peer, reason);
 	    peer->link->cl->hold_upto = Time;
 	    Add_Request (I_PENDING, "*", 0, ":%s!%s@%s QUIT :%s", peer->p.dname,
-			 peer->link->cl->user, peer->link->cl->host, reason);
+			 peer->link->cl->user, peer->link->cl->vhost, reason);
 	  }
       }
       break;
@@ -1457,7 +1458,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 				  NULL)))
 	  if (!b->name)			/* passed thru filter and found cmd */
 	    i = b->func (Ircd->iface, &peer->p, cl->lcnick, cl->user, cl->host,
-			 argc - 2, &argv[2]);
+			 cl->vhost, argc - 2, &argv[2]);
     }
     if (i == 0)				/* protocol failed */
     {
@@ -1628,6 +1629,7 @@ static void _ircd_handler (char *cln, char *ident, const char *host, void *data)
   pthread_mutex_unlock (&IrcdLock);
   unistrlower (cl->user, NONULL(ident), sizeof(cl->user));
   unistrlower (cl->host, host, sizeof(cl->host));
+  strfcpy (cl->vhost, cl->host, sizeof(cl->vhost));
   cl->pcl = NULL;
   cl->cs = cl;
   cl->umode = 0;
@@ -1937,6 +1939,7 @@ static inline void _ircd_start_uplink2 (const char *name, char *host,
     strfcpy (uplink->fname, pass, sizeof(uplink->fname)); /* remember it */
   strfcpy (uplink->away, port, sizeof(uplink->away)); /* remember port string */
   strfcpy (uplink->host, host, sizeof(uplink->host)); /* remember host name */
+  strfcpy (uplink->vhost, host, sizeof(uplink->vhost));
   Connchain_Grow (&uplink->via->p, 0); /* init empty connchain */
   uplink->via->p.iface = Add_Iface (I_CONNECT, uplink->lcnick,
 				    &_ircd_uplink_sig, &_ircd_uplink_req,
@@ -2423,7 +2426,7 @@ static int ircd_nick_rb (INTERFACE *srv, struct peer_t *peer, int argc, const ch
 
 BINDING_TYPE_ircd_client_cmd(ircd_nick_cb);
 static int ircd_nick_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char *user,
-			char *host, int argc, const char **argv)
+			char *host, char *vhost, int argc, const char **argv)
 { /* args: <new nick> */
   CLIENT *cl = ((peer_priv *)peer->iface->data)->link->cl; /* it's really peer->link->cl */
   int is_casechange;
@@ -3034,6 +3037,7 @@ static CLIENT *_ircd_got_new_remote_server (peer_priv *pp, CLIENT *src,
   strfcpy (cl->fname, info, sizeof(cl->fname));
   cl->user[0] = 0;
   cl->host[0] = 0;
+  cl->vhost[0] = 0;
   if (Insert_Key (&Ircd->clients, cl->lcnick, cl, 1) < 0)
     ERROR("ircd:_ircd_got_new_remote_server: tree error on adding %s",
 	  cl->lcnick); /* TODO: isn't it fatal? */
@@ -3276,7 +3280,7 @@ static CLIENT *_ircd_do_nickchange(CLIENT *tgt, peer_priv *pp,
   if (!CLIENT_IS_REMOTE(tgt))
     tgt->via->p.iface->ift |= I_PENDING;
   Add_Request(I_PENDING, "*", 0, ":%s!%s@%s NICK %s", tgt->nick, tgt->user,
-	      tgt->host, nn);
+	      tgt->vhost, nn);
   _ircd_bt_client(tgt, tgt->nick, nn, pp ? pp->link->cl->lcnick : MY_NAME);
   /* change our data now */
   if (casechange) {
@@ -3437,7 +3441,7 @@ static int _ircd_remote_nickchange(CLIENT *tgt, peer_priv *pp,
       phantom->x.rto = NULL;
       DBG("ircd:CLIENT: nick change collision KILL: %p => %p", tgt, phantom);
       Add_Request(I_PENDING, "*", 0, ":%s!%s@%s QUIT :Nick collision from %s",
-		  tgt->nick, tgt->user, tgt->host, pp->p.dname);
+		  tgt->nick, tgt->user, tgt->vhost, pp->p.dname);
       tgt->host[0] = 0;			/* for collision check */
       Add_Request(I_LOG, "*", F_MODES, "KILL %s :Nick collision from %s",
 		  tgt->nick, pp->p.dname);
@@ -3571,13 +3575,14 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   tgt->hops = on->hops + 1;
   unistrlower(tgt->user, argv[2], sizeof(tgt->user));
   unistrlower(tgt->host, argv[3], sizeof(tgt->host));
+  strfcpy(tgt->vhost, tgt->host, sizeof(tgt->vhost));
   strfcpy(tgt->fname, argv[6], sizeof(tgt->fname));
   for (c = argv[5]; *c; c++) { /* make umode from argv[5] */
     register modeflag mf;
 
     if (*c == '+' && c == argv[5])
       continue;
-    mf = ircd_char2umode(srv, peer->dname, *c);
+    mf = ircd_char2umode(srv, peer->dname, *c, tgt);
     if (mf == 0)
       ERROR("ircd:unknown umode char %c for NICK from %s", *c, peer->dname);
     else
@@ -3712,6 +3717,7 @@ static int ircd_service_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
   tgt->hops = on->hops + 1;
   tgt->user[0] = '\0';
   strfcpy(tgt->host, argv[2], sizeof(tgt->host));
+  strfcpy(tgt->vhost, argv[2], sizeof(tgt->vhost));
   strfcpy(tgt->fname, argv[5], sizeof(tgt->fname));
   link = alloc_LINK();
   link->cl = tgt;
@@ -3822,7 +3828,7 @@ static modeflag incl_ircd(const char *net, const char *public,
   if (CLIENT_IS_SERVER(cl))
     return cl->umode;
   if (host)
-    *host = cl->host;
+    *host = cl->vhost;
   if (lname)
     *lname = cl->user;
   if (idle && !CLIENT_IS_REMOTE(cl))
@@ -4321,7 +4327,7 @@ static inline void _ircd_squit_one (LINK *link)
     }
     ircd_quit_all_channels (Ircd, l->cl, 1, 1); /* it's user, remove it */
     Add_Request (I_PENDING, "*", 0, ":%s!%s@%s QUIT :%s %s", l->cl->nick,
-		 l->cl->user, l->cl->host, link->where->lcnick, server->lcnick);
+		 l->cl->user, l->cl->vhost, link->where->lcnick, server->lcnick);
 		 /* send split message */
     _ircd_class_out (l);		/* remove from global class list */
     _ircd_bt_client(l->cl, l->cl->nick, NULL, server->lcnick); /* "ircd-client" */
@@ -4500,7 +4506,7 @@ int ircd_do_unumeric (CLIENT *requestor, int n, const char *template,
   /* macros: %N - nick(requestor), %@ - user host/server description,
 	     %L - ident, %# - nick, %P - $i, %- - idle, %* - $m */
   printl (buff, sizeof(buff), template, 0, requestor->nick,
-	  CLIENT_IS_SERVER(target) ? target->fname : target->host,
+	  CLIENT_IS_SERVER(target) ? target->fname : target->vhost,
 	  target->user,
 	  CLIENT_IS_SERVER(target) ? target->lcnick : target->nick, 0, i,
 	  target->via ? (Time - target->via->p.last_input) : (time_t)0, m);

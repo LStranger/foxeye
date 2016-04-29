@@ -211,7 +211,7 @@ struct CLIENT
   char host[HOSTLEN+1];			/* host ; LC ; split server if on hold
 						       empty if hold by acks */
 					/* and it's used for service distrib. */
-  //char vhost[HOSTLEN+1];		/* TODO: "visible host" to show to users */
+  char vhost[HOSTLEN+1];		/* "visible host" to show to users */
 };
 
 /* channel's member data */
@@ -372,8 +372,8 @@ modeflag ircd_whochar2mode(char);
 /* args: ircd, servername, nick, channame, mode char
    returns starting channel mode for '\0' or user-on-channel mode */
 modeflag ircd_char2mode(INTERFACE *, const char *, const char *, const char *, char);
-/* args: ircd, servername, mode char; returns umode for server modechange */
-modeflag ircd_char2umode(INTERFACE *, const char *, char);
+/* args: ircd, servername, mode char, user; returns umode for server modechange */
+modeflag ircd_char2umode(INTERFACE *, const char *, char, CLIENT *);
 
 	/* calls to channel.c from ircd.c */
 void ircd_channels_flush (IRCD *, char *, size_t);

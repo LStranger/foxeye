@@ -276,7 +276,7 @@ static int ircd_quit_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 			      ":%s QUIT :%s", cl->nick, msg);
   ircd_prepare_quit(cl, cl->via, msg);
   Add_Request(I_PENDING, "*", 0, ":%s!%s@%s QUIT :%s", cl->nick, cl->user,
-	      cl->host, msg);
+	      cl->vhost, msg);
   cl->hold_upto = Time;
   cl->host[0] = 0;			/* for collision check */
   return 1;
@@ -375,7 +375,7 @@ static inline int _ircd_join_0_remote(IRCD *ircd, struct peer_priv *bysrv,
 			     ch->name);
     else
       ircd_sendto_chan_local(ch, ":%s!%s@%s PART %s :%s", cl->nick,
-			     cl->user, cl->host, ch->name, key);
+			     cl->user, cl->vhost, ch->name, key);
 #ifdef USE_SERVICES
     //TODO: inform services
 #endif
@@ -646,7 +646,7 @@ static int ircd_part_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 			     memb->chan->name);
     else
       ircd_sendto_chan_local(memb->chan, ":%s!%s@%s PART %s :%s", cl->nick,
-			     cl->user, cl->host, memb->chan->name, msg);
+			     cl->user, cl->vhost, memb->chan->name, msg);
 #ifdef USE_SERVICES
     //TODO: notify services
 #endif
@@ -738,7 +738,7 @@ static int ircd_invite_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
   if (CLIENT_IS_REMOTE(tgt))
     ircd_sendto_one (tgt, ":%s INVITE %s %s", sender, argv[0], argv[1]);
   else
-    ircd_sendto_one (tgt, ":%s!%s@%s INVITE %s %s", sender, cl->user, cl->host,
+    ircd_sendto_one (tgt, ":%s!%s@%s INVITE %s %s", sender, cl->user, cl->vhost,
 		     argv[0], argv[1]);
   if (!(cl->umode & A_SERVICE) && tgt->away[0])
     ircd_do_unumeric (cl, RPL_AWAY, tgt, 0, tgt->away);
@@ -843,7 +843,7 @@ static int ircd_kick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 		      chn, lcl, reason);
       } else
 	ircd_sendto_chan_local (tm->chan, ":%s!%s@%s KICK %s %s :%s",
-				sender, cl->user, cl->host, chn, lcl, reason);
+				sender, cl->user, cl->vhost, chn, lcl, reason);
 #ifdef USE_SERVICES
       //TODO: inform services
 #endif
@@ -918,7 +918,7 @@ static int ircd_kill_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   tcl->hold_upto = Time + CHASETIMELIMIT; /* make 'nick delay' */
   for (c = NextWord(reason); c > reason && c[-1] != '!'; c--); /* find nick */
   Add_Request(I_PENDING, "*", 0, ":%s!%s@%s QUIT :Killed by %s", tcl->nick,
-	      tcl->user, tcl->host, c);
+	      tcl->user, tcl->vhost, c);
   tcl->host[0] = 0;			/* for collision check */
   Add_Request(I_LOG, "*", F_MODES, "KILL %s :%s", tcl->nick, reason);
   return (1);
@@ -982,7 +982,7 @@ static int _ircd_do_stopic(IRCD *ircd, const char *via, const char *sender,
 			   ch->name, ch->topic);
   else
     ircd_sendto_chan_local(ch, ":%s!%s@%s TOPIC %s :%s", sender, cl->user,
-			   cl->host, ch->name, ch->topic);
+			   cl->vhost, ch->name, ch->topic);
   cmask = strchr(ch->name, ':');
   if (cmask)
   {
