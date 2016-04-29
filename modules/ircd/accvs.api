@@ -273,15 +273,15 @@
     numeric reply to client using IRCD interface _s_r_v.
       Matching: target.  (userflags are ignored)
 
--     "ircd-check-send" MATCHCASE
-  int func(INTERFACE *srv, struct peer_t *tgt, modeflag tum, char *msg,
-	   size_t ms);
-    Used when message msg in buffer of size ms is about to be sent to a
-    local link tgt which has mode tum at this moment. Binding can either
+-     "iirrccdd--cchheecckk--sseenndd" MATCHCASE
+  int func(INTERFACE *_s_r_v, struct peer_t *_t_g_t, modeflag _t_u_m, char *_m_s_g,
+	   size_t _m_s);
+    Used when message _m_s_g in buffer of size _m_s is about to be sent to a
+    local link _t_g_t which has mode _t_u_m at this moment. Binding can either
     leave message intact, or rewrite the message, or put another message
-    for client using either interface pointer in tgt or IRCD interface
-    srv. Note that message msg is in client's encoding. Also note that
-    message which is sent using interface pointer in tgt will miss any
+    for client using either interface pointer in _t_g_t or IRCD interface
+    _s_r_v. Note that message _m_s_g is in client's encoding. Also note that
+    message which is sent using interface pointer in _t_g_t will miss any
     filtering (through "ircd-do-numeric" bindtable for example) but the
     "ircd-check-send" filtering on next send. Returns 0 if the message
     should be discarded.

@@ -83,6 +83,7 @@ static struct bindtable_t *BTIrcdLocalClient;
 static struct bindtable_t *BTIrcdClient;
 static struct bindtable_t *BTIrcdDoNumeric;
 static struct bindtable_t *BTIrcdCollision;
+static struct bindtable_t *BTIrcdCheckSend;
 
 /* access to IrcdPeers and allocators should be locked with this */
 static pthread_mutex_t IrcdLock = PTHREAD_MUTEX_INITIALIZER;
@@ -1349,10 +1350,22 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
     case P_IDLE:
       sw = 0;
       if (Peer_Put ((&peer->p), "", &sw) == CONNCHAIN_READY && req) {
+	b = NULL;
+	if (req->string[0] == ':')
+	  c = NextWord (req->string);
+	else
+	  c = req->string;
+	sw = 0;
+	while (*c && *c != ' ' && sw < sizeof(buff) - 1)
+	  buff[sw++] = *c++; /* get command itself */
+	buff[sw] = 0;
+	while ((b = Check_Bindtable (BTIrcdCheckSend, buff, U_ALL, U_ANYCH, b)))
+	  if (!b->name && !b->func (Ircd, &peer->p, peer->link->cl->umode,
+				    req->string, sizeof(req->string)))
+	    break; /* binding has cancelled sending of message */
 	sw = strlen(req->string);
 	sr = sw + 1;			/* for statistics */
-	//TODO: BTIrcdCheckSend(cmd): func (Ircd, &peer->p, peer->link->cl->umode);
-	if (Peer_Put ((&peer->p), req->string, &sw) > 0)
+	if (b == NULL && Peer_Put ((&peer->p), req->string, &sw) > 0)
 	{
 	  peer->ms++;
 	  peer->bs += sr;
@@ -4852,6 +4865,7 @@ SigFunction ModuleInit (char *args)
   BTIrcdRegisterCmd = Add_Bindtable ("ircd-register-cmd", B_UNIQ);
   BTIrcdClientFilter = Add_Bindtable ("ircd-client-filter", B_KEYWORD);
   BTIrcdDoNumeric = Add_Bindtable ("ircd-do-numeric", B_UNIQ);
+  BTIrcdCheckSend = Add_Bindtable ("ircd-check-send", B_MATCHCASE);
   /* add every binding into them */
   Add_Binding ("ircd-auth", "*", 0, 0, &_ircd_class_in, NULL);
   Add_Binding ("ircd-register-cmd", "pass", 0, 0, &ircd_pass, NULL);
