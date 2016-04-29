@@ -221,7 +221,9 @@
     Used before "ircd-client-cmd" bindtable so you can intercept and
     cancel executing any bindings in it by returning non-zero. Binding
     receives the same _s_r_v, _p_e_e_r, _a_r_g_c, and _a_r_g_v parameters that binding
-    for "ircd-client-cmd" will do and also user mode flags _u_m_o_d_e.
+    for "ircd-client-cmd" will do and also user mode flags _u_m_o_d_e. Also
+    used before "ircd-register-cmd" so _a_r_g_v may vary and nick of the
+    client may be not known yet.
       Matching: command.  (channel userflags are ignored)
       Matching stops after first succesful binding call.
 

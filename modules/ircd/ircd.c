@@ -1426,7 +1426,16 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
     else if (peer->p.state == P_LOGIN ||
 	     peer->p.state == P_IDLE)	/* not registered yet */
     {
-      b = Check_Bindtable (BTIrcdRegisterCmd, argv[1], U_ALL, U_ANYCH, NULL);
+      b = NULL;
+      while ((b = Check_Bindtable (BTIrcdClientFilter, argv[1], peer->p.uf,
+				   U_ANYCH, b)))
+	if (!b->name)
+	  if ((i = b->func (Ircd->iface, &peer->p, cl->umode, argc - 2,
+			    &argv[2])) != 0)
+	    break;			/* it's consumed so it's done */
+      b = NULL;
+      if (i == 0)
+	b = Check_Bindtable (BTIrcdRegisterCmd, argv[1], U_ALL, U_ANYCH, NULL);
       if (b)
 	if (!b->name)
 	  i = b->func (Ircd->iface, &peer->p, argc - 2, &argv[2]);

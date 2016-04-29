@@ -10,12 +10,15 @@ TODO:
 	* core/lib.c: to fail if unable to set desired locale.
 	* *Makefile: allow third-party modules builds.
 	* modules/ircd: to test if both locales are valid and fail.
+	* *: to check Add_Request/New_Request coming to user to be translatable.
 
 --- [0.10.2]
 Fri Apr 29 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: implemented "ircd-check-send" bindtable for sake
 	  of modules which would send message to target *.*@<network> so they
 	  can filter recipients using bindings on this bindtable.
+	* modules/ircd/ircd.c: added check with "ircd-client-filter" bindtable
+	  before "ircd-register-cmd" processing as well.
 
 Thu Apr 28 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/connchain.c: removed "sticky" filters from connchain processing,
