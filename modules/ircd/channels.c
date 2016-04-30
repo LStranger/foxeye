@@ -1025,8 +1025,9 @@ static inline int _ircd_mode_mask_query_reply (INTERFACE *srv, CLIENT *cl,
 #define CONTINUE_ON_MODE_ERROR(A,B) if (ircd_do_cnumeric (cl, A, ch, 0, B)) continue;
 
 BINDING_TYPE_ircd_client_cmd(ircd_mode_cb); /* huge one as hell */
-static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char *user,
-			char *host, char *vhost, int argc, const char **argv)
+static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
+			const char *user, const char *host, const char *vhost,
+			int argc, const char **argv)
 { /* args: <target> [modes...] */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl;
   CHANNEL *ch;
@@ -1460,8 +1461,9 @@ static inline void _ircd_join_0_local (IRCD *ircd, CLIENT *cl, char *key)
 }
 
 BINDING_TYPE_ircd_client_cmd(ircd_join_cb);
-static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char *user,
-			char *host, char *vhost, int argc, const char **argv)
+static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
+			const char *user, const char *host, const char *vhost,
+			int argc, const char **argv)
 { /* args: <channel> [,<channel> ...] [<key> [,<key> ... ]] | 0 */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl;
   CHANNEL *ch;
@@ -1677,8 +1679,7 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char 
 /* huge function, used by both ircd_mode_sb and ircd_imode */
 static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 			  unsigned short token, int id, const char *sender,
-			  const char *lcsender, char *cmd, int argc,
-			  const char **argv)
+			  const char *lcsender, int argc, const char **argv)
 { /* input: <channel> modes... */
   CLIENT *src, *tgt;
   CHANNEL *ch;
@@ -2143,7 +2144,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 
 BINDING_TYPE_ircd_server_cmd(ircd_mode_sb);
 static int ircd_mode_sb(INTERFACE *srv, struct peer_t *peer, unsigned short token,
-			const char *sender, const char *lcsender, char *cmd,
+			const char *sender, const char *lcsender,
 			int argc, const char **argv)
 { /* args: <target> modes... */
   struct peer_priv *pp = peer->iface->data; /* it's really peer */
@@ -2153,13 +2154,13 @@ static int ircd_mode_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     ERROR ("ircd:incomplete MODE command by %s via %s", sender, peer->dname);
     return ircd_recover_done (pp, "incomplete MODE command");
   }
-  return _ircd_do_smode(srv, pp, token, -1, sender, lcsender, cmd, argc, argv);
+  return _ircd_do_smode(srv, pp, token, -1, sender, lcsender, argc, argv);
 }
 
 #if IRCD_MULTICONNECT
 BINDING_TYPE_ircd_server_cmd(ircd_imode);
 static int ircd_imode(INTERFACE *srv, struct peer_t *peer, unsigned short token,
-		      const char *sender, const char *lcsender, char *cmd,
+		      const char *sender, const char *lcsender,
 		      int argc, const char **argv)
 { /* args: <id> <target> modes... */
   struct peer_priv *pp = peer->iface->data; /* it's really peer */
@@ -2175,7 +2176,7 @@ static int ircd_imode(INTERFACE *srv, struct peer_t *peer, unsigned short token,
   if (!ircd_test_id(((IRCD *)srv->data)->token[token], id))
     //TODO: log duplicate?
     return (1);
-  return _ircd_do_smode(srv, pp, token, id, sender, lcsender, cmd, argc - 1,
+  return _ircd_do_smode(srv, pp, token, id, sender, lcsender, argc - 1,
 			&argv[1]);
 }
 #endif /* IRCD_MULTICONNECT */

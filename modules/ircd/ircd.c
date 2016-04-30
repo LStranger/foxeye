@@ -834,7 +834,7 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
     while ((b = Check_Bindtable (BTIrcdServerCmd, argv[1], U_ALL, U_ANYCH, b)))
       if (!b->name)
 	i |= b->func (Ircd->iface, peer ? &peer->p : NULL, t, argv[0],
-		      c->lcnick, argv[1], argc - 2, &argv[2]);
+		      c->lcnick, argc - 2, &argv[2]);
     return i;
   }
   return 0;
@@ -2425,8 +2425,9 @@ static int ircd_nick_rb (INTERFACE *srv, struct peer_t *peer, int argc, const ch
 }
 
 BINDING_TYPE_ircd_client_cmd(ircd_nick_cb);
-static int ircd_nick_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick, char *user,
-			char *host, char *vhost, int argc, const char **argv)
+static int ircd_nick_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
+			const char *user, const char *host, const char *vhost,
+			int argc, const char **argv)
 { /* args: <new nick> */
   CLIENT *cl = ((peer_priv *)peer->iface->data)->link->cl; /* it's really peer->link->cl */
   int is_casechange;
@@ -3050,7 +3051,7 @@ static CLIENT *_ircd_got_new_remote_server (peer_priv *pp, CLIENT *src,
 #define __TRANSIT__ __CHECK_TRANSIT__(token)
 BINDING_TYPE_ircd_server_cmd(ircd_server_sb);
 static int ircd_server_sb(INTERFACE *srv, struct peer_t *peer, unsigned short token,
-			  const char *sender, const char *lcsender, char *cmd,
+			  const char *sender, const char *lcsender,
 			  int argc, const char **argv)
 { /* args: <servername> <hopcount> <token/info(RFC1459)> <info(RFC2813)> */
   peer_priv *pp = peer->iface->data; /* it's peer really */
@@ -3145,7 +3146,7 @@ static int ircd_server_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
 #if IRCD_MULTICONNECT
 BINDING_TYPE_ircd_server_cmd(ircd_iserver);
 static int ircd_iserver(INTERFACE *srv, struct peer_t *peer, unsigned short token,
-			const char *sender, const char *lcsender, char *cmd,
+			const char *sender, const char *lcsender,
 			int argc, const char **argv)
 { /* args: <servername> <hopcount> <token> <info> */
   peer_priv *pp = peer->iface->data; /* it's peer really */
@@ -3470,7 +3471,7 @@ static int _ircd_remote_nickchange(CLIENT *tgt, peer_priv *pp,
 
 BINDING_TYPE_ircd_server_cmd(ircd_nick_sb);
 static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short token,
-			const char *sender, const char *lcsender, char *cmd,
+			const char *sender, const char *lcsender,
 			int argc, const char **argv)
 { /* args: <nickname> <hopcount> <username> <host> <servertoken> <umode> <realname> */
   /* args: <newnickname> */
@@ -3617,7 +3618,7 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 #if IRCD_MULTICONNECT
 BINDING_TYPE_ircd_server_cmd(ircd_inum);
 static int ircd_inum(INTERFACE *srv, struct peer_t *peer, unsigned short token,
-		     const char *sender, const char *lcsender, char *cmd,
+		     const char *sender, const char *lcsender,
 		     int argc, const char **argv)
 { /* args: <id> <numeric> <target> text... */
   struct peer_priv *pp = peer->iface->data; /* it's peer really */
@@ -3640,7 +3641,7 @@ static int ircd_inum(INTERFACE *srv, struct peer_t *peer, unsigned short token,
 
 BINDING_TYPE_ircd_server_cmd(ircd_service_sb);
 static int ircd_service_sb(INTERFACE *srv, struct peer_t *peer, unsigned short token,
-			   const char *sender, const char *lcsender, char *cmd,
+			   const char *sender, const char *lcsender,
 			   int argc, const char **argv)
 { /* args: <servicename> <servertoken> <distribution> <type> <hopcount> <info> */
   CLIENT *tgt, *on;

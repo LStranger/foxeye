@@ -18,6 +18,8 @@ Sat Apr 30 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  U_QUIET, they were missed on scan.
 	* modules/ircd/channels.c: fixed "ircd-check-modechange" test for the
 	  users with +r usermode, they were denied to join any channel.
+	* modules/ircd/*: removed 'char *cmd' parameter from "ircd-server-cmd"
+	  bindings, it's never used and never should.
 
 Fri Apr 29 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: implemented "ircd-check-send" bindtable for sake

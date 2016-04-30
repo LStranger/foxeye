@@ -45,13 +45,14 @@
       Matching: command.  (userflags are ignored)
 
 -     "iirrccdd--cclliieenntt--ccmmdd" UNIQ
-  int func(INTERFACE *_s_r_v, struct peer_t *_p_e_e_r, char *_l_c_n_i_c_k, char *_u_s_e_r,
-	   char *_h_o_s_t, char *_v_h_o_s_t, int _a_r_g_c, const char **_a_r_g_v);
+  int func(INTERFACE *_s_r_v, struct peer_t *_p_e_e_r, const char *_l_c_n_i_c_k,
+	   const char *_u_s_e_r, const char *_h_o_s_t, const char *_v_h_o_s_t,
+	   int _a_r_g_c, const char **_a_r_g_v);
     Used when server got some message from local client _p_e_e_r. Message is
     parsed and put into array _a_r_g_v so _a_r_g_c contains number of parameters
-    that was given to command. _p_e_e_r->dname contains nick of _p_e_e_r and _u_s_e_r
-    and _h_o_s_t are from client connection, converted to lower case nick of
-    client _l_c_n_i_c_k is provided for using with Inspect_Client() function.
+    that was given to the command. _p_e_e_r->dname contains nick of sender,
+    _u_s_e_r and _h_o_s_t are from client connection, and converted to lower case
+    sender nick _l_c_n_i_c_k is provided to use with Inspect_Client() function.
     The visible host _v_h_o_s_t is also provided. _s_r_v is IRCD interface which
     can be used to send control messages (commands). Value -1 returned by
     binding means this command should not reset idle time calculation.
@@ -59,12 +60,12 @@
 
 -     "iirrccdd--sseerrvveerr--ccmmdd" KEYWORD
   int func(INTERFACE *_s_r_v, struct peer_t *_p_e_e_r, unsigned short _t_o_k_e_n,
-	   const char *_s_e_n_d_e_r, const char *_l_c_s_e_n_d_e_r, char *_c_m_d, int _a_r_g_c,
+	   const char *_s_e_n_d_e_r, const char *_l_c_s_e_n_d_e_r, int _a_r_g_c,
 	   const char **_a_r_g_v);
     Used when server got some message from local server link _p_e_e_r (which
     can be NULL if command invoked internally). Message is parsed and put
     into array _a_r_g_v so _a_r_g_c contains number of parameters that was given
-    to command _c_m_d. _p_e_e_r->dname contains name of _p_e_e_r, _s_e_n_d_e_r is supplied
+    to the command. _p_e_e_r->dname contains name of _p_e_e_r, _s_e_n_d_e_r is supplied
     by _p_e_e_r and is name of _p_e_e_r (or server's own name in case of _p_e_e_r is
     NULL) if it was not provided in command. Converted to lower case
     version of _s_e_n_d_e_r is also provided as _l_c_s_e_n_d_e_r for Inspect_Client()

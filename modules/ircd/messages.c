@@ -520,8 +520,9 @@ static inline CLIENT *_ircd_find_msg_target (const char *target,
    and any type of messages for it from servers should generate an error!!! */
 
 BINDING_TYPE_ircd_client_cmd(ircd_privmsg_cb);
-static int ircd_privmsg_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
-			   char *user, char *host, char *vhost, int argc, const char **argv)
+static int ircd_privmsg_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
+			   const char *user, const char *host, const char *vhost,
+			   int argc, const char **argv)
 { /* args: <msgtarget> <text to be sent> */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl, *tcl;
   MEMBER *tch;
@@ -637,8 +638,9 @@ static int ircd_privmsg_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 }
 
 BINDING_TYPE_ircd_client_cmd(ircd_notice_cb);
-static int ircd_notice_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
-			  char *user, char *host, char *vhost, int argc, const char **argv)
+static int ircd_notice_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
+			  const char *user, const char *host, const char *vhost,
+			  int argc, const char **argv)
 { /* args: <msgtarget> <text to be sent> */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl, *tcl;
   MEMBER *tch;
@@ -738,8 +740,9 @@ static int ircd_notice_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 }
 
 BINDING_TYPE_ircd_client_cmd(ircd_squery_cb);
-static int ircd_squery_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
-			  char *user, char *host, char *vhost, int argc, const char **argv)
+static int ircd_squery_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
+			  const char *user, const char *host, const char *vhost,
+			  int argc, const char **argv)
 { /* args: <servicename> <text to be sent> */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl, *tcl;
   IRCD *ircd = (IRCD *)srv->data;
@@ -774,7 +777,7 @@ static int ircd_squery_cb(INTERFACE *srv, struct peer_t *peer, char *lcnick,
 /* not defining __TRANSIT__ here since token is handled by _ircd_broadcast_* */
 BINDING_TYPE_ircd_server_cmd(ircd_privmsg_sb);
 static int ircd_privmsg_sb(INTERFACE *srv, struct peer_t *peer, unsigned short token,
-			   const char *sender, const char *lcsender, char *cmd,
+			   const char *sender, const char *lcsender,
 			   int argc, const char **argv)
 { /* args: <msgtarget> <text to be sent> */
   CLIENT *cl, *tcl;
@@ -869,7 +872,7 @@ static int ircd_privmsg_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
 
 BINDING_TYPE_ircd_server_cmd(ircd_notice_sb);
 static int ircd_notice_sb(INTERFACE *srv, struct peer_t *peer, unsigned short token,
-			  const char *sender, const char *lcsender, char *cmd,
+			  const char *sender, const char *lcsender,
 			  int argc, const char **argv)
 { /* args: <msgtarget> <text to be sent> */
   CLIENT *cl, *tcl;
@@ -961,7 +964,7 @@ static int ircd_notice_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
 
 BINDING_TYPE_ircd_server_cmd(ircd_squery_sb);
 static int ircd_squery_sb(INTERFACE *srv, struct peer_t *peer, unsigned short token,
-			  const char *sender, const char *lcsender, char *cmd,
+			  const char *sender, const char *lcsender,
 			  int argc, const char **argv)
 { /* args: <servicename> <text to be sent> */
   CLIENT *tcl;
@@ -992,7 +995,7 @@ static int ircd_squery_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
 #if IRCD_MULTICONNECT
 BINDING_TYPE_ircd_server_cmd(ircd_iprivmsg);
 static int ircd_iprivmsg(INTERFACE *srv, struct peer_t *peer, unsigned short token,
-			 const char *sender, const char *lcsender, char *cmd,
+			 const char *sender, const char *lcsender,
 			 int argc, const char **argv)
 { /* args: <id> <msgtarget> <text to be sent> */
   CLIENT *cl, *tcl;
@@ -1095,7 +1098,7 @@ static int ircd_iprivmsg(INTERFACE *srv, struct peer_t *peer, unsigned short tok
 
 BINDING_TYPE_ircd_server_cmd(ircd_inotice);
 static int ircd_inotice(INTERFACE *srv, struct peer_t *peer, unsigned short token,
-			const char *sender, const char *lcsender, char *cmd,
+			const char *sender, const char *lcsender,
 			int argc, const char **argv)
 { /* args: <id> <msgtarget> <text to be sent> */
   CLIENT *cl, *tcl;
@@ -1193,7 +1196,7 @@ static int ircd_inotice(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 
 BINDING_TYPE_ircd_server_cmd(ircd_isquery);
 static int ircd_isquery(INTERFACE *srv, struct peer_t *peer, unsigned short token,
-			const char *sender, const char *lcsender, char *cmd,
+			const char *sender, const char *lcsender,
 			int argc, const char **argv)
 { /* args: <id> <servicename> <text to be sent> */
   CLIENT *tcl;
