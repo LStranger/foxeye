@@ -2112,7 +2112,7 @@ static int ircd_pass (INTERFACE *srv, struct peer_t *peer, int argc, const char 
   CLIENT *cl = ((peer_priv *)peer->iface->data)->link->cl; /* it's really peer->link->cl */
 
   if (argc == 0)
-    return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, NULL);
+    return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, "PASS");
   if (cl->nick[0] || cl->fname[0])	/* got either NICK or USER already */
     return ircd_do_unumeric (cl, ERR_ALREADYREGISTRED, cl, 0, NULL);
   if (cl->lcnick[0])			/* second PASS command */
@@ -2274,13 +2274,13 @@ static int ircd_user (INTERFACE *srv, struct peer_t *peer, int argc, const char 
   if (cl->umode & A_UPLINK)		/* illegal here! */
     return (0);
   if (argc < 4)
-    return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, NULL);
+    return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, "USER");
   if (cl->fname[0])			/* got USER already */
     return ircd_do_unumeric (cl, ERR_ALREADYREGISTRED, cl, 0, NULL);
 //  c = NextWord(argv[3]);
 //  if (*c == '\0')
   if (*argv[3] == '\0')
-    return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, NULL);
+    return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, "USER");
   if (!cl->user[0])			/* got no ident */
   {
     register unsigned char *cc;

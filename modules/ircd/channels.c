@@ -1035,7 +1035,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
   char modepass[64]; /* it should accept all modes at once */
 
   if (argc < 1)
-    return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, NULL);
+    return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, "MODE");
   modepass[0] = argv[0][0];
   modepass[1] = '\0';
   /* check if target is a channel name */
@@ -1120,7 +1120,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 	      && Ircd_whochar_list[par-Ircd_modechar_list] != ' ')
 	  {
 	    if (i + 1 >= argc)		/* if param available at all */
-	      CONTINUE_ON_MODE_ERROR (ERR_NEEDMOREPARAMS, NULL);
+	      CONTINUE_ON_MODE_ERROR (ERR_NEEDMOREPARAMS, "MODE");
 	    par = argv[++i];		/* target is next param */
 	    tar = _ircd_is_on_channel (ircd_find_client (par, NULL), ch);
 	    if (!tar)
@@ -1146,7 +1146,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 	  if (mf & 1)			/* require a parameter */
 	  {
 	    if (i + 1 >= argc)		/* but parameter unavailable */
-	      CONTINUE_ON_MODE_ERROR (ERR_NEEDMOREPARAMS, NULL);
+	      CONTINUE_ON_MODE_ERROR (ERR_NEEDMOREPARAMS, "MODE");
 	    par = argv[++i];		/* parameter is next one */
 	    mf--;			/* reset the flag */
 	  }
@@ -1486,7 +1486,7 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
   char bufforservers[MB_LEN_MAX*IRCMSGLEN];
 
   if (argc == 0)
-    return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, NULL);
+    return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, "JOIN");
 #ifdef USE_SERVICES
   //TODO: forbid for services
 #endif

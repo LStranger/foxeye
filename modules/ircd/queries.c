@@ -789,7 +789,7 @@ static inline int _ircd_query_connect (IRCD *ircd, CLIENT *cl, struct peer_priv 
 				       int argc, const char **argv)
 { /* args: <target server> <port> [<remote server>] */
   if (argc < 2)
-    return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, NULL);
+    return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, "CONNECT");
   if (argc > 2)
   {
     register CLIENT *tgt = _ircd_find_by_mask (ircd, via, argv[2]);

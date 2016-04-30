@@ -20,6 +20,8 @@ Sat Apr 30 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  users with +r usermode, they were denied to join any channel.
 	* modules/ircd/*: removed 'char *cmd' parameter from "ircd-server-cmd"
 	  bindings, it's never used and never should.
+	* modules/ircd/channels.c, modules/ircd/clients.c, modules/ircd/ircd.c, modules/ircd/queries.c:
+	  fixed missing command in ERR_NEEDMOREPARAMS numeric.
 
 Fri Apr 29 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: implemented "ircd-check-send" bindtable for sake

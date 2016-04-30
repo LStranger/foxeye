@@ -119,7 +119,7 @@ static int ircd_oper_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
   int i;
 
   if (argc < 2)
-    return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, NULL);
+    return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, "OPER");
   u = Lock_Clientrecord (argv[0]);
   if (!u)
     return ircd_do_unumeric (cl, ERR_NOOPERHOST, cl, 0, NULL);
@@ -212,7 +212,7 @@ static int ircd_squit_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick
   {
     if (!(cl->umode & (A_OP | A_HALFOP)))
       ircd_do_unumeric (cl, ERR_NOPRIVILEGES, cl, 0, NULL);
-    return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, NULL);
+    return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, "SQUIT");
   }
   tgt = ircd_find_client (argv[0], NULL);
   if (!(cl->umode & (A_OP | A_HALFOP)))
@@ -243,7 +243,7 @@ static int ircd_part_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
   const char *msg;
 
   if (argc == 0)
-    return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, NULL);
+    return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, "PART");
   if (argc == 1)
     msg = peer->dname;
   else
@@ -314,7 +314,7 @@ static int ircd_topic_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick
   char *cmask;
 
   if (argc == 0)
-    return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, NULL);
+    return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, "TOPIC");
   memb = ircd_find_member ((IRCD *)srv->data, argv[0], NULL);
   if (memb == NOSUCHCHANNEL)
     return ircd_do_unumeric (cl, ERR_NOTONCHANNEL, cl, 0, argv[0]);
@@ -381,7 +381,7 @@ static int ircd_invite_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnic
   MEMBER *memb;
 
   if (argc < 2)
-    return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, NULL);
+    return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, "INVITE");
   tgt = ircd_find_client (argv[0], NULL);
   if (!tgt || (tgt->umode & (A_SERVER|A_SERVICE)))
     return ircd_do_unumeric (cl, ERR_NOSUCHNICK, cl, 0, argv[0]);
@@ -422,7 +422,7 @@ static int ircd_kick_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
   register char *cmask;
 
   if (argc < 2)
-    return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, NULL);
+    return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, "KICK");
   lch = strchr (argv[0], ',');
   for (chn = nchn = (char *)argv[0], lcl = (char *)argv[1]; lcl;
 	lcl = nlcl, chn = nchn)
@@ -642,7 +642,7 @@ static int ircd_kill_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
   register char *c;
 
   if (argc < 2)
-    return ircd_do_unumeric(cl, ERR_NEEDMOREPARAMS, cl, 0, NULL);
+    return ircd_do_unumeric(cl, ERR_NEEDMOREPARAMS, cl, 0, "KILL");
   tcl = ircd_find_client(argv[0], NULL);
   if (tcl == NULL)
     return ircd_do_unumeric(cl, ERR_NOSUCHNICK, cl, 0, argv[0]);
@@ -763,7 +763,7 @@ static int ircd_userhost_cb(INTERFACE *srv, struct peer_t *peer, const char *lcn
   char buf[IRCMSGLEN-HOSTLEN-NICKLEN-9]; /* :server 302 user :reply\r\n */
 
   if (argc == 0)
-    return ircd_do_unumeric(cl, ERR_NEEDMOREPARAMS, cl, 0, NULL);
+    return ircd_do_unumeric(cl, ERR_NEEDMOREPARAMS, cl, 0, "USERHOST");
   s = 0;
   for (i = 0; i < argc; i++) {
     for (c = argv[i]; *c; c = NextWord((char *)c)) /* it's still const */ {
@@ -812,7 +812,7 @@ static int ircd_ison_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
   char buf[IRCMSGLEN-HOSTLEN-NICKLEN-9]; /* :server 303 user :reply\r\n */
 
   if (argc == 0)
-    return ircd_do_unumeric(cl, ERR_NEEDMOREPARAMS, cl, 0, NULL);
+    return ircd_do_unumeric(cl, ERR_NEEDMOREPARAMS, cl, 0, "ISON");
   s = 0;
   buf[0] = '\0';
   for (i = 0; i < argc; i++) {
