@@ -26,6 +26,7 @@ Sat Apr 30 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  least a single non-wildcard char.
 	* core/list.c: Find_Clientrecord() should not do match() against masks
 	  but just compare, match() is appropriate for client search, not mask.
+	* core/list.c: denied to add duplicate hostmask by Find_Clientrecord().
 
 Fri Apr 29 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: implemented "ircd-check-send" bindtable for sake

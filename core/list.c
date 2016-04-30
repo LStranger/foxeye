@@ -737,6 +737,17 @@ int Add_Clientrecord (const char *name, const uchar *mask, userflag uf)
   if (!name && !mask)		/* empty name has to have valid mask */
     return 0;
   rw_wrlock (&UFLock);
+  if (mask)
+  {
+    /* check to not add duplicate masks into Listfile */
+    user = _findbyhost (mask);
+    if (user)
+    {
+      ERROR ("Add_Clientrecord: hostmask pattern %s already exists.", mask);
+      rw_unlock (&UFLock);
+      return 0;
+    }
+  }
   user = _add_userrecord (name, uf, ID_ANY); /* client/ban */
   if (!user)
   {
