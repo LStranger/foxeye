@@ -249,6 +249,33 @@ static struct clrec_t *_findthebest (const char *mask, struct clrec_t *prefer)
   return user;
 }
 
+/*--- R --- UFLock read --- no HLock ---*/
+static struct clrec_t *_findbyhost (const char *mask)
+{
+  struct clrec_t *u;
+  user_hr *hr = NULL;
+  lid_t lid;
+  char lcmask[HOSTMASKLEN+1];
+
+  unistrlower (lcmask, mask, sizeof(lcmask));
+  rw_rdlock (&HLock);
+  lid = LID_MIN;
+  do {
+    if ((u = UList[lid - LID_MIN]) && !(u->flag & (U_SPECIAL|U_ALIAS)))
+    {
+      /* pseudo-users hosts are not masks */
+      for (hr = u->host; hr; hr = hr->next)
+	if (strcmp (hr->hostmask, lcmask) == 0)
+	  break;
+      if (hr)
+	break;
+    }
+    u = NULL;
+  } while (lid++ != LID_MAX);
+  rw_unlock (&HLock);
+  return u;
+}
+
 static int _check_subpattern(char **ptr, char end1, char end2)
 {
   char *c;
@@ -1104,7 +1131,10 @@ struct clrec_t *Find_Clientrecord (const uchar *mask, const char **lname,
   /* find the userrecord */
   pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancelstate);
   rw_rdlock (&UFLock);
-  user = _findthebest (mask, NULL);
+  if (Have_Wildcard(mask) < 0)
+    user = _findthebest (mask, NULL);
+  else
+    user = _findbyhost (mask);
   if (user)
   {
     pthread_mutex_lock (&user->mutex);

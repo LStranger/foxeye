@@ -24,6 +24,8 @@ Sat Apr 30 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  fixed missing command in ERR_NEEDMOREPARAMS numeric.
 	* core/list.c: added hostmask test into _add_usermask() to contain at
 	  least a single non-wildcard char.
+	* core/list.c: Find_Clientrecord() should not do match() against masks
+	  but just compare, match() is appropriate for client search, not mask.
 
 Fri Apr 29 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: implemented "ircd-check-send" bindtable for sake

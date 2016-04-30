@@ -641,7 +641,9 @@ Listfile API:
     Finds user that is matched to hostmask _m_a_s_k (nick!ident@host]) and
     gets his user login _n_a_m_e (Lname below) and his userflags _u_f compiled
     from global flags and flags for network _n_e_t (if _n_e_t is NULL then for
-    direct service). Locks Listfile record of that user. Returns pointer
+    direct service). If _m_a_s_k contains wildcards (so apparently it is some
+    ban or whatever) then finds Listfile record which contains exactly
+    the same mask. Locks Listfile record of that user. Returns pointer
     to internal Listfile record structure. Function never can find any
     special user record or alias. Note: Locks in core are complex so
     until you want deadlock NEVER use Listfile API calls from above or
