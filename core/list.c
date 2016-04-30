@@ -188,8 +188,6 @@ static int _addhost (user_hr **hr, const char *uh)
   user_hr *h = *hr;
 
   sz = safe_strlen (uh) + 1;
-  if (sz < 6)		/* at least *!i@* :) */
-    return 0;
   *hr = safe_malloc (sz + sizeof(user_hr) - sizeof(h->hostmask));
   _R_h += sz + sizeof(user_hr) - sizeof(h->hostmask);
   memcpy ((*hr)->hostmask, uh, sz);
@@ -251,6 +249,45 @@ static struct clrec_t *_findthebest (const char *mask, struct clrec_t *prefer)
   return user;
 }
 
+static int _check_subpattern(char **ptr, char end1, char end2)
+{
+  char *c;
+  int r = 0, r1, r2;
+
+  for (c = *ptr; *c && *c != end1 && *c != end2; c++)
+  {
+    if (*c == '*' || *c == '?') /* wildcard */
+      continue;
+    if (*c == '[') /* range */
+    {
+      if (*c == '-')
+	c++;
+      if (*c == ']')
+	c++;
+      while (*c && *c != ']')
+	c++;
+      r++;
+    }
+    else if (*c == '{') /* list */
+    {
+      r1 = 1024;
+      for (c++; *c; c++)
+      {
+	r2 = _check_subpattern(&c, ',', '}');
+	if (r1 > r2)
+	  r1 = r2;
+	if (*c == '}')
+	  break;
+      }
+      r += r1; /* add minimum sequence size */
+    }
+    else /* non-wildcard */
+      r++;
+  }
+  *ptr = c;
+  return r;
+}
+
 /*--- W --- no HLock ---*/
 static int _add_usermask (struct clrec_t *user, const char *mask)
 {
@@ -258,12 +295,21 @@ static int _add_usermask (struct clrec_t *user, const char *mask)
   user_hr **h;
   int r;
   char lcmask[HOSTMASKLEN+1];
+  char *c = lcmask;
 
   if (user->uid > ID_ANY && strchr(user->lname, '.'))
     /* it's server name rather than user name */
     strfcpy (lcmask, mask, sizeof(lcmask));
   else
     unistrlower (lcmask, mask, sizeof(lcmask));
+  /* test the pattern to contain not just wildcards */
+  r = _check_subpattern(&c, '!', '@');
+  if (*c == '!')
+    c++, r += _check_subpattern(&c, '@', 0);
+  if (*c == '@')
+    c++, r += _check_subpattern(&c, 0, 0);
+  if (r < 1)			/* at least a single non-wildcard char required */
+    return 0;
   /* check for aliases */
   if (user->flag & U_ALIAS)	/* no need lock since threads has R/O access */
     user = user->u.owner;
@@ -671,8 +717,17 @@ int Add_Clientrecord (const char *name, const uchar *mask, userflag uf)
     return 0;
   }
   user->created = Time;
-  if (mask)			/* don't lock it, it's unreachable yet */
-    _add_usermask (user, mask);
+  if (mask &&			/* don't lock it, it's unreachable yet */
+      _add_usermask (user, mask) == 0)
+  {
+    if (!name)
+    {
+      ERROR ("Add_Clientrecord: invalid hostmask pattern %s.", mask);
+      _delete_userrecord (user, TRUE);
+      return 0;
+    }
+    ERROR ("Add_Clientrecord: invalid hostmask pattern %s ignored.", mask);
+  }
   rw_unlock (&UFLock);
   if (uf)
     Add_Request (I_LOG, "*", mask ? (F_USERS | F_AHEAD) : F_USERS,
@@ -1570,14 +1625,14 @@ int Add_Mask (struct clrec_t *user, const uchar *mask)
   int i = 0;
 
   if (!user || !mask) return 0;
-  if (!*mask)
+  if (*mask)
   {
-    ERROR ("Add_Mask: invalid hostmask pattern %s ignored.", mask);
-    return 0;
+    pthread_mutex_unlock (&user->mutex);	/* unlock to avoid conflicts */
+    i = _add_usermask (user, mask);
+    pthread_mutex_lock (&user->mutex);
   }
-  pthread_mutex_unlock (&user->mutex);		/* unlock to avoid conflicts */
-  i = _add_usermask (user, mask);
-  pthread_mutex_lock (&user->mutex);
+  if (i == 0)
+    ERROR ("Add_Mask: invalid hostmask pattern '%s' ignored.", mask);
   return i;
 }
 
@@ -1900,7 +1955,8 @@ static int _load_listfile (const char *filename, int update)
     {
       case '+':				/* a hostmask */
 	if (ur)
-	  _add_usermask (ur, ++c);
+	  if (!_add_usermask (ur, ++c))
+	    ERROR ("_load_listfile: usermask %s ignored", c);
 	break;
       case 0:				/* empty line ignored */
       case '#':				/* an comment */
@@ -2763,12 +2819,12 @@ static int dc__phost (struct peer_t *dcc, char *args)
   if (!user)				/* no user */
     return 0;
   args = NextWord (args);
-  if (strlen (args) < 5 || match ("*.*", args) < 0) /* validation of hostmask */
+  if (strlen (args) < 5 || match ("*.*", args) < 0 ||
+      _add_usermask (user, args) == 0) /* validation of hostmask */
   {
     New_Request (dcc->iface, 0, "Invalid hostmask pattern: %s", args);
     return 0;
   }
-  _add_usermask (user, args);
   if (!(user->flag & (U_SPECIAL | U_UNSHARED)))	/* specials are not shared */
     Add_Request (I_DIRECT, "@*", F_SHARE, "\010+host %s %s", user->lname, args);
   return 1;

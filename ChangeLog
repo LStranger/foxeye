@@ -22,6 +22,8 @@ Sat Apr 30 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  bindings, it's never used and never should.
 	* modules/ircd/channels.c, modules/ircd/clients.c, modules/ircd/ircd.c, modules/ircd/queries.c:
 	  fixed missing command in ERR_NEEDMOREPARAMS numeric.
+	* core/list.c: added hostmask test into _add_usermask() to contain at
+	  least a single non-wildcard char.
 
 Fri Apr 29 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: implemented "ircd-check-send" bindtable for sake
