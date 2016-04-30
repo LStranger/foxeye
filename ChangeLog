@@ -13,6 +13,12 @@ TODO:
 	* *: to check Add_Request/New_Request coming to user to be translatable.
 
 --- [0.10.2]
+Sat Apr 30 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/list.c: fixed Get_Clientlist() call against nonamed U_DEOP and
+	  U_QUIET, they were missed on scan.
+	* modules/ircd/channels.c: fixed "ircd-check-modechange" test for the
+	  users with +r usermode, they were denied to join any channel.
+
 Fri Apr 29 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: implemented "ircd-check-send" bindtable for sake
 	  of modules which would send message to target *.*@<network> so they

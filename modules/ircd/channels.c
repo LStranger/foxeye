@@ -880,7 +880,7 @@ static modeflag iumch_z(INTERFACE *srv, const char *rq, modeflag rumode,
 BINDING_TYPE_ircd_check_modechange(ichmch_r);
 static int ichmch_r(modeflag umode, modeflag mmode, int add, modeflag chg, char *tgt)
 {
-  if (umode & A_RESTRICTED)
+  if ((umode & A_RESTRICTED) && chg != 0)
     return 0;
   return 1;
 }
