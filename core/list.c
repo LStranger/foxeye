@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2014  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2016  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -835,6 +835,7 @@ static int _add_to_list2 (INTERFACE *iface, char *buf, size_t *len, char *msg)
   return n;
 }
 
+#define U_NONAMED (U_DENY | U_ACCESS | U_INVITE | U_DEOP | U_QUIET | U_IGNORED)
 /*--- W --- no locks ---*/
 int Get_Clientlist (INTERFACE *iface, userflag uf, const char *fn,
 		    const char *mask)
@@ -851,7 +852,7 @@ int Get_Clientlist (INTERFACE *iface, userflag uf, const char *fn,
 
   if (!mask || !*mask || !uf || !iface)
     return 0;
-  canbenonamed = uf & (U_DENY | U_ACCESS | U_INVITE | U_IGNORED);
+  canbenonamed = uf & U_NONAMED;
   fnisservice = safe_strchr ((char *)fn, '@');	/* isn't NULL if service name */
   gf = uf & U_GLOBALS;
   unistrlower (lcmask, mask, sizeof(lcmask));  
@@ -1847,7 +1848,6 @@ static int _cral_clear (void)
   return r;
 }
 
-#define U_NONAMED (U_DENY | U_ACCESS | U_INVITE | U_DEOP | U_QUIET | U_IGNORED)
 /*
  * load mode:
  *	reset all
