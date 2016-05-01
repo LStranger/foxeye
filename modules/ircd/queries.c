@@ -1036,7 +1036,7 @@ static void _ircd_do_whois (IRCD *ircd, CLIENT *cl, CLIENT *tgt, CLIENT *me)
     ircd_do_unumeric (cl, RPL_WHOISSECURE, tgt, 0, NULL);
   while ((b = Check_Bindtable (BTIrcdWhois, tgt->nick, U_ALL, U_ANYCH, NULL)))
     if (b->name == NULL)
-      b->func (ircd, cl->nick, tgt->nick, tgt->host, tgt->vhost, tgt->umode);
+      b->func (ircd, cl->nick, cl->umode, tgt->nick, tgt->host, tgt->vhost, tgt->umode);
 }
 
 static inline int _ircd_query_whois (IRCD *ircd, CLIENT *cl, struct peer_priv *via,

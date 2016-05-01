@@ -23,6 +23,8 @@ Sun May  1 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  to be acceptable as well, not just server simulation.
 	* modules/ircd/channels.c: added server name to the "ircd-umodechange"
 	  callback function, some modes may depend on it.
+	* modules/ircd/queries.c: added sender mode to the "ircd-whois" binding
+	  parameters.
 
 Sat Apr 30 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/list.c: fixed Get_Clientlist() call against nonamed U_DEOP and

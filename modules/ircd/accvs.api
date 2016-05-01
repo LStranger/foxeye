@@ -276,11 +276,13 @@
       Matching: target mask.  (userflags are ignored)
 
 -     "iirrccdd--wwhhooiiss"     MASK
-  (int) void func(INTERFACE *_s_r_v, const char *_s_e_n_d_e_r, const char *_t_a_r_g_e_t,
-		  const char *_t_h_o_s_t, const char *_v_h_o_s_t, modeflag _t_u_m_f);
-    Used when server replies to a WHOIS query from some _s_e_n_d_e_r for some
-    _t_a_r_g_e_t which has host _t_h_o_s_t and user mode _t_u_m_f. Binding can send some
-    numeric reply to client using IRCD interface _s_r_v.
+  (int) void func(INTERFACE *_s_r_v, const char *_s_e_n_d_e_r, modeflag _s_u_m_f,
+		  const char *_t_a_r_g_e_t, const char *_t_h_o_s_t, const char *_v_h_o_s_t,
+		  modeflag _t_u_m_f);
+    Used when server replies to a WHOIS query from some _s_e_n_d_e_r with user
+    mode _s_u_m_f for some _t_a_r_g_e_t which has host _t_h_o_s_t and user mode _t_u_m_f.
+    Binding can send some numeric reply then to the client using IRCD
+    interface _s_r_v.
       Matching: target.  (userflags are ignored)
 
 -     "iirrccdd--cchheecckk--sseenndd" MATCHCASE
