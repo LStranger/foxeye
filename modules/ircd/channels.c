@@ -1323,7 +1323,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 #define static register
 	  BINDING_TYPE_ircd_umodechange ((*f));
 #undef static
-	  void (*ma)(char *, const char *, size_t, int) = NULL;
+	  void (*ma)(char *, const char *, size_t, int);
 
 	  charstr[0] = *c;
 	  charstr[1] = '\0';
@@ -1337,6 +1337,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 	  {
 	    if (!b->name && (f = (modeflag (*)())b->func))
 	    {
+	      ma = NULL;
 	      mf |= f (srv, peer->dname, cl->umode, add, &ma);
 	      if (ma)			/* update vhost */
 		ma (cl->vhost, cl->host, sizeof(cl->vhost), add);
@@ -2033,7 +2034,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 #define static register
 	  BINDING_TYPE_ircd_umodechange ((*f));
 #undef static
-	  void (*ma)(char *, const char *, size_t, int) = NULL;
+	  void (*ma)(char *, const char *, size_t, int);
 
 	  charstr[0] = *c;
 	  charstr[1] = '\0';
@@ -2049,6 +2050,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	  {
 	    if (!b->name && (f = (modeflag (*)())b->func))
 	    {
+	      ma = NULL;
 	      mf |= f (srv, pp->p.dname, (src->umode | A_SERVER), add, &ma);
 	      if (ma)			/* update vhost */
 		ma (tgt->vhost, tgt->host, sizeof(tgt->vhost), add);
@@ -2869,6 +2871,7 @@ modeflag ircd_char2umode(INTERFACE *srv, const char *sname, char c, CLIENT *tgt)
   while (b) {			/* cycle thru all */
     if (!b->name)
     {
+      ma = NULL;
       mf |= (f = (modeflag (*)())b->func) (srv, sname, A_SERVER, 1, &ma);
       if (ma)
 	ma (tgt->vhost, tgt->host, sizeof(tgt->vhost), 1);
