@@ -815,6 +815,16 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
       return (1);		/* just ignore it then */
     } else
       c = c2;			/* it's not phantom at this moment */
+    if (peer == NULL &&
+	(!(CLIENT_IS_REMOTE(c)) && !(CLIENT_IS_SERVER(c))))
+    {
+      /* internal call - client message simulation */
+      if ((b = Check_Bindtable (BTIrcdClientCmd, argv[1], U_ALL, U_ANYCH, NULL)))
+	if (!b->name)
+	  return b->func (Ircd->iface, c->via, c->lcnick, c->user, c->host,
+			  c->vhost, argc - 2, &argv[2]);
+      return 0;
+    }
     if (((CLIENT_IS_ME(c)) ||
 	 (!(CLIENT_IS_REMOTE(c)) && !(CLIENT_IS_SERVER(c)))) &&
 	peer != c->via) /* we should not get our or our users messages back */

@@ -18,6 +18,9 @@ Sun May  1 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  users can change own modes, not other users.
 	* modules/ircd/ircd.c: added missing I_CLIENT collector to the IRCD.
 	* core/foxeye.h: increased NAMEMAX to MB_LEN_MAX*LNAMELEN.
+	* modules/ircd/ircd.c: enabled user simulation mode (when message to
+	  IRCD main interface received originated from local user), it supposed
+	  to be acceptable as well, not just server simulation.
 
 Sat Apr 30 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/list.c: fixed Get_Clientlist() call against nonamed U_DEOP and
