@@ -1999,7 +1999,8 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	  break; /* return */
   }
   else if ((tgt = ircd_find_client(argv[0], pp)) != NULL &&
-	   !CLIENT_IS_SERVER(tgt))	/* user mode */
+	   !CLIENT_IS_SERVER(tgt) &&	/* user mode */
+	   tgt == src)			/* RFC2812: user can change only own mode */
   {
     modeflag toadd = 0, todel = 0;
     const char *lasterror[MAXTRACKED_MODE_ERRORS];
