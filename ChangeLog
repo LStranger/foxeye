@@ -16,6 +16,7 @@ TODO:
 Sun May  1 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed MODE change via another server: only
 	  users can change own modes, not other users.
+	* modules/ircd/ircd.c: added missing I_CLIENT collector to the IRCD.
 
 Sat Apr 30 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/list.c: fixed Get_Clientlist() call against nonamed U_DEOP and

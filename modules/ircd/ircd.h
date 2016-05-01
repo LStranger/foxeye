@@ -230,6 +230,7 @@ struct MEMBER
 typedef struct IRCD
 {
   INTERFACE *iface;	/* has network name */
+  INTERFACE *sub;	/* I_CLIENT with name @network to collect messages */
   NODE *clients;	/* clients list (name->CLIENT) */
   NODE *channels;	/* channels list (name->CHANNEL) */
   CLASS *users;		/* local users lists */

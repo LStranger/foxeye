@@ -164,9 +164,7 @@ static int _ircd_class_in (struct peer_t *peer, char *user, char *host,
   if (cl)
   {
     DBG("ircd:ircd.c: found matched");
-    uh[0] = '@';
-    strfcpy(&uh[1], Ircd->iface->name, sizeof(uh)-1);
-    clparms = Get_Field (cl, uh, NULL);
+    clparms = Get_Field (cl, Ircd->sub->name, NULL);
     uf = Get_Flags (cl, Ircd->iface->name);
   }
   if (clparms);
@@ -263,9 +261,7 @@ static void _ircd_class_rin (LINK *l)
   cl = Find_Clientrecord (uh, &clname, NULL, NULL);
   /* host is reported by remote server so no other matching is possible */
   if (cl) {
-    uh[0] = '@';
-    strfcpy(&uh[1], Ircd->iface->name, sizeof(uh)-1);
-    clparms = Get_Field (cl, uh, NULL);
+    clparms = Get_Field (cl, Ircd->sub->name, NULL);
   }
   if (!clparms || !*clparms)
   {
@@ -321,7 +317,6 @@ static void _ircd_class_update (void)
 {
   CLASS *cls, *cld = NULL, **clp;
   char *clparms;
-  char netname[NAMEMAX+2];
 
   for (cls = Ircd->users; cls; cls = cls->next)
     if (!strcmp (cls->name, DEFCLASSNAME))
@@ -329,8 +324,6 @@ static void _ircd_class_update (void)
       cld = cls;
       break;
     }
-  netname[0] = '@';
-  strfcpy(&netname[1], Ircd->iface->name, sizeof(netname)-1);
   for (clp = &Ircd->users; (cls = *clp); )
   {
     struct clrec_t *clu;
@@ -338,7 +331,7 @@ static void _ircd_class_update (void)
     if (cls == cld)			/* default class */
       clparms = _ircd_default_class;
     else if ((clu = Lock_Clientrecord (cls->name))) /* it's still there */
-      clparms = Get_Field (clu, netname, NULL);
+      clparms = Get_Field (clu, Ircd->sub->name, NULL);
     else				/* class was removed, join to default */
     {
       register CLIENT **y;
@@ -2026,10 +2019,8 @@ static void _ircd_do_init_uplinks (void)
 
   if (_ircd_uplink)			/* got RFC2813 server autoconnected*/
     return;				/* so nothing to do */
-  buff[0] = '@';
-  strfcpy(&buff[1], Ircd->iface->name, sizeof(buff));
   tmp = Add_Iface (I_TEMP, NULL, NULL, &_ircd_sublist_receiver, NULL);
-  i = Get_Clientlist (tmp, U_AUTO, buff, "*");
+  i = Get_Clientlist (tmp, U_AUTO, Ircd->sub->name, "*");
   if (i)
   {
     lid_t lid;
@@ -4068,6 +4059,39 @@ static void ts_ircd (int drift)
 }
 
 
+/* -- I_CLIENT @network interface ----------------------------------------- */
+static int _ircd_sub_request (INTERFACE *cli, REQUEST *req)
+{
+  char lcname[MB_LEN_MAX*NICKLEN+1];
+  char *c;
+  CLIENT *tgt;
+
+  if (!req)				/* it's idle call */
+    return REQ_OK;
+  if (req->to[0] == '@')
+  {
+    /* do broadcast to every local client */
+    register LINK *cll;
+
+    for (cll = ME.c.lients; cll; cll = cll->prev)
+      cll->cl->via->p.iface->ift |= I_PENDING;
+    Add_Request (I_PENDING, "*", 0, "%s", req->string);
+    return REQ_OK;
+  }
+  unistrlower (lcname, req->to, sizeof(lcname));
+  c = strchr (lcname, '@');
+  if (c)
+    *c = '\0';
+  tgt = _ircd_find_client_lc (lcname);
+  if (tgt)
+    /* just bounce it to actual server interface */
+    return _ircd_client_request (tgt->via->p.iface, req);
+  /* invalid recipient */
+  Add_Request (I_LOG, "*", F_WARN, "ircd: request for unknown target \"%s\"", lcname);
+  return REQ_OK;
+}
+
+
 /* -- common network interface -------------------------------------------- */
 static int _ircd_request (INTERFACE *cli, REQUEST *req)
 {
@@ -4192,6 +4216,11 @@ static iftype_t _ircd_signal (INTERFACE *iface, ifsig_t sig)
 	free_CLASS (cl);
       }
       Destroy_Tree (&Ircd->clients, &_ircd_catch_undeleted_cl);
+      if (Ircd->sub)
+      {
+	Ircd->sub->ift |= I_DIED;
+	Ircd->sub = NULL;
+      }
       Ircd->iface = NULL;
       if (iface) {
 	iface->ift |= I_DIED; /* it will free Ircd */
@@ -4899,6 +4928,9 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
       if (gettoken (_ircd_sublist_buffer, NULL)) /* take one name from list */
       Ircd->iface = Add_Iface (I_SERVICE, _ircd_sublist_buffer, &_ircd_signal,
 			       &_ircd_request, Ircd);
+      /* also make name@network messages collector */
+      snprintf (buff, sizeof(buff), "@%s", Ircd->iface->name);
+      Ircd->sub = Add_Iface (I_CLIENT, buff, NULL, &_ircd_sub_request, NULL);
       strfcpy (MY_NAME, Nick, sizeof(MY_NAME)); /* unchangeable in runtime */
       strfcpy(ME.fname, _ircd_description_string, sizeof(ME.fname));
       strfcpy(ME.away, _ircd_version_string, sizeof(ME.away));
