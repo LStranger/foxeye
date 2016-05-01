@@ -201,7 +201,8 @@
 -     "iirrccdd--uummooddeecchhaannggee" MATCHCASE
   (int) modeflag func(INTERFACE *_s_r_v, const char *_r_q, modeflag _r_u_m_o_d_e,
 		      int _a_d_d, void (**_m_a)(char *_v_h_o_s_t, const char *_h_o_s_t,
-					   size_t _v_h_s, int _a_d_d));
+					   size_t _v_h_s, int _a_d_d,
+					   const char *_s_e_r_v_n_a_m_e));
     Used when some client with nick _r_q and user mode _r_u_m_o_d_e sent command
     for some mode change on themself in direction _a_d_d (which is 0 if it's
     an attempt to down mode or 1 if it's attempt to raise mode). Returns
@@ -210,7 +211,8 @@
     visible host is different from real one - mask shoult be kind of "X*"
     and binding should set a pointer to function which makes such visible
     host into _m_a. The said function receives pointer (_v_h_o_s_t) and size _v_h_s
-    of visible host data buffer, real _h_o_s_t and direction _a_d_d.
+    of visible host data buffer, real _h_o_s_t and direction _a_d_d, the name of
+    server for client is also provided as _s_e_r_v_n_a_m_e.
       Matching: modechar.  (userflags are ignored)
 
 -     "iirrccdd--wwhhoocchhaarr"   MASK

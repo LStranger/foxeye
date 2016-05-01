@@ -797,7 +797,7 @@ static modeflag imch_I(INTERFACE *srv, const char *rq, modeflag rchmode,
 BINDING_TYPE_ircd_umodechange(iumch_a);
 static modeflag iumch_a(INTERFACE *srv, const char *rq, modeflag rumode,
 			int add, void (**ma)(char *vhost, const char *host,
-					     size_t vhs, int add))
+					     size_t vhs, int add, const char *))
 {
   if (!rumode || /* it's a test */
       (rumode & A_SERVER)) /* or servermode */
@@ -808,7 +808,7 @@ static modeflag iumch_a(INTERFACE *srv, const char *rq, modeflag rumode,
 BINDING_TYPE_ircd_umodechange(iumch_i);
 static modeflag iumch_i(INTERFACE *srv, const char *rq, modeflag rumode,
 			int add, void (**ma)(char *vhost, const char *host,
-					     size_t vhs, int add))
+					     size_t vhs, int add, const char *))
 {
   return A_INVISIBLE;
 }
@@ -816,7 +816,7 @@ static modeflag iumch_i(INTERFACE *srv, const char *rq, modeflag rumode,
 BINDING_TYPE_ircd_umodechange(iumch_w);
 static modeflag iumch_w(INTERFACE *srv, const char *rq, modeflag rumode,
 			int add, void (**ma)(char *vhost, const char *host,
-					     size_t vhs, int add))
+					     size_t vhs, int add, const char *))
 {
   return A_WALLOP;
 }
@@ -824,7 +824,7 @@ static modeflag iumch_w(INTERFACE *srv, const char *rq, modeflag rumode,
 BINDING_TYPE_ircd_umodechange(iumch_r);
 static modeflag iumch_r(INTERFACE *srv, const char *rq, modeflag rumode,
 			int add, void (**ma)(char *vhost, const char *host,
-					     size_t vhs, int add))
+					     size_t vhs, int add, const char *))
 {
   if (add || !rumode) /* cannot be removed */
     return A_RESTRICTED;
@@ -834,7 +834,7 @@ static modeflag iumch_r(INTERFACE *srv, const char *rq, modeflag rumode,
 BINDING_TYPE_ircd_umodechange(iumch_o);
 static modeflag iumch_o(INTERFACE *srv, const char *rq, modeflag rumode,
 			int add, void (**ma)(char *vhost, const char *host,
-					     size_t vhs, int add))
+					     size_t vhs, int add, const char *))
 {
   if (!add || /* only can be deopped */
       !rumode || /* or it's a test */
@@ -846,7 +846,7 @@ static modeflag iumch_o(INTERFACE *srv, const char *rq, modeflag rumode,
 BINDING_TYPE_ircd_umodechange(iumch_O);
 static modeflag iumch_O(INTERFACE *srv, const char *rq, modeflag rumode,
 			int add, void (**ma)(char *vhost, const char *host,
-					     size_t vhs, int add))
+					     size_t vhs, int add, const char *))
 {
   if (!add || /* only can be deopped */
       !rumode || /* or it's a test */
@@ -858,7 +858,7 @@ static modeflag iumch_O(INTERFACE *srv, const char *rq, modeflag rumode,
 BINDING_TYPE_ircd_umodechange(iumch_s);
 static modeflag iumch_s(INTERFACE *srv, const char *rq, modeflag rumode,
 			int add, void (**ma)(char *vhost, const char *host,
-					     size_t vhs, int add))
+					     size_t vhs, int add, const char *))
 {
   return 1; /* not supported, obsolete flag */
 }
@@ -867,7 +867,7 @@ static modeflag iumch_s(INTERFACE *srv, const char *rq, modeflag rumode,
 BINDING_TYPE_ircd_umodechange(iumch_z);
 static modeflag iumch_z(INTERFACE *srv, const char *rq, modeflag rumode,
 			int add, void (**ma)(char *vhost, const char *host,
-					     size_t vhs, int add))
+					     size_t vhs, int add, const char *))
 {
   if (!rumode || /* it's a test */
       (rumode & A_SERVER)) /* or servermode */
@@ -1323,7 +1323,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 #define static register
 	  BINDING_TYPE_ircd_umodechange ((*f));
 #undef static
-	  void (*ma)(char *, const char *, size_t, int);
+	  void (*ma)(char *, const char *, size_t, int, const char *);
 
 	  charstr[0] = *c;
 	  charstr[1] = '\0';
@@ -1340,7 +1340,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 	      ma = NULL;
 	      mf |= f (srv, peer->dname, cl->umode, add, &ma);
 	      if (ma)			/* update vhost */
-		ma (cl->vhost, cl->host, sizeof(cl->vhost), add);
+		ma (cl->vhost, cl->host, sizeof(cl->vhost), add, cl->cs->nick);
 	    }
 	    b = Check_Bindtable (BTIrcdUmodechange, charstr, U_ALL, U_ANYCH, b);
 	  }
@@ -2034,7 +2034,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 #define static register
 	  BINDING_TYPE_ircd_umodechange ((*f));
 #undef static
-	  void (*ma)(char *, const char *, size_t, int);
+	  void (*ma)(char *, const char *, size_t, int, const char *);
 
 	  charstr[0] = *c;
 	  charstr[1] = '\0';
@@ -2053,7 +2053,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	      ma = NULL;
 	      mf |= f (srv, pp->p.dname, (src->umode | A_SERVER), add, &ma);
 	      if (ma)			/* update vhost */
-		ma (tgt->vhost, tgt->host, sizeof(tgt->vhost), add);
+		ma (tgt->vhost, tgt->host, sizeof(tgt->vhost), add, tgt->cs->nick);
 	    }
 	    b = Check_Bindtable (BTIrcdUmodechange, charstr, U_ALL, U_ANYCH, b);
 	  }
@@ -2626,7 +2626,7 @@ static inline char *_ircd_ch_flush_umodes (INTERFACE *i, char *c, char *e)
 #define static register
   BINDING_TYPE_ircd_umodechange ((*ff));
 #undef static
-  void (*ma)(char *, const char *, size_t, int);
+  void (*ma)(char *, const char *, size_t, int, const char *);
 
   if (!(b = Check_Bindtable (BTIrcdUmodechange, c, U_ALL, U_ANYCH, NULL)) ||
       b->name)
@@ -2863,7 +2863,7 @@ modeflag ircd_char2umode(INTERFACE *srv, const char *sname, char c, CLIENT *tgt)
 #define static register
   BINDING_TYPE_ircd_umodechange ((*f));
 #undef static
-  void (*ma)(char *, const char *, size_t, int);
+  void (*ma)(char *, const char *, size_t, int, const char *);
 
   charstr[0] = c;
   charstr[1] = '\0';
@@ -2874,7 +2874,7 @@ modeflag ircd_char2umode(INTERFACE *srv, const char *sname, char c, CLIENT *tgt)
       ma = NULL;
       mf |= (f = (modeflag (*)())b->func) (srv, sname, A_SERVER, 1, &ma);
       if (ma)
-	ma (tgt->vhost, tgt->host, sizeof(tgt->vhost), 1);
+	ma (tgt->vhost, tgt->host, sizeof(tgt->vhost), 1, tgt->cs->nick);
     }
     b = Check_Bindtable (BTIrcdUmodechange, charstr, U_ALL, U_ANYCH, b);
   }
