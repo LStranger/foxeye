@@ -177,7 +177,7 @@ void free ();
  */
 
 #define LNAMELEN	32	/* Lname max width */
-#define NAMEMAX		63	/* single name max width, must be >= LNAMELEN */
+#define NAMEMAX		MB_LEN_MAX*LNAMELEN /* single name max width */
 #define PASSWDMAX	NAMEMAX	/* still reserved 3 bytes for connchain flags */
 #define IFNAMEMAX	2*NAMEMAX+1 /* interface name length */
 #define IDENTLEN	10	/* user login name max width */
