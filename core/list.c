@@ -513,7 +513,6 @@ static int spname_valid (const char *a)
   return t;
 }
 
-#define U_NONAMED (U_DENY | U_ACCESS | U_INVITE | U_DEOP | U_QUIET | U_IGNORED)
 /*--- W --- UFLock write ---*/
 static struct clrec_t *_add_userrecord (const char *name, userflag uf, lid_t id)
 {
@@ -529,10 +528,8 @@ static struct clrec_t *_add_userrecord (const char *name, userflag uf, lid_t id)
     i = spname_valid (name);
   else if (name)			/* normal names */
     i = usernick_valid (name);
-  else if (uf & U_NONAMED)		/* bans and other nonamed */
+  else					/* bans and other nonamed */
     i = 0;
-  else					/* illegal for unnamed record */
-    return NULL;
   if (i == 1 && name[0] == '@')		/* illegal special name */
     return NULL;
   else if (i >= 0)
@@ -931,6 +928,7 @@ static int _add_to_list2 (INTERFACE *iface, char *buf, size_t *len, char *msg)
   return n;
 }
 
+#define U_NONAMED (U_DENY | U_ACCESS | U_INVITE | U_DEOP | U_QUIET | U_IGNORED)
 /*--- W --- no locks ---*/
 int Get_Clientlist (INTERFACE *iface, userflag uf, const char *fn,
 		    const char *mask)
