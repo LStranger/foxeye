@@ -822,7 +822,7 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
       if ((b = Check_Bindtable (BTIrcdClientCmd, argv[1], U_ALL, U_ANYCH, NULL)))
 	if (!b->name)
 	  return b->func (Ircd->iface, c->via, c->lcnick, c->user, c->host,
-			  c->vhost, argc - 2, &argv[2]);
+			  c->vhost, A_SERVER, argc - 2, &argv[2]);
       return 0;
     }
     if (((CLIENT_IS_ME(c)) ||
@@ -1461,7 +1461,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 				  NULL)))
 	  if (!b->name)			/* passed thru filter and found cmd */
 	    i = b->func (Ircd->iface, &peer->p, cl->lcnick, cl->user, cl->host,
-			 cl->vhost, argc - 2, &argv[2]);
+			 cl->vhost, cl->umode, argc - 2, &argv[2]);
     }
     if (i == 0)				/* protocol failed */
     {
@@ -2428,7 +2428,7 @@ static int ircd_nick_rb (INTERFACE *srv, struct peer_t *peer, int argc, const ch
 BINDING_TYPE_ircd_client_cmd(ircd_nick_cb);
 static int ircd_nick_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 			const char *user, const char *host, const char *vhost,
-			int argc, const char **argv)
+			modeflag eum, int argc, const char **argv)
 { /* args: <new nick> */
   CLIENT *cl = ((peer_priv *)peer->iface->data)->link->cl; /* it's really peer->link->cl */
   int is_casechange;

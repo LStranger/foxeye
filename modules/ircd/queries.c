@@ -262,7 +262,7 @@ static inline int _ircd_query_names (IRCD *ircd, CLIENT *cl, struct peer_priv *v
 BINDING_TYPE_ircd_client_cmd(ircd_names_cb);
 static int ircd_names_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 			 const char *user, const char *host, const char *vhost,
-			 int argc, const char **argv)
+			 modeflag eum, int argc, const char **argv)
 {
   DO_CLIENT_QUERY (_ircd_query_names);
 }
@@ -347,7 +347,7 @@ static inline int _ircd_query_list (IRCD *ircd, CLIENT *cl, struct peer_priv *vi
 BINDING_TYPE_ircd_client_cmd(ircd_list_cb);
 static int ircd_list_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 			const char *user, const char *host, const char *vhost,
-			int argc, const char **argv)
+			modeflag eum, int argc, const char **argv)
 {
   DO_CLIENT_QUERY (_ircd_query_list);
 }
@@ -444,7 +444,7 @@ static inline int _ircd_query_motd (IRCD *ircd, CLIENT *cl, struct peer_priv *vi
 BINDING_TYPE_ircd_client_cmd(ircd_motd_cb);
 static int ircd_motd_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 			const char *user, const char *host, const char *vhost,
-			int argc, const char **argv)
+			modeflag eum, int argc, const char **argv)
 {
   DO_CLIENT_QUERY (_ircd_query_motd);
 }
@@ -529,7 +529,7 @@ static inline int _ircd_query_lusers (IRCD *ircd, CLIENT *cl, struct peer_priv *
 BINDING_TYPE_ircd_client_cmd(ircd_lusers_cb);
 static int ircd_lusers_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 			  const char *user, const char *host, const char *vhost,
-			  int argc, const char **argv)
+			  modeflag eum, int argc, const char **argv)
 {
   DO_CLIENT_QUERY (_ircd_query_lusers);
 }
@@ -628,7 +628,7 @@ static inline int _ircd_query_version (IRCD *ircd, CLIENT *cl, struct peer_priv 
 BINDING_TYPE_ircd_client_cmd(ircd_version_cb);
 static int ircd_version_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 			   const char *user, const char *host, const char *vhost,
-			   int argc, const char **argv)
+			   modeflag eum, int argc, const char **argv)
 {
   DO_CLIENT_QUERY (_ircd_query_version);
 }
@@ -673,7 +673,7 @@ static inline int _ircd_query_stats (IRCD *ircd, CLIENT *cl, struct peer_priv *v
 BINDING_TYPE_ircd_client_cmd(ircd_stats_cb);
 static int ircd_stats_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 			 const char *user, const char *host, const char *vhost,
-			 int argc, const char **argv)
+			 modeflag eum, int argc, const char **argv)
 {
   DO_CLIENT_QUERY (_ircd_query_stats);
 }
@@ -734,7 +734,7 @@ static inline int _ircd_query_links (IRCD *ircd, CLIENT *cl, struct peer_priv *v
 BINDING_TYPE_ircd_client_cmd(ircd_links_cb);
 static int ircd_links_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 			 const char *user, const char *host, const char *vhost,
-			 int argc, const char **argv)
+			 modeflag eum, int argc, const char **argv)
 {
   DO_CLIENT_QUERY (_ircd_query_links);
 }
@@ -772,7 +772,7 @@ static inline int _ircd_query_time (IRCD *ircd, CLIENT *cl, struct peer_priv *vi
 BINDING_TYPE_ircd_client_cmd(ircd_time_cb);
 static int ircd_time_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 			const char *user, const char *host, const char *vhost,
-			int argc, const char **argv)
+			modeflag eum, int argc, const char **argv)
 {
   DO_CLIENT_QUERY (_ircd_query_time);
 }
@@ -812,7 +812,7 @@ static inline int _ircd_query_connect (IRCD *ircd, CLIENT *cl, struct peer_priv 
 BINDING_TYPE_ircd_client_cmd(ircd_connect_cb);
 static int ircd_connect_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 			   const char *user, const char *host, const char *vhost,
-			   int argc, const char **argv)
+			   modeflag eum, int argc, const char **argv)
 {
   DO_CLIENT_QUERY (_ircd_query_connect);
 }
@@ -874,7 +874,7 @@ static inline int _ircd_query_trace (IRCD *ircd, CLIENT *cl, struct peer_priv *v
 BINDING_TYPE_ircd_client_cmd(ircd_trace_cb);
 static int ircd_trace_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 			 const char *user, const char *host, const char *vhost,
-			 int argc, const char **argv)
+			 modeflag eum, int argc, const char **argv)
 {
   DO_CLIENT_QUERY (_ircd_query_trace);
 }
@@ -910,7 +910,7 @@ static inline int _ircd_query_admin (IRCD *ircd, CLIENT *cl, struct peer_priv *v
 BINDING_TYPE_ircd_client_cmd(ircd_admin_cb);
 static int ircd_admin_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 			 const char *user, const char *host, const char *vhost,
-			 int argc, const char **argv)
+			 modeflag eum, int argc, const char **argv)
 {
   DO_CLIENT_QUERY (_ircd_query_admin);
 }
@@ -964,7 +964,7 @@ static inline int _ircd_query_info (IRCD *ircd, CLIENT *cl, struct peer_priv *vi
 BINDING_TYPE_ircd_client_cmd(ircd_info_cb);
 static int ircd_info_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 			const char *user, const char *host, const char *vhost,
-			int argc, const char **argv)
+			modeflag eum, int argc, const char **argv)
 {
   DO_CLIENT_QUERY (_ircd_query_info);
 }
@@ -1110,7 +1110,7 @@ static inline int _ircd_query_whois (IRCD *ircd, CLIENT *cl, struct peer_priv *v
 BINDING_TYPE_ircd_client_cmd(ircd_whois_cb);
 static int ircd_whois_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 			 const char *user, const char *host, const char *vhost,
-			 int argc, const char **argv)
+			 modeflag eum, int argc, const char **argv)
 {
   DO_CLIENT_QUERY (_ircd_query_whois);
 }
@@ -1202,7 +1202,7 @@ static inline int _ircd_query_whowas (IRCD *ircd, CLIENT *cl, struct peer_priv *
 BINDING_TYPE_ircd_client_cmd(ircd_whowas_cb);
 static int ircd_whowas_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 			  const char *user, const char *host, const char *vhost,
-			  int argc, const char **argv)
+			  modeflag eum, int argc, const char **argv)
 {
   DO_CLIENT_QUERY (_ircd_query_whowas);
 }
@@ -1251,7 +1251,7 @@ static inline int _ircd_query_ping (IRCD *ircd, CLIENT *cl, struct peer_priv *vi
 BINDING_TYPE_ircd_client_cmd(ircd_ping_cb);
 static int ircd_ping_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 			const char *user, const char *host, const char *vhost,
-			int argc, const char **argv)
+			modeflag eum, int argc, const char **argv)
 {
   DO_CLIENT_QUERY (_ircd_query_ping);
 }
@@ -1287,7 +1287,7 @@ static inline int _ircd_query_pong (IRCD *ircd, CLIENT *cl, struct peer_priv *vi
 BINDING_TYPE_ircd_client_cmd(ircd_pong_cb);
 static int ircd_pong_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 			const char *user, const char *host, const char *vhost,
-			int argc, const char **argv)
+			modeflag eum, int argc, const char **argv)
 {
   DO_CLIENT_QUERY (_ircd_query_pong);
 }
@@ -1336,7 +1336,7 @@ static inline int _ircd_query_summon(IRCD *ircd, CLIENT *cl, struct peer_priv *v
 BINDING_TYPE_ircd_client_cmd(ircd_summon_cb);
 static int ircd_summon_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 			  const char *user, const char *host, const char *vhost,
-			  int argc, const char **argv)
+			  modeflag eum, int argc, const char **argv)
 {
   DO_CLIENT_QUERY (_ircd_query_summon);
 }
@@ -1388,7 +1388,7 @@ static inline int _ircd_query_users(IRCD *ircd, CLIENT *cl, struct peer_priv *vi
 BINDING_TYPE_ircd_client_cmd(ircd_users_cb);
 static int ircd_users_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 			 const char *user, const char *host, const char *vhost,
-			 int argc, const char **argv)
+			 modeflag eum, int argc, const char **argv)
 {
   DO_CLIENT_QUERY (_ircd_query_users);
 }
@@ -1407,8 +1407,8 @@ static int ircd_users_sb(INTERFACE *srv, struct peer_t *peer, unsigned short tok
 BINDING_TYPE_ircd_local_client(_igotc_lu_mo);
 static void _igotc_lu_mo (INTERFACE *srv, struct peer_t *peer)
 {
-  ircd_lusers_cb (srv, peer, NULL, NULL, NULL, NULL, 0, NULL);
-  ircd_motd_cb (srv, peer, NULL, NULL, NULL, NULL, 0, NULL);
+  ircd_lusers_cb (srv, peer, NULL, NULL, NULL, NULL, A_ISON, 0, NULL);
+  ircd_motd_cb (srv, peer, NULL, NULL, NULL, NULL, A_ISON, 0, NULL);
 }
 
 

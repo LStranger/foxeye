@@ -522,7 +522,7 @@ static inline CLIENT *_ircd_find_msg_target (const char *target,
 BINDING_TYPE_ircd_client_cmd(ircd_privmsg_cb);
 static int ircd_privmsg_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 			   const char *user, const char *host, const char *vhost,
-			   int argc, const char **argv)
+			   modeflag eum, int argc, const char **argv)
 { /* args: <msgtarget> <text to be sent> */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl, *tcl;
   MEMBER *tch;
@@ -640,7 +640,7 @@ static int ircd_privmsg_cb(INTERFACE *srv, struct peer_t *peer, const char *lcni
 BINDING_TYPE_ircd_client_cmd(ircd_notice_cb);
 static int ircd_notice_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 			  const char *user, const char *host, const char *vhost,
-			  int argc, const char **argv)
+			  modeflag eum, int argc, const char **argv)
 { /* args: <msgtarget> <text to be sent> */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl, *tcl;
   MEMBER *tch;
@@ -742,7 +742,7 @@ static int ircd_notice_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnic
 BINDING_TYPE_ircd_client_cmd(ircd_squery_cb);
 static int ircd_squery_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 			  const char *user, const char *host, const char *vhost,
-			  int argc, const char **argv)
+			  modeflag eum, int argc, const char **argv)
 { /* args: <servicename> <text to be sent> */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl, *tcl;
   IRCD *ircd = (IRCD *)srv->data;

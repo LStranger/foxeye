@@ -1027,7 +1027,7 @@ static inline int _ircd_mode_mask_query_reply (INTERFACE *srv, CLIENT *cl,
 BINDING_TYPE_ircd_client_cmd(ircd_mode_cb); /* huge one as hell */
 static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 			const char *user, const char *host, const char *vhost,
-			int argc, const char **argv)
+			modeflag eum, int argc, const char **argv)
 { /* args: <target> [modes...] */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl;
   CHANNEL *ch;
@@ -1338,7 +1338,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 	    if (!b->name && (f = (modeflag (*)())b->func))
 	    {
 	      ma = NULL;
-	      mf |= f (srv, peer->dname, cl->umode, add, &ma);
+	      mf |= f (srv, peer->dname, eum, add, &ma);
 	      if (ma)			/* update vhost */
 		ma (cl->vhost, cl->host, sizeof(cl->vhost), add, cl->cs->nick);
 	    }
@@ -1464,7 +1464,7 @@ static inline void _ircd_join_0_local (IRCD *ircd, CLIENT *cl, char *key)
 BINDING_TYPE_ircd_client_cmd(ircd_join_cb);
 static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 			const char *user, const char *host, const char *vhost,
-			int argc, const char **argv)
+			modeflag eum, int argc, const char **argv)
 { /* args: <channel> [,<channel> ...] [<key> [,<key> ... ]] | 0 */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl;
   CHANNEL *ch;

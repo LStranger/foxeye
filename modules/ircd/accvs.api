@@ -47,15 +47,16 @@
 -     "iirrccdd--cclliieenntt--ccmmdd" UNIQ
   int func(INTERFACE *_s_r_v, struct peer_t *_p_e_e_r, const char *_l_c_n_i_c_k,
 	   const char *_u_s_e_r, const char *_h_o_s_t, const char *_v_h_o_s_t,
-	   int _a_r_g_c, const char **_a_r_g_v);
+	   modeflag _e_u_m, int _a_r_g_c, const char **_a_r_g_v);
     Used when server got some message from local client _p_e_e_r. Message is
     parsed and put into array _a_r_g_v so _a_r_g_c contains number of parameters
     that was given to the command. _p_e_e_r->dname contains nick of sender,
     _u_s_e_r and _h_o_s_t are from client connection, and converted to lower case
     sender nick _l_c_n_i_c_k is provided to use with Inspect_Client() function.
-    The visible host _v_h_o_s_t is also provided. _s_r_v is IRCD interface which
-    can be used to send control messages (commands). Value -1 returned by
-    binding means this command should not reset idle time calculation.
+    The visible host _v_h_o_s_t and user mode flags _e_u_m effective for change
+    are also provided. _s_r_v is IRCD interface which can be used to send
+    control messages (commands). Value -1 returned by binding means this
+    command should not reset idle time calculation.
       Matching: command.  (channel userflags are ignored)
 
 -     "iirrccdd--sseerrvveerr--ccmmdd" KEYWORD
