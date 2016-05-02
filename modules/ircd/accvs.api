@@ -148,8 +148,8 @@
       Matching stops after first binding call that returns 1.
 
 -     "iirrccdd--cchheecckk--mmooddeecchhaannggee" MASK
-  int func(modeflag _u_m_o_d_e, modeflag _m_m_o_d_e, int _a_d_d, modeflag _c_h_g,
-	   char *_t_g_t);
+  int func(INTERFACE *_s_r_v, modeflag _u_m_o_d_e, modeflag _m_m_o_d_e, int _a_d_d,
+	   modeflag _c_h_g, char *_t_g_t);
     Used when someone with channel mode _u_m_o_d_e trying to make a modechange
     _c_h_g for some target _t_g_t on the channel with modes _m_m_o_d_e (which is 0
     if it is modechange on user themself). Binding gets modechange which
@@ -247,19 +247,19 @@
 
 -     "iirrccdd--ccoolllliissiioonn" UNIQMASK
   (int) char *func(INTERFACE *_s_r_v, char *_n_e_w, size_t _n_s_i_z_e, int _c_a_n,
-		   const char *_e_s_e_r_v, const char *_c_s_e_r_v);
+		   const char *_e_s_e_r_v, const char *_n_s_e_r_v);
     Used when server got nick collision for some nick _n_e_w. Binding have
     to propose some solution to resolve this issue. If binding proposes
     to kill existing user then it should return NULL. If binding proposes
     to keep it then it should return new nick for it (in static buffer).
     If that returned nick is indentical to any existing one then existing
-    user will be not renamed but flag _c_a_n equal to 0 means keeping nick
+    user will be not renamed. If flag _c_a_n is 0 then keeping existing nick
     isn't allowed so in latter case existing user will be killed instead.
     If the binding proposes to kill the user which makes a collision then
     it should make _n_e_w containing zero length string and if the binding
     proposes to rename the user then it should put new nick for it into
     buffer _n_e_w of size _n_s_i_z_e. Server interface _s_r_v is provided so binding
-    can check nicks. Parameters _e_s_e_r_v and _c_s_e_r_v are server names of those
+    can check nicks. Parameters _e_s_e_r_v and _n_s_e_r_v are server names of those
     existing and collided users. Note: if any of proposed new nicks would
     make another nick collision then that user will be killed instead so
     be careful and do checks.

@@ -878,7 +878,8 @@ static modeflag iumch_z(INTERFACE *srv, const char *rq, modeflag rumode,
 
 /* restricted users cannot change any modes */
 BINDING_TYPE_ircd_check_modechange(ichmch_r);
-static int ichmch_r(modeflag umode, modeflag mmode, int add, modeflag chg, char *tgt)
+static int ichmch_r(INTERFACE *srv, modeflag umode, modeflag mmode, int add,
+		    modeflag chg, char *tgt)
 {
   if ((umode & A_RESTRICTED) && chg != 0)
     return 0;
@@ -1154,7 +1155,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 	    CONTINUE_ON_MODE_ERROR (ERR_UNIQOPPRIVSNEEDED, NULL);
 	  while (mf && (b = Check_Bindtable (BTIrcdCheckModechange, peer->dname,
 					     U_ALL, U_ANYCH, b)))
-	    if (!b->name && !b->func (memb->mode, ch->mode, mf, add, tar))
+	    if (!b->name && !b->func (srv, memb->mode, ch->mode, add, mf, tar))
 	      mf = 0;			/* change denied, stop */
 	  if (!mf) {
 	    if (!(memb->mode & (A_OP | A_ADMIN))) { /* check permissions */
@@ -1347,7 +1348,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 	  mf &= ~(A_ISON | A_PINGED);
 	  while (mf && (b = Check_Bindtable (BTIrcdCheckModechange, peer->dname,
 					     U_ALL, U_ANYCH, b)))
-	    if (!b->name && !b->func (cl->umode, peer->dname, mf, add))
+	    if (!b->name && !b->func (srv, cl->umode, 0, add, mf, NULL))
 	      mf = 0;			/* change denied, stop */
 	  if (!mf) {
 	    continue;			/* change denied */
@@ -1632,7 +1633,7 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
     {
       b = NULL;
       while ((b = Check_Bindtable(BTIrcdCheckModechange, nchn, U_ALL, U_ANYCH, b)))
-	if (!b->name && (ff = b->func) && ff (cl->umode, mf, 1, 0, NULL) == 0)
+	if (!b->name && (ff = b->func) && ff (srv, cl->umode, mf, 1, 0, cl->nick) == 0)
 	  break;			/* denied! */
       if (!b)
 	i = 1;				/* so he/she allowed at last */
@@ -1828,7 +1829,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	  mf &= ~A_PINGED;		/* reset extra flag */
 	  while (mf && (b = Check_Bindtable (BTIrcdCheckModechange, pp->p.dname,
 					     U_ALL, U_ANYCH, b)))
-	    if (!b->name && !b->func (whof, ch->mode, mf, add, tar))
+	    if (!b->name && !b->func (srv, whof, ch->mode, add, mf, tar))
 	      mf = 0;			/* change denied, stop */
 	  if (!mf)			/* check permissions */
 	  {
