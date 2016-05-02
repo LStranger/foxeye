@@ -86,7 +86,9 @@
 /* 327 reserved */
 #define RPL_NOTOPIC		331, "%# :No topic is set"
 #define RPL_TOPIC		332, "%# :%*"
-/* 333 reserved */
+#if TOPICWHOTIME
+# define RPL_TOPICWHOTIME	333, "%# %*"
+#endif
 #define RPL_WHOISSECURE		336, "%# :is using encrypted connection"
 #define RPL_INVITING		341, "%# %*"
 #define RPL_SUMMONING		342, "%# :Summoning user to IRC"

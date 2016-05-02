@@ -2944,6 +2944,50 @@ static void _ircd_catch_undeleted_ch (void *ch)
   ircd_drop_channel (NULL, ch);
 }
 
+		/* ircd-set-channel-topic <network> <channel> [<time> <who>] <topic> */
+static int _ircd_set_channel_topic(const char *topic)
+{
+  char who[MB_LEN_MAX*NICKLEN+1];
+  char *c;
+  long time;
+  size_t len;
+  INTERFACE *iface;
+  IRCD *ircd;
+  CHANNEL *ch;
+
+  c = NextWord_Unquoted(who, (char *)topic, sizeof(who));
+  iface = Find_Iface(I_SERVICE, who);
+  if (iface == NULL)
+  {
+    ERROR ("ircd-set-channel-topic: network %s isn't known", who);
+    return (0);
+  }
+  ircd = iface->data;
+  Unset_Iface();
+  c = NextWord_Unquoted(who, c, sizeof(who));
+  ch = _ircd_find_channel(ircd, who);
+  if (ch == NULL)
+  {
+    ERROR ("ircd-set-channel-topic: channel %s isn't formed", who);
+    return (0);
+  }
+  time = strtoul(c, &c, 10);
+  if (time > 0)			/* <time> <who> present */
+  {
+    c = NextWord_Unquoted(who, NextWord(c), sizeof(who));
+#if TOPICWHOTIME
+    strfcpy(ch->topic_by, who, sizeof(ch->topic_by));
+    len = unistrcut(ch->topic_by, sizeof(ch->topic_by), NICKLEN);
+    ch->topic_by[len] = '\0';
+    ch->topic_since = time;
+#endif
+  }
+  strfcpy(ch->topic, c, sizeof(ch->topic));
+  len = unistrcut(ch->topic, sizeof(ch->topic), TOPICLEN);
+  ch->topic[len] = '\0';
+  return (1);
+}
+
 /* common end and start of channel protocol */
 void ircd_channel_proto_end (NODE **tree)
 {
@@ -2982,6 +3026,7 @@ void ircd_channel_proto_end (NODE **tree)
   Delete_Binding ("ircd-umodechange", (Function)&iumch_s, NULL);
   Delete_Binding ("ircd-umodechange", (Function)&iumch_z, NULL);
   Delete_Binding ("ircd-check-modechange", &ichmch_r, NULL);
+  UnregisterFunction ("ircd-set-channel-topic");
   _ircd_internal_logger_sig (_ircd_internal_logger, S_TERMINATE); /* stop &* */
   Destroy_Tree (tree, &_ircd_catch_undeleted_ch);
   _forget_(CHANNEL);
@@ -3037,6 +3082,8 @@ void ircd_channel_proto_start (IRCD *ircd)
   Add_Binding ("ircd-umodechange", "s", 0, 0, (Function)&iumch_s, NULL);
   Add_Binding ("ircd-umodechange", "z", 0, 0, (Function)&iumch_z, NULL);
   Add_Binding ("ircd-check-modechange", "*", 0, 0, &ichmch_r, NULL);
+  /* grant access to topic for other modules */
+  RegisterFunction ("ircd-set-channel-topic", &_ircd_set_channel_topic, NULL);
   /* create common local channels */
   _ircd_log_channel (ircd, "&KILLS",
 		     "SERVER MESSAGES: operator and server kills", F_MODES);

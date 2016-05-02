@@ -91,8 +91,10 @@ typedef struct CHANNEL
   int on_ack; /* waiting for acks from servers (references counter) */
 #endif
   char fc[2];
-//  char topic_by[MB_LEN_MASK*NICKLEN+1];
-//  time_t topic_since;
+#if TOPICWHOTIME
+  char topic_by[MB_LEN_MASK*NICKLEN+1];
+  time_t topic_since;
+#endif
   char topic[MB_LEN_MAX*TOPICLEN+1];
   char key[KEYLEN+1];
   char name[MB_LEN_MAX*CHANNAMELEN+1];
