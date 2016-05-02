@@ -3,7 +3,7 @@
 #define RPL_CREATED		  3, ":This server was created %*"
 #define RPL_MYINFO		  4, "%# %V %*"
 /* 005 reserved: RPL_ISUPPORT */
-#define RPL_BOUNCE		 10, ":Try server %#, port %P"
+#define RPL_BOUNCE		 10, "%# %P :Please use this Server/Port instead"
 /* 015 reserved */
 /* 017-018 reserved */
 #define RPL_HELLO		 20, ":Welcome to %#! Please wait until checks are done."
