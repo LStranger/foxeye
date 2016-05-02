@@ -973,7 +973,7 @@ static CLIENT *_ircd_check_nick_collision(char *nick, size_t nsz, peer_priv *pp,
     else
       res = 0;
     f = (char * (*)())b->func;
-    collnick = f(nick, nsz, res);
+    collnick = f(Ircd->iface, nick, nsz, res, collided->cs->lcnick, onserv);
     if (collnick == NULL)
       res = 0; /* going to remove it */
     else if ((test = _ircd_find_client(collnick)) == collided)
@@ -3403,7 +3403,7 @@ static int _ircd_remote_nickchange(CLIENT *tgt, peer_priv *pp,
     ircd_recover_done(pp, "Invalid nick");
   }
   collision = _ircd_check_nick_collision(checknick, sizeof(checknick), pp,
-					 pp->p.dname);
+					 tgt->cs ? tgt->cs->lcnick : pp->p.dname);
   if (collision != NULL && strcmp(nn, checknick)) {
     /* we have the same nick either live or on hold and we should
        to do something with the client which changed nick now */
@@ -3775,6 +3775,12 @@ static modeflag incl_ircd(const char *net, const char *public,
       return 0;
     if (host)
       *host = ch->topic;
+#ifdef TOPICWHOTIME
+    if (lname)
+      *lname = ch->topic_by;
+    if (idle)
+      *idle = ch->topic_since;
+#endif
     if (cnt && (ch->mode & A_LIMIT))
       *cnt = ch->limit;
     else if (cnt)

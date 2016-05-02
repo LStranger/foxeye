@@ -19,6 +19,8 @@ Mon May  2 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: added function "ircd-set-channel-topic" to
 	  let other modules change topic.
 	* modules/ircd/*: implemented RPL_TOPICWHOTIME feature.
+	* modules/ircd/ircd.c: added few more parameters for "ircd-collision"
+	  bindings.
 
 Sun May  1 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed MODE change via another server: only

@@ -16,7 +16,9 @@
 
   Note: Inspect_Client() function for this module is case-sensitive for
   nicks or server names to be as fast as possible and avoid undesired
-  case conversions (but still case-insensitive for channel names).
+  case conversions (but still case-insensitive for channel names). The
+  lname in returned data contains either nick of who set topic (if that
+  data are available), or ident of the user.
 
 -     "iirrccdd--aauutthh"      MASK
   int func(struct peer_t *_p_e_e_r, char *_u_s_e_r, char *_h_o_s_t, const char **_m_s_g,
@@ -244,7 +246,8 @@
       Matching: STAT request parameter.  (userflags are ignored)
 
 -     "iirrccdd--ccoolllliissiioonn" UNIQMASK
-  (int) char *func(char *_n_e_w, size_t _n_s_i_z_e, int _c_a_n);
+  (int) char *func(INTERFACE *_s_r_v, char *_n_e_w, size_t _n_s_i_z_e, int _c_a_n,
+		   const char *_e_s_e_r_v, const char *_c_s_e_r_v);
     Used when server got nick collision for some nick _n_e_w. Binding have
     to propose some solution to resolve this issue. If binding proposes
     to kill existing user then it should return NULL. If binding proposes
@@ -255,7 +258,9 @@
     If the binding proposes to kill the user which makes a collision then
     it should make _n_e_w containing zero length string and if the binding
     proposes to rename the user then it should put new nick for it into
-    buffer _n_e_w of size _n_s_i_z_e. Note: if any of proposed new nicks would
+    buffer _n_e_w of size _n_s_i_z_e. Server interface _s_r_v is provided so binding
+    can check nicks. Parameters _e_s_e_r_v and _c_s_e_r_v are server names of those
+    existing and collided users. Note: if any of proposed new nicks would
     make another nick collision then that user will be killed instead so
     be careful and do checks.
       Matching: anything.  (userflags are ignored)

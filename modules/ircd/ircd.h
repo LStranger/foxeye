@@ -92,7 +92,7 @@ typedef struct CHANNEL
 #endif
   char fc[2];
 #ifdef TOPICWHOTIME
-  char topic_by[MB_LEN_MASK*NICKLEN+1];
+  char topic_by[MB_LEN_MAX*NICKLEN+1];
   time_t topic_since;
 #endif
   char topic[MB_LEN_MAX*TOPICLEN+1];
