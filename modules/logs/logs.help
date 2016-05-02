@@ -33,7 +33,7 @@ set logrotate-path
 :This is template for daily rotated logs, i.e. previous log file will be\
  renamed with that name. Substitutions:
  %%$ - filename of rotated log (current log before rotation)
- %%d, %%b, %%y, etc - date fields as in strftime(3)
+ %%d, %%b, %%y, etc - date fields as in %gstrftime%n(3)
  Default: "%%$~".
 
 set logfile-lock-attempts

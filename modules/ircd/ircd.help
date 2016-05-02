@@ -109,9 +109,9 @@ set ircd-motd-file
 +hub
 :%* server mask
 :
-:Allows %_server%_ to introduce other servers to us. The %_mask%_ is simple
- pattern to filter introduced servers: if the %_server%_ introduces some
- server that matches none of added masks then it will be unlinked for such
+:Allows %_server%_ to introduce other servers to us. The %_mask%_ is simple\
+ pattern to filter introduced servers: if the %_server%_ introduces some\
+ server that matches none of added masks then it will be unlinked for such\
  behavior.
 
 flood-type ircd-errors

@@ -27,7 +27,7 @@ greeting
  where N is number of weeks, X is number of days, Y is number of hours, and\
  Z is number of minutes (example: +1d4h - ban will be expired in 1 day and\
  4 hours from current moment). If %_reason%_ is omitted then use "you are\
- banned" value (see module "%^irc-channel%^"). If mask is prepended with\
+ banned" value (see module "%yirc-channel%n"). If mask is prepended with\
  "%%" then ban is considered "sticky", i.e. it will be not took off after\
  some time if it's set on the channel but will be on until expiration.
 

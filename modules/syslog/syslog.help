@@ -10,6 +10,6 @@ module syslog
 set syslog-facility
 :%* <string>
 :Syslog messages facility name.
-:Defines which facility will be used for logging messages, see %^syslog%^(3)
+:Defines which facility will be used for logging messages, see %gsyslog%n(3)\
  for details.
  Default: "local0".

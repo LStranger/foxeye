@@ -23,7 +23,7 @@ set autolog-path
  for clients and communities (channels). Substitutions:
  %%N - target name (nick, channel, etc.)
  %%@ - registered network name
- %%d, %%b, %%y, etc - date fields as in strftime(3)
+ %%d, %%b, %%y, etc - date fields as in %gstrftime%n(3)
  Default: "~/.foxeye/logs/%%@/%%N".
 
 set autolog-serv-path
@@ -32,28 +32,28 @@ set autolog-serv-path
 :This variable defines template for path of log file that is opened/created\
  for common service (network) log. Substitutions:
  %%@ - registered network name
- %%d, %%b, %%y, etc - date fields as in strftime(3)
+ %%d, %%b, %%y, etc - date fields as in %gstrftime%n(3)
  Default: "~/.foxeye/logs/%%@.netlog".
 
 set autolog-open
 :%* <string>
 :Template for string to add in autolog on opening.
 :This variable defines a template for string that is inserted to log file on\
- its opening. See %^strftime%^(3) for details.
+ its opening. See %gstrftime%n(3) for details.
  Default: "IRC log started %%c".
 
 set autolog-close
 :%* <string>
 :Template for string to add in autolog on closing.
 :This variable defines a template for string that is inserted to log file on\
- its closing. See %^strftime%^(3) for details.
+ its closing. See %gstrftime%n(3) for details.
  Default: "IRC log ended %%c".
 
 set autolog-daychange
 :%* <string>
 :Template for string to add in autolog when day changed.
 :This variable defines a template for string that is inserted to log file when\
- new day begins. See %^strftime%^(3) for details.
+ new day begins. See %gstrftime%n(3) for details.
  Default: "Day changed: %%a %%x".
 
 set autolog-timestamp
@@ -61,7 +61,7 @@ set autolog-timestamp
 :Template for string to add at start of message line in autolog.
 :This variable defines a template for string that is inserted into beginning\
  of each logged line except self-formed (such as %cautolog-daychange%n). See\
- %^strftime%^(3) for details.
+ %gstrftime%n(3) for details.
  Default: "[%%H:%%M] ".
 
 set autolog-autoclose
