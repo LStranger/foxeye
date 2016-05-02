@@ -30,6 +30,9 @@
 #include "numerics.h"
 
 extern long int _ircd_hold_period;	/* see ircd.c */
+extern bool _ircd_no_spare_invites;
+extern bool _ircd_strict_modecmd;
+extern bool _ircd_ignore_mkey_arg;
 
 static struct bindtable_t *BTIrcdWhochar;
 static struct bindtable_t *BTIrcdChannel;
@@ -546,11 +549,9 @@ static int _imch_do_keyset (INTERFACE *srv, const char *rq, const char *ch,
     //TODO: limit its length?
     //TODO: ERR_KEYSET
     strfcpy (_imch_channel->key, *param, sizeof(_imch_channel->key));
-#ifndef IRCD_IGNORE_MKEY_ARG
-  } else if (safe_strcmp(_imch_channel->key, *param)) {
+  } else if (!_ircd_ignore_mkey_arg && safe_strcmp(_imch_channel->key, *param)) {
     ircd_do_cnumeric (_imch_client, ERR_KEYSET, _imch_channel, 0, NULL);
     return 0;
-#endif
   } else
     _imch_channel->key[0] = '\0';
   return 1;
@@ -780,11 +781,8 @@ static modeflag imch_I(INTERFACE *srv, const char *rq, modeflag rchmode,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
-#ifdef NO_SPARE_INVITES
-  if (!target && (rchmode & (A_OP | A_ADMIN)) && (tmode & A_INVITEONLY))
-#else
-  if (!target && (rchmode & (A_OP | A_ADMIN)))
-#endif
+  if (!target && (rchmode & (A_OP | A_ADMIN)) &&
+      (!_ircd_no_spare_invites || (tmode & A_INVITEONLY)))
   {
     *ma = &_imch_do_inviteset;
     return (A_INVITED | 1);
@@ -1069,13 +1067,11 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
     *imp = 0;
     for (i = 1; i < argc; i++)		/* parse modes */
     {
-#ifndef IRCD_STRICT_MODECMD
-      if (i == 1) {
+      if (!_ircd_strict_modecmd && i == 1) {
 	*imp = '+';			/* implicit '+' before first arg */
 	add = 1;
       } else
-#endif
-      add = -1;				/* next args should have + or - */
+	add = -1;			/* next args should have + or - */
       for (c = argv[i]; *c; c++)
       {
 	if (*c == '+')			/* adding mode */

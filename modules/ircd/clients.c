@@ -28,6 +28,7 @@
 #include "ircd.h"
 #include "numerics.h"
 
+extern bool _ircd_public_topic; /* in ircd.c */
 
 /* ---------------------------------------------------------------------------
  * Common internal functions.
@@ -320,12 +321,8 @@ static int ircd_topic_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick
     return ircd_do_unumeric (cl, ERR_NOTONCHANNEL, cl, 0, argv[0]);
   ch = memb->chan;
   memb = _ircd_is_on_channel(cl, ch);
-#ifdef IRCD_PUBLIC_TOPIC
   /* secret channels should be not visible such way - RFC2811 */
-  if ((ch->mode & A_SECRET) && memb == NULL)
-#else
-  if (memb == NULL)
-#endif
+  if ((!_ircd_public_topic || (ch->mode & A_SECRET)) && memb == NULL)
     return ircd_do_unumeric (cl, ERR_NOTONCHANNEL, cl, 0, argv[0]);
   if (argc == 1)			/* it's query */
   {
@@ -346,10 +343,8 @@ static int ircd_topic_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick
     }
     return ircd_do_cnumeric (cl, RPL_NOTOPIC, ch, 0, NULL);
   }
-#ifdef IRCD_PUBLIC_TOPIC
   if (memb == NULL)
     return ircd_do_unumeric (cl, ERR_NOTONCHANNEL, cl, 0, argv[0]);
-#endif
   if ((ch->mode & A_TOPICLOCK) && !(memb->mode & (A_ADMIN | A_OP)))
   {
     if (ch->name[0] == '+')

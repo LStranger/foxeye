@@ -310,25 +310,16 @@ IRCD_MULTICONNECT. See descriptions below.
 
 Meaning of letters in VERSION reply:
 
-   A  - Opers can see all users in /trace
-   B  - SQUIT youngest server instead of oldest on duplicate connection
    E  - Opers can rehash server
    i  - Multiple encoding support is enabled
-   I  - Users will not automatically be attributed with user mode "i"
    J  - Opers can use /die
    K  - Opers can use /kill
-   l  - Non-opers will not get WALLOP messages despite of "w" user mode
-   M  - Idle-time nullified only from privmsg
-   N  - Users can use "I" mode on channels without "i"
    o  - Cyclic network scheme is enabled
-   O  - Topic on modeless channel is visible outside of channel
    R  - Opers can restart server
    s  - Using local services is enabled
    S  - Local /summon is enabled
    T  - RPL_TOPICWHOTIME is enabled
    U  - Local /users is enabled
-   +  - Users should always use '+' or '-' for MODE changing.
-   -  - Don't check argument of MODE #chan -k with key for #chan
    6  - IPv6 supported
    8  - Any unicode chars in nick/channel are allowed
 

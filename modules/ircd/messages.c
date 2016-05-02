@@ -21,9 +21,12 @@
 #include <foxeye.h>
 #if IRCD_USES_ICONV == 0 || (defined(HAVE_ICONV) && (IRCD_NEEDS_TRANSLIT == 0 || defined(HAVE_CYRILLIC_TRANSLIT)))
 #include <modules.h>
+#include <init.h>
 
 #include "ircd.h"
 #include "numerics.h"
+
+extern bool _ircd_idle_from_msg; /* in ircd.c */
 
 static struct bindtable_t *BTIrcdCheckMessage;
 static struct bindtable_t *BTIrcdSetMessageTargets;
@@ -538,9 +541,8 @@ static int ircd_privmsg_cb(INTERFACE *srv, struct peer_t *peer, const char *lcni
     return ircd_do_unumeric (cl, ERR_NORECIPIENT, cl, 0, NULL);
   if (argc == 1 || !*argv[1])
     return ircd_do_unumeric (cl, ERR_NOTEXTTOSEND, cl, 0, NULL);
-#ifdef IDLE_FROM_MSG
-  ((struct peer_priv *)peer->iface->data)->noidle = Time;
-#endif
+  if (_ircd_idle_from_msg)
+    ((struct peer_priv *)peer->iface->data)->noidle = Time;
   for (c = (char *)argv[0], n = 0; c; c = cnext)
   {
     if ((cnext = strchr (c, ',')))

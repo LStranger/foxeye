@@ -23,6 +23,7 @@ Mon May  2 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  bindings.
 	* modules/ircd/channels.c: fixed arguments of "ircd-check-modechange"
 	  binding calls, added interface pointer to it.
+	* modules/ircd/*: converted some of #define into variables.
 
 Sun May  1 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed MODE change via another server: only

@@ -54,6 +54,16 @@ static char _ircd_version_string[16] = "0210001000"; /* read only */
 char _ircd_description_string[SHORT_STRING] = "";
 long int _ircd_hold_period = 900;		/* 15 minutes, see RFC 2811 */
 static long int _ircd_server_class_pingf = 30;	/* in seconds */
+static bool _ircd_squit_youngest = TRUE;
+static bool _ircd_statm_empty_too = FALSE;
+static bool _ircd_trace_users = TRUE;
+bool _ircd_public_topic = TRUE;
+bool _ircd_idle_from_msg = FALSE;
+static bool _ircd_default_invisible = TRUE;
+static bool _ircd_wallop_only_opers = FALSE;
+bool _ircd_no_spare_invites = FALSE;
+bool _ircd_strict_modecmd = TRUE;
+bool _ircd_ignore_mkey_arg = FALSE;
 
 static short *_ircd_corrections;		/* for CheckFlood() */
 static short *_ircd_client_recvq;
@@ -1470,10 +1480,8 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
       else
 	ircd_do_unumeric (cl, ERR_UNKNOWNCOMMAND, cl, 0, argv[1]);
     }
-#ifndef IDLE_FROM_MSG
-    else if (i > 0)
+    else if (!_ircd_idle_from_msg && i > 0)
       peer->noidle = Time;		/* for idle calculation */
-#endif
     /* we accepted a message, apply antiflood penalty on client */
     if (!(cl->umode & (A_SERVER | A_SERVICE)) && i >= 0 &&
 	CheckFlood (&peer->penalty, _ircd_client_recvq) > 0) {
@@ -2295,9 +2303,7 @@ static int ircd_user (INTERFACE *srv, struct peer_t *peer, int argc, const char 
   umode = atoi (argv[1]);
   if (umode & 4)
     cl->umode = A_WALLOP;
-#ifndef DEFAULT_INVISIBLE
-  if (umode & 8)
-#endif
+  if (_ircd_default_invisible || (umode & 8))
     cl->umode |= A_INVISIBLE;
 //  StrTrim(cl->fname);
   umode = unistrcut (argv[3], sizeof(cl->fname), REALNAMELEN);
@@ -2909,12 +2915,9 @@ static inline int _ircd_server_duplicate_link (peer_priv *old, peer_priv *this,
   /* server announces another instance of RFC2813 server */
   ERROR ("Server %s introduced already known server %s, dropping link", sender,
 	 name);
-#ifdef IRCD_SQUIT_YOUNGEST
   /* kill youngest link */
-  if (old->started > this->started)
-    ircd_do_squit (old->link, NULL, "Introduced server already exists");
-  else
-#endif
+  if (_ircd_squit_youngest && old->started > this->started)
+    this = old;
   ircd_do_squit (this->link, NULL, "Introduced server already exists");
   return 1;
 }
@@ -4030,9 +4033,7 @@ static void _istats_m (INTERFACE *srv, const char *rq, modeflag umode)
       hs = --bs->hits;
     else
       hs = 0;
-#ifndef IRCD_STATM_EMPTYTOO
-    if (hc > 0 || hs > 0)
-#endif
+    if (_ircd_statm_empty_too || hc > 0 || hs > 0)
     {
       snprintf (buf, sizeof(buf), "%s %u %u", bc->key, hc, hs);
       _ircd_do_server_message (NULL, 4, argv);
@@ -4047,9 +4048,7 @@ static void _istats_m (INTERFACE *srv, const char *rq, modeflag umode)
       continue;				/* it was shown on previous cycle */
     }
     hs = bc->hits;
-#ifndef IRCD_STATM_EMPTYTOO
-    if (hs)
-#endif
+    if (_ircd_statm_empty_too || hs)
     {
       snprintf (buf, sizeof(buf), "%s 0 %u", bc->key, hs);
       _ircd_do_server_message (NULL, 4, argv);
@@ -4668,9 +4667,7 @@ int ircd_show_trace (CLIENT *rq, CLIENT *tgt)
   LINK *l;
   int sc, ss;
   unsigned short i;
-#ifdef IRCD_TRACE_USERS
   CLASS *c;
-#endif
   char flags[8];
   char buf[MESSAGEMAX];
 
@@ -4728,19 +4725,16 @@ int ircd_show_trace (CLIENT *rq, CLIENT *tgt)
 	  return ircd_do_unumeric (rq, RPL_TRACENEWTYPE, tgt, 0, "Unclassed");
 	return ircd_do_unumeric (rq, RPL_TRACEUSER, tgt, 0, tgt->x.class->name);
     }
-#ifdef IRCD_TRACE_USERS
-  if (!CLIENT_IS_REMOTE(rq) && (rq->umode & (A_OP | A_HALFOP)))
+  if (_ircd_trace_users && !CLIENT_IS_REMOTE(rq) && (rq->umode & (A_OP | A_HALFOP)))
     tgt = rq;				/* mark it for full listing */
-#endif
   pthread_mutex_lock (&IrcdLock);
   for (t = IrcdPeers; t; t = t->p.priv)
     if (tgt || (t->link->cl->umode & (A_SERVER | A_SERVICE | A_OP | A_HALFOP)))
       ircd_show_trace (rq, t->link->cl);
-#ifdef IRCD_TRACE_USERS
-  if (CLIENT_IS_REMOTE(rq) && (rq->umode & A_OP)) /* for remote opers only */
+  if (_ircd_trace_users && CLIENT_IS_REMOTE(rq) && (rq->umode & A_OP))
+    /* for remote opers only */
     for (c = Ircd->users; c; c = c->next)
       ircd_do_unumeric (rq, RPL_TRACECLASS, rq, c->lin, c->name);
-#endif
   pthread_mutex_unlock (&IrcdLock);
   return 1;
 // RPL_TRACELOG
@@ -4764,11 +4758,8 @@ const char *ircd_mark_wallops(void)
   register LINK *cll;
 
   for (cll = ME.c.lients; cll; cll = cll->prev)
-#ifdef WALLOP_ONLY_OPERS
-    if ((cll->cl->umode & A_WALLOP) && (cll->cl->umode & (A_OP | A_HALFOP)))
-#else
-    if (cll->cl->umode & A_WALLOP)
-#endif
+    if ((cll->cl->umode & A_WALLOP) &&
+	(!_ircd_wallop_only_opers || (cll->cl->umode & (A_OP | A_HALFOP))))
       cll->cl->via->p.iface->ift |= I_PENDING;
   return (MY_NAME);
 }
@@ -4824,6 +4815,16 @@ static void _ircd_register_all (void)
 		  sizeof(_ircd_description_string), 0);
   RegisterInteger ("ircd-hold-period", &_ircd_hold_period);
   RegisterInteger ("ircd-serverclass-pingf", &_ircd_server_class_pingf);
+  RegisterBoolean ("ircd-squit-youngest", &_ircd_squit_youngest);
+  RegisterBoolean ("ircd-statm-empty-too", &_ircd_statm_empty_too);
+  RegisterBoolean ("ircd-trace-users", &_ircd_trace_users);
+  RegisterBoolean ("ircd-public-topic", &_ircd_public_topic);
+  RegisterBoolean ("ircd-idle-from-msg", &_ircd_idle_from_msg);
+  RegisterBoolean ("ircd-default-invisible", &_ircd_default_invisible);
+  RegisterBoolean ("ircd-wallop-only-opers", &_ircd_wallop_only_opers);
+  RegisterBoolean ("ircd-no-spare-invites", &_ircd_no_spare_invites);
+  RegisterBoolean ("ircd-strict-modecmd", &_ircd_strict_modecmd);
+  RegisterBoolean ("ircd-ignore-mkey-arg", &_ircd_ignore_mkey_arg);
   ircd_queries_register();
   RegisterFunction ("ircd", &func_ircd, "[-charset ][host/]port[%flags]");
 }
@@ -4857,6 +4858,16 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
       UnregisterVariable ("ircd-description-string");
       UnregisterVariable ("ircd-hold-period");
       UnregisterVariable ("ircd-serverclass-pingf");
+      UnregisterVariable ("ircd-squit-youngest");
+      UnregisterVariable ("ircd-statm-empty-too");
+      UnregisterVariable ("ircd-trace-users");
+      UnregisterVariable ("ircd-public-topic");
+      UnregisterVariable ("ircd-idle-from-msg");
+      UnregisterVariable ("ircd-default-invisible");
+      UnregisterVariable ("ircd-wallop-only-opers");
+      UnregisterVariable ("ircd-no-spare-invites");
+      UnregisterVariable ("ircd-strict-modecmd");
+      UnregisterVariable ("ircd-ignore-mkey-arg");
       UnregisterFunction ("ircd");
       Delete_Binding ("ircd-auth", &_ircd_class_in, NULL);
       Delete_Binding ("ircd-register-cmd", &ircd_pass, NULL);

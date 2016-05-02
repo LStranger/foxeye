@@ -106,6 +106,80 @@ set ircd-motd-file
  can contain full path to the file or path relative to starting config.
  Default: "ircd.motd".
 
+set ircd-max-matches
+:%* <number>
+:Max number of replies on LIST or NAMES.
+:
+ Default: 500.
+
+set ircd-max-whois
+:%* <number>
+:Max targets to show on WHOIS.
+:
+ Default: 3.
+
+set ircd-squit-youngest
+:%* <yes|no>
+:Send SQUIT to youngest link on duplicate SERVER rather than to announcer.
+:
+ Default: yes.
+
+set ircd-statm-empty-too
+:%* <yes|no>
+:Show commands never used on stat m reply.
+:
+ Default: no.
+
+set ircd-trace-users
+:%* <yes|no>
+:Want opers see all users in TRACE reply.
+:
+ Default: yes.
+
+set ircd-public-topic
+:%* <yes|no>
+:
+:Set to %^yes%^ to grant access to topic outside of channel which have neither\
+ mode +n nor +t. Note: topic is still partially accessible with LIST command.
+ Default: yes.
+
+set ircd-idle-from-msg
+:%* <yes|no>
+:Only PRIVMSG can reset idle time.
+:
+ Default: no.
+
+set ircd-default-invisible
+:%* <yes|no>
+:Users will be automatically attributed with user mode "i".
+:
+ Default: yes.
+
+set ircd-wallop-only-opers
+:%* <yes|no>
+:Only OPERs can get WALLOP messages.
+:If set to %^yes%^ then non-opers will not get WALLOP messages despite of\
+ "w" user mode.
+ Default: no.
+
+set ircd-no-spare-invites
+:%* <yes|no>
+:Don't allow setting +I for channels without +i.
+:
+ Default: no.
+
+set ircd-strict-modecmd
+:%* <yes|no>
+:Users should always use '+' or '-' for MODE changing.
+:
+ Default: yes.
+
+set ircd-ignore-mkey-arg
+:%* <yes|no>
+:Don't check argument of MODE #chan -k with key for #chan.
+:
+ Default: no.
+
 +hub
 :%* server mask
 :

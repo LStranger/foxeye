@@ -35,6 +35,8 @@ static char _ircd_motd_file[PATH_MAX+1] = "ircd.motd";
 static char _ircd_admin_info[SHORT_STRING] = "Not configured.";
 static char _ircd_admin_email[SHORT_STRING] = "lame@lame.org";
 extern char _ircd_description_string[]; /* in ircd.c */
+static long int _ircd_max_matches = 500;
+static long int _ircd_max_whois = 3;
 
 static struct bindtable_t *BTIrcdStatsReply;
 static struct bindtable_t *BTIrcdWhois;
@@ -141,7 +143,7 @@ int ircd_names_reply (CLIENT *me, CLIENT *cl, CHANNEL *ch, int done)
     {
       buf[p+s] = '\0';
       ircd_do_cnumeric (cl, RPL_NAMREPLY, ch, 0, buf);
-      if (done >= 0 && ++done == MAXMATCHES)
+      if (done >= 0 && ++done >= _ircd_max_matches)
       {
 	ircd_do_unumeric (cl, ERR_TOOMANYMATCHES, cl, 0, ch->name);
 	return done;
@@ -181,7 +183,7 @@ static int _ircd_names_reply_all (IRCD *ircd, CLIENT *me, CLIENT *cl, int i)
     ch = l->s.data;
     if (ch->users)
       i = ircd_names_reply (me, cl, ch, i);
-    if (i == MAXMATCHES)
+    if (i >= _ircd_max_matches)
       return ircd_do_unumeric (cl, RPL_ENDOFNAMES, cl, 0, "*");
   }
   /* list all visible users not on visible channels */
@@ -206,7 +208,7 @@ static int _ircd_names_reply_all (IRCD *ircd, CLIENT *me, CLIENT *cl, int i)
       if (s + strlen (tgt->nick) > x)
       {
 	ircd_do_unumeric (cl, RPL_NAMREPLY, cl, 0, buf);
-	if (i >= 0 && ++i == MAXMATCHES)
+	if (i >= 0 && ++i >= _ircd_max_matches)
 	{
 	  ircd_do_unumeric (cl, ERR_TOOMANYMATCHES, cl, 0, "*");
 	  return ircd_do_unumeric (cl, RPL_ENDOFNAMES, cl, 0, "*");
@@ -543,20 +545,11 @@ static int ircd_lusers_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
 }
 
 const char ircd_version_flags[] = {
-#ifdef IRCD_TRACE_USERS
-'A',
-#endif
-#ifdef IRCD_SQUIT_YOUNGEST
-'B',
-#endif
 #ifdef IRCD_ENABLE_REHASH
 'E',
 #endif
 #if IRCD_USES_ICONV
 'i',
-#endif
-#ifndef DEFAULT_INVISIBLE
-'I',
 #endif
 #ifdef IRCD_ENABLE_DIE
 'J',
@@ -564,20 +557,8 @@ const char ircd_version_flags[] = {
 #ifdef IRCD_ENABLE_KILL
 'K',
 #endif
-#ifdef WALLOP_ONLY_OPERS
-'l',
-#endif
-#ifdef IDLE_FROM_MSG
-'M',
-#endif
-#ifndef NO_SPARE_INVITES
-'N',
-#endif
 #if IRCD_MULTICONNECT
 'o',
-#endif
-#ifdef IRCD_PUBLIC_TOPIC
-'O',
 #endif
 #ifdef IRCD_ENABLE_RESTART
 'R',
@@ -593,12 +574,6 @@ const char ircd_version_flags[] = {
 #endif
 #ifdef IRCD_ENABLE_USERS
 'U',
-#endif
-#ifdef IRCD_STRICT_MODECMD
-'+',
-#endif
-#ifdef IRCD_IGNORE_MKEY_ARG
-'-',
 #endif
 #ifdef ENABLE_IPV6
 '6',
@@ -1069,7 +1044,7 @@ static inline int _ircd_query_whois (IRCD *ircd, CLIENT *cl, struct peer_priv *v
     tgt = ircd_find_client (c, via);
     if (tgt && !CLIENT_IS_SERVER(tgt))
     {
-      if (n++ >= MAXWHOIS)
+      if (n++ >= _ircd_max_whois)
 	ircd_do_unumeric (cl, ERR_TOOMANYTARGETS, tgt, 0, "Ignoring request.");
       else
 	_ircd_do_whois (ircd, cl, tgt, me);
@@ -1081,7 +1056,7 @@ static inline int _ircd_query_whois (IRCD *ircd, CLIENT *cl, struct peer_priv *v
 	NODE *t = ircd->clients;
 	LEAF *l = NULL;
 
-	while (n < MAXWHOIS && (l = Next_Leaf (t, l, NULL)))
+	while (n < _ircd_max_whois && (l = Next_Leaf (t, l, NULL)))
 	{
 	  tgt = l->s.data;
 	  if ((tgt->umode & (A_SERVER | A_SERVICE)) | tgt->hold_upto)
@@ -1164,8 +1139,8 @@ static inline int _ircd_query_whowas (IRCD *ircd, CLIENT *cl, struct peer_priv *
 		 argv[0], argv[1], tgt->nick);
     return 1;
   }
-  if (argc < 2 || (max = atoi (argv[1])) < 0 || max > 2 * MAXWHOIS)
-    max = 2 * MAXWHOIS;
+  if (argc < 2 || (max = atoi (argv[1])) < 0 || max > 2 * _ircd_max_whois)
+    max = 2 * _ircd_max_whois;
   unistrlower (targets, argv[0], sizeof(targets));
   for (c = targets; c; c = cnext)
   {
@@ -1540,6 +1515,8 @@ void ircd_queries_proto_end (void)
   UnregisterVariable ("ircd-motd-file");
   UnregisterVariable ("ircd-admin-info");
   UnregisterVariable ("ircd-admin-email");
+  UnregisterVariable ("ircd-max-matches");
+  UnregisterVariable ("ircd-max-whois");
   FREE (&IrcdMotd);
   IrcdMotdSize = 0;
   Delete_Binding ("ircd-client-cmd", &ircd_names_cb, NULL);
@@ -1593,6 +1570,8 @@ void ircd_queries_register (void)
 		  sizeof(_ircd_admin_info), 0);
   RegisterString ("ircd-admin-email", _ircd_admin_email,
 		  sizeof(_ircd_admin_email), 0);
+  RegisterInteger ("ircd-max-matches", &_ircd_max_matches);
+  RegisterInteger ("ircd-max-whois", &_ircd_max_whois);
 }
 
 void ircd_queries_proto_start (void)
