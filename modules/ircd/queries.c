@@ -588,9 +588,9 @@ const char ircd_version_flags[] = {
 #ifdef IRCD_ENABLE_SUMMON
 'S',
 #endif
-//#ifdef TOPIC_WHO_TIME
-//'T',
-//#endif
+#ifdef TOPICWHOTIME
+'T',
+#endif
 #ifdef IRCD_ENABLE_USERS
 'U',
 #endif

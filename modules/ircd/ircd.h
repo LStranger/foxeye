@@ -91,7 +91,7 @@ typedef struct CHANNEL
   int on_ack; /* waiting for acks from servers (references counter) */
 #endif
   char fc[2];
-#if TOPICWHOTIME
+#ifdef TOPICWHOTIME
   char topic_by[MB_LEN_MASK*NICKLEN+1];
   time_t topic_since;
 #endif

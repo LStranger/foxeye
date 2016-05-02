@@ -972,6 +972,10 @@ static int _ircd_do_stopic(IRCD *ircd, const char *via, const char *sender,
   //TODO: check permissions may be?
   sz = unistrcut(topic, sizeof(ch->topic), TOPICLEN); /* validate */
   strfcpy(ch->topic, topic, sz+1);
+#ifdef TOPICWHOTIME
+  strfcpy(ch->topic_by, sender, sizeof(ch->topic_by));
+  ch->topic_since = Time;
+#endif
   if (CLIENT_IS_SERVER(cl)) //TODO: can servers set topics?
     ircd_sendto_chan_local(ch, ":%s TOPIC %s :%s", sender, ch->name, ch->topic);
   else if (CLIENT_IS_SERVICE(cl))

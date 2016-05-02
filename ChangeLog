@@ -18,6 +18,7 @@ Mon May  2 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  binding parameter, setting user mode by server would need it.
 	* modules/ircd/channels.c: added function "ircd-set-channel-topic" to
 	  let other modules change topic.
+	* modules/ircd/*: implemented RPL_TOPICWHOTIME feature.
 
 Sun May  1 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed MODE change via another server: only

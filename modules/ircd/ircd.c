@@ -2299,10 +2299,9 @@ static int ircd_user (INTERFACE *srv, struct peer_t *peer, int argc, const char 
   if (umode & 8)
 #endif
     cl->umode |= A_INVISIBLE;
-  strfcpy (cl->fname, argv[3], sizeof(cl->fname));
 //  StrTrim(cl->fname);
-  umode = unistrcut (cl->fname, sizeof(cl->fname), REALNAMELEN);
-  cl->fname[umode] = '\0';
+  umode = unistrcut (argv[3], sizeof(cl->fname), REALNAMELEN);
+  strfcpy (cl->fname, argv[3], umode + 1);
   if (!cl->nick[0] || !_ircd_nickname_available(cl, cl->nick))
     return 1;
   return _ircd_got_local_user (cl);

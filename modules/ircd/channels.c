@@ -1423,7 +1423,19 @@ static inline MEMBER *_ircd_do_join(IRCD *ircd, CLIENT *cl, CHANNEL *ch, modefla
   if (r == NULL)			/* ignored due to acks or already joined */
     return (NULL);
   if (ch->topic[0])
+  {
     ircd_do_cnumeric (cl, RPL_TOPIC, ch, 0, ch->topic);
+#ifdef TOPICWHOTIME
+    if (ch->topic_since > 0)
+    {
+      char topicwhotime[MB_LEN_MAX*NICKLEN+12]; /* nick time */
+
+      snprintf (topicwhotime, sizeof(topicwhotime), "%s %ld", ch->topic_by,
+		ch->topic_since);
+      ircd_do_cnumeric (cl, RPL_TOPICWHOTIME, ch, 0, topicwhotime);
+    }
+#endif
+  }
   ircd_names_reply (ircd_find_client(NULL, NULL), cl, ch, 0); /* RPL_NAMREPLY */
   ircd_do_unumeric (cl, RPL_ENDOFNAMES, cl, 0, ch->name);
   return (r);
@@ -2975,16 +2987,14 @@ static int _ircd_set_channel_topic(const char *topic)
   if (time > 0)			/* <time> <who> present */
   {
     c = NextWord_Unquoted(who, NextWord(c), sizeof(who));
-#if TOPICWHOTIME
-    strfcpy(ch->topic_by, who, sizeof(ch->topic_by));
-    len = unistrcut(ch->topic_by, sizeof(ch->topic_by), NICKLEN);
-    ch->topic_by[len] = '\0';
+#ifdef TOPICWHOTIME
+    len = unistrcut(who, sizeof(ch->topic_by), NICKLEN);
+    strfcpy(ch->topic_by, who, len + 1);
     ch->topic_since = time;
 #endif
   }
-  strfcpy(ch->topic, c, sizeof(ch->topic));
-  len = unistrcut(ch->topic, sizeof(ch->topic), TOPICLEN);
-  ch->topic[len] = '\0';
+  len = unistrcut(c, sizeof(ch->topic), TOPICLEN);
+  strfcpy(ch->topic, c, len + 1);
   return (1);
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2010-2016  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -330,7 +330,20 @@ static int ircd_topic_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick
   if (argc == 1)			/* it's query */
   {
     if (ch->topic[0])
-      return ircd_do_cnumeric (cl, RPL_TOPIC, ch, 0, ch->topic);
+    {
+      ircd_do_cnumeric (cl, RPL_TOPIC, ch, 0, ch->topic);
+#ifdef TOPICWHOTIME
+      if (ch->topic_since > 0)
+      {
+	char topicwhotime[MB_LEN_MAX*NICKLEN+12]; /* nick time */
+
+	snprintf (topicwhotime, sizeof(topicwhotime), "%s %ld", ch->topic_by,
+		  ch->topic_since);
+	ircd_do_cnumeric (cl, RPL_TOPICWHOTIME, ch, 0, topicwhotime);
+      }
+#endif
+      return 1;
+    }
     return ircd_do_cnumeric (cl, RPL_NOTOPIC, ch, 0, NULL);
   }
 #ifdef IRCD_PUBLIC_TOPIC
@@ -345,6 +358,10 @@ static int ircd_topic_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick
   }
   sz = unistrcut (argv[1], sizeof(ch->topic), TOPICLEN); /* validate */
   strfcpy (ch->topic, argv[1], sz+1);
+#ifdef TOPICWHOTIME
+  strfcpy (ch->topic_by, peer->dname, sizeof(ch->topic_by));
+  ch->topic_since = Time;
+#endif
   if (ch->mode & A_ANONYMOUS)
     ircd_sendto_chan_local(ch, ":anonymous!anonymous@anonymous. TOPIC %s :%s",
 			   ch->name, ch->topic);

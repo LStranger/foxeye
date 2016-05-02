@@ -86,7 +86,7 @@
 /* 327 reserved */
 #define RPL_NOTOPIC		331, "%# :No topic is set"
 #define RPL_TOPIC		332, "%# :%*"
-#if TOPICWHOTIME
+#ifdef TOPICWHOTIME
 # define RPL_TOPICWHOTIME	333, "%# %*"
 #endif
 #define RPL_WHOISSECURE		336, "%# :is using encrypted connection"

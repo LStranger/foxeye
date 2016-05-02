@@ -291,6 +291,23 @@ IRCD_MULTICONNECT. See descriptions below.
                                    irchelp@irc.fr.
 
 
+#define TOPICWHOTIME 1
+
+    If TOPICWHOTIME is defined then this feature which is present in many
+ other servers is enabled. If it is enabled then server keeps track on
+ who and when changed the channel topic and send that info along with the
+ topic itself when user joins channel or sends query for the topic.
+
+ Numeric reply:
+
+       333    RPL_TOPICWHOTIME
+              "<channel> <who> <time>"
+
+         - Sent to client, <who> is the client who changed the channel
+           topic last, and <time> is when topic was changed last, in
+           seconds since Epoch.
+
+
 Meaning of letters in VERSION reply:
 
    A  - Opers can see all users in /trace
@@ -308,6 +325,7 @@ Meaning of letters in VERSION reply:
    R  - Opers can restart server
    s  - Using local services is enabled
    S  - Local /summon is enabled
+   T  - RPL_TOPICWHOTIME is enabled
    U  - Local /users is enabled
    +  - Users should always use '+' or '-' for MODE changing.
    -  - Don't check argument of MODE #chan -k with key for #chan
