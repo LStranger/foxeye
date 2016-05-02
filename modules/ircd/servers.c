@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2014  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2011-2016  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -254,7 +254,7 @@ int ircd_test_id(CLIENT *cl, int id)
 
 BINDING_TYPE_ircd_server_cmd(ircd_quit_sb);
 static int ircd_quit_sb(INTERFACE *srv, struct peer_t *peer, unsigned short token,
-			const char *sender, const char *lcsender, char *cmd,
+			const char *sender, const char *lcsender,
 			int argc, const char **argv)
 { /* args: [<Quit Message>] */
   CLIENT *cl;
@@ -284,7 +284,7 @@ static int ircd_quit_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 
 BINDING_TYPE_ircd_server_cmd(ircd_squit_sb);
 static int ircd_squit_sb(INTERFACE *srv, struct peer_t *peer, unsigned short token,
-			 const char *sender, const char *lcsender, char *cmd,
+			 const char *sender, const char *lcsender,
 			 int argc, const char **argv)
 { /* args: <server> <comment> */
   CLIENT *cl, *tgt;
@@ -388,7 +388,7 @@ static inline int _ircd_join_0_remote(IRCD *ircd, struct peer_priv *bysrv,
 
 BINDING_TYPE_ircd_server_cmd(ircd_join_sb);
 static int ircd_join_sb(INTERFACE *srv, struct peer_t *peer, unsigned short token,
-			const char *sender, const char *lcsender, char *cmd,
+			const char *sender, const char *lcsender,
 			int argc, const char **argv)
 { /* args: <channel>[^G<modes>][,<channel>[^G<modes>]]
            0 [reason] */
@@ -481,7 +481,7 @@ static int ircd_join_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 
 BINDING_TYPE_ircd_server_cmd(ircd_njoin);
 static int ircd_njoin(INTERFACE *srv, struct peer_t *peer, unsigned short token,
-		      const char *sender, const char *lcsender, char *cmd,
+		      const char *sender, const char *lcsender,
 		      int argc, const char **argv)
 { /* args: <channel> [@@|@|+]<nickname>[,[@@|@|+]<nickname>...] */
   MEMBER *tgt;
@@ -580,7 +580,7 @@ static int ircd_njoin(INTERFACE *srv, struct peer_t *peer, unsigned short token,
 
 BINDING_TYPE_ircd_server_cmd(ircd_part_sb);
 static int ircd_part_sb(INTERFACE *srv, struct peer_t *peer, unsigned short token,
-			const char *sender, const char *lcsender, char *cmd,
+			const char *sender, const char *lcsender,
 			int argc, const char **argv)
 { /* args: <channel>[,<channel> ...] [<Part Message>] */
   CLIENT *cl;
@@ -672,7 +672,7 @@ _ircd_do_stopic(IRCD *ircd, const char *via, const char *sender,
 
 BINDING_TYPE_ircd_server_cmd(ircd_topic_sb);
 static int ircd_topic_sb(INTERFACE *srv, struct peer_t *peer, unsigned short token,
-			 const char *sender, const char *lcsender, char *cmd,
+			 const char *sender, const char *lcsender,
 			 int argc, const char **argv)
 { /* args: <channel> <topic> */
   CLIENT *cl;
@@ -698,7 +698,7 @@ static int ircd_topic_sb(INTERFACE *srv, struct peer_t *peer, unsigned short tok
 
 BINDING_TYPE_ircd_server_cmd(ircd_invite_sb);
 static int ircd_invite_sb(INTERFACE *srv, struct peer_t *peer, unsigned short token,
-			  const char *sender, const char *lcsender, char *cmd,
+			  const char *sender, const char *lcsender,
 			  int argc, const char **argv)
 { /* args: <nickname> <channel> */
   CLIENT *cl, *tgt;
@@ -747,7 +747,7 @@ static int ircd_invite_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
 
 BINDING_TYPE_ircd_server_cmd(ircd_kick_sb);
 static int ircd_kick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short token,
-			const char *sender, const char *lcsender, char *cmd,
+			const char *sender, const char *lcsender,
 			int argc, const char **argv)
 { /* args: <channel>[,<channel> ...] <user>[,<user> ...] [<comment>] */
   CLIENT *cl, *tgt;
@@ -865,7 +865,7 @@ static int ircd_kick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 
 BINDING_TYPE_ircd_server_cmd(ircd_kill_sb);
 static int ircd_kill_sb(INTERFACE *srv, struct peer_t *peer, unsigned short token,
-			const char *sender, const char *lcsender, char *cmd,
+			const char *sender, const char *lcsender,
 			int argc, const char **argv)
 { /* args: <nickname> <comment> */
   CLIENT *cl, *tcl;
@@ -926,7 +926,7 @@ static int ircd_kill_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 
 BINDING_TYPE_ircd_server_cmd(ircd_error_sb);
 static int ircd_error_sb(INTERFACE *srv, struct peer_t *peer, unsigned short token,
-			 const char *sender, const char *lcsender, char *cmd,
+			 const char *sender, const char *lcsender,
 			 int argc, const char **argv)
 { /* args: <error message> */
   /* just broadcasting it to channel and log */
@@ -936,7 +936,7 @@ static int ircd_error_sb(INTERFACE *srv, struct peer_t *peer, unsigned short tok
 
 BINDING_TYPE_ircd_server_cmd(ircd_wallops_sb);
 static int ircd_wallops_sb(INTERFACE *srv, struct peer_t *peer, unsigned short token,
-			   const char *sender, const char *lcsender, char *cmd,
+			   const char *sender, const char *lcsender,
 			   int argc, const char **argv)
 { /* args: <wallops message> */
   struct peer_priv *pp = peer->iface->data; /* it's really peer */
@@ -1015,7 +1015,7 @@ static int _ircd_do_stopic(IRCD *ircd, const char *via, const char *sender,
 #if IRCD_MULTICONNECT
 BINDING_TYPE_ircd_server_cmd(ircd_itopic);
 static int ircd_itopic(INTERFACE *srv, struct peer_t *peer, unsigned short token,
-		       const char *sender, const char *lcsender, char *cmd,
+		       const char *sender, const char *lcsender,
 		       int argc, const char **argv)
 { /* args: <num> <channel> <topic> */
   CLIENT *cl;
@@ -1056,7 +1056,7 @@ static int ircd_itopic(INTERFACE *srv, struct peer_t *peer, unsigned short token
 
 BINDING_TYPE_ircd_server_cmd(ircd_ack);
 static int ircd_ack(INTERFACE *srv, struct peer_t *peer, unsigned short token,
-		    const char *sender, const char *lcsender, char *cmd,
+		    const char *sender, const char *lcsender,
 		    int argc, const char **argv)
 { /* args: <command> <target> [<channel>] */
   register struct peer_priv *pp = peer->iface->data; /* it's really peer */
