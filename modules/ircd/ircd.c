@@ -1203,7 +1203,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
   const char *argv[IRCDMAXARGS+3];	/* sender, command, args, NULL */
   size_t sw;
   ssize_t sr;
-  int argc, i;
+  int argc, i, p, p0;
   char buff[MB_LEN_MAX*IRCMSGLEN+1];
 #if IRCD_USES_ICONV
   char sbuff[MB_LEN_MAX*IRCMSGLEN+1];
@@ -1434,6 +1434,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
       c = gettoken (c, NULL);
     } while (*c);
     i = 0;
+    p0 = p = 1;
     argv[argc] = NULL;
     if (!*argv[1]);			/* got malformed line */
     else if (!Ircd->iface);		/* internal error! */
@@ -1444,11 +1445,15 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
       while ((b = Check_Bindtable (BTIrcdClientFilter, argv[1], peer->p.uf,
 				   U_ANYCH, b)))
 	if (!b->name)
-	  if ((i = b->func (Ircd->iface, &peer->p, cl->umode, argc - 2,
-			    &argv[2])) != 0)
+	{
+	  if ((p0 = b->func (Ircd->iface, &peer->p, cl->umode, argc - 2,
+			     &argv[2])) == 0)
 	    break;			/* it's consumed so it's done */
+	  else if (p0 > p)
+	    p = p0;
+	}
       b = NULL;
-      if (i == 0)
+      if (p0 != 0)
 	b = Check_Bindtable (BTIrcdRegisterCmd, argv[1], U_ALL, U_ANYCH, NULL);
       if (b)
 	if (!b->name)
@@ -1463,10 +1468,14 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
       while ((b = Check_Bindtable (BTIrcdClientFilter, argv[1], peer->p.uf,
 				   U_ANYCH, b)))
 	if (!b->name)
-	  if ((i = b->func (Ircd->iface, &peer->p, cl->umode, argc - 2,
-			    &argv[2])))
+	{
+	  if ((p0 = b->func (Ircd->iface, &peer->p, cl->umode, argc - 2,
+			     &argv[2])) == 0)
 	    break;			/* it's consumed so it's done */
-      if (i == 0)
+	  else if (p0 > p)
+	    p = p0;
+	}
+      if (p0 != 0)
 	if ((b = Check_Bindtable (BTIrcdClientCmd, argv[1], peer->p.uf, U_ANYCH,
 				  NULL)))
 	  if (!b->name)			/* passed thru filter and found cmd */
@@ -1483,11 +1492,14 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
     else if (!_ircd_idle_from_msg && i > 0)
       peer->noidle = Time;		/* for idle calculation */
     /* we accepted a message, apply antiflood penalty on client */
-    if (!(cl->umode & (A_SERVER | A_SERVICE)) && i >= 0 &&
-	CheckFlood (&peer->penalty, _ircd_client_recvq) > 0) {
-      dprint(4, "ircd: flood from %s, applying penalty on next message",
-	     cl->nick);
-      break;				/* don't accept more messages */
+    if (!(cl->umode & (A_SERVER | A_SERVICE)) && p >= 0) {
+      while (p-- > 1)			/* apply extra penalties */
+	CheckFlood (&peer->penalty, _ircd_client_recvq);
+      if (CheckFlood (&peer->penalty, _ircd_client_recvq) > 0) {
+	dprint(4, "ircd: flood from %s, applying penalty on next message",
+	       cl->nick);
+	break;				/* don't accept more messages */
+      }
     }
   }
   if (peer->p.state == P_QUIT)		/* died in execution! */

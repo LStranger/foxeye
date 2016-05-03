@@ -22,6 +22,8 @@ Tue May  3 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  changed RPL_TOPICWHOTIME format (it should contain full mask and not
 	  show real user for A_ANONYMOUS channel).
 	* modules/ircd/ircd.c: added user mode to "ircd-local-client" bindings.
+	* modules/ircd/ircd.c: changed "ircd-client-filter" return value, it
+	  should return 0 to refuse, and >1 for increased penalty.
 
 Mon May  2 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/*: added effective user mode as "ircd-client-command"
