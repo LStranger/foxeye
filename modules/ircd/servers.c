@@ -973,7 +973,8 @@ static int _ircd_do_stopic(IRCD *ircd, const char *via, const char *sender,
   sz = unistrcut(topic, sizeof(ch->topic), TOPICLEN); /* validate */
   strfcpy(ch->topic, topic, sz+1);
 #ifdef TOPICWHOTIME
-  strfcpy(ch->topic_by, sender, sizeof(ch->topic_by));
+  snprintf(ch->topic_by, sizeof(ch->topic_by), "%s!%s@%s", sender, cl->user,
+	   cl->vhost);
   ch->topic_since = Time;
 #endif
   if (CLIENT_IS_SERVER(cl)) //TODO: can servers set topics?

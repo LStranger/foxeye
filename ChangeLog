@@ -17,6 +17,9 @@ Tue May  3 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/init.*, doc/modules.api: added new function GetVariable() which
 	  grants access to variables of one module to another at init stage.
 	* core/foxeye.h (ircd): changed TOPICLEN to 255 as it is in IRCd 2.11.
+	* modules/ircd/servers.c, modules/ircd/ircd.h, modules/ircd/clients.c, modules/ircd/channels.c:
+	  changed RPL_TOPICWHOTIME format (it should contain full mask and not
+	  show real user for A_ANONYMOUS channel).
 
 Mon May  2 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/*: added effective user mode as "ircd-client-command"

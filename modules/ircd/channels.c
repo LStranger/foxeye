@@ -1425,10 +1425,14 @@ static inline MEMBER *_ircd_do_join(IRCD *ircd, CLIENT *cl, CHANNEL *ch, modefla
 #ifdef TOPICWHOTIME
     if (ch->topic_since > 0)
     {
-      char topicwhotime[MB_LEN_MAX*NICKLEN+12]; /* nick time */
+      char topicwhotime[HOSTMASKLEN+12]; /* nick time */
 
-      snprintf (topicwhotime, sizeof(topicwhotime), "%s %ld", ch->topic_by,
-		ch->topic_since);
+      if (ch->mode & A_ANONYMOUS)
+	snprintf (topicwhotime, sizeof(topicwhotime),
+		  "anonymous!anonymous@anonymous. %ld", ch->topic_since);
+      else
+	snprintf (topicwhotime, sizeof(topicwhotime), "%s %ld", ch->topic_by,
+		  ch->topic_since);
       ircd_do_cnumeric (cl, RPL_TOPICWHOTIME, ch, 0, topicwhotime);
     }
 #endif
@@ -2985,7 +2989,7 @@ static int _ircd_set_channel_topic(const char *topic)
   {
     c = NextWord_Unquoted(who, NextWord(c), sizeof(who));
 #ifdef TOPICWHOTIME
-    len = unistrcut(who, sizeof(ch->topic_by), NICKLEN);
+    len = unistrcut(who, sizeof(ch->topic_by), NICKLEN+IDENTLEN+HOSTLEN+2);
     strfcpy(ch->topic_by, who, len + 1);
     ch->topic_since = time;
 #endif

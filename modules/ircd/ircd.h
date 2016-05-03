@@ -74,7 +74,7 @@ typedef struct MASK
   struct MASK *next;
 //  time_t since;
   char what[HOSTMASKLEN+1];
-//  char by[MB_LEN_MASK*NICKLEN+1];
+//  char by[HOSTMASKLEN+1];
 } MASK;
 
 typedef struct CHANNEL
@@ -92,7 +92,7 @@ typedef struct CHANNEL
 #endif
   char fc[2];
 #ifdef TOPICWHOTIME
-  char topic_by[MB_LEN_MAX*NICKLEN+1];
+  char topic_by[HOSTMASKLEN+1];
   time_t topic_since;
 #endif
   char topic[MB_LEN_MAX*TOPICLEN+1];

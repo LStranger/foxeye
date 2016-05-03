@@ -303,9 +303,9 @@ IRCD_MULTICONNECT. See descriptions below.
        333    RPL_TOPICWHOTIME
               "<channel> <who> <time>"
 
-         - Sent to client, <who> is the client who changed the channel
-           topic last, and <time> is when topic was changed last, in
-           seconds since Epoch.
+         - Sent to client, <who> is the client (in form nick!user@host)
+           who changed the channel topic last, and <time> is time when
+           topic was changed last, in seconds since Epoch.
 
 
 Meaning of letters in VERSION reply:

@@ -332,10 +332,14 @@ static int ircd_topic_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick
 #ifdef TOPICWHOTIME
       if (ch->topic_since > 0)
       {
-	char topicwhotime[MB_LEN_MAX*NICKLEN+12]; /* nick time */
+	char topicwhotime[HOSTMASKLEN+12]; /* nick time */
 
-	snprintf (topicwhotime, sizeof(topicwhotime), "%s %ld", ch->topic_by,
-		  ch->topic_since);
+	if (ch->mode & A_ANONYMOUS)
+	  snprintf (topicwhotime, sizeof(topicwhotime),
+		    "anonymous!anonymous@anonymous. %ld", ch->topic_since);
+	else
+	  snprintf (topicwhotime, sizeof(topicwhotime), "%s %ld", ch->topic_by,
+		    ch->topic_since);
 	ircd_do_cnumeric (cl, RPL_TOPICWHOTIME, ch, 0, topicwhotime);
       }
 #endif
@@ -354,7 +358,8 @@ static int ircd_topic_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick
   sz = unistrcut (argv[1], sizeof(ch->topic), TOPICLEN); /* validate */
   strfcpy (ch->topic, argv[1], sz+1);
 #ifdef TOPICWHOTIME
-  strfcpy (ch->topic_by, peer->dname, sizeof(ch->topic_by));
+  snprintf (ch->topic_by, sizeof(ch->topic_by), "%s!%s@%s", peer->dname, user,
+	    vhost);
   ch->topic_since = Time;
 #endif
   if (ch->mode & A_ANONYMOUS)

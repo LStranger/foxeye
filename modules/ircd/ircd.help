@@ -33,6 +33,11 @@ function ircd
  connection chain first links (see technical documentation for more details\
  about connection chain).
 
+function ircd-set-channel-topic
+:ircd-set-channel-topic network channel [time who] topic
+:
+:
+
 set ircd-default-class
 :%* <string>
 :Default class parameters string.
