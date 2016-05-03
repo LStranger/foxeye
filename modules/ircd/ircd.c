@@ -50,7 +50,7 @@ struct CLASS
 static char _ircd_default_class[64] = "2 2 100 90 1000"; /* lpul lpug lpc pingf sendq */
 static char _ircd_flags_first[32] = "Z";	/* on start of connchain */
 static char _ircd_flags_post[32] = "IPU";	/* allowed after 'x' filter */
-static char _ircd_version_string[16] = "0210001000"; /* read only */
+static char _ircd_version_string[16] = "021100001100"; /* read only */
 char _ircd_description_string[SHORT_STRING] = "";
 long int _ircd_hold_period = 900;		/* 15 minutes, see RFC 2811 */
 static long int _ircd_server_class_pingf = 30;	/* in seconds */

@@ -16,6 +16,7 @@ TODO:
 Tue May  3 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/init.*, doc/modules.api: added new function GetVariable() which
 	  grants access to variables of one module to another at init stage.
+	* core/foxeye.h (ircd): changed TOPICLEN to 255 as it is in IRCd 2.11.
 
 Mon May  2 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/*: added effective user mode as "ircd-client-command"
