@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2016  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -56,6 +56,15 @@ int RegisterInteger (const char *, long int *);
 int RegisterBoolean (const char *, bool *);
 int RegisterString (const char *, char *, size_t, int);
 int UnregisterVariable (const char *);
+
+typedef enum {
+  VARIABLE_INTEGER = 0,
+  VARIABLE_BOOLEAN,
+  VARIABLE_CONSTANT,
+  VARIABLE_STRING
+} VariableType;
+
+int GetVariable (const char *, VariableType, void **);
 
 char *SetFormat (const char *, char *);		/* name, new value */
 int Save_Formats (void);

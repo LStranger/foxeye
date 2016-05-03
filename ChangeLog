@@ -13,6 +13,10 @@ TODO:
 	* *: to check Add_Request/New_Request coming to user to be translatable.
 
 --- [0.10.2]
+Tue May  3 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/init.*, doc/modules.api: added new function GetVariable() which
+	  grants access to variables of one module to another at init stage.
+
 Mon May  2 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/*: added effective user mode as "ircd-client-command"
 	  binding parameter, setting user mode by server would need it.

@@ -983,6 +983,14 @@ Scripts API:
     module terminating for each variable that was added on module init.
 	Reenterability: none
 
+  int GGeettVVaarriiaabbllee (const char *_n_a_m_e, VariableType _t_y_p_e, void **_p_t_r);
+    Finds already registered variable by its _n_a_m_e and _t_y_p_e. Returns 1 if
+    variable found and returns pointer to it in _p_t_r. Returns 0 otherwise.
+    Access to the variable assumed to be read-only, main purpose of this
+    function is to test data of one module from another one at the init
+    stage.
+	Reenterability: none
+
   short *FFllooooddTTyyppee (const char *_n_a_m_e);
     Creates new or finds existing flood structure associated with given
     _n_a_m_e. Returns pointer to flood pair (see CheckFlood() function).

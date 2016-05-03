@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2016  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -973,10 +973,10 @@ static void _lock_var (const char *name)
 
   if (!(data = Find_Key (VTree, name)))
     return;
-  data->len = 2;				/* set read-only */
+  data->len = VARIABLE_CONSTANT;		/* set read-only */
   while ((bind = Check_Bindtable (BT_Reg, "*", U_ALL, U_ANYCH, bind)))
     if (!bind->name)				/* internal only */
-      bind->func (name, data->data, 2);		/* call bindings */
+      bind->func (name, data->data, data->len);	/* call bindings */
 }
 
 static inline void _unsharp_var (const char *name)
@@ -993,12 +993,12 @@ static int _add_var (const char *name, void *var, size_t *s)
   VarData *data;
   int i = 0;
 
-  if (O_GENERATECONF != FALSE && *s != 2)	/* if not read-only */
+  if (O_GENERATECONF != FALSE && *s != VARIABLE_CONSTANT) /* if not read-only */
     i = Get_ConfigFromConsole (name, var, *s);
   data = Find_Key (VTree, name);
   if (data && data->changed)
     i = 1;
-  if (ConfigFileFile && *s != 2)
+  if (ConfigFileFile && *s != VARIABLE_CONSTANT)
     _add_var_to_config (name, var, *s, i);
   if (data)					/* already registered */
   {
@@ -1041,17 +1041,17 @@ static int _register_var (const char *name, void *var, size_t s)
 
 int RegisterInteger (const char *name, long int *var)
 {
-  return _register_var (name, var, 0);
+  return _register_var (name, var, VARIABLE_INTEGER);
 }
 
 int RegisterBoolean (const char *name, bool *var)
 {
-  return _register_var (name, var, 1);
+  return _register_var (name, var, VARIABLE_BOOLEAN);
 }
 
 int RegisterString (const char *name, char *str, size_t len, int ro)
 {
-  return _register_var (name, str, ro ? 2 : len);
+  return _register_var (name, str, ro ? VARIABLE_CONSTANT : len);
 }
 
 static int _del_var (const char *name)
@@ -1080,6 +1080,23 @@ int UnregisterVariable (const char *name)
     if (!bind->name)				/* internal only */
       i |= bind->func (name);
   return i;
+}
+
+int GetVariable (const char *name, VariableType type, void **ptr)
+{
+  VarData *data;
+
+  if (name == NULL || ptr == NULL)
+    return 0;
+  data = Find_Key (VTree, name);
+  if (data == NULL)				/* not found */
+    return 0;
+  if (type == VARIABLE_STRING && data->len < type) /* check for string */
+    return 0;
+  else if (type < VARIABLE_STRING && data->len != type) /* check for other */
+    return 0;
+  *ptr = data->data;
+  return 1;
 }
 
 typedef struct
