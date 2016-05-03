@@ -2228,7 +2228,7 @@ static int _ircd_got_local_user (CLIENT *cl)
   uf = Get_Clientflags (cl->x.class->name, Ircd->iface->name);
   while ((b = Check_Bindtable (BTIrcdLocalClient, cl->nick, uf, U_ANYCH, b)))
     if (!b->name)			/* do lusers and custom messages */
-      b->func (Ircd->iface, &cl->via->p);
+      b->func (Ircd->iface, &cl->via->p, cl->umode);
   _ircd_bt_client(cl, NULL, cl->nick, MY_NAME);
 #if IRCD_USES_ICONV
   ircd_do_unumeric (cl, RPL_CODEPAGE, cl, 0,

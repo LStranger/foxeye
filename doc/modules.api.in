@@ -520,7 +520,9 @@ Bindings API:
     service _c_u_f (see Add_Binding() description for more details). Returns
     first matched binding if _l_a_s_t equal NULL. Returns next match if _l_a_s_t
     is last found binding and if bindtable type is KEYWORD (see below)
-    then search will be done by previous literal ignoring _s_t_r.
+    then search will be done by previous literal ignoring _s_t_r. Matched
+    bindings will be returned in order they were added unless bindtable
+    type is KEYWORD or UNIQ.
 	Reenterability: none
 
   const char *BBiinnddttaabbllee__NNaammee (struct bindtable_t *_t_a_b_l_e);

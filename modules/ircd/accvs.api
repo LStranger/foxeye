@@ -79,10 +79,11 @@
       Matching: command.  (userflags are ignored)
 
 -     "iirrccdd--llooccaall--cclliieenntt" MASK
-  (int) void func (INTERFACE *_s_r_v, struct peer_t *_p_e_e_r);
+  (int) void func (INTERFACE *_s_r_v, struct peer_t *_p_e_e_r, modeflag _u_m);
     Used when an user _p_e_e_r has been succesfully registered on the server
     and propagated to others. _s_r_v is IRCD interface which can be used to
-    send control messages (commands).
+    send control messages (commands). User mode _u_m also provided for any
+    checks.
       Matching: user nick.  (channel userflags are ignored)
 
 -     "iirrccdd--cclliieenntt"    MASK

@@ -1380,7 +1380,7 @@ static int ircd_users_sb(INTERFACE *srv, struct peer_t *peer, unsigned short tok
 /* ---------------------------------------------------------------------------
    "ircd-local-client" binding for user connection start */
 BINDING_TYPE_ircd_local_client(_igotc_lu_mo);
-static void _igotc_lu_mo (INTERFACE *srv, struct peer_t *peer)
+static void _igotc_lu_mo (INTERFACE *srv, struct peer_t *peer, modeflag um)
 {
   ircd_lusers_cb (srv, peer, NULL, NULL, NULL, NULL, A_ISON, 0, NULL);
   ircd_motd_cb (srv, peer, NULL, NULL, NULL, NULL, A_ISON, 0, NULL);

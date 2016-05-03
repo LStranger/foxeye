@@ -10,6 +10,7 @@ TODO:
 	* core/lib.c: to fail if unable to set desired locale.
 	* *Makefile: allow third-party modules builds.
 	* modules/ircd: to test if both locales are valid and fail.
+	* modules/ircd: to review against IRCd 2.11.2 for compliance.
 	* *: to check Add_Request/New_Request coming to user to be translatable.
 
 --- [0.10.2]
@@ -20,6 +21,7 @@ Tue May  3 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/servers.c, modules/ircd/ircd.h, modules/ircd/clients.c, modules/ircd/channels.c:
 	  changed RPL_TOPICWHOTIME format (it should contain full mask and not
 	  show real user for A_ANONYMOUS channel).
+	* modules/ircd/ircd.c: added user mode to "ircd-local-client" bindings.
 
 Mon May  2 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/*: added effective user mode as "ircd-client-command"
