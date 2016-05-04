@@ -1546,6 +1546,10 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
  *   empty for server (not usable as there is no class anyway)
  *   not empty for any classes: ul/loc uh/glob u/class pingfreq sendq
  *
+ * as exception there might be kill records with mask including nick, such
+ * records will be checked after completed registration and client still
+ * will be killed, no other records could be applied.
+ *
  * '.connect' is there: .connect server@network [port]
  *   should use server record and check network subrecord;
  *   using password, port, and flags from hostrecord; port may replace one
@@ -2177,10 +2181,22 @@ static char _ircd_modesstring[128]; /* should be enough for two A-Za-z */
 static int _ircd_got_local_user (CLIENT *cl)
 {
   struct binding_t *b;
+  struct clrec_t *clr;
   userflag uf;
-  char mb[MB_LEN_MAX*NICKLEN+NAMEMAX+2]; /* it should be enough for umode */
+#if IFNAMEMAX > HOSTMASKLEN
+  char mb[IFNAMEMAX+1]; /* it should be enough for umode */
+#else
+  char mb[HOSTMASKLEN+1];
+#endif
 
-  if (cl->via->p.uf & U_DENY)
+  /* last chance to check for kill records */
+  snprintf (mb, sizeof(mb), "%s!%s@%s", cl->nick, cl->user, cl->host);
+  clr = Find_Clientrecord (mb, NULL, &uf, Ircd->iface->name);
+  if (clr)
+    Unlock_Clientrecord (clr);
+  else
+    uf = 0;
+  if ((uf & U_DENY) || (cl->via->p.uf & U_DENY))
   {
     ircd_do_unumeric (cl, ERR_YOUREBANNEDCREEP, cl, 0, NULL);
     _ircd_peer_kill (cl->via, "Bye!");
@@ -2213,7 +2229,7 @@ static int _ircd_got_local_user (CLIENT *cl)
     if (cl->user[0] == ' ')
       cl->user[0] = '-';
     else if (cl->user[0] != '=') {
-      memmove(cl->user, &cl->user[1], sizeof(cl->user)-2);
+      memmove(&cl->user[1], cl->user, sizeof(cl->user)-2);
       cl->user[0] = '+';
     }
   } else {
