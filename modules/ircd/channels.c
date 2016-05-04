@@ -389,8 +389,8 @@ static modeflag ich_excl(INTERFACE *u, modeflag umode, modeflag chmode,
 /* "ircd-modechange" */
 
 BINDING_TYPE_ircd_modechange(imch_o);
-static modeflag imch_o(INTERFACE *srv, const char *rq, modeflag rchmode,
-		       const char *target, modeflag tmode, int add, char chtype,
+static modeflag imch_o(modeflag rchmode, modeflag rmode, const char *target,
+		       modeflag tmode, modeflag tumode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
@@ -408,8 +408,8 @@ static modeflag imch_o(INTERFACE *srv, const char *rq, modeflag rchmode,
 }
 
 BINDING_TYPE_ircd_modechange(imch_v);
-static modeflag imch_v(INTERFACE *srv, const char *rq, modeflag rchmode,
-		       const char *target, modeflag tmode, int add, char chtype,
+static modeflag imch_v(modeflag rchmode, modeflag rmode, const char *target,
+		       modeflag tmode, modeflag tumode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
@@ -419,8 +419,8 @@ static modeflag imch_v(INTERFACE *srv, const char *rq, modeflag rchmode,
 }
 
 BINDING_TYPE_ircd_modechange(imch_a);
-static modeflag imch_a(INTERFACE *srv, const char *rq, modeflag rchmode,
-		       const char *target, modeflag tmode, int add, char chtype,
+static modeflag imch_a(modeflag rchmode, modeflag rmode, const char *target,
+		       modeflag tmode, modeflag tumode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
@@ -438,8 +438,8 @@ static modeflag imch_a(INTERFACE *srv, const char *rq, modeflag rchmode,
 }
 
 BINDING_TYPE_ircd_modechange(imch_i);
-static modeflag imch_i(INTERFACE *srv, const char *rq, modeflag rchmode,
-		       const char *target, modeflag tmode, int add, char chtype,
+static modeflag imch_i(modeflag rchmode, modeflag rmode, const char *target,
+		       modeflag tmode, modeflag tumode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
@@ -449,8 +449,8 @@ static modeflag imch_i(INTERFACE *srv, const char *rq, modeflag rchmode,
 }
 
 BINDING_TYPE_ircd_modechange(imch_m);
-static modeflag imch_m(INTERFACE *srv, const char *rq, modeflag rchmode,
-		       const char *target, modeflag tmode, int add, char chtype,
+static modeflag imch_m(modeflag rchmode, modeflag rmode, const char *target,
+		       modeflag tmode, modeflag tumode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
@@ -460,8 +460,8 @@ static modeflag imch_m(INTERFACE *srv, const char *rq, modeflag rchmode,
 }
 
 BINDING_TYPE_ircd_modechange(imch_n);
-static modeflag imch_n(INTERFACE *srv, const char *rq, modeflag rchmode,
-		       const char *target, modeflag tmode, int add, char chtype,
+static modeflag imch_n(modeflag rchmode, modeflag rmode, const char *target,
+		       modeflag tmode, modeflag tumode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
@@ -471,8 +471,8 @@ static modeflag imch_n(INTERFACE *srv, const char *rq, modeflag rchmode,
 }
 
 BINDING_TYPE_ircd_modechange(imch_q);
-static modeflag imch_q(INTERFACE *srv, const char *rq, modeflag rchmode,
-		       const char *target, modeflag tmode, int add, char chtype,
+static modeflag imch_q(modeflag rchmode, modeflag rmode, const char *target,
+		       modeflag tmode, modeflag tumode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
@@ -482,8 +482,8 @@ static modeflag imch_q(INTERFACE *srv, const char *rq, modeflag rchmode,
 }
 
 BINDING_TYPE_ircd_modechange(imch_p);
-static modeflag imch_p(INTERFACE *srv, const char *rq, modeflag rchmode,
-		       const char *target, modeflag tmode, int add, char chtype,
+static modeflag imch_p(modeflag rchmode, modeflag rmode, const char *target,
+		       modeflag tmode, modeflag tumode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
@@ -495,8 +495,8 @@ static modeflag imch_p(INTERFACE *srv, const char *rq, modeflag rchmode,
 }
 
 BINDING_TYPE_ircd_modechange(imch_s);
-static modeflag imch_s(INTERFACE *srv, const char *rq, modeflag rchmode,
-		       const char *target, modeflag tmode, int add, char chtype,
+static modeflag imch_s(modeflag rchmode, modeflag rmode, const char *target,
+		       modeflag tmode, modeflag tumode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
@@ -508,8 +508,8 @@ static modeflag imch_s(INTERFACE *srv, const char *rq, modeflag rchmode,
 }
 
 BINDING_TYPE_ircd_modechange(imch_r);
-static modeflag imch_r(INTERFACE *srv, const char *rq, modeflag rchmode,
-		       const char *target, modeflag tmode, int add, char chtype,
+static modeflag imch_r(modeflag rchmode, modeflag rmode, const char *target,
+		       modeflag tmode, modeflag tumode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
@@ -523,8 +523,8 @@ static modeflag imch_r(INTERFACE *srv, const char *rq, modeflag rchmode,
 }
 
 BINDING_TYPE_ircd_modechange(imch_t);
-static modeflag imch_t(INTERFACE *srv, const char *rq, modeflag rchmode,
-		       const char *target, modeflag tmode, int add, char chtype,
+static modeflag imch_t(modeflag rchmode, modeflag rmode, const char *target,
+		       modeflag tmode, modeflag tumode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
@@ -558,8 +558,8 @@ static int _imch_do_keyset (INTERFACE *srv, const char *rq, const char *ch,
 }
 
 BINDING_TYPE_ircd_modechange(imch_k);
-static modeflag imch_k(INTERFACE *srv, const char *rq, modeflag rchmode,
-		       const char *target, modeflag tmode, int add, char chtype,
+static modeflag imch_k(modeflag rchmode, modeflag rmode, const char *target,
+		       modeflag tmode, modeflag tumode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
@@ -593,8 +593,8 @@ static int _imch_do_limit (INTERFACE *srv, const char *rq, const char *ch,
 }
 
 BINDING_TYPE_ircd_modechange(imch_l);
-static modeflag imch_l(INTERFACE *srv, const char *rq, modeflag rchmode,
-		       const char *target, modeflag tmode, int add, char chtype,
+static modeflag imch_l(modeflag rchmode, modeflag rmode, const char *target,
+		       modeflag tmode, modeflag tumode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
@@ -710,8 +710,8 @@ static int _imch_do_banset (INTERFACE *srv, const char *rq, const char *ch,
 }
 
 BINDING_TYPE_ircd_modechange(imch_b);
-static modeflag imch_b(INTERFACE *srv, const char *rq, modeflag rchmode,
-		       const char *target, modeflag tmode, int add, char chtype,
+static modeflag imch_b(modeflag rchmode, modeflag rmode, const char *target,
+		       modeflag tmode, modeflag tumode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
@@ -743,8 +743,8 @@ static int _imch_do_exemptset (INTERFACE *srv, const char *rq, const char *ch,
 }
 
 BINDING_TYPE_ircd_modechange(imch_e);
-static modeflag imch_e(INTERFACE *srv, const char *rq, modeflag rchmode,
-		       const char *target, modeflag tmode, int add, char chtype,
+static modeflag imch_e(modeflag rchmode, modeflag rmode, const char *target,
+		       modeflag tmode, modeflag tumode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
@@ -776,8 +776,8 @@ static int _imch_do_inviteset (INTERFACE *srv, const char *rq, const char *ch,
 }
 
 BINDING_TYPE_ircd_modechange(imch_I);
-static modeflag imch_I(INTERFACE *srv, const char *rq, modeflag rchmode,
-		       const char *target, modeflag tmode, int add, char chtype,
+static modeflag imch_I(modeflag rchmode, modeflag rmode, const char *target,
+		       modeflag tmode, modeflag tumode, int add, char chtype,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
@@ -793,9 +793,9 @@ static modeflag imch_I(INTERFACE *srv, const char *rq, modeflag rchmode,
 
 /* "ircd-umodechange" */
 BINDING_TYPE_ircd_umodechange(iumch_a);
-static modeflag iumch_a(INTERFACE *srv, const char *rq, modeflag rumode,
-			int add, void (**ma)(char *vhost, const char *host,
-					     size_t vhs, int add, const char *))
+static modeflag iumch_a(modeflag rumode, int add,
+			void (**ma)(INTERFACE *, const char *, char *,
+				    const char *, size_t, int, const char *))
 {
   if (!rumode || /* it's a test */
       (rumode & A_SERVER)) /* or servermode */
@@ -804,25 +804,25 @@ static modeflag iumch_a(INTERFACE *srv, const char *rq, modeflag rumode,
 }
 
 BINDING_TYPE_ircd_umodechange(iumch_i);
-static modeflag iumch_i(INTERFACE *srv, const char *rq, modeflag rumode,
-			int add, void (**ma)(char *vhost, const char *host,
-					     size_t vhs, int add, const char *))
+static modeflag iumch_i(modeflag rumode, int add,
+			void (**ma)(INTERFACE *, const char *, char *,
+				    const char *, size_t, int, const char *))
 {
   return A_INVISIBLE;
 }
 
 BINDING_TYPE_ircd_umodechange(iumch_w);
-static modeflag iumch_w(INTERFACE *srv, const char *rq, modeflag rumode,
-			int add, void (**ma)(char *vhost, const char *host,
-					     size_t vhs, int add, const char *))
+static modeflag iumch_w(modeflag rumode, int add,
+			void (**ma)(INTERFACE *, const char *, char *,
+				    const char *, size_t, int, const char *))
 {
   return A_WALLOP;
 }
 
 BINDING_TYPE_ircd_umodechange(iumch_r);
-static modeflag iumch_r(INTERFACE *srv, const char *rq, modeflag rumode,
-			int add, void (**ma)(char *vhost, const char *host,
-					     size_t vhs, int add, const char *))
+static modeflag iumch_r(modeflag rumode, int add,
+			void (**ma)(INTERFACE *, const char *, char *,
+				    const char *, size_t, int, const char *))
 {
   if (add || !rumode) /* cannot be removed */
     return A_RESTRICTED;
@@ -830,9 +830,9 @@ static modeflag iumch_r(INTERFACE *srv, const char *rq, modeflag rumode,
 }
 
 BINDING_TYPE_ircd_umodechange(iumch_o);
-static modeflag iumch_o(INTERFACE *srv, const char *rq, modeflag rumode,
-			int add, void (**ma)(char *vhost, const char *host,
-					     size_t vhs, int add, const char *))
+static modeflag iumch_o(modeflag rumode, int add,
+			void (**ma)(INTERFACE *, const char *, char *,
+				    const char *, size_t, int, const char *))
 {
   if (!add || /* only can be deopped */
       !rumode || /* or it's a test */
@@ -842,9 +842,9 @@ static modeflag iumch_o(INTERFACE *srv, const char *rq, modeflag rumode,
 }
 
 BINDING_TYPE_ircd_umodechange(iumch_O);
-static modeflag iumch_O(INTERFACE *srv, const char *rq, modeflag rumode,
-			int add, void (**ma)(char *vhost, const char *host,
-					     size_t vhs, int add, const char *))
+static modeflag iumch_O(modeflag rumode, int add,
+			void (**ma)(INTERFACE *, const char *, char *,
+				    const char *, size_t, int, const char *))
 {
   if (!add || /* only can be deopped */
       !rumode || /* or it's a test */
@@ -854,18 +854,18 @@ static modeflag iumch_O(INTERFACE *srv, const char *rq, modeflag rumode,
 }
 
 BINDING_TYPE_ircd_umodechange(iumch_s);
-static modeflag iumch_s(INTERFACE *srv, const char *rq, modeflag rumode,
-			int add, void (**ma)(char *vhost, const char *host,
-					     size_t vhs, int add, const char *))
+static modeflag iumch_s(modeflag rumode, int add,
+			void (**ma)(INTERFACE *, const char *, char *,
+				    const char *, size_t, int, const char *))
 {
   return 1; /* not supported, obsolete flag */
 }
 
 /* special SSL support */
 BINDING_TYPE_ircd_umodechange(iumch_z);
-static modeflag iumch_z(INTERFACE *srv, const char *rq, modeflag rumode,
-			int add, void (**ma)(char *vhost, const char *host,
-					     size_t vhs, int add, const char *))
+static modeflag iumch_z(modeflag rumode, int add,
+			void (**ma)(INTERFACE *, const char *, char *,
+				    const char *, size_t, int, const char *))
 {
   if (!rumode || /* it's a test */
       (rumode & A_SERVER)) /* or servermode */
@@ -877,7 +877,7 @@ static modeflag iumch_z(INTERFACE *srv, const char *rq, modeflag rumode,
 /* restricted users cannot change any modes */
 BINDING_TYPE_ircd_check_modechange(ichmch_r);
 static int ichmch_r(INTERFACE *srv, modeflag umode, modeflag mmode, int add,
-		    modeflag chg, char *tgt)
+		    modeflag chg, char *tgt, modeflag tumode, modeflag tcmode)
 {
   if ((umode & A_RESTRICTED) && chg != 0)
     return 0;
@@ -1009,11 +1009,16 @@ static inline int _ircd_mode_mask_query_reply (INTERFACE *srv, CLIENT *cl,
   ma = NULL;
   if (b == NULL && par[0] == 'O' && ch->creator != NULL)
     return ircd_do_cnumeric (cl, RPL_UNIQOPIS, ch, 0, ch->creator->who->nick);
-  if (!b || b->name || b->key[1] != '*') /* check for parameterized */
-    return ircd_do_cnumeric (cl, ERR_UNKNOWNMODE, ch, 0, par);
-  f = (_mch_func_t)b->func;		/* run binding */
-  mf = f (srv, cl->nick, mm, NULL, ch->mode, -1, ch->name[0], &ma);
-  if (mf == 0)
+  while (b)
+  {
+    if (!b->name && b->key[1] == '*')	/* check for parameterized */
+    {
+      f = (_mch_func_t)b->func;		/* run binding */
+      mf |= f (mm, cl->umode, NULL, ch->mode, 0, -1, ch->name[0], &ma);
+    }
+    b = Check_Bindtable (BTIrcdModechange, par, U_ALL, U_ANYCH, b);
+  }
+  if ((mf & ~(1|A_PINGED)) == 0)
     return ircd_do_cnumeric (cl, ERR_CHANOPRIVSNEEDED, ch, 0, NULL);
   if (ma == NULL)
     return ircd_do_cnumeric (cl, ERR_UNKNOWNMODE, ch, 0, par);
@@ -1125,17 +1130,16 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 	  } else
 	    par = NULL;
 	  ma = NULL;
-	  while (b && !(mf & ~(1|A_PINGED))) /* cycle until approved */
+	  while (b)			/* cycle thru all */
 	  {
 	    if (!b->name)
 	    {
-	      ma = NULL;
 	      f = (_mch_func_t)b->func;
 	      if (tar)			/* modechange for target */
-		mf = f (srv, peer->dname, memb->mode, tar->who->nick,
-			 tar->mode, add, ch->name[0], &ma);
+		mf |= f (memb->mode, cl->umode, tar->who->nick, tar->mode,
+			 tar->who->umode, add, ch->name[0], &ma);
 	      else
-		mf = f (srv, peer->dname, memb->mode, NULL, ch->mode, add,
+		mf |= f (memb->mode, cl->umode, NULL, ch->mode, 0, add,
 			 ch->name[0], &ma);
 	    }
 	    b = Check_Bindtable (BTIrcdModechange, charstr, U_ALL, U_ANYCH, b);
@@ -1151,7 +1155,8 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 	    CONTINUE_ON_MODE_ERROR (ERR_UNIQOPPRIVSNEEDED, NULL);
 	  while (mf && (b = Check_Bindtable (BTIrcdCheckModechange, peer->dname,
 					     U_ALL, U_ANYCH, b)))
-	    if (!b->name && !b->func (srv, memb->mode, ch->mode, add, mf, tar))
+	    if (!b->name && !b->func (srv, memb->mode, ch->mode, add, mf, tar,
+				      tar ? tar->who->umode : 0, tar ? tar->mode : 0))
 	      mf = 0;			/* change denied, stop */
 	  if (!mf) {
 	    if (!(memb->mode & (A_OP | A_ADMIN))) { /* check permissions */
@@ -1320,7 +1325,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 #define static register
 	  BINDING_TYPE_ircd_umodechange ((*f));
 #undef static
-	  void (*ma)(char *, const char *, size_t, int, const char *);
+	  void (*ma)(INTERFACE *, const char *, char *, const char *, size_t, int, const char *);
 
 	  charstr[0] = *c;
 	  charstr[1] = '\0';
@@ -1330,22 +1335,20 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 	    ircd_do_unumeric (cl, ERR_UMODEUNKNOWNFLAG, cl, 0, charstr);
 	    continue;			/* ignoring it */
 	  }
+	  ma = NULL;
 	  while (b)			/* cycle thru all */
 	  {
 	    if (!b->name && (f = (modeflag (*)())b->func))
-	    {
-	      ma = NULL;
-	      mf |= f (srv, peer->dname, eum, add, &ma);
-	      if (ma)			/* update vhost */
-		ma (cl->vhost, cl->host, sizeof(cl->vhost), add, cl->cs->nick);
-	    }
+	      mf |= f (eum, add, &ma);
 	    b = Check_Bindtable (BTIrcdUmodechange, charstr, U_ALL, U_ANYCH, b);
 	  }
 	  mf &= ~(A_ISON | A_PINGED);
+#if 0
 	  while (mf && (b = Check_Bindtable (BTIrcdCheckModechange, peer->dname,
 					     U_ALL, U_ANYCH, b)))
 	    if (!b->name && !b->func (srv, cl->umode, 0, add, mf, NULL))
 	      mf = 0;			/* change denied, stop */
+#endif
 	  if (!mf) {
 	    continue;			/* change denied */
 	  }
@@ -1354,6 +1357,9 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 	    mf &= ~cl->umode;		/* reset modes that we have already */
 	    if (!mf)
 	      continue;
+	    if (ma)			/* update vhost */
+	      ma (srv, peer->dname, cl->vhost, cl->host, sizeof(cl->vhost), add,
+		  cl->cs->nick);
 	    n++;			/* one more accepted */
 	    New_Request (cl->via->p.iface, 0, ":%s MODE %s +%c", peer->dname,
 			 peer->dname, *c);
@@ -1364,6 +1370,9 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 	  mf &= cl->umode;		/* reset modes that we don't have */
 	  if (!mf)
 	    continue;
+	  if (ma)			/* update vhost */
+	    ma (srv, peer->dname, cl->vhost, cl->host, sizeof(cl->vhost), add,
+		cl->cs->nick);
 	  n++;				/* one more accepted */
 	  New_Request (cl->via->p.iface, 0, ":%s MODE %s -%c", peer->dname,
 		       peer->dname, *c);
@@ -1633,7 +1642,8 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
     {
       b = NULL;
       while ((b = Check_Bindtable(BTIrcdCheckModechange, nchn, U_ALL, U_ANYCH, b)))
-	if (!b->name && (ff = b->func) && ff (srv, cl->umode, mf, 1, 0, cl->nick) == 0)
+	if (!b->name && (ff = b->func) &&
+	    ff (srv, cl->umode, mf, 1, 0, cl->nick, cl->umode, 0) == 0)
 	  break;			/* denied! */
       if (!b)
 	i = 1;				/* so he/she allowed at last */
@@ -1802,18 +1812,17 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	  } else
 	    par = NULL;
 	  ma = NULL;
-	  while (b && !(mf & ~(1|A_PINGED))) /* cycle until approved */
+	  while (b)			/* cycle thru all */
 	  {
 	    if (!b->name)
 	    {
-	      ma = NULL;
 	      f = (_mch_func_t)b->func;
 	      if (tar)			/* modechange for target */
-		mf = f (srv, pp->p.dname, whof, tar->who->nick,
-			 tar->mode, add, ch->name[0], &ma);
+		mf |= f (whof, src->umode, tar->who->nick, tar->mode,
+			 tar->who->umode, add, ch->name[0], &ma);
 	      else
-		mf = f (srv, pp->p.dname, whof, NULL, ch->mode, add,
-			 ch->name[0], &ma);
+		mf |= f (whof, src->umode, NULL, ch->mode, 0, add, ch->name[0],
+			 &ma);
 	    }
 	    b = Check_Bindtable (BTIrcdModechange, charstr, U_ALL, U_ANYCH, b);
 	  }
@@ -1829,7 +1838,8 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	  mf &= ~A_PINGED;		/* reset extra flag */
 	  while (mf && (b = Check_Bindtable (BTIrcdCheckModechange, pp->p.dname,
 					     U_ALL, U_ANYCH, b)))
-	    if (!b->name && !b->func (srv, whof, ch->mode, add, mf, tar))
+	    if (!b->name && !b->func (srv, whof, ch->mode, add, mf, tar,
+				      tar ? tar->who->umode : 0, tar ? tar->mode : 0))
 	      mf = 0;			/* change denied, stop */
 	  if (!mf)			/* check permissions */
 	  {
@@ -2047,7 +2057,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 #define static register
 	  BINDING_TYPE_ircd_umodechange ((*f));
 #undef static
-	  void (*ma)(char *, const char *, size_t, int, const char *);
+	  void (*ma)(INTERFACE *, const char *, char *, const char *, size_t, int, const char *);
 
 	  charstr[0] = *c;
 	  charstr[1] = '\0';
@@ -2059,15 +2069,11 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	    CONTINUE_ON_MODE_ERROR ("unknown MODE char", " %c for %s via %s",
 				    *c, tgt->nick, pp->p.dname);
 	  }
+	  ma = NULL;
 	  while (b)			/* cycle thru all */
 	  {
 	    if (!b->name && (f = (modeflag (*)())b->func))
-	    {
-	      ma = NULL;
-	      mf |= f (srv, pp->p.dname, (src->umode | A_SERVER), add, &ma);
-	      if (ma)			/* update vhost */
-		ma (tgt->vhost, tgt->host, sizeof(tgt->vhost), add, tgt->cs->nick);
-	    }
+	      mf |= f ((src->umode | A_SERVER), add, &ma);
 	    b = Check_Bindtable (BTIrcdUmodechange, charstr, U_ALL, U_ANYCH, b);
 	  }
 	  if (!mf)
@@ -2094,6 +2100,9 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	    mf &= ~tgt->umode;		/* reset modes that we have already */
 	    if (!mf)
 	      continue;
+	    if (ma)			/* update vhost */
+	      ma (srv, pp->p.dname, tgt->vhost, tgt->host, sizeof(tgt->vhost),
+		  add, tgt->cs->nick);
 	    n++;			/* one more accepted */
 	    if (!CLIENT_IS_REMOTE(tgt))
 	      New_Request (tgt->via->p.iface, 0, ":%s MODE %s +%c", sender,
@@ -2106,6 +2115,9 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	  mf &= tgt->umode;		/* reset modes that we don't have */
 	  if (!mf)
 	    continue;
+	  if (ma)			/* update vhost */
+	    ma (srv, pp->p.dname, tgt->vhost, tgt->host, sizeof(tgt->vhost),
+		add, tgt->cs->nick);
 	  n++;				/* one more accepted */
 	  if (!CLIENT_IS_REMOTE(tgt))
 	    New_Request (tgt->via->p.iface, 0, ":%s MODE %s -%c", sender,
@@ -2634,20 +2646,20 @@ if (f) do { \
 /* internal sub-functions */
 static inline char *_ircd_ch_flush_umodes (INTERFACE *i, char *c, char *e)
 {
-  modeflag mode;
-  struct binding_t *b;
+  modeflag mode = 0;
+  struct binding_t *b = NULL;
 #define static register
   BINDING_TYPE_ircd_umodechange ((*ff));
 #undef static
-  void (*ma)(char *, const char *, size_t, int, const char *);
+  void (*ma)(INTERFACE *, const char *, char *, const char *, size_t, int, const char *);
 
-  if (!(b = Check_Bindtable (BTIrcdUmodechange, c, U_ALL, U_ANYCH, NULL)) ||
-      b->name)
-    return c;
-  ff = (modeflag (*)())b->func;
-  mode = (ff (i, NULL, 0, 0, &ma) & ~(A_ISON | A_PINGED));
-  //FIXME: need to cycle all bindings by IRCD_SET_MODECHAR
-  IRCD_SET_MODECHAR (mode, _ircd_umodes, *c);
+  while (!mode && (b = Check_Bindtable (BTIrcdUmodechange, c, U_ALL, U_ANYCH, b)))
+    if (!b->name)
+    {
+      ff = (modeflag (*)())b->func;
+      mode = (ff (0, 0, &ma) & ~(A_ISON | A_PINGED));
+      IRCD_SET_MODECHAR (mode, _ircd_umodes, *c);
+    }
   if (c < e)
     c++;
   return c;
@@ -2656,22 +2668,28 @@ static inline char *_ircd_ch_flush_umodes (INTERFACE *i, char *c, char *e)
 static inline char *_ircd_ch_flush_cmodes (INTERFACE *i, char *c, char *e)
 {
   Function dummy;
-  modeflag mode;
-  struct binding_t *b;
+  modeflag mode1 = 0, mode2 = 0;
+  struct binding_t *b = NULL;
   register _mch_func_t ff;
 
-  if (!(b = Check_Bindtable (BTIrcdModechange, c, U_ALL, U_ANYCH, NULL)) ||
-      b->name)
-    return c;
-  ff = (_mch_func_t)b->func;	/* make _ircd_cmodes */
-  mode = (ff (i, NULL, 0, NULL, 0, 0, '\0', &dummy) & ~(A_ISON | A_PINGED));
-  //FIXME: need to cycle all bindings by IRCD_SET_MODECHAR
-  IRCD_SET_MODECHAR (mode, _ircd_cmodes, *c);
-  ff = (_mch_func_t)b->func;	/* make Ircd_modechar_mask */
-  mode = (ff (i, NULL, 0, "", 0, 0, '\0', &dummy) & ~(A_ISON | A_PINGED));
-  Ircd_modechar_mask |= mode;
-  //FIXME: need to cycle all bindings by IRCD_SET_MODECHAR
-  IRCD_SET_MODECHAR (mode, _ircd_wmodes, *c);
+  while ((b = Check_Bindtable (BTIrcdModechange, c, U_ALL, U_ANYCH, b)))
+    if (!b->name)
+    {
+      ff = (_mch_func_t)b->func;
+      if (!mode1)
+      {
+	/* channel modes: make _ircd_cmodes */
+	mode1 = (ff (0, 0, NULL, 0, 0, 0, '\0', &dummy) & ~(A_ISON | A_PINGED));
+	IRCD_SET_MODECHAR (mode1, _ircd_cmodes, *c);
+      }
+      if (!mode2)
+      {
+	/* user in channel modes: make Ircd_modechar_mask */
+	mode2 = (ff (0, 0, "", 0, 0, 0, '\0', &dummy) & ~(A_ISON | A_PINGED));
+	Ircd_modechar_mask |= mode2;
+	IRCD_SET_MODECHAR (mode2, _ircd_wmodes, *c);
+      }
+    }
   if (c < e)
     c++;
   return c;
@@ -2876,21 +2894,19 @@ modeflag ircd_char2umode(INTERFACE *srv, const char *sname, char c, CLIENT *tgt)
 #define static register
   BINDING_TYPE_ircd_umodechange ((*f));
 #undef static
-  void (*ma)(char *, const char *, size_t, int, const char *);
+  void (*ma)(INTERFACE *, const char *, char *, const char *, size_t, int, const char *);
 
   charstr[0] = c;
   charstr[1] = '\0';
+  ma = NULL;
   b = Check_Bindtable (BTIrcdUmodechange, charstr, U_ALL, U_ANYCH, NULL);
-  while (b) {			/* cycle thru all */
+  {
     if (!b->name)
-    {
-      ma = NULL;
-      mf |= (f = (modeflag (*)())b->func) (srv, sname, A_SERVER, 1, &ma);
-      if (ma)
-	ma (tgt->vhost, tgt->host, sizeof(tgt->vhost), 1, tgt->cs->nick);
-    }
+      mf |= (f = (modeflag (*)())b->func) (A_SERVER, 1, &ma);
     b = Check_Bindtable (BTIrcdUmodechange, charstr, U_ALL, U_ANYCH, b);
   }
+  if (ma)
+    ma (srv, sname, tgt->vhost, tgt->host, sizeof(tgt->vhost), 1, tgt->cs->nick);
   return (mf & ~(A_ISON | A_PINGED));
 }
 
@@ -2922,15 +2938,16 @@ modeflag ircd_char2mode(INTERFACE *srv, const char *sname, const char *tar,
     return ((c == 'O') ? A_ADMIN : 0); /* 'O' is creator by default */
   mf = 0;
   b = Check_Bindtable (BTIrcdModechange, chfc, U_ALL, U_ANYCH, NULL);
-  while (b != NULL)		/* cycle thru all */
+  while (b)				/* cycle thru all */
   {
     if (!b->name)
     {
       f = (_mch_func_t)b->func;
-      mf |= f(srv, sname, (A_OP|A_ADMIN), tar, (modeflag)0, 1, chname[0], &ma);
+      mf |= f((A_OP|A_ADMIN), A_SERVER, tar, (modeflag)0, (modeflag)0, 1, chname[0], &ma);
     }
     b = Check_Bindtable (BTIrcdModechange, chfc, U_ALL, U_ANYCH, b);
   }
+  /* we don't call ma() as it is a servermode on joining channel, no mask */
   return (mf & ~(A_ISON | A_PINGED));
 }
 

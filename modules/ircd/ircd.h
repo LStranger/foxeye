@@ -375,6 +375,7 @@ char ircd_mode2whochar (modeflag);
 /* does backward conversion */
 modeflag ircd_whochar2mode(char);
 /* args: ircd, servername, nick, channame, mode char
+   used only when some remote user joins channel
    returns starting channel mode for '\0' or user-on-channel mode */
 modeflag ircd_char2mode(INTERFACE *, const char *, const char *, const char *, char);
 /* args: ircd, servername, mode char, user; returns umode for server modechange */

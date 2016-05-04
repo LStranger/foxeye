@@ -150,10 +150,10 @@
 
 -     "iirrccdd--cchheecckk--mmooddeecchhaannggee" MASK
   int func(INTERFACE *_s_r_v, modeflag _u_m_o_d_e, modeflag _m_m_o_d_e, int _a_d_d,
-	   modeflag _c_h_g, char *_t_g_t);
+	   modeflag _c_h_g, char *_t_g_t, modeflag _t_u_m_o_d_e, modeflag _t_c_m_o_d_e);
     Used when someone with channel mode _u_m_o_d_e trying to make a modechange
-    _c_h_g for some target _t_g_t on the channel with modes _m_m_o_d_e (which is 0
-    if it is modechange on user themself). Binding gets modechange which
+    _c_h_g for some target _t_g_t which has user mode _t_u_m_o_d_e and channel mode
+    _t_c_m_o_d_e on the channel with modes _m_m_o_d_e. Binding gets modechange which
     has all mode flags from all matching bindings of "ircd-modechange"
     bindtable. _a_d_d indicates direction of the change and is 0 in case if
     it is attempt to down mode and is 1 in case if it is attempt to raise
@@ -164,58 +164,63 @@
       Matching stops after first reject.
 
 -     "iirrccdd--mmooddeecchhaannggee" MATCHCASE
-  (int) modeflag func(INTERFACE *_s_r_v, const char *_r_q, modeflag _r_c_h_m_o_d_e,
-		      const char *_t_a_r_g_e_t, modeflag _t_m_o_d_e, int _a_d_d,
-		      char _c_h_t_y_p_e,
+  (int) modeflag func(modeflag _r_c_h_m_o_d_e, modeflag _r_m_o_d_e,
+		      const char *_t_a_r_g_e_t, modeflag _t_m_o_d_e,
+		      modeflag _t_u_m_o_d_e, int _a_d_d, char _c_h_t_y_p_e,
 		      int (**_m_a)(INTERFACE *_s_r_v, const char *_r_q,
 				 const char *_c_h, int _a_d_d,
 				 const char **_p_a_r_a_m));
-    Used when some client which has nick _r_q and channel mode _r_c_h_m_o_d_e sent
-    command for some mode change on channel of type _c_h_t_y_p_e in direction
-    _a_d_d (which is 0 if it's an attempt to down mode or 1 if it's attempt
-    to raise mode) for some _t_a_r_g_e_t on the channel which has channel mode
-    _t_m_o_d_e. In case if it's attempt of changing mode for whole channel
-    (channel itself) then _t_a_r_g_e_t is NULL, _t_m_o_d_e is channel mode, and in
-    case if that mode may require a parameter then _m_a on return should be
-    filled with pointer to function to set/clear/query the mode which
-    may get _a_d_d equal to -1 for mode query and will get also channel name
-    _c_h and parameter _p_a_r_a_m (and if it was a mode query then no parameter
-    _p_a_r_a_m is supplied) for requested modechange. The function _m_a should
-    return 1 on success, 0 on fail, or -1 if change was ignored (if ban
-    was already existed for example). The function _m_a can replace pointer
-    to _p_a_r_a_m if it must be rewritten. Returns modeflag change for target
-    if it's approved combined with lowest bit set to 1 if that modechange
-    should consume a parameter (even if it isn't approved). If change is
-    not approved then binding doesn't set _m_a and also binding may set bit
-    A_PINGED in returned value if that change requires missing original
-    channel creator privileges and therefore isn't approved. Since it is
-    required to do backward conversion on server connection burst so to
-    make it possible each binding on mode which doesn't require parameter
-    or which is modechange on user in channel should return appropriate
-    mode flag when called with invalid value of parameter _r_c_h_m_o_d_e equal
-    to 0 and appropriate value of _t_a_r_g_e_t. Note: mask should be "X*" if
-    modechange for whole channel may require a parameter (see bindtable
-    "ircd-whochar" for modechanges on users in channel). Note2: you have
-    to send S_FLUSH signal to modules "ircd*" each time you adding or
-    removing a binding so those modules can build their list of supported
-    flags to reply to user on request.
+    Used when some client which has channel mode _r_c_h_m_o_d_e and user mode
+    _r_m_o_d_e sent command for some mode change on channel of type _c_h_t_y_p_e in
+    direction _a_d_d (which is 0 if it's an attempt to down mode or 1 if
+    it's attempt to raise mode) for some _t_a_r_g_e_t on the channel which has
+    channel mode _t_m_o_d_e and user mode _t_u_m_o_d_e (see bindtable "ircd-whochar"
+    in regard of modechanges for users in channel). In case if it's
+    attempt of changing mode for the channel (itself) then _t_a_r_g_e_t is
+    NULL, and _t_m_o_d_e is channel mode. In case if that change requires a
+    parameter then _m_a on return should be filled with pointer to function
+    to set/clear/query the mode, in such case binding match mask should
+    be "X*". The function _m_a may get _a_d_d equal to -1 for mode query and
+    will get also channel name _c_h and parameter _p_a_r_a_m (and if it was a
+    mode query then no parameter _p_a_r_a_m is provided) for the requested
+    modechange. The function _m_a should return 1 on success, 0 on fail, or
+    -1 if change was ignored (if ban already exists for example). The
+    function _m_a can replace pointer to _p_a_r_a_m if it must be rewritten on
+    further mode broadcast. Since function _m_a is called only on actual
+    request, it may use interface _s_r_v to send numeric messages to the
+    client _r_q. The binding returns modeflag change for target if it's
+    approved combined with lowest bit set to 1 if that modechange should
+    consume a parameter (even if change isn't approved). If change is not
+    approved due to missing original channel creator privileges then
+    binding should set bit A_PINGED in returned value. The binding also
+    should support "test mode" when it is called with invalid value of
+    parameter _r_c_h_m_o_d_e equal to 0 and with appropriate value of _t_a_r_g_e_t, in
+    such case the binding should return appropriate mode flag, setting _m_a
+    isn't required. Note: you have to send S_FLUSH signal to modules
+    "ircd*" each time you adding or removing a binding so those modules
+    can build their list of all supported flags to reply to user on
+    request.
       Matching: modechar.  (userflags are ignored)
-      Matching stops after first succesful binding call.
 
 -     "iirrccdd--uummooddeecchhaannggee" MATCHCASE
-  (int) modeflag func(INTERFACE *_s_r_v, const char *_r_q, modeflag _r_u_m_o_d_e,
-		      int _a_d_d, void (**_m_a)(char *_v_h_o_s_t, const char *_h_o_s_t,
-					   size_t _v_h_s, int _a_d_d,
-					   const char *_s_e_r_v_n_a_m_e));
-    Used when some client with nick _r_q and user mode _r_u_m_o_d_e sent command
-    for some mode change on themself in direction _a_d_d (which is 0 if it's
-    an attempt to down mode or 1 if it's attempt to raise mode). Returns
+  (int) modeflag func(modeflag _r_u_m_o_d_e, int _a_d_d,
+		      void (**_m_a)(INTERFACE *_s_r_v, const char *_r_q,
+				  char *_v_h_o_s_t, const char *_h_o_s_t,
+				  size_t _v_h_s, int _a_d_d,
+				  const char *_s_e_r_v_n_a_m_e));
+    Used when some client with given user mode _r_u_m_o_d_e sent command for
+    some mode change on themself in direction _a_d_d (which is 0 if it's an
+    attempt to down mode or 1 if it's attempt to raise mode). Returns
     modeflag change if it approved. May return 1 if change is allowed but
-    should be ignored. There is special support for VHOST feature where
-    visible host is different from real one - mask shoult be kind of "X*"
-    and binding should set a pointer to function which makes such visible
-    host into _m_a. The said function receives pointer (_v_h_o_s_t) and size _v_h_s
-    of visible host data buffer, real _h_o_s_t and direction _a_d_d, the name of
+    should be ignored. The binding also should support "test mode" when
+    is called with invalid value of parameter _r_u_m_o_d_e equal to 0, in such
+    case the binding should return appropriate mode flag. There is also
+    special support for VHOST feature where visible host is different
+    from real one - binding should set a pointer to function which makes
+    such visible host into _m_a. Since function _m_a is called only on actual
+    request, it may use interface _s_r_v to send numeric messages to the
+    client _r_q. That function receives pointer (_v_h_o_s_t) and size _v_h_s of
+    visible host data buffer, real _h_o_s_t and direction _a_d_d, the name of
     server for client is also provided as _s_e_r_v_n_a_m_e.
       Matching: modechar.  (userflags are ignored)
 
@@ -238,7 +243,7 @@
     client may be not known yet. Binding may return value bigger than 1
     if it wants increased penalty for the message.
       Matching: command.  (channel userflags are ignored)
-      Matching stops after first succesful binding call.
+      Matching stops after first reject.
 
 -     "iirrccdd--ssttaattss--rreeppllyy" KEYWORD
   (int) void func(INTERFACE *_s_r_v, const char *_r_q, modeflag _m_f);
