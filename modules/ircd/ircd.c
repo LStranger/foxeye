@@ -1223,8 +1223,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
     return REQ_OK;
   }
   if (peer->link == NULL) {	/* it's P_QUIT after timeout or emergency */
-    if (Connchain_Kill ((&peer->p)))
-      KillSocket(&peer->p.socket);
+    Peer_Cleanup (&peer->p);
     pthread_mutex_lock (&IrcdLock);
     for (pp = &IrcdPeers; *pp; pp = &(*pp)->p.priv)
       if ((*pp) == peer) {
@@ -1335,8 +1334,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
       if (sr == 0)
 	return REQ_OK;		/* still something left, OK, will try later */
       //TODO: read 'message of death' from connchain and log it
-      if (Connchain_Kill ((&peer->p)))
-	KillSocket(&peer->p.socket);
+      Peer_Cleanup (&peer->p);
       cli->data = NULL;		/* disown it */
       cli->ift |= I_DIED;
       pthread_mutex_lock (&IrcdLock);
@@ -1809,8 +1807,7 @@ static iftype_t _ircd_uplink_sig (INTERFACE *uli, ifsig_t sig)
       /* free everything including socket */
       pthread_cancel (uplink->th);
       pthread_join (uplink->th, NULL); /* it never locks dispatcher */
-      if (Connchain_Kill ((&uplink->p))) /* always true */
-	KillSocket (&uplink->p.socket);
+      Peer_Cleanup (&uplink->p);
 #if IRCD_MULTICONNECT
       _ircd_uplinks--;
 #endif

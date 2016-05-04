@@ -20,6 +20,9 @@ Wed May  4 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/queries.c: added missing RPL_LISTSTART.
 	* modules/ircd/channels.c: reworked binding args on "ircd-modechange",
 	  "ircd-check-modechange" and "ircd-umodechange".
+	* core/direct.*, modules/irc/irc.c, modules/irc-ctcp/dcc.c, modules/ircd/ircd.c, doc/modules.api:
+	  implemented PeerData_* functions family to allow modules attach fast
+	  accessible data to peer_t structure.
 
 Tue May  3 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/init.*, doc/modules.api: added new function GetVariable() which

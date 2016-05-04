@@ -1210,6 +1210,33 @@ Direct client's connections API:
     Returns 0 if password matches.
 	Reenterability: none
 
+  int PPeeeerrDDaattaa__AAttttaacchh (struct peer_t *_s, const char *_n_a_m_e, void *_d_a_t_a,
+		       void (*_d_e_s_t_r_o_y)(void *));
+    Attempts to attach _d_a_t_a to the peer _s with key _n_a_m_e which should be
+    an unique identifier such as module name and be some constant value.
+    Caller should provide _d_e_s_t_r_o_y function which is called on next call
+    PeerData_Detach() or Peer_Cleanup(). If data are allocated and not
+    bound to some controlled storage then providing _d_e_s_t_r_o_y function is
+    mandatory to avoid memory leak. Returns 1 on success, 0 on failure.
+	Reenterability: none
+
+  void PPeeeerrDDaattaa__DDeettaacchh (struct peer_t *_s, const char *_n_a_m_e);
+    Removes any data from peer _s which are associated with _n_a_m_e. If some
+    cleanup function was provided to PeerData_Attach() then it will be
+    called on found data.
+	Reenterability: none
+
+  void *PPeeeerrDDaattaa__GGeett (struct peer_t *_s, const char *_n_a_m_e);
+    Retrieves data previously associated with peer _s using key _n_a_m_e. If
+    no data found then returns NULL.
+	Reenterability: none
+
+  void PPeeeerr__CClleeaannuupp (struct peer_t *_s);
+    Destroys connection chain (see below), kills socket (see KillSocket()
+    for details) and frees any associated data (see PeerData_Attach() for
+    details) on peer _s.
+	Reenterability: none
+
 Connection chain API:
 ---------------------
 #include "direct.h"
@@ -1286,8 +1313,10 @@ Connection chain API:
   CCoonnnncchhaaiinn__KKiillll (struct peer_t *_p_e_e_r);
     Macro, defined as: Connchain_Get(&_p_e_e_r->connchain,_p_e_e_r->socket,NULL,0)
     Used for terminating connection chain. Returns value E_NOSOCKET but
-    generates warning if that value left unused. Typical usage of it is:
-          if (Connchain_Kill(peer)) KillSocket(&peer->socket);
+    generates warning if that value left unused. Note that you probably
+    should never use this function directly but Peer_Cleanup() instead as
+    other modules might attach data to your _p_e_e_r and latter function will
+    do all required cleanup on your connection chain.
 	Reenterability: thread-safe
 	Cancellation point: maybe
 

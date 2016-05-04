@@ -380,9 +380,7 @@ static int _irc_try_server (irc_server *serv, const char *tohost, int banned,
   irc_await *await;
 
   /* if already connected then break connection first */
-  if (Connchain_Kill ((&serv->p)) &&	/* condition to avoid warn */
-      serv->p.socket >= 0)
-    KillSocket(&serv->p.socket);
+  Peer_Cleanup (&serv->p);
   FREE (&serv->p.dname);
   serv->p.socket = -1;		/* it may still contain an error code */
   if (serv->p.state == P_TALK || serv->p.state == P_IDLE ||
@@ -875,9 +873,7 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
       serv->pmsgout = NULL;
 		/* "Connection reset by peer" */
 		/* note: I wonder if terminator might not send QUIT here yet */
-      if (Connchain_Kill ((&serv->p)) &&	/* condition to avoid warn */
-	  serv->p.socket >= 0)
-        KillSocket (&serv->p.socket);
+      Peer_Cleanup (&serv->p);
       if (serv->next)
 	serv->next->prev = serv->prev;
       if (serv->prev)

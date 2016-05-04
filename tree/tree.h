@@ -18,6 +18,9 @@
  * Tree-hash database indexing library.
  */
 
+#ifndef _TREE_H_
+#define _TREE_H_ 1
+
 #define TREE_LEAF 1
 #define TREE_PREF 2
 
@@ -56,3 +59,5 @@ LEAF *Find_Leaf (NODE *, const char *, int);
 LEAF *Next_Leaf (NODE *, LEAF *, const char **);
 const char *Leaf_Key (LEAF *);
 void Destroy_Tree (NODE **, void (*) (void *));
+
+#endif /* _TREE_H_ */

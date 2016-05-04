@@ -45,6 +45,7 @@ struct peer_t
   struct connchain_i *connchain;	/* connchain instance */
   const char *network_type;		/* for connchain identification */
   struct peer_priv *priv;		/* session-specific data, NULL in thread */
+  struct NODE *modules_data;		/* see PeerData_Attach(), etc. */
   time_t last_input;
   _peer_state state;
   userflag uf;				/* global+direct flags */
@@ -79,6 +80,11 @@ ssize_t Connchain_Get (struct connchain_i **, idx_t, char *, size_t)
 #define Connchain_Kill(peer) Connchain_Get(&peer->connchain,peer->socket,NULL,0)
 #define Peer_Put(peer,buf,s) Connchain_Put(&peer->connchain,peer->socket,buf,s)
 #define Peer_Get(peer,buf,s) Connchain_Get(&peer->connchain,peer->socket,buf,s)
+
+int PeerData_Attach (struct peer_t *, const char *, void *, void (*)(void *));
+void PeerData_Detach (struct peer_t *, const char *);
+void *PeerData_Get (struct peer_t *, const char *);
+void Peer_Cleanup (struct peer_t *peer);
 
 /* interop direct.c -> connchain.c */
 void _fe_init_connchains (void);

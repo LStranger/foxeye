@@ -282,8 +282,7 @@ static void _chat_handler_cleanup(void *ptr)
   struct peer_t *peer = ptr;
 
   Set_Iface (NULL);
-  if (Connchain_Kill(peer))	/* always true */
-    KillSocket (&peer->socket);	/* it's really dead now */
+  Peer_Cleanup (peer);
   FREE (&peer);
   /* would not set I_FINWAIT on interface but
      as we were cancelled then we cancelled from dying interface */

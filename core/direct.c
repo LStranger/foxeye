@@ -30,6 +30,8 @@
 #include <netinet/in.h>
 #include <ctype.h>
 
+#include <tree/tree.h>
+
 #include "socket.h"
 #include "direct.h"
 #include "init.h"
@@ -319,8 +321,6 @@ static void _died_iface (INTERFACE *iface, char *buf, size_t s)
   if (s == 0)					/* is this shutdown call? */
     return;
   dprint (5, "dcc:_died_iface: %s", iface->name);
-  if (Connchain_Kill (dcc))			/* always true */
-    KillSocket (&dcc->socket);
   /* %L - login nick, %@ - hostname */
   printl (buf, s, format_dcc_lost, 0, NULL,
 	  SocketDomain (dcc->socket, NULL), iface->name, NULL, 0, 0, 0, NULL);
@@ -346,6 +346,7 @@ static void _died_iface (INTERFACE *iface, char *buf, size_t s)
         bind->func (dcc);
     }
   } while (bind);
+  Peer_Cleanup (dcc);
   FREE (&dcc->priv);		/* dispatcher will get rid of subinterfaces */
 }
 
@@ -2710,8 +2711,7 @@ static void _dport_prehandler (pthread_t th, void **id, idx_t *as)
 
 static void _dport_handler_cleanup(void *data)
 {
-  if (Connchain_Kill(((peer_t *)data))) /* condition to awoid warn */
-  KillSocket(&((peer_t *)data)->socket);
+  Peer_Cleanup((peer_t *)data);
   FREE(&data);
 }
 
@@ -2911,6 +2911,57 @@ ScriptFunction (FE_port)	/* to config - see thrdcc_signal() */
 	    port, (u & U_ANY) ? _(" for bots") : "");
   BindResult = msg;
   return 0;
+}
+
+typedef struct {
+  void *data;
+  void (*free_func) (void *);
+} PeerData;
+
+static void _peer_data_free(void *dataptr)
+{
+  PeerData *data = dataptr;
+  if (data->free_func)
+    data->free_func(data->data);
+  free(dataptr);
+}
+
+int PeerData_Attach (struct peer_t *peer, const char *name, void *data,
+		     void (*destroy) (void *))
+{
+  PeerData *pd;
+
+  if (!name || !*name || !data)
+    return 0;
+  pd = safe_malloc(sizeof(PeerData));
+  pd->data = data;
+  pd->free_func = destroy;
+  if (Insert_Key(&peer->modules_data, name, pd, 1) == 0)
+    return 1;
+  free(pd);
+  return 0;
+}
+
+void PeerData_Detach (struct peer_t *peer, const char *name)
+{
+  PeerData *pd = Find_Key(peer->modules_data, name);
+  if (pd == NULL)
+    return;
+  Delete_Key(peer->modules_data, name, pd);
+  _peer_data_free(pd);
+}
+
+void *PeerData_Get (struct peer_t *peer, const char *name)
+{
+  PeerData *pd = Find_Key(peer->modules_data, name);
+  return pd ? pd->data : NULL;
+}
+
+void Peer_Cleanup (struct peer_t *peer)
+{
+  if (Connchain_Kill(peer)) /* condition to awoid warn */
+    KillSocket(&peer->socket);
+  Destroy_Tree(&peer->modules_data, &_peer_data_free);
 }
 
 char *IFInit_DCC (void)
