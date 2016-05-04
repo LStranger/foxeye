@@ -2931,13 +2931,22 @@ int PeerData_Attach (struct peer_t *peer, const char *name, void *data,
 {
   PeerData *pd;
 
-  if (!name || !*name || !data)
+  if (!name || !*name)
     return 0;
+  if (data == NULL)
+  {
+    PeerData_Detach(peer, name);
+    return 1;
+  }
   pd = safe_malloc(sizeof(PeerData));
   pd->data = data;
   pd->free_func = destroy;
   if (Insert_Key(&peer->modules_data, name, pd, 1) == 0)
+  {
+    DBG("attached data %p to peer %p by %s", data, peer, name);
     return 1;
+  }
+  DBG("failed to attach data to peer %p by %s", peer, name);
   free(pd);
   return 0;
 }
@@ -2949,6 +2958,7 @@ void PeerData_Detach (struct peer_t *peer, const char *name)
     return;
   Delete_Key(peer->modules_data, name, pd);
   _peer_data_free(pd);
+  DBG("detached data from peer %p by %s", peer, name);
 }
 
 void *PeerData_Get (struct peer_t *peer, const char *name)
@@ -2961,6 +2971,8 @@ void Peer_Cleanup (struct peer_t *peer)
 {
   if (Connchain_Kill(peer)) /* condition to awoid warn */
     KillSocket(&peer->socket);
+  if (peer->modules_data)
+    DBG("destroying all attached data on peer %p", peer);
   Destroy_Tree(&peer->modules_data, &_peer_data_free);
 }
 
