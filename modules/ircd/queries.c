@@ -326,7 +326,8 @@ static inline int _ircd_query_list (IRCD *ircd, CLIENT *cl, struct peer_priv *vi
 		 me->nick);
     return 1;
   }
-  me = ircd_find_client (NULL, NULL);
+//  me = ircd_find_client (NULL, NULL);
+  ircd_do_unumeric (cl, RPL_LISTSTART, cl, 0, NULL);
   if (argc == 0)			/* LIST "*" */
   {
     LEAF *l = NULL;

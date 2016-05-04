@@ -17,6 +17,7 @@ TODO:
 Wed May  4 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: added check on bans of mask nick!user@host after
 	  registration, so we can check nicks as well.
+	* modules/ircd/queries.c: added missing RPL_LISTSTART.
 
 Tue May  3 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/init.*, doc/modules.api: added new function GetVariable() which
