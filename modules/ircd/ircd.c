@@ -180,7 +180,7 @@ static int _ircd_class_in (struct peer_t *peer, char *user, char *host,
   }
   if (clparms);
   else if (cl && clname && (clparms == NULL || clparms[0] == 0) &&
-	   (uf & U_ACCESS)) /* ok, it's service */
+	   (uf & U_UNSHARED)) /* ok, it's a server */
   {
     DBG("ircd:ircd.c: user %s is server", clname);
     Unlock_Clientrecord (cl);
@@ -1537,10 +1537,11 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
  * info is description
  *
  * subrecord for network:
- * flags for servers are U_ACCESS (ircd_server_rb)
+ * flags for servers are U_UNSHARED (ircd_server_rb)
  * flags for autoconnect are U_AUTO (_ircd_init_uplinks, ircd_server_rb)
  * flags for restricted class are U_DEOP (_ircd_got_local_user)
  * flags for kill are U_DENY (_ircd_got_local_user)
+ * flags for exempt are U_ACCESS
  * content is:
  *   empty for server (not usable as there is no class anyway)
  *   not empty for any classes: ul/loc uh/glob u/class pingfreq sendq
@@ -2631,7 +2632,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
     _ircd_peer_kill (cl->via, "no c/N lines for you");
     return 1;
   }
-  if (!((peer->uf = Get_Flags (u, srv->name)) & U_ACCESS))
+  if (!((peer->uf = Get_Flags (u, srv->name)) & U_UNSHARED))
   {
     Unlock_Clientrecord (u);		/* it's person not server */
     _ircd_peer_kill (cl->via, "no c/N lines for you");
@@ -2973,7 +2974,7 @@ static inline int _ircd_remote_server_is_allowed (const char *net,
 
   if (!uf)				/* not registered */
     return 1;
-  if (!(uf & U_ACCESS))			/* is known as something else */
+  if (!(uf & U_UNSHARED))			/* is known as something else */
   {
     ERROR ("ircd: %s introduced by %s is not a server", name, pp->p.dname);
     ircd_recover_done (pp, "Bogus server name");
@@ -4665,7 +4666,7 @@ int ircd_try_connect (CLIENT *rq, const char *name, const char *port)
     return ircd_do_unumeric (rq, ERR_NOSUCHSERVER, rq, atoi (port), name);
   uf = Get_Flags (u, Ircd->iface->name);
   Unlock_Clientrecord (u);
-  if (!(uf & U_ACCESS))
+  if (!(uf & U_UNSHARED))
     return ircd_do_unumeric (rq, ERR_NOSUCHSERVER, rq, atoi (port), name);
   tmp = Add_Iface (I_TEMP, NULL, NULL, &_ircd_sublist_receiver, NULL);
   Set_Iface (tmp);

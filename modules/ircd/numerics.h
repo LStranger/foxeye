@@ -175,7 +175,7 @@
 #define ERR_NOCHANMODES		477, "%# :Channel doesn't support modes"
 #define ERR_BANLISTFULL		478, "%# %* :Channel list is full"
 /* 479-480 reserved */
-#define ERR_NOPRIVILEGES	481, ":Permission Denied- You're not an IRC operator"
+#define ERR_NOPRIVILEGES	481, ":Permission Denied - You're not an IRC operator"
 #define ERR_CHANOPRIVSNEEDED	482, "%# :You're not channel operator"
 #define ERR_CANTKILLSERVER	483, ":You can't kill a server!"
 #define ERR_RESTRICTED		484, ":Your connection is restricted!"

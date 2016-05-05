@@ -13,12 +13,14 @@ module ircd
  
  Available flags for %_network%_ subrecords on clients:
     k  - means this is a KILL record or quarantined server;
+    a  - means this is an exemption from KILL record;
     d  - means this is a restricted class;
     o  - means this is an Operator;
     h  - means this is a Local Operator;
     s  - means this is a local service;
-    a  - means this is a known server on that network;
+    u  - means this is a known server on that network;
     *  - means this is a hub where we have an autoconnect to.
+ Flags e, v, f, m, i, q are reserved for future usage.
  
  Field "hub" on server record contains mask(s) for servers that server can\
  introduce. Mask "!some.server" means wrong path (L:line analog).
