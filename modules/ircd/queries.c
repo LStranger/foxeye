@@ -229,6 +229,7 @@ static inline int _ircd_query_names (IRCD *ircd, CLIENT *cl, struct peer_priv *v
   CLIENT *me;
   register MEMBER *cm;
   char *c, *cnext;
+  int done = 0;
 
   if (argc > 1)
   {
@@ -243,15 +244,15 @@ static inline int _ircd_query_names (IRCD *ircd, CLIENT *cl, struct peer_priv *v
   }
   me = ircd_find_client (NULL, NULL);
   if (argc == 0)			/* NAMES "*" */
-    return _ircd_names_reply_all (ircd, me, cl, -1);
+    return _ircd_names_reply_all (ircd, me, cl, done);
   c = (char *)argv[0];
   do {
     if ((cnext = strchr (c, ',')))
       *cnext++ = 0;
     if ((cm = ircd_find_member (ircd, c, NULL)) != NOSUCHCHANNEL)
-      ircd_names_reply (me, cl, cm->chan, -1);
+      done = ircd_names_reply (me, cl, cm->chan, done);
     ircd_do_unumeric (cl, RPL_ENDOFNAMES, cl, 0, c);
-  } while ((c = cnext));
+  } while ((c = cnext) && (done < _ircd_max_matches));
   return 1;
 }
 
@@ -314,6 +315,7 @@ static inline int _ircd_query_list (IRCD *ircd, CLIENT *cl, struct peer_priv *vi
   CLIENT *me;
   register MEMBER *cm;
   char *c, *cnext;
+  int done = 0;
 
   if (argc > 1)
   {
@@ -334,7 +336,14 @@ static inline int _ircd_query_list (IRCD *ircd, CLIENT *cl, struct peer_priv *vi
 
     while ((l = Next_Leaf (ircd->channels, l, NULL)))
       if (!(((CHANNEL *)l->s.data)->mode & A_PRIVATE)) /* hidden for listing */
+      {
 	_ircd_list_reply (cl, l->s.data);
+	if (++done >= _ircd_max_matches)
+	{
+	  ircd_do_unumeric (cl, ERR_TOOMANYMATCHES, cl, 0, "*");
+	  break;
+	}
+      }
     return ircd_do_unumeric (cl, RPL_LISTEND, cl, 0, NULL);
   }
   c = (char *)argv[0];
