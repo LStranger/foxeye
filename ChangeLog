@@ -17,6 +17,7 @@ TODO:
 Thu May  5 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: introduced "ircd-max-bans" variable to limit
 	  bans/exempts/invites list size for each channel.
+	* modules/logs/logs.c: fixed infinite cycle on empty log message.
 
 Wed May  4 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: added check on bans of mask nick!user@host after

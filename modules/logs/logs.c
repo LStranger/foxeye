@@ -608,7 +608,7 @@ static int add_to_log (INTERFACE *iface, REQUEST *req)
   {
     if (x < 0)
       logfile_signal (iface, S_TERMINATE);
-    return REQ_REJECTED;
+    return (line[0]) ? REQ_REJECTED : REQ_OK;
   }
   if (log->reccount++ < 5)		/* add up to 5 sequent requests */
     Get_Request();
