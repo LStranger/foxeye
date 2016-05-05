@@ -30,6 +30,7 @@
 #include "numerics.h"
 
 extern long int _ircd_hold_period;	/* see ircd.c */
+extern long int _ircd_max_bans;
 extern bool _ircd_no_spare_invites;
 extern bool _ircd_strict_modecmd;
 extern bool _ircd_ignore_mkey_arg;
@@ -614,6 +615,7 @@ static int _imch_add_mask (MASK **list, const char **ptr, MASK **cancel,
   const char *ex, *at;
   register size_t sz;
   MASK *nm;
+  long int cnt;
 
   nm = alloc_MASK();
   if ((ex = strchr(mask, '!')) == NULL &&
@@ -649,6 +651,7 @@ static int _imch_add_mask (MASK **list, const char **ptr, MASK **cancel,
   }
   /* note: it might exceed field size? */
   mask = nm->what;
+  cnt = 0;
   while (*list)
     if (strcmp(mask, (*list)->what) == 0) { /* duplicate mask */
       free_MASK(nm);
@@ -665,8 +668,17 @@ static int _imch_add_mask (MASK **list, const char **ptr, MASK **cancel,
       if (!CLIENT_IS_SERVER(_imch_client))
 	ircd_do_cnumeric(_imch_client, num, txt, _imch_channel, 0, (*list)->what);
       return 0;
-    } else
+    } else {
       list = &(*list)->next;
+      cnt++;
+    }
+  /* we are ready to add it, let test if it's not too much */
+  if (cnt >= _ircd_max_bans) {
+    if (!CLIENT_IS_SERVER(_imch_client))
+      ircd_do_cnumeric(_imch_client, ERR_BANLISTFULL, _imch_channel, 0, nm->what);
+    free_MASK (nm);
+    return 0;
+  }
   *list = nm;
   nm->next = NULL;
   return 1; /* done */

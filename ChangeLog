@@ -14,6 +14,10 @@ TODO:
 	* *: to check Add_Request/New_Request coming to user to be translatable.
 
 --- [0.10.2]
+Thu May  5 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/channels.c: introduced "ircd-max-bans" variable to limit
+	  bans/exempts/invites list size for each channel.
+
 Wed May  4 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: added check on bans of mask nick!user@host after
 	  registration, so we can check nicks as well.

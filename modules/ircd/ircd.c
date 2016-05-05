@@ -64,6 +64,7 @@ static bool _ircd_wallop_only_opers = FALSE;
 bool _ircd_no_spare_invites = FALSE;
 bool _ircd_strict_modecmd = TRUE;
 bool _ircd_ignore_mkey_arg = FALSE;
+long int _ircd_max_bans = 30;
 
 static short *_ircd_corrections;		/* for CheckFlood() */
 static short *_ircd_client_recvq;
@@ -4850,6 +4851,7 @@ static void _ircd_register_all (void)
   RegisterBoolean ("ircd-no-spare-invites", &_ircd_no_spare_invites);
   RegisterBoolean ("ircd-strict-modecmd", &_ircd_strict_modecmd);
   RegisterBoolean ("ircd-ignore-mkey-arg", &_ircd_ignore_mkey_arg);
+  RegisterInteger ("ircd-max-bans", &_ircd_max_bans);
   ircd_queries_register();
   RegisterFunction ("ircd", &func_ircd, "[-charset ][host/]port[%flags]");
 }
@@ -4893,6 +4895,7 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
       UnregisterVariable ("ircd-no-spare-invites");
       UnregisterVariable ("ircd-strict-modecmd");
       UnregisterVariable ("ircd-ignore-mkey-arg");
+      UnregisterVariable ("ircd-max-bans");
       UnregisterFunction ("ircd");
       Delete_Binding ("ircd-auth", &_ircd_class_in, NULL);
       Delete_Binding ("ircd-register-cmd", &ircd_pass, NULL);

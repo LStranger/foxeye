@@ -68,7 +68,7 @@ set ircd-flags-first
 set ircd-flags-post
 :%* <string>
 :Text stream handling server flags.
-:This variable defines which flags from PASS handshake will be probed to\
+:This variable defines which flags from %gPASS%n handshake will be probed to\
  apply to each line of IRC protocol. You have to include here any filter\
  that makes some network-specific protocol conversions to make difference\
  and compatibility with other servers in network.
@@ -114,31 +114,40 @@ set ircd-motd-file
 set ircd-max-matches
 :%* <number>
 :Max number of replies on LIST or NAMES.
-:
+:This variable defines how many replies will be sent to requestor on %gLIST%n or\
+ %gNAMES%n query. When number of replies exceeds this value, %gERR_TOOMANYMATCHES%n\
+ will be sent to the client.
  Default: 500.
 
 set ircd-max-whois
 :%* <number>
 :Max targets to show on WHOIS.
-:
+:This variable defines how many replies can be requested with %gWHOIS%n query. If\
+ there are too many matches then %gERR_TOOMANYTARGETS%n will be sent to requestor.
  Default: 3.
 
 set ircd-squit-youngest
 :%* <yes|no>
 :Send SQUIT to youngest link on duplicate SERVER rather than to announcer.
-:
+:This variable defines behavior when duplicate SERVER is introduced and that\
+ introduce involves server which does not support cyclic network scheme. If\
+ this variable is sent to %^yes%^ then youngest link will be disconnected on\
+ such issue. If set to %^no%^ then server that introduces duplicate will be\
+ disconnected instead.
  Default: yes.
 
 set ircd-statm-empty-too
 :%* <yes|no>
 :Show commands never used on stat m reply.
-:
+:If this variable is set to %^yes%^ then command that were never used will\
+ be shown in %gSTATS m%n reply.
  Default: no.
 
 set ircd-trace-users
 :%* <yes|no>
 :Want opers see all users in TRACE reply.
-:
+:If this variable is set to %^yes%^ then %gTRACE%n reply will include all local\
+ users on last iteration if request was made by IRC operator.
  Default: yes.
 
 set ircd-public-topic
@@ -151,13 +160,16 @@ set ircd-public-topic
 set ircd-idle-from-msg
 :%* <yes|no>
 :Only PRIVMSG can reset idle time.
-:
+:If this variable is set to %^yes%^ then idle time is reset only when client\
+ sends %gPRIVMSG%n to server. If it is set to %^no%^ then any message except\
+ for %gPING%n/%gPONG%n pair will also reset idle time on client.
  Default: no.
 
 set ircd-default-invisible
 :%* <yes|no>
 :Users will be automatically attributed with user mode "i".
-:
+:If this variable is set to %^yes%^ then local user after succesful registering\
+ will be attributed with user mode %c+i%n.
  Default: yes.
 
 set ircd-wallop-only-opers
@@ -170,20 +182,33 @@ set ircd-wallop-only-opers
 set ircd-no-spare-invites
 :%* <yes|no>
 :Don't allow setting +I for channels without +i.
-:
+:If this variable is set to %^yes%^ then any %gMODE%n %c<channel>%n %g+I%n\
+ request for channel without %c+i%n will be ignored.
  Default: no.
 
 set ircd-strict-modecmd
 :%* <yes|no>
 :Users should always use '+' or '-' for MODE changing.
-:
+:If set to %^yes%^ then message such as %gMODE%n %c<channel>%n %gt%n will result\
+ in usage error. If set to %^no%^ then such message will be treaten as %gMODE%n\
+ %c<channel>%n %g+t%n instead.
  Default: yes.
 
 set ircd-ignore-mkey-arg
 :%* <yes|no>
 :Don't check argument of MODE #chan -k with key for #chan.
-:
+:If this variable is set to %^no%^ then %gMODE%n %c<channel>%n %g-k xxx%n on a\
+ channel with key %cyyy%n will result in %gERR_KEYSET%n. If set to %^yes%^ then\
+ such request will be considered valid.
  Default: no.
+
+set ircd-max-bans
+:%* <number>
+:Max targets in each list (bans, exempts, invites).
+:This variable defines how big list of bans each channel can hold. Each attempt\
+ over this limit will result in %gERR_BANLISTFULL%n. The same variable defines\
+ the same behavior for exempts list and invites list, separately.
+ Default: 30.
 
 +hub
 :%* server mask
