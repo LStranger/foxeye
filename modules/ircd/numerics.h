@@ -2,7 +2,7 @@
 #define RPL_YOURHOST		  2, ":Your host is %#, running version %V"
 #define RPL_CREATED		  3, ":This server was created %*"
 #define RPL_MYINFO		  4, "%# %V %*"
-/* 005 reserved: RPL_ISUPPORT */
+#define RPL_ISUPPORT		  5, "%* :are supported by this server"
 #define RPL_BOUNCE		 10, "%# %P :Please use this Server/Port instead"
 /* 015 reserved */
 /* 017-018 reserved */

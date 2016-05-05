@@ -40,6 +40,7 @@ static struct bindtable_t *BTIrcdChannel;
 static struct bindtable_t *BTIrcdModechange;
 static struct bindtable_t *BTIrcdUmodechange;
 static struct bindtable_t *BTIrcdCheckModechange;
+static struct bindtable_t *BTIrcdIsupport;
 //static struct bindtable_t *BTIrcdSetMember;
 //static struct bindtable_t *BTIrcdLostMember;
 
@@ -57,6 +58,8 @@ static modeflag Ircd_modechar_mask = 0; /* filled with matching to above */
 static char _ircd_umodes[32]; /* 1 char per modeflag bit */
 static char _ircd_cmodes[32]; /* 1 char per modeflag bit */
 static char _ircd_wmodes[32]; /* 1 char per modeflag bit */
+
+static char _ircd_isupport_modestring[128]; /* should be enough for a-Z with commas */
 
 /* prototypes for too complex functions not easy castable */
 #define static
@@ -564,7 +567,7 @@ static modeflag imch_k(modeflag rchmode, modeflag rmode, const char *target,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
-  if (!target && (rchmode & (A_OP | A_ADMIN)))
+  if (!target && ((rchmode & (A_OP | A_ADMIN)) || !rchmode))
   {
     *ma = &_imch_do_keyset;
     return (A_KEYSET | 1);
@@ -599,7 +602,7 @@ static modeflag imch_l(modeflag rchmode, modeflag rmode, const char *target,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
-  if (!target && (rchmode & (A_OP | A_ADMIN)))
+  if (!target && ((rchmode & (A_OP | A_ADMIN)) || !rchmode))
   {
     *ma = &_imch_do_limit;
     return (A_LIMIT | (add ? 1 : 0));
@@ -727,7 +730,7 @@ static modeflag imch_b(modeflag rchmode, modeflag rmode, const char *target,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
-  if (!target && ((rchmode & (A_OP | A_ADMIN)) || add < 0))
+  if (!target && ((rchmode & (A_OP | A_ADMIN)) || !rchmode || add < 0))
   {
     *ma = &_imch_do_banset;
     return (A_DENIED | 1);
@@ -760,7 +763,7 @@ static modeflag imch_e(modeflag rchmode, modeflag rmode, const char *target,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
-  if (!target && ((rchmode & (A_OP | A_ADMIN)) || add < 0))
+  if (!target && ((rchmode & (A_OP | A_ADMIN)) || !rchmode || add < 0))
   {
     *ma = &_imch_do_exemptset;
     return (A_EXEMPT | 1);
@@ -793,8 +796,8 @@ static modeflag imch_I(modeflag rchmode, modeflag rmode, const char *target,
 		       int (**ma)(INTERFACE *, const char *, const char *, int,
 				  const char **))
 {
-  if (!target && (rchmode & (A_OP | A_ADMIN)) &&
-      (!_ircd_no_spare_invites || (tmode & A_INVITEONLY)))
+  if (!target && (!rchmode || ((rchmode & (A_OP | A_ADMIN)) &&
+			       (!_ircd_no_spare_invites || (tmode & A_INVITEONLY)))))
   {
     *ma = &_imch_do_inviteset;
     return (A_INVITED | 1);
@@ -2672,7 +2675,7 @@ static inline char *_ircd_ch_flush_umodes (INTERFACE *i, char *c, char *e)
       mode = (ff (0, 0, &ma) & ~(A_ISON | A_PINGED));
       IRCD_SET_MODECHAR (mode, _ircd_umodes, *c);
     }
-  if (c < e)
+  if (mode && c < e)
     c++;
   return c;
 }
@@ -2688,21 +2691,23 @@ static inline char *_ircd_ch_flush_cmodes (INTERFACE *i, char *c, char *e)
     if (!b->name)
     {
       ff = (_mch_func_t)b->func;
-      if (!mode1)
-      {
-	/* channel modes: make _ircd_cmodes */
-	mode1 = (ff (0, 0, NULL, 0, 0, 0, '\0', &dummy) & ~(A_ISON | A_PINGED));
-	IRCD_SET_MODECHAR (mode1, _ircd_cmodes, *c);
-      }
-      if (!mode2)
-      {
-	/* user in channel modes: make Ircd_modechar_mask */
-	mode2 = (ff (0, 0, "", 0, 0, 0, '\0', &dummy) & ~(A_ISON | A_PINGED));
-	Ircd_modechar_mask |= mode2;
-	IRCD_SET_MODECHAR (mode2, _ircd_wmodes, *c);
-      }
+      /* channel modes: make _ircd_cmodes */
+      mode1 |= ff (0, 0, NULL, 0, 0, 1, '\0', &dummy);
+      /* user in channel modes: make Ircd_modechar_mask */
+      mode2 |= ff (0, 0, "", 0, 0, 0, '\0', &dummy);
     }
-  if (c < e)
+  if (mode1 & ~(A_ISON | A_PINGED))
+  {
+    strfcat(_ircd_isupport_modestring, c, sizeof(_ircd_isupport_modestring));
+    if (mode1 & A_ISON)
+      strfcat(_ircd_isupport_modestring, ",", sizeof(_ircd_isupport_modestring));
+  }
+  mode1 &= ~(A_ISON | A_PINGED);
+  IRCD_SET_MODECHAR (mode1, _ircd_cmodes, *c);
+  mode2 &= ~(A_ISON | A_PINGED);
+  Ircd_modechar_mask |= mode2;
+  IRCD_SET_MODECHAR (mode2, _ircd_wmodes, *c);
+  if ((mode1 || mode2) && c < e)
     c++;
   return c;
 }
@@ -2731,6 +2736,8 @@ void ircd_channels_flush (IRCD *ircd, char *modestring, size_t s)
   memset (_ircd_umodes, 0, sizeof(_ircd_umodes));
   c = modestring;
   e = &c[s-1];
+  /* also make modes for 005 */
+  _ircd_isupport_modestring[0] = '\0';
   for (ch = 'a'; ch <= 'z'; ch++)	/* do user modes */
   {
     *c = ch;
@@ -2978,6 +2985,79 @@ modeflag ircd_whochar2mode(char ch)
   return (0);
 }
 
+#define STR(x) NUMSTR(x)
+#define NUMSTR(x) #x
+
+void send_isupport(IRCD *ircd, CLIENT *cl)
+{
+  char isupport[MESSAGEMAX];
+  char buff[MESSAGEMAX];
+  size_t n, s, ptr, len;
+  struct binding_t *b = NULL;
+
+  /* prepare own strings first */
+  strfcpy(isupport, "PREFIX=(", sizeof(isupport));
+  len = strlen(isupport);
+  for (n = 0, ptr = 0; Ircd_modechar_list[n]; n++)
+    if (Ircd_whochar_list[n] != ' ')
+    {
+      isupport[len+ptr] = Ircd_modechar_list[n];
+      buff[ptr++] = Ircd_whochar_list[n];
+    }
+  isupport[len+ptr] = ')';
+  buff[ptr++] = '\0';
+  strfcpy(&isupport[len+ptr], buff, sizeof(isupport)-len-ptr);
+  strfcat(isupport, " CHANTYPES=", sizeof(isupport));
+  len = strlen(isupport);
+  buff[1] = '\0';
+  for (buff[0] = 0x21/* '!' */; buff[0] < 'A'; buff[0]++)
+    if (Check_Bindtable(BTIrcdChannel, buff, U_ALL, U_ANYCH, NULL))
+      isupport[len++] = buff[0];
+  isupport[len] = '\0';
+  snprintf(buff, sizeof(buff), " CHANMODES=%s MODES=" STR(MAXMODES)
+			       " MAXCHANNELS=" STR(MAXCHANNELS)
+			       " NICKLEN=" STR(NICKLEN) " MAXBANS=%ld NETWORK=%s"
+			       " EXCEPTS INVEX CASEMAPPING=utf-8"
+			       " TOPICLEN=" STR(TOPICLEN) " KICKLEN=" STR(TOPICLEN)
+			       " CHANNELLEN=" STR(CHANNAMELEN)
+			       " IDCHAN=!:" STR(CHIDLEN) " RFC2812",
+	   _ircd_isupport_modestring, _ircd_max_bans, ircd->iface->name);
+  strfcat(isupport, buff, sizeof(isupport));
+  len = ptr = 0;
+  while (1)
+  {
+    while (isupport[ptr])
+    {
+      s = ptr;
+      for (n = 0; n < 12 && isupport[ptr]; n++)
+      {
+	len = NextWord(&isupport[ptr]) - &isupport[s];
+	if (len > 400)
+	  break;
+	ptr = len;
+      }
+      len = ptr;
+      ptr = s;
+      if (n < 12 && !isupport[len])	/* buffer exhausted */
+	break;
+      s = len;
+      while (s > ptr && isupport[s-1] == ' ')
+	s--;
+      isupport[s] = '\0';
+      ircd_do_unumeric(cl, RPL_ISUPPORT, cl, 0, &isupport[ptr]);
+      ptr = len;
+    }
+    while ((b = Check_Bindtable(BTIrcdIsupport, ircd->iface->name, U_ALL, U_ANYCH, b)))
+      if (!b->name)
+	break;
+    if (b == NULL)			/* finished all */
+      break;
+    b->func(&isupport[len], sizeof(isupport) - len);
+  }
+  /* send leftovers */
+  if (isupport[ptr])
+    ircd_do_unumeric(cl, RPL_ISUPPORT, cl, 0, &isupport[ptr]);
+}
 
 static void _ircd_catch_undeleted_ch (void *ch)
 {
@@ -3081,6 +3161,7 @@ void ircd_channel_proto_start (IRCD *ircd)
   BTIrcdModechange = Add_Bindtable ("ircd-modechange", B_MATCHCASE);
   BTIrcdUmodechange = Add_Bindtable ("ircd-umodechange", B_MATCHCASE);
   BTIrcdCheckModechange = Add_Bindtable ("ircd-check-modechange", B_MASK);
+  BTIrcdIsupport = Add_Bindtable ("ircd-isupport", B_MASK);
   Add_Binding ("ircd-whochar", "*", 0, 0, (Function)&iwc_ircd, NULL);
   /* default 4 channel types, see RFC2811 */
   Add_Binding ("ircd-channel", "&", 0, 0, (Function)&ich_normal, NULL);

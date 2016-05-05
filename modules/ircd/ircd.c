@@ -2250,6 +2250,7 @@ static int _ircd_got_local_user (CLIENT *cl)
   ircd_do_unumeric (cl, RPL_YOURHOST, &ME, 0, NULL);
   ircd_do_unumeric (cl, RPL_CREATED, &ME, 0, COMPILETIME);
   ircd_do_unumeric (cl, RPL_MYINFO, &ME, 0, _ircd_modesstring);
+  send_isupport (Ircd, cl);
   b = NULL;
   uf = Get_Clientflags (cl->x.class->name, Ircd->iface->name);
   while ((b = Check_Bindtable (BTIrcdLocalClient, cl->nick, uf, U_ANYCH, b)))

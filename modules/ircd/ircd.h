@@ -386,6 +386,7 @@ void ircd_channels_flush (IRCD *, char *, size_t);
 void ircd_burst_channels (INTERFACE *, NODE *);
 void ircd_channels_report (INTERFACE *);
 void ircd_channels_chreop (IRCD *, CLIENT *);
+void send_isupport (IRCD *, CLIENT *);
 
 	/* calls to client.c from channel.c */
 int ircd_names_reply (CLIENT *, CLIENT *, CHANNEL *, int);
