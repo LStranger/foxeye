@@ -826,7 +826,7 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
       return (1);		/* just ignore it then */
     } else
       c = c2;			/* it's not phantom at this moment */
-    if (peer == NULL &&
+    if (peer == NULL && peer->p.state != P_LOGIN && peer->p.state != P_IDLE &&
 	(!(CLIENT_IS_REMOTE(c)) && !(CLIENT_IS_SERVER(c))))
     {
       /* internal call - client message simulation */
@@ -1655,7 +1655,7 @@ static void _ircd_handler (char *cln, char *ident, const char *host, void *data)
   pthread_mutex_unlock (&IrcdLock);
   unistrlower (cl->user, NONULL(ident), sizeof(cl->user));
   unistrlower (cl->host, host, sizeof(cl->host));
-  strfcpy (cl->vhost, cl->host, sizeof(cl->vhost));
+  cl->vhost[0] = 0;
   cl->pcl = NULL;
   cl->cs = cl;
   cl->umode = 0;
@@ -1964,7 +1964,7 @@ static inline void _ircd_start_uplink2 (const char *name, char *host,
     strfcpy (uplink->fname, pass, sizeof(uplink->fname)); /* remember it */
   strfcpy (uplink->away, port, sizeof(uplink->away)); /* remember port string */
   strfcpy (uplink->host, host, sizeof(uplink->host)); /* remember host name */
-  strfcpy (uplink->vhost, host, sizeof(uplink->vhost));
+  uplink->vhost[0] = 0;
   Connchain_Grow (&uplink->via->p, 0); /* init empty connchain */
   uplink->via->p.iface = Add_Iface (I_CONNECT, uplink->lcnick,
 				    &_ircd_uplink_sig, &_ircd_uplink_req,
@@ -2138,10 +2138,10 @@ static int ircd_pass (INTERFACE *srv, struct peer_t *peer, int argc, const char 
     return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, "PASS");
   if (cl->nick[0] || cl->fname[0])	/* got either NICK or USER already */
     return ircd_do_unumeric (cl, ERR_ALREADYREGISTRED, cl, 0, NULL);
-  if (cl->lcnick[0])			/* second PASS command */
+  if (cl->vhost[0])			/* second PASS command */
     Add_Request (I_LOG, "*", F_WARN, "duplicate PASS attempt from %s@%s",
 		 cl->user, cl->host);
-  strfcpy (cl->lcnick, argv[0], sizeof(cl->lcnick));
+  strfcpy (cl->vhost, argv[0], sizeof(cl->vhost));
   switch (argc)				/* store additional serverlink params */
   {
     case 1:
@@ -2180,6 +2180,7 @@ static int _ircd_got_local_user (CLIENT *cl)
 {
   struct binding_t *b;
   struct clrec_t *clr;
+  char *c;
   userflag uf;
 #if IFNAMEMAX > HOSTMASKLEN
   char mb[IFNAMEMAX+1]; /* it should be enough for umode */
@@ -2190,13 +2191,24 @@ static int _ircd_got_local_user (CLIENT *cl)
   /* last chance to check for kill records */
   snprintf (mb, sizeof(mb), "%s!%s@%s", cl->nick, cl->user, cl->host);
   clr = Find_Clientrecord (mb, NULL, &uf, Ircd->iface->name);
+  if (!clr && (cl->via->p.uf & U_DENY))
+  {
+    /* let recheck regular kill records again to get kill message */
+    snprintf (mb, sizeof(mb), "%s@%s", cl->user, cl->host);
+    clr = Find_Clientrecord (mb, NULL, &uf, Ircd->iface->name);
+  }
   if (clr)
+  {
+    if (uf & U_DENY)		/* keep kill message for ERR_YOUREBANNEDCREEP */
+      strfcpy (cl->lcnick, Get_Field (clr, Ircd->sub->name, NULL),
+	       sizeof(cl->lcnick));
     Unlock_Clientrecord (clr);
+  }
   else
     uf = 0;
   if ((uf & U_DENY) || (cl->via->p.uf & U_DENY))
   {
-    ircd_do_unumeric (cl, ERR_YOUREBANNEDCREEP, cl, 0, NULL);
+    ircd_do_unumeric (cl, ERR_YOUREBANNEDCREEP, cl, 0, cl->lcnick);
     _ircd_peer_kill (cl->via, "Bye!");
     return 1;
   }
@@ -2208,6 +2220,7 @@ static int _ircd_got_local_user (CLIENT *cl)
     dprint(2, "ircd:CLIENT: new local user %s", cl->lcnick);
   snprintf (mb, sizeof(mb), "%s@%s", cl->lcnick, Ircd->iface->name);
   Rename_Iface (cl->via->p.iface, mb);	/* rename iface to nick@net */
+  strfcpy (cl->vhost, cl->host, sizeof(cl->vhost));
   cl->away[0] = 0;
   cl->via->i.nvited = cl->c.hannels = NULL;
   /*
@@ -2240,6 +2253,9 @@ static int _ircd_got_local_user (CLIENT *cl)
   if (Connchain_Check(&cl->via->p, 'S') < 0)
     cl->umode |= A_SSL;
   ircd_make_umode (mb, cl->umode, sizeof(mb));
+  /* run all bindings on the client now, something may need update */
+  for (c = mb; *c; c++)
+    ircd_char2umode(Ircd->iface, MY_NAME, *c, cl);
   ircd_sendto_servers_all (Ircd, NULL, "NICK %s 1 %s %s 1 +%s :%s",
 			   cl->nick, cl->user, cl->host, mb, cl->fname);
 #ifdef USE_SERVICES
@@ -2623,12 +2639,13 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
   }
   /* check if password matches */
   c = Get_Field (u, "passwd", NULL);
-  if (c && Check_Passwd (cl->lcnick, c))
+  if (c && Check_Passwd (cl->vhost, c))
   {
     Unlock_Clientrecord (u);
     _ircd_peer_kill (cl->via, "bad password");
     return 1;
   }
+  strfcpy (cl->vhost, cl->host, sizeof(cl->vhost));
   if (peer->state == P_LOGIN) /* if it's incoming then check it to match */
   {
     INTERFACE *tmp;

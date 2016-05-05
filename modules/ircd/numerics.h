@@ -159,7 +159,7 @@
 #define ERR_ALREADYREGISTRED	462, ":Unauthorized command (already registered)"
 #define ERR_NOPERMFORHOST	463, ":Your host isn't among the privileged"
 #define ERR_PASSWDMISMATCH	464, ":Password incorrect"
-#define ERR_YOUREBANNEDCREEP	465, ":You are banned from this server"
+#define ERR_YOUREBANNEDCREEP	465, ":You are banned from this server%?*: %*??"
 #define ERR_YOUWILLBEBANNED	466, ""
 #define ERR_KEYSET		467, "%# :Channel key already set"
 #if IRCD_USES_ICONV

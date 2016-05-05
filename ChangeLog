@@ -21,6 +21,7 @@ Thu May  5 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/queries.c: fixed invalid handling on "ircd-max-matches".
 	* modules/ircd/channels.c, modules/ircd/ircd.*: added RPL_ISUPPORT to
 	  be sent to client on registration.
+	* modules/ircd/ircd.c: use kill comment in the ERR_YOUREBANNEDCREEP.
 
 Wed May  4 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: added check on bans of mask nick!user@host after

@@ -2116,7 +2116,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	    if (!mf)
 	      continue;
 	    if (ma)			/* update vhost */
-	      ma (srv, pp->p.dname, tgt->vhost, tgt->host, sizeof(tgt->vhost),
+	      ma (srv, tgt->nick, tgt->vhost, tgt->host, sizeof(tgt->vhost),
 		  add, tgt->cs->nick);
 	    n++;			/* one more accepted */
 	    if (!CLIENT_IS_REMOTE(tgt))
@@ -2131,7 +2131,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	  if (!mf)
 	    continue;
 	  if (ma)			/* update vhost */
-	    ma (srv, pp->p.dname, tgt->vhost, tgt->host, sizeof(tgt->vhost),
+	    ma (srv, tgt->nick, tgt->vhost, tgt->host, sizeof(tgt->vhost),
 		add, tgt->cs->nick);
 	  n++;				/* one more accepted */
 	  if (!CLIENT_IS_REMOTE(tgt))
@@ -2925,7 +2925,7 @@ modeflag ircd_char2umode(INTERFACE *srv, const char *sname, char c, CLIENT *tgt)
     b = Check_Bindtable (BTIrcdUmodechange, charstr, U_ALL, U_ANYCH, b);
   }
   if (ma)
-    ma (srv, sname, tgt->vhost, tgt->host, sizeof(tgt->vhost), 1, tgt->cs->nick);
+    ma (srv, tgt->nick, tgt->vhost, tgt->host, sizeof(tgt->vhost), 1, sname);
   return (mf & ~(A_ISON | A_PINGED));
 }
 
