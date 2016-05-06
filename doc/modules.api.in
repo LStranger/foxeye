@@ -870,42 +870,42 @@ Wtmp API:
 	Reenterability: async-safe if _e_v_e_n_t is W_DOWN, else thread-safe
 	Cancellation point: no
 
-Sheduler-timer API:
--------------------
+Scheduler-timer API:
+--------------------
 #include "sheduler.h"
 
   void NNeewwSShheedduullee (iftype_t _i_f_t, const char *_n_a_m_e, ifsig_t _s_i_g,
 		   char *_m_i_n, char *_h_r, char *_d_s, char *_m_n, char *_w_k);
-    Sets new shedule mask for some minutes _m_i_n, hours _h_r, days _d_s of
+    Sets new schedule mask for some minutes _m_i_n, hours _h_r, days _d_s of
     months _m_n on day of week _w_k. Each of these submasks is comma
     separated list of times: "*[/i]" or "a[-b[/i]]". First format means
     do the job each i, second means do each i in interval a to b, that
     range is inclusive. If i is omitted then assume it's equal 1, if b
     is omitted then assume it's equal to a. Allowed values: _m_i_n 0-59,
     _h_r 0-23, _d_s 1-31, _m_n 1-12, _w_k 0-7, since real time will never reach
-    other. When shedule is matched then signal _s_i_g will be sent to
+    other. When schedule is matched then signal _s_i_g will be sent to
     interface _n_a_m_e with type _i_f_t. Returns nothing.
 	Reenterability: thread-safe
 	Cancellation point: no
 
   void KKiillllSShheedduullee (iftype_t _i_f_t, const char *_n_a_m_e, ifsig_t _s_i_g,
 		    char *_m_i_n, char *_h_r, char *_d_s, char *_m_n, char *_w_k);
-    Aborts shedule mask. Synopsis equal to NewShedule().
+    Aborts schedule mask. Synopsis equal to NewShedule().
 	Reenterability: thread-safe
 	Cancellation point: no
 
   tid_t NNeewwTTiimmeerr (iftype_t _i_f_t, const char *_n_a_m_e, ifsig_t _s_i_g,
 		  unsigned int _s_e_c, unsigned int _m_i_n, unsigned int _h_r,
 		  unsigned int _d_s);
-    Set new shedule job for _s_e_c seconds, _m_i_n minutes, _h_r hours and _d_s
+    Set new schedule job for _s_e_c seconds, _m_i_n minutes, _h_r hours and _d_s
     days since current time. When job time is reached then signal _s_i_g
-    will be sent to interface _n_a_m_e with type _i_f_t. Returns new shedule
-    job identifier if shedule set successful or -1 otherwise.
+    will be sent to interface _n_a_m_e with type _i_f_t. Returns new schedule
+    job identifier if schedule set successful or -1 otherwise.
 	Reenterability: thread-safe
 	Cancellation point: no
 
   void KKiillllTTiimmeerr (tid_t _t_i_d);
-    Aborts shedule job with identifier _t_i_d. Returns nothing.
+    Aborts schedule job with identifier _t_i_d. Returns nothing.
 	Reenterability: thread-safe
 	Cancellation point: no
 

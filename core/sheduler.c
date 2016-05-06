@@ -15,7 +15,7 @@
  *     with this program; if not, write to the Free Software Foundation, Inc.,
  *     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
- * This file is part of FoxEye's source: sheduler interface.
+ * This file is part of FoxEye's source: scheduler interface.
  */
 
 #include "foxeye.h"
