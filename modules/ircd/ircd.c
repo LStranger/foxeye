@@ -1797,6 +1797,10 @@ static iftype_t _ircd_uplink_sig (INTERFACE *uli, ifsig_t sig)
   peer_priv *uplink = uli->data;
   register peer_priv **ull;
   register LINK **ll;
+  const char *reason;
+  INTERFACE *tmp;
+  char nstr[MB_LEN_MAX*NICKLEN+2];
+  char buff[STRING];
 
   dprint(5, "ircd:ircd.c:_ircd_uplink_sig: name=%s sig=%d", uli->name, (int)sig);
   if (!uplink)				/* already terminated */
@@ -1804,7 +1808,24 @@ static iftype_t _ircd_uplink_sig (INTERFACE *uli, ifsig_t sig)
   switch (sig)
   {
     case S_REPORT:
-      //TODO.......
+      tmp = Set_Iface (uli);
+      nstr[0] = ' ';
+      strfcpy (&nstr[1], uplink->link->cl->nick, sizeof(nstr) - 1);
+      switch (uplink->p.state) {
+      case P_DISCONNECTED:
+	reason = "connecting to IRCD server";
+	break;
+      case P_LASTWAIT:
+      case P_QUIT:
+	reason = "(IRCD) aborting connection";
+	break;
+      default:
+	reason = "(IRCD) registering";
+      }
+      printl (buff, sizeof(buff), ReportFormat, 0, nstr, uplink->link->cl->host,
+	      uplink->link->cl->lcnick, NULL, 0, uplink->p.socket + 1, 0, reason);
+      New_Request(tmp, F_REPORT, "%s", buff);
+      Unset_Iface();
       break;
     case S_TERMINATE:
       /* free everything including socket */
