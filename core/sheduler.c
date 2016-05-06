@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2016  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -84,7 +84,7 @@ void NoCheckFlood (short *ptr)
 }
 
 /* format: "time[,time,...]" where time is "*[/i]" or "a[-b[/i]]" */
-static void _get_mask (char *mask, uint32_t *bitmap)
+static void _get_mask (char *mask, uint32_t *bitmap, long max)
 {
   register long per, first, last;
 
@@ -106,10 +106,14 @@ static void _get_mask (char *mask, uint32_t *bitmap)
 	last = 0;
     }
     if (*mask == '/')
+    {
       per = strtol (&mask[1], &mask, 10);
+      if (per <= 0)		/* user might set it wrong (thanks to denk) */
+	per = 1;
+    }
     else
       per = 1;
-    while (first >= 0 && first < 64)
+    while (first >= 0 && first < max)
     {
       if (first < 32)
 	bitmap[0] |= (uint32_t)1 << first;
@@ -164,14 +168,14 @@ void NewShedule (iftype_t ift, const char *name, ifsig_t sig,
   ct->ift = ift;
   ct->to = name;
   ct->signal = sig;
-  _get_mask (min, ct->min);
-  _get_mask (hr, mask);
+  _get_mask (min, ct->min, 60);
+  _get_mask (hr, mask, 24);
   ct->hour = mask[0];
-  _get_mask (ds, mask);
+  _get_mask (ds, mask, 31);
   ct->day = mask[0];
-  _get_mask (mn, mask);
+  _get_mask (mn, mask, 12);
   ct->month = (uint16_t)mask[0];
-  _get_mask (wk, mask);
+  _get_mask (wk, mask, 7);
   ct->weekday = (uint16_t)mask[0];
   _SCnum++;
   pthread_mutex_unlock (&LockShed);
@@ -193,16 +197,16 @@ void KillShedule (iftype_t ift, const char *name, ifsig_t sig,
     ct = &Crontable[i];
     if (ct->ift == ift && ct->to == name)
     {
-      _get_mask (min, mask);
+      _get_mask (min, mask, 60);
       ct->min[0] &= ~(mask[0]);
       ct->min[1] &= ~(mask[1]);
-      _get_mask (hr, mask);
+      _get_mask (hr, mask, 24);
       ct->hour &= ~(mask[0]);
-      _get_mask (ds, mask);
+      _get_mask (ds, mask, 31);
       ct->day &= ~(mask[0]);
-      _get_mask (mn, mask);
+      _get_mask (mn, mask, 12);
       ct->month &= ~((uint16_t)mask[0]);
-      _get_mask (wk, mask);
+      _get_mask (wk, mask, 7);
       ct->weekday &= ~((uint16_t)mask[0]);
       if (!ct->min[0] && !ct->min[1] && !ct->hour && !ct->day && !ct->month &&
 	  !ct->weekday)
