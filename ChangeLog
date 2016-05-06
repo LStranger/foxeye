@@ -21,6 +21,7 @@ Fri May  6 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/sheduler.c: fixed scheduler timer parsing, it might fail on bad
 	  strings. Noticed by denk.
 	* modules/ircd/queries.c: implemented STATS c reply, for opers only.
+	* modules/ircd/queries.c: implemented STATS H reply, for opers only.
 
 Thu May  5 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: introduced "ircd-max-bans" variable to limit

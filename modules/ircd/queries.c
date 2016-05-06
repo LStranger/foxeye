@@ -1578,10 +1578,47 @@ static void _istats_c (INTERFACE *srv, const char *rq, modeflag umode)
   tmp->ift = I_DIED;
 }
 
-//BINDING_TYPE_ircd_stats_reply(_istats_h);
-//static void _istats_h (INTERFACE *srv, const char *rq, modeflag umode)
-//{
-//}
+static void _istats_h_show (INTERFACE *tmp, char *serv)
+{
+  struct clrec_t *clr = Lock_Clientrecord (serv);
+  char *hub, *c1, *c2;
+
+  if (clr)
+  {
+    strfcpy (_istats_dummy_client.nick, serv, sizeof(_istats_dummy_client.nick));
+    hub = safe_strdup (Get_Field (clr, "hub", NULL));
+    Unlock_Clientrecord (clr);
+    if (hub)
+    {
+      for (c1 = hub; *c1; c1 = c2)
+      {
+	c2 = gettoken (c1, NULL);
+	ircd_do_unumeric (_ircd_stats_client, RPL_STATSHLINE, &_istats_dummy_client, 0, c1);
+      }
+      free (hub);
+    }
+  }
+}
+
+BINDING_TYPE_ircd_stats_reply(_istats_h);
+static void _istats_h (INTERFACE *srv, const char *rq, modeflag umode)
+{
+  const char *n = ((IRCD *)srv->data)->sub->name;
+  INTERFACE *tmp;
+
+  if (!(umode & (A_OP | A_HALFOP)))
+  {
+    ircd_do_unumeric (_ircd_stats_client, ERR_NOPRIVILEGES, _ircd_stats_client, 0, NULL);
+    return;
+  }
+  tmp = Add_Iface (I_TEMP, NULL, NULL, &_ircd_qlist_r, NULL);
+  _ircd_list_receiver_show = &_istats_h_show;
+  Set_Iface (tmp);
+  if (Get_Clientlist (tmp, U_UNSHARED, n, "*"))
+    Get_Request(); /* it will do recurse itself */
+  Unset_Iface();
+  tmp->ift = I_DIED;
+}
 
 
 /* ---------------------------------------------------------------------------
@@ -1639,6 +1676,7 @@ void ircd_queries_proto_end (void)
   Delete_Binding ("ircd-stats-reply", (Function)&_istats_o, NULL);
   Delete_Binding ("ircd-stats-reply", (Function)&_istats_u, NULL);
   Delete_Binding ("ircd-stats-reply", (Function)&_istats_c, NULL);
+  Delete_Binding ("ircd-stats-reply", (Function)&_istats_h, NULL);
   Destroy_Tree (&IrcdWhowasTree, NULL);
   FREE (&IrcdWhowasArray);
 }
@@ -1701,6 +1739,7 @@ void ircd_queries_proto_start (void)
   Add_Binding ("ircd-stats-reply", "o", 0, 0, (Function)&_istats_o, NULL);
   Add_Binding ("ircd-stats-reply", "u", 0, 0, (Function)&_istats_u, NULL);
   Add_Binding ("ircd-stats-reply", "c", 0, 0, (Function)&_istats_c, NULL);
+  Add_Binding ("ircd-stats-reply", "h", 0, 0, (Function)&_istats_h, NULL);
   _ircd_time_started = Time;
 //TODO: add bindtable to add chars into ircd_version_flags?
 }
