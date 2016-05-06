@@ -24,6 +24,8 @@ Fri May  6 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/queries.c: implemented STATS H reply, for opers only.
 	* modules/ircd/messages.c: got rid of #define MAXTARGETS, it should be
 	  based on penalty values as in original ircd.
+	* modules/ircd/channels.c: moved #define MAXCHANNELS into a variable
+	  "ircd-max-channels".
 
 Thu May  5 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: introduced "ircd-max-bans" variable to limit

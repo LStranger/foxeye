@@ -31,6 +31,7 @@
 
 extern long int _ircd_hold_period;	/* see ircd.c */
 extern long int _ircd_max_bans;
+extern long int _ircd_max_channels;
 extern bool _ircd_no_spare_invites;
 extern bool _ircd_strict_modecmd;
 extern bool _ircd_ignore_mkey_arg;
@@ -1663,7 +1664,7 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
       if (!b)
 	i = 1;				/* so he/she allowed at last */
     }
-    if (x >= MAXCHANNELS)		/* joined too many channels already */
+    if (x >= _ircd_max_channels)		/* joined too many channels already */
       ircd_do_unumeric (cl, ERR_TOOMANYCHANNELS, cl, 0, NULL);
     else if (i > 0) {			/* so user can join, do it then */
       if (ch == NULL)			/* it's still not found */
@@ -3015,13 +3016,13 @@ void send_isupport(IRCD *ircd, CLIENT *cl)
       isupport[len++] = buff[0];
   isupport[len] = '\0';
   snprintf(buff, sizeof(buff), " CHANMODES=%s MODES=" STR(MAXMODES)
-			       " MAXCHANNELS=" STR(MAXCHANNELS)
-			       " NICKLEN=" STR(NICKLEN) " MAXBANS=%ld NETWORK=%s"
-			       " EXCEPTS INVEX CASEMAPPING=utf-8"
-			       " TOPICLEN=" STR(TOPICLEN) " KICKLEN=" STR(TOPICLEN)
+			       " MAXCHANNELS=%ld NICKLEN=" STR(NICKLEN)
+			       " MAXBANS=%ld NETWORK=%s EXCEPTS INVEX"
+			       " CASEMAPPING=utf-8 TOPICLEN=" STR(TOPICLEN)
 			       " CHANNELLEN=" STR(CHANNAMELEN)
 			       " IDCHAN=!:" STR(CHIDLEN) " RFC2812",
-	   _ircd_isupport_modestring, _ircd_max_bans, ircd->iface->name);
+	   _ircd_isupport_modestring, _ircd_max_channels, _ircd_max_bans,
+	   ircd->iface->name);
   strfcat(isupport, buff, sizeof(isupport));
   len = ptr = 0;
   while (1)

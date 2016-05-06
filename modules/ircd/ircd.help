@@ -212,6 +212,13 @@ set ircd-max-bans
  the same behavior for exempts list and invites list, separately.
  Default: 30.
 
+set ircd-max-channels
+:%* <number>
+:Max channels an user can join.
+:This variable defines how many channels user allowed to join. When this limit\
+ is reached, user attempt to join will be refused.
+ Default: 20.
+
 +hub
 :%* server mask
 :
@@ -224,4 +231,5 @@ flood-type ircd-errors
 :
 :
 :If set then each corrected error on server link will be checked against this\
- and if too many errors happened then link will be SQUITed in that reason.
+ and if too many errors happened then link will be SQUITed in that reason. Note\
+ that you should keep this value the same on all servers in your network.
