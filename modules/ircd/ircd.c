@@ -67,7 +67,7 @@ bool _ircd_ignore_mkey_arg = FALSE;
 long int _ircd_max_bans = 30;
 
 static short *_ircd_corrections;		/* for CheckFlood() */
-static short *_ircd_client_recvq;
+short *_ircd_client_recvq;
 
 typedef struct peer_priv peer_priv;
 
@@ -5016,6 +5016,15 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
       /* continue with S_FLUSH too */
     case S_FLUSH:
       ircd_channels_flush (Ircd, _ircd_modesstring, sizeof(_ircd_modesstring));
+      if (_ircd_client_recvq[0] <= 0 || _ircd_client_recvq[1] <= 0 /* sanity */ ||
+	  _ircd_client_recvq[1] > 300 /* too big interval to check */ ||
+	  _ircd_client_recvq[1] < _ircd_client_recvq[0] / 4 /* 4 msg in 1 sec */ ||
+	  _ircd_client_recvq[1] > _ircd_client_recvq[0] * 10 /* 1 msg in 10 sec */) {
+	_ircd_client_recvq[0] = 5; /* 5 messages in 10 seconds is default */
+	_ircd_client_recvq[1] = 10;
+	Add_Request(I_LOG, "*", F_BOOT,
+		    "ircd: reset ircd-penalty flood to default 5:10");
+      }
       break;
     default: ;
   }
@@ -5088,12 +5097,6 @@ SigFunction ModuleInit (char *args)
   /* need to add interface into Ircd->iface ASAP! */
   _ircd_corrections = FloodType ("ircd-errors"); /* sets corrections */
   _ircd_client_recvq = FloodType ("ircd-penalty");
-  if (_ircd_client_recvq[0] <= 0 || _ircd_client_recvq[1] <= 0) {
-    _ircd_client_recvq[0] = 5; /* 5 messages in 2 seconds is default */
-    _ircd_client_recvq[1] = 10;
-    Add_Request(I_LOG, "*", F_BOOT,
-		"ircd: reset ircd-penalty flood to default 5:10");
-  }
   NewTimer (I_MODULE, "ircd", S_TIMEOUT, 1, 0, 0, 0);
   /* register everything */
   _ircd_register_all();

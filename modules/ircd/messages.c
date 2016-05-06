@@ -27,6 +27,7 @@
 #include "numerics.h"
 
 extern bool _ircd_idle_from_msg; /* in ircd.c */
+extern short *_ircd_client_recvq;
 
 static struct bindtable_t *BTIrcdCheckMessage;
 static struct bindtable_t *BTIrcdSetMessageTargets;
@@ -508,7 +509,7 @@ static inline CLIENT *_ircd_find_msg_target (const char *target,
 #endif
 
 #define ADD_TO_LIST(S) \
-  if (s < MAXTARGETS) \
+  if (s < max_targets) \
     tlist[s++] = S; \
   if (s2 && s2 < sizeof(targets) - 2) /* reserved for ,x */ \
     targets[s2++] = ','; \
@@ -532,8 +533,9 @@ static int ircd_privmsg_cb(INTERFACE *srv, struct peer_t *peer, const char *lcni
   IRCD *ircd = (IRCD *)srv->data;
   char *c, *cnext;
   register char *cmask;
-  int n;
-  const char *tlist[MAXTARGETS];
+  unsigned int n;
+  unsigned int max_targets = _ircd_client_recvq[0];
+  const char *tlist[max_targets];
   size_t s = 0, s2 = 0;
   char targets[MESSAGEMAX];
 
@@ -547,7 +549,7 @@ static int ircd_privmsg_cb(INTERFACE *srv, struct peer_t *peer, const char *lcni
   {
     if ((cnext = strchr (c, ',')))
       *cnext++ = 0;
-    if (++n > MAXTARGETS)
+    if (++n > max_targets)
       ircd_do_unumeric (cl, ERR_TOOMANYTARGETS, cl, 0, "No Message Delivered.");
     else if ((tch = ircd_find_member (ircd, c, NULL))
 	     != NOSUCHCHANNEL)
@@ -649,8 +651,9 @@ static int ircd_notice_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnic
   IRCD *ircd = (IRCD *)srv->data;
   char *c, *cnext;
   register char *cmask;
-  int n;
-  const char *tlist[MAXTARGETS];
+  unsigned int n;
+  unsigned int max_targets = _ircd_client_recvq[0];
+  const char *tlist[max_targets];
   size_t s = 0, s2 = 0;
   char targets[MESSAGEMAX];
 
@@ -662,7 +665,7 @@ static int ircd_notice_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnic
   {
     if ((cnext = strchr (c, ',')))
       *cnext++ = 0;
-    if (++n > MAXTARGETS)
+    if (++n > max_targets)
       continue;
     else if ((tch = ircd_find_member (ircd, c, NULL)) != NOSUCHCHANNEL)
     {
@@ -787,7 +790,8 @@ static int ircd_privmsg_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
   IRCD *ircd = (IRCD *)srv->data;
   char *c, *cnext;
   struct peer_priv *pp = peer->iface->data; /* it's really peer */
-  const char *tlist[MAXTARGETS];
+  unsigned int max_targets = _ircd_client_recvq[0];
+  const char *tlist[max_targets];
   size_t s = 0, s2 = 0;
   char targets[MESSAGEMAX];
 
@@ -802,7 +806,7 @@ static int ircd_privmsg_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
   {
     if ((cnext = strchr(c, ',')))
       *cnext++ = 0;
-    if (s == MAXTARGETS) {
+    if (s == max_targets) {
       _ircd_broadcast_msglist_old(ircd, pp, token, sender, 1,
 				  targets, tlist, s, "PRIVMSG", argv[1]);
       s = s2 = 0;
@@ -882,7 +886,8 @@ static int ircd_notice_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
   IRCD *ircd = (IRCD *)srv->data;
   char *c, *cnext;
   struct peer_priv *pp = peer->iface->data; /* it's really peer */
-  const char *tlist[MAXTARGETS];
+  unsigned int max_targets = _ircd_client_recvq[0];
+  const char *tlist[max_targets];
   size_t s = 0, s2 = 0;
   char targets[MESSAGEMAX];
 
@@ -898,7 +903,7 @@ static int ircd_notice_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
   {
     if ((cnext = strchr(c, ',')))
       *cnext++ = 0;
-    if (s == MAXTARGETS) {
+    if (s == max_targets) {
       _ircd_broadcast_msglist_old(ircd, pp, token, sender, 1,
 				  targets, tlist, s, "NOTICE", argv[1]);
       s = s2 = 0;
@@ -1005,7 +1010,8 @@ static int ircd_iprivmsg(INTERFACE *srv, struct peer_t *peer, unsigned short tok
   IRCD *ircd = (IRCD *)srv->data;
   char *c, *cnext;
   struct peer_priv *pp = peer->iface->data; /* it's really peer */
-  const char *tlist[MAXTARGETS];
+  unsigned int max_targets = _ircd_client_recvq[0];
+  const char *tlist[max_targets];
   size_t s = 0, s2 = 0;
   int id;
   char targets[MESSAGEMAX];
@@ -1025,7 +1031,7 @@ static int ircd_iprivmsg(INTERFACE *srv, struct peer_t *peer, unsigned short tok
   {
     if ((cnext = strchr(c, ',')))
       *cnext++ = 0;
-    if (s == MAXTARGETS) {
+    if (s == max_targets) {
       ERROR("ircd:too many targets of IPRIVMSG via %s, may lose message for %s",
 	    peer->dname, c);
       ircd_recover_done(pp, "Too many targets");
@@ -1108,7 +1114,8 @@ static int ircd_inotice(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   IRCD *ircd = (IRCD *)srv->data;
   char *c, *cnext;
   struct peer_priv *pp = peer->iface->data; /* it's really peer */
-  const char *tlist[MAXTARGETS];
+  unsigned int max_targets = _ircd_client_recvq[0];
+  const char *tlist[max_targets];
   size_t s = 0, s2 = 0;
   int id;
   char targets[MESSAGEMAX];
@@ -1129,7 +1136,7 @@ static int ircd_inotice(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   {
     if ((cnext = strchr(c, ',')))
       *cnext++ = 0;
-    if (s == MAXTARGETS)
+    if (s == max_targets)
       Add_Request(I_LOG, "*", F_WARN, "ircd:too many targets of INOTICE via "
 		  "%s, may lose message for %s", peer->dname, c);
     tch = ircd_find_member(ircd, c, NULL);
