@@ -179,7 +179,7 @@
 #endif
 
 //TODO: implement IWALLOPS too
-/* broadcasts WALLOPS; args: ircd, from peer, sender/me, text, ... */
+/* broadcasts WALLOPS; args: ircd, from peer, sender/me, message... */
 #define ircd_sendto_wallops(i,a,b,c,...) do { \
   __attribute__((unused)) register const char *me = ircd_mark_wallops(); \
   register LINK *L; \
@@ -188,6 +188,40 @@
       __TRANSIT__ L->cl->via->p.iface->ift |= I_PENDING; \
   Add_Request (I_PENDING|I_LOG, "*", F_WALL, ":%s WALLOPS :" c, \
 	       b, __VA_ARGS__); } while(0)
+
+#ifdef USE_SERVICES
+/* mark local services to send; args: ircd, flags */
+#define ircd_sendto_services_mark_prefix(a,b) do { \
+  register LINK *L; \
+  for (L = (a)->token[0]->c.lients; L; L = L->prev) \
+    if (CLIENT_IS_SERVICE(L->cl) && \
+	(SERVICE_FLAGS(L->cl) & (b)) && \
+	(SERVICE_FLAGS(L->cl) & SERVICE_WANT_PREFIX)) \
+      L->cl->via->p.iface->ift |= I_PENDING; } while(0)
+#define ircd_sendto_services_mark_nick(a,b) do { \
+  register LINK *L; \
+  for (L = (a)->token[0]->c.lients; L; L = L->prev) \
+    if (CLIENT_IS_SERVICE(L->cl) && \
+	(SERVICE_FLAGS(L->cl) & (b)) && \
+	!(SERVICE_FLAGS(L->cl) & SERVICE_WANT_PREFIX)) \
+      L->cl->via->p.iface->ift |= I_PENDING; } while(0)
+#define ircd_sendto_services_mark_all(a,b) do { \
+  register LINK *L; \
+  for (L = (a)->token[0]->c.lients; L; L = L->prev) \
+    if (CLIENT_IS_SERVICE(L->cl) && \
+	(SERVICE_FLAGS(L->cl) & (b))) \
+      L->cl->via->p.iface->ift |= I_PENDING; } while(0)
+/* send message to local services; args: ircd, flags, message... */
+#define ircd_sendto_services_prefix(a,b,...) do { \
+  ircd_sendto_services_mark_prefix(a,b); \
+  Add_Request (I_PENDING, "*", 0, __VA_ARGS__); } while(0)
+#define ircd_sendto_services_nick(a,b,...) do { \
+  ircd_sendto_services_mark_nick(a,b); \
+  Add_Request (I_PENDING, "*", 0, __VA_ARGS__); } while(0)
+#define ircd_sendto_services_all(a,b,...) do { \
+  ircd_sendto_services_mark_all(a,b); \
+  Add_Request (I_PENDING, "*", 0, __VA_ARGS__); } while(0)
+#endif /* USE_SERVICES */
 
 #define __TRANSIT__ /* no transit by default */
 #endif

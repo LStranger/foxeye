@@ -2280,11 +2280,26 @@ static int _ircd_got_local_user (CLIENT *cl)
   /* run all bindings on the client now, something may need update */
   for (c = mb; *c; c++)
     ircd_char2umode(Ircd->iface, MY_NAME, *c, cl);
+#ifdef USE_SERVICES
+  /* notify services about new user: no token first, then with token */
+{
+  register LINK *L;
+  for (L = ME.c.lients; L; L = L->prev)
+    if (CLIENT_IS_SERVICE(L->cl) &&
+	(SERVICE_FLAGS(L->cl) & SERVICE_WANT_NICK) &&
+	!(SERVICE_FLAGS(L->cl) & SERVICE_WANT_TOKEN))
+      L->cl->via->p.iface->ift |= I_PENDING;
+  Add_Request (I_PENDING, "*", 0, "NICK %s 1 %s %s %s +%s :%s",
+	       cl->nick, cl->user, cl->host, MY_NAME, mb, cl->fname);
+  for (L = ME.c.lients; L; L = L->prev)
+    if (CLIENT_IS_SERVICE(L->cl) &&
+	(SERVICE_FLAGS(L->cl) & SERVICE_WANT_NICK) &&
+	(SERVICE_FLAGS(L->cl) & SERVICE_WANT_TOKEN))
+      L->cl->via->p.iface->ift |= I_PENDING;
+}
+#endif
   ircd_sendto_servers_all (Ircd, NULL, "NICK %s 1 %s %s 1 +%s :%s",
 			   cl->nick, cl->user, cl->host, mb, cl->fname);
-#ifdef USE_SERVICES
-  //TODO: notify services about new user
-#endif
   cl->via->p.state = P_TALK;
   ircd_do_unumeric (cl, RPL_WELCOME, cl, 0, NULL);
   ircd_do_unumeric (cl, RPL_YOURHOST, &ME, 0, NULL);
@@ -2506,6 +2521,11 @@ static int ircd_nick_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
   int is_casechange;
   char checknick[MB_LEN_MAX*NICKLEN+NAMEMAX+2];
 
+#ifdef USE_SERVICES
+  /* forbidden for services! */
+  if (CLIENT_IS_SERVICE(cl))
+    return ircd_do_unumeric (cl, ERR_ALREADYREGISTRED, cl, 0, NULL);
+#endif
   if (argc == 0)
     return ircd_do_unumeric (cl, ERR_NONICKNAMEGIVEN, cl, 0, NULL);
   if (strcmp(cl->nick, argv[0]) == 0) /* ignore dummy change */
@@ -2517,9 +2537,6 @@ static int ircd_nick_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
     return 1;
   else
     is_casechange = 0;
-#ifdef USE_SERVICES
-  //TODO: forbidden for services!
-#endif
   if (cl->umode & A_RESTRICTED)
     return ircd_do_unumeric (cl, ERR_RESTRICTED, cl, 0, NULL);
   _ircd_do_nickchange(cl, NULL, 0, argv[0], is_casechange);
@@ -3346,11 +3363,17 @@ static CLIENT *_ircd_do_nickchange(CLIENT *tgt, peer_priv *pp,
 
   dprint(5, "ircd:ircd.c:_ircd_do_nickchange: %s to %s", tgt->nick, nn);
   /* notify new and old servers about nick change */
+#ifdef USE_SERVICES
+  ircd_sendto_services_mark_nick(Ircd, SERVICE_WANT_NICK);
+#endif
   ircd_sendto_servers_all_ack(Ircd, tgt, NULL, pp, ":%s NICK %s", tgt->nick, nn);
   /* notify local users including this one about nick change */
   ircd_quit_all_channels(Ircd, tgt, 0, 0); /* mark for notify */
   if (!CLIENT_IS_REMOTE(tgt))
     tgt->via->p.iface->ift |= I_PENDING;
+#ifdef USE_SERVICES
+  ircd_sendto_services_mark_prefix(Ircd, SERVICE_WANT_NICK);
+#endif
   Add_Request(I_PENDING, "*", 0, ":%s!%s@%s NICK %s", tgt->nick, tgt->user,
 	      tgt->vhost, nn);
   _ircd_bt_client(tgt, tgt->nick, nn, pp ? pp->link->cl->lcnick : MY_NAME);
@@ -3387,9 +3410,6 @@ static CLIENT *_ircd_do_nickchange(CLIENT *tgt, peer_priv *pp,
     //TODO: isn't it fatal?
   else
     dprint(2, "ircd:CLIENT: nick change: new name %s", tgt->lcnick);
-#ifdef USE_SERVICES
-  //TODO: notify services about nick change?
-#endif
   return phantom;
 }
 
@@ -3572,9 +3592,8 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 #endif
     return ircd_recover_done(pp, "Bogus source server");
   }
-  ct--;					/* tokens are sent from 1 */
   tgt = alloc_CLIENT();
-  ct = 0;
+  ct = 0;				/* use ct as a mark */
   if (!_ircd_validate_nickname(tgt->nick, argv[0], sizeof(tgt->nick))) {
     _ircd_transform_invalid_nick(tgt->nick, argv[0], sizeof(tgt->nick));
     ERROR("ircd:invalid NICK %s via %s => %s", argv[0], peer->dname, tgt->nick);
@@ -3676,12 +3695,25 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     //TODO: isn't it fatal?
   else
     dprint(2, "ircd:CLIENT: new remote name %s: %p", tgt->lcnick, tgt);
+#ifdef USE_SERVICES
+  /* notify services about new client: no token first, then with token */
+  for (link = ME.c.lients; link; link = link->prev)
+    if (CLIENT_IS_SERVICE(link->cl) &&
+	(SERVICE_FLAGS(link->cl) & SERVICE_WANT_NICK) &&
+	!(SERVICE_FLAGS(link->cl) & SERVICE_WANT_TOKEN))
+      link->cl->via->p.iface->ift |= I_PENDING;
+  Add_Request (I_PENDING, "*", 0, "NICK %s %hu %s %s %s +%s :%s",
+	       tgt->nick, tgt->hops, argv[2], argv[3], on->lcnick, argv[5],
+	       argv[6]);
+  for (link = ME.c.lients; link; link = link->prev)
+    if (CLIENT_IS_SERVICE(link->cl) &&
+	(SERVICE_FLAGS(link->cl) & SERVICE_WANT_NICK) &&
+	(SERVICE_FLAGS(link->cl) & SERVICE_WANT_TOKEN))
+      link->cl->via->p.iface->ift |= I_PENDING;
+#endif
   ircd_sendto_servers_all(Ircd, pp, "NICK %s %hu %s %s %hu %s :%s",
 			  tgt->nick, tgt->hops, argv[2], argv[3],
 			  on->x.token + 1, argv[5], argv[6]);
-#ifdef USE_SERVICES
-  //TODO: notify services about new client?
-#endif
   _ircd_bt_client(tgt, NULL, tgt->nick, on->lcnick);
   return 1;
 }
@@ -3807,7 +3839,10 @@ static int ircd_service_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
 			   sender, tgt->nick, on->x.token + 1, argv[2], argv[3],
 			   tgt->hops, argv[5]);
 #ifdef USE_SERVICES
-  //TODO: notify services about new service?
+  /* notify services about new service, using server name instead of token */
+  ircd_sendto_services_all(Ircd, SERVICE_WANT_SERVICE,
+			   "SERVICE %s %s %s %s %hu :%s", tgt->nick, on->lcnick,
+			   argv[2], argv[3], tgt->hops, argv[5]);
 #endif
   //TODO: BTIrcdGotRemote
   return 1;
@@ -4829,6 +4864,11 @@ const char *ircd_mark_wallops(void)
     if ((cll->cl->umode & A_WALLOP) &&
 	(!_ircd_wallop_only_opers || (cll->cl->umode & (A_OP | A_HALFOP))))
       cll->cl->via->p.iface->ift |= I_PENDING;
+#ifdef USE_SERVICES
+    else if (CLIENT_IS_SERVICE(cll->cl) &&
+	     (SERVICE_FLAGS(cll->cl) & SERVICE_WANT_WALLOP))
+      cll->cl->via->p.iface->ift |= I_PENDING;
+#endif
   return (MY_NAME);
 }
 

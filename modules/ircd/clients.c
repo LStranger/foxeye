@@ -162,13 +162,28 @@ static int ircd_oper_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
     New_Request (peer->iface, 0, ":%s MODE %s +o", peer->dname, peer->dname);
     ircd_sendto_servers_new ((IRCD *)srv->data, NULL, ":%s IMODE %d %s +o",
 			     peer->dname, ircd_new_id(), peer->dname);
+#ifdef USE_SERVICES
+    ircd_sendto_services_mark_nick ((IRCD *)srv->data, SERVICE_WANT_OPER);
+#endif
     ircd_sendto_servers_old ((IRCD *)srv->data, NULL, ":%s MODE %s +o",
 			     peer->dname, peer->dname);
+#ifdef USE_SERVICES
+    ircd_sendto_services_prefix ((IRCD *)srv->data, SERVICE_WANT_OPER,
+				 ":%s!%s@%s MODE %s +o", peer->dname, cl->user,
+				 cl->host, peer->dname);
+#endif
   }
   else
   {
     cl->umode |= A_HALFOP;		/* local oper */
     New_Request (peer->iface, 0, ":%s MODE %s +O", peer->dname, peer->dname);
+#ifdef USE_SERVICES
+    ircd_sendto_services_nick ((IRCD *)srv->data, SERVICE_WANT_OPER,
+			       ":%s MODE %s +O", peer->dname, peer->dname);
+    ircd_sendto_services_prefix ((IRCD *)srv->data, SERVICE_WANT_OPER,
+				 ":%s!%s@%s MODE %s +O", peer->dname, cl->user,
+				 cl->host, peer->dname);
+#endif
   }
   return ircd_do_unumeric (cl, RPL_YOUREOPER, cl, 0, NULL);
 }
@@ -530,7 +545,7 @@ static int ircd_servlist_cb(INTERFACE *srv, struct peer_t *peer, const char *lcn
     {
       snprintf (buf, sizeof(buf), "%s %s %s %hu :%s",
 #ifdef USE_SERVICES
-      !CLIENT_IS_REMOTE (tgt) ? me :
+      !CLIENT_IS_REMOTE (tgt) ? me->nick :
 #endif
 		tgt->cs->nick, mask, tgt->away, tgt->hops - 1, tgt->fname);
       ircd_do_unumeric (cl, RPL_SERVLIST, tgt, 0, buf);
@@ -697,6 +712,11 @@ static int ircd_away_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl;
   register size_t len;
 
+#ifdef USE_SERVICES
+  /* forbidden for services */
+  if (CLIENT_IS_SERVICE(cl))
+    return ircd_do_unumeric(cl, ERR_UNKNOWNCOMMAND, cl, 0, "AWAY");
+#endif
   if (argc == 0 || *argv[0] == '\0') { /* unaway */
     cl->away[0] = '\0';
     cl->umode &= ~A_AWAY;
@@ -704,6 +724,12 @@ static int ircd_away_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 			    peer->dname, ircd_new_id(), peer->dname);
     ircd_sendto_servers_old((IRCD *)srv->data, NULL, ":%s MODE %s :-a",
 			    peer->dname, peer->dname);
+#ifdef USE_SERVICES
+    ircd_sendto_services_prefix((IRCD *)srv->data, SERVICE_WANT_AWAY,
+			        ":%s!%s@%s AWAY", peer->dname, cl->user, cl->vhost);
+    ircd_sendto_services_nick((IRCD *)srv->data, SERVICE_WANT_AWAY,
+			      ":%s AWAY", peer->dname);
+#endif
     return ircd_do_unumeric(cl, RPL_UNAWAY, cl, 0, NULL);
   }
   len = unistrcut(argv[0], sizeof(cl->away), AWAYLEN);
@@ -713,6 +739,13 @@ static int ircd_away_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 			  peer->dname, ircd_new_id(), peer->dname);
   ircd_sendto_servers_old((IRCD *)srv->data, NULL, ":%s MODE %s :+a",
 			  peer->dname, peer->dname);
+#ifdef USE_SERVICES
+  ircd_sendto_services_prefix((IRCD *)srv->data, SERVICE_WANT_AWAY,
+			      ":%s!%s@%s AWAY :%s", peer->dname, cl->user,
+			      cl->vhost, cl->away);
+  ircd_sendto_services_nick((IRCD *)srv->data, SERVICE_WANT_AWAY,
+			    ":%s AWAY :%s", peer->dname, cl->away);
+#endif
   return ircd_do_unumeric(cl, RPL_NOWAWAY, cl, 0, NULL);
 }
 
