@@ -1397,15 +1397,14 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
     peer->p.last_input = Time;
     peer->mr++;				/* do statistics */
     peer->br += sr;
-    sr--;				/* skip ending '\0' */
+    sr = unistrcut (buff, sr, IRCMSGLEN - 2); /* cut input message */
 #if IRCD_USES_ICONV
     c = sbuff;
     sr = Do_Conversion (cli->conv, &c, sizeof(sbuff) - 1, buff, &sr);
-    c[sr] = '\0'; //FIXME: move below unistrcut
 #else
     c = buff;
 #endif
-    //FIXME: do sr = unistrcut(c, sr, IRCMSGLEN - 2), c[sr] = '\0'
+    c[sr] = '\0';
     if (*c == ':')			/* we got sender prefix */
     {
       register char *cc;

@@ -26,6 +26,8 @@ Fri May  6 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  based on penalty values as in original ircd.
 	* modules/ircd/channels.c: moved #define MAXCHANNELS into a variable
 	  "ircd-max-channels".
+	* modules/ircd/ircd.c: cut all input messages by RFC size (512 chars
+	  including CR+LF), not leave them as they are.
 
 Thu May  5 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: introduced "ircd-max-bans" variable to limit

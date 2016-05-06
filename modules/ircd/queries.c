@@ -536,6 +536,12 @@ static inline int _ircd_query_lusers (IRCD *ircd, CLIENT *cl, struct peer_priv *
     ircd_do_unumeric (cl, RPL_LUSERCHANNELS, cl, (unsigned short)i, NULL);
   snprintf (buff, sizeof(buff), "I have %d clients and %d servers", lu, ll);
   return ircd_do_unumeric (cl, RPL_LUSERME, cl, 0, buff);
+  // TODO: ircd-2.11.2
+  // RPL_LOCALUSERS		265, "%d %d :Current local users %d, max %d"
+  // RPL_GLOBALUSERS		266, "%d %d :Current global users %d, max %d"
+  // others:
+  // RPL_LOCALUSERS		265, ":Current local users: %d  Max: %d"
+  // RPL_GLOBALUSERS		266, ":Current global users: %d  Max: %d"
 }
 
 BINDING_TYPE_ircd_client_cmd(ircd_lusers_cb);
