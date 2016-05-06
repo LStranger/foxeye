@@ -21,7 +21,7 @@
 /* 210 reserved */
 #define RPL_STATSLINKINFO	211, "%*"
 #define RPL_STATSCOMMANDS	212, "%*"
-#define RPL_STATSCLINE		213, "%*"
+#define RPL_STATSCLINE		213, "c %@ * %# %?P%P?0? 0 0"
 #define RPL_STATSNLINE		214, "%*"
 #define RPL_STATSILINE		215, "%*"
 #define RPL_STATSKLINE		216, "%*"
@@ -39,7 +39,7 @@
 #define RPL_STATSVLINE		240, "%*"
 #define RPL_STATSLLINE		241, "%*"
 #define RPL_STATSUPTIME		242, ":%*"
-#define RPL_STATSOLINE		243, "O %@ * %L"
+#define RPL_STATSOLINE		243, "O %@ * %#"
 #define RPL_STATSHLINE		244, "%*"
 #define RPL_STATSSLINE		245, "%*"
 /* 246 reserved */

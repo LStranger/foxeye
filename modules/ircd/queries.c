@@ -1472,7 +1472,7 @@ static void _istats_o_show_O (INTERFACE *tmp, char *oper)
 {
   lid_t lid = FindLID (oper);
 
-  strfcpy (_istats_dummy_client.user, oper, sizeof(_istats_dummy_client.user));
+  strfcpy (_istats_dummy_client.nick, oper, sizeof(_istats_dummy_client.nick));
   _ircd_list_receiver_show = &_istats_o_show_host;
   if (Get_Hostlist (tmp, lid))
     Get_Request();
@@ -1481,11 +1481,9 @@ static void _istats_o_show_O (INTERFACE *tmp, char *oper)
 BINDING_TYPE_ircd_stats_reply(_istats_o);
 static void _istats_o (INTERFACE *srv, const char *rq, modeflag umode)
 {
-  char n[NAMEMAX+2];
+  const char *n = ((IRCD *)srv->data)->sub->name;
   INTERFACE *tmp;
 
-  n[0] = '@';
-  strfcpy (&n[1], srv->name, sizeof(n)-1);
   tmp = Add_Iface (I_TEMP, NULL, NULL, &_ircd_qlist_r, NULL);
   _ircd_list_receiver_show = &_istats_o_show_O;
   Set_Iface (tmp);
@@ -1513,6 +1511,77 @@ static void _istats_u (INTERFACE *srv, const char *rq, modeflag umode)
   ircd_do_unumeric (_ircd_stats_client, RPL_STATSUPTIME, _ircd_stats_client,
 		    0, buf);
 }
+
+/* RFC1459 mentions also stats c, h, i, k, y but those are optional */
+static void _istats_c_show_host (INTERFACE *tmp, char *host)
+{
+  char *c = strchr (host, ':');
+  unsigned short port = 0;
+
+  if (c == NULL)
+    c = strchr (host, '@');
+  if (c)
+  {
+    size_t hs = c - host;
+    if (hs >= sizeof(_istats_dummy_client.vhost))
+      hs = sizeof(_istats_dummy_client.vhost) - 1;
+    strfcpy (_istats_dummy_client.vhost, host, hs + 1);
+    if (*c == ':')
+      c = strchr (c, '@');
+    if (!_istats_dummy_client.vhost[0])
+      strcpy (_istats_dummy_client.vhost, "*");
+  }
+  else
+  {
+    c = host;
+    strcpy (_istats_dummy_client.vhost, "*@");
+  }
+  strfcat (_istats_dummy_client.vhost, c, sizeof(_istats_dummy_client.vhost));
+  /* _istats_dummy_client.vhost contains now user@host/port */
+  c = strchr (_istats_dummy_client.vhost, '/');
+  if (c)
+  {
+    *c++ = '\0';
+    port = (unsigned short)strtoul(c, NULL, 10);
+  }
+  ircd_do_unumeric (_ircd_stats_client, RPL_STATSCLINE, &_istats_dummy_client,
+		    port, NULL);
+}
+
+static void _istats_c_show_S (INTERFACE *tmp, char *serv)
+{
+  lid_t lid = FindLID (serv);
+
+  strfcpy (_istats_dummy_client.nick, serv, sizeof(_istats_dummy_client.nick));
+  _ircd_list_receiver_show = &_istats_c_show_host;
+  if (Get_Hostlist (tmp, lid))
+    Get_Request();
+}
+
+BINDING_TYPE_ircd_stats_reply(_istats_c);
+static void _istats_c (INTERFACE *srv, const char *rq, modeflag umode)
+{
+  const char *n = ((IRCD *)srv->data)->sub->name;
+  INTERFACE *tmp;
+
+  if (!(umode & (A_OP | A_HALFOP)))
+  {
+    ircd_do_unumeric (_ircd_stats_client, ERR_NOPRIVILEGES, _ircd_stats_client, 0, NULL);
+    return;
+  }
+  tmp = Add_Iface (I_TEMP, NULL, NULL, &_ircd_qlist_r, NULL);
+  _ircd_list_receiver_show = &_istats_c_show_S;
+  Set_Iface (tmp);
+  if (Get_Clientlist (tmp, U_UNSHARED, n, "*"))
+    Get_Request(); /* it will do recurse itself */
+  Unset_Iface();
+  tmp->ift = I_DIED;
+}
+
+//BINDING_TYPE_ircd_stats_reply(_istats_h);
+//static void _istats_h (INTERFACE *srv, const char *rq, modeflag umode)
+//{
+//}
 
 
 /* ---------------------------------------------------------------------------
@@ -1569,6 +1638,7 @@ void ircd_queries_proto_end (void)
   Delete_Binding ("ircd-client", (Function)&_icchg_ww, NULL);
   Delete_Binding ("ircd-stats-reply", (Function)&_istats_o, NULL);
   Delete_Binding ("ircd-stats-reply", (Function)&_istats_u, NULL);
+  Delete_Binding ("ircd-stats-reply", (Function)&_istats_c, NULL);
   Destroy_Tree (&IrcdWhowasTree, NULL);
   FREE (&IrcdWhowasArray);
 }
@@ -1630,6 +1700,7 @@ void ircd_queries_proto_start (void)
   Add_Binding ("ircd-client", "*", 0, 0, (Function)&_icchg_ww, NULL);
   Add_Binding ("ircd-stats-reply", "o", 0, 0, (Function)&_istats_o, NULL);
   Add_Binding ("ircd-stats-reply", "u", 0, 0, (Function)&_istats_u, NULL);
+  Add_Binding ("ircd-stats-reply", "c", 0, 0, (Function)&_istats_c, NULL);
   _ircd_time_started = Time;
 //TODO: add bindtable to add chars into ircd_version_flags?
 }
