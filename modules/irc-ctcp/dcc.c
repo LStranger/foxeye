@@ -322,6 +322,7 @@ static void chat_handler (char *lname, char *ident, const char *host, void *data
   peer->connchain = NULL;
   peer->iface = NULL;
   peer->priv = NULL;
+  peer->modules_data = NULL;
   time (&peer->last_input);
   snprintf (peer->start, sizeof(peer->start), "%s %s", DateString, TimeString);
   /* dispatcher is locked, can initialize connchain: only RAW->TXT for now */

@@ -1594,6 +1594,7 @@ static void _ircd_prehandler (pthread_t th, void **data, idx_t *as)
   peer->p.network_type = "ircd";
   peer->p.state = P_DISCONNECTED;
   peer->p.priv = IrcdPeers;
+  peer->p.modules_data = NULL;
   IrcdPeers = peer;
   peer->t = 0;
   peer->link = NULL;
@@ -1936,6 +1937,7 @@ static inline void _ircd_start_uplink2 (const char *name, char *host,
   uplink->via->link->flags = 0;
   ME.c.lients = uplink->via->link;
   uplink->via->p.priv = IrcdPeers;
+  uplink->via->p.modules_data = NULL;
   IrcdPeers = uplink->via;
   pthread_mutex_unlock (&IrcdLock);
 #if IRCD_MULTICONNECT
