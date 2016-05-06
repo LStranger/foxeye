@@ -170,6 +170,8 @@ typedef struct LINK
    - channel members - via list c.hannels
    - server clients - reference is cs
    *** as soon user gone offline it should be deleted from each of those */
+/* while registering, fields have another values: ->fname has input from
+   USER, ->lcnick is empty, ->away and ->vhost are filled by PASS input */
 struct CLIENT
 {
   CLIENT *pcl;				/* list in class */

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2014  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2016  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -687,6 +687,9 @@ idx_t AnswerSocket (idx_t listen)
   Pollfd[listen].revents = 0;		/* we accepted socket, reset state */
   if (sockfd < 0)
     Pollfd[idx].fd = UNUSED_FD;
+  else
+    Pollfd[listen].revents = POLLIN;	/* we could get 2 inputs at once so let
+					   check that again (noticed by denk) */
   pthread_mutex_unlock (&LockPoll);
   /* we done with socket so restore previous cancellstate now */
   pthread_setcancelstate(cancelstate, NULL);

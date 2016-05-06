@@ -14,6 +14,11 @@ TODO:
 	* *: to check Add_Request/New_Request coming to user to be translatable.
 
 --- [0.10.2]
+Fri May  6 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/socket.c: recheck listening socket after success on accept(), it
+	  could get few incoming connections at once and no additional revents
+	  received. Noticed by denk.
+
 Thu May  5 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: introduced "ircd-max-bans" variable to limit
 	  bans/exempts/invites list size for each channel.
