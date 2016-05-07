@@ -22,6 +22,8 @@ Sat May  7 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  collision is for real services.
 	* modules/ssl, debian/copyright, README: renamed 'openssl' module into
 	  'ssl' to comply with OpenSSL license, updated license information.
+	* modules/ircd/ircd.c, modules/ircd/channels.c: added a way to override
+	  hardcoded NICKLEN in some limited cases.
 
 Fri May  6 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/socket.c: recheck listening socket after success on accept(), it

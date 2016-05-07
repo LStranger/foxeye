@@ -726,7 +726,7 @@ static int ircd_away_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 #ifdef USE_SERVICES
   /* forbidden for services */
   if (CLIENT_IS_SERVICE(cl))
-    return ircd_do_unumeric(cl, ERR_UNKNOWNCOMMAND, cl, 0, "AWAY");
+    return 0;
 #endif
   if (argc == 0 || *argv[0] == '\0') { /* unaway */
     cl->away[0] = '\0';

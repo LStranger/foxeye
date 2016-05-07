@@ -36,6 +36,8 @@ extern bool _ircd_no_spare_invites;
 extern bool _ircd_strict_modecmd;
 extern bool _ircd_ignore_mkey_arg;
 
+extern unsigned int _ircd_nicklen;
+
 static struct bindtable_t *BTIrcdWhochar;
 static struct bindtable_t *BTIrcdChannel;
 static struct bindtable_t *BTIrcdModechange;
@@ -625,7 +627,7 @@ static int _imch_add_mask (MASK **list, const char **ptr, MASK **cancel,
   if ((ex = strchr(mask, '!')) == NULL &&
       (at = strchr(mask, '@')) == NULL) { /* it's just nick */
     /* first valid mask is [^!@]{1,NICKLEN}, adding "!*@*" after */
-    sz = unistrcut(mask, (sizeof(nm->what) - 4), NICKLEN);
+    sz = unistrcut(mask, (sizeof(nm->what) - 4), _ircd_nicklen);
     unistrlower (nm->what, mask, sz + 1);
     strfcat(nm->what, "!*@*", sizeof(nm->what));
     *ptr = nm->what;
@@ -1554,11 +1556,13 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
   char lcbv[MB_LEN_MAX*NICKLEN+IDENTLEN+HOSTLEN+3];
   char bufforservers[MB_LEN_MAX*IRCMSGLEN];
 
+#ifdef USE_SERVICES
+  /* forbidden for services */
+  if (CLIENT_IS_SERVICE(cl))
+    return 0;
+#endif
   if (argc == 0)
     return ircd_do_unumeric (cl, ERR_NEEDMOREPARAMS, cl, 0, "JOIN");
-#ifdef USE_SERVICES
-  //TODO: forbid for services
-#endif
   chn = (char *)argv[0];
   nextkey = NULL;
   if (argc == 1)
@@ -3051,13 +3055,13 @@ void send_isupport(IRCD *ircd, CLIENT *cl)
       isupport[len++] = buff[0];
   isupport[len] = '\0';
   snprintf(buff, sizeof(buff), " CHANMODES=%s MODES=" STR(MAXMODES)
-			       " MAXCHANNELS=%ld NICKLEN=" STR(NICKLEN)
+			       " MAXCHANNELS=%ld NICKLEN=%u"
 			       " MAXBANS=%ld NETWORK=%s EXCEPTS INVEX"
 			       " CASEMAPPING=utf-8 TOPICLEN=" STR(TOPICLEN)
 			       " CHANNELLEN=" STR(CHANNAMELEN)
 			       " IDCHAN=!:" STR(CHIDLEN) " RFC2812",
-	   _ircd_isupport_modestring, _ircd_max_channels, _ircd_max_bans,
-	   ircd->iface->name);
+	   _ircd_isupport_modestring, _ircd_max_channels, _ircd_nicklen,
+	   _ircd_max_bans, ircd->iface->name);
   strfcat(isupport, buff, sizeof(isupport));
   len = ptr = 0;
   while (1)

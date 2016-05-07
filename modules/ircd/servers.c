@@ -722,7 +722,6 @@ static int ircd_invite_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
   tgt = ircd_find_client (argv[0], pp);
   if (!tgt || (tgt->umode & (A_SERVER|A_SERVICE)))
     return ircd_do_unumeric (cl, ERR_NOSUCHNICK, cl, 0, argv[0]);
-    //TODO: what if cl is a server?
   me = ircd_find_member ((IRCD *)srv->data, argv[1], NULL);
   if (me != NOSUCHCHANNEL)
   {
@@ -1138,7 +1137,6 @@ void ircd_server_proto_end (void)
   Delete_Binding ("ircd-server-cmd", (Function)&ircd_ack, NULL);
   _forget_(ACK);
 #endif
-  //TODO: kill messaging iface
 }
 
 void ircd_server_proto_start (void)
@@ -1159,6 +1157,5 @@ void ircd_server_proto_start (void)
 //  Add_Binding ("ircd-server-cmd", "iwallops", 0, 0, (Function)&ircd_iwallops, NULL);
   Add_Binding ("ircd-server-cmd", "ack", 0, 0, (Function)&ircd_ack, NULL);
 #endif
-  //TODO: add messaging iface
 }
 #endif

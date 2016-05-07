@@ -68,6 +68,9 @@ bool _ircd_ignore_mkey_arg = FALSE;
 long int _ircd_max_bans = 30;
 long int _ircd_max_channels = 20;
 
+unsigned int _ircd_nicklen = NICKLEN;
+static char _ircd_nicklen_str[16] = "";		/* read-only for everyone */
+
 static short *_ircd_corrections;		/* for CheckFlood() */
 short *_ircd_client_recvq;
 
@@ -2440,7 +2443,7 @@ static int _ircd_validate_nickname (char *d, const char *name, size_t s)
   os = namebuf;
   sp = sz;
   sp = Undo_Conversion (conv, &os, sizeof(namebuf), name, &sp);
-  if (sp > NICKLEN)			/* too long nickname */
+  if (sp > _ircd_nicklen)		/* too long nickname */
   {
     Free_Conversion (conv);
     return 0;
@@ -2483,7 +2486,7 @@ static int _ircd_validate_nickname (char *d, const char *name, size_t s)
   }
   for (sp = 1; *c; sp++)
   {
-    if (sp > NICKLEN)			/* nick is too long */
+    if (sp > _ircd_nicklen)		/* nick is too long */
       return 0;
     if (strchr ("[]\\`_^{|}~-", *c))	/* allowed non-alphanum chars */
     {
@@ -4974,6 +4977,7 @@ static void _ircd_register_all (void)
   RegisterBoolean ("ircd-ignore-mkey-arg", &_ircd_ignore_mkey_arg);
   RegisterInteger ("ircd-max-bans", &_ircd_max_bans);
   RegisterInteger ("ircd-max-channels", &_ircd_max_channels);
+  RegisterString ("ircd-nicklen", _ircd_nicklen_str, sizeof(_ircd_nicklen_str), 1);
   ircd_queries_register();
   RegisterFunction ("ircd", &func_ircd, "[-charset ][host/]port[%flags]");
 }
@@ -5019,6 +5023,7 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
       UnregisterVariable ("ircd-ignore-mkey-arg");
       UnregisterVariable ("ircd-max-bans");
       UnregisterVariable ("ircd-max-channels");
+      UnregisterVariable ("ircd-nicklen");
       UnregisterFunction ("ircd");
       Delete_Binding ("ircd-auth", &_ircd_class_in, NULL);
       Delete_Binding ("ircd-register-cmd", &ircd_pass, NULL);
@@ -5129,6 +5134,10 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
 	Add_Request(I_LOG, "*", F_BOOT,
 		    "ircd: reset ircd-penalty flood to default 5:10");
       }
+      /* reload and verify _ircd_nicklen from R/O string */
+      sscanf(_ircd_nicklen_str, "%u", &_ircd_nicklen);
+      if (_ircd_nicklen < 9 || _ircd_nicklen > NICKLEN)
+	_ircd_nicklen = NICKLEN;
       break;
     default: ;
   }
@@ -5203,6 +5212,7 @@ SigFunction ModuleInit (char *args)
   _ircd_client_recvq = FloodType ("ircd-penalty");
   NewTimer (I_MODULE, "ircd", S_TIMEOUT, 1, 0, 0, 0);
   /* register everything */
+  snprintf(_ircd_nicklen_str, sizeof(_ircd_nicklen_str), "%d", NICKLEN);
   _ircd_register_all();
   return (&_ircd_module_signal);
 }
