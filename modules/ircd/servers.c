@@ -265,16 +265,21 @@ static int ircd_quit_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   else
     msg = argv[0];
   cl = _ircd_find_client_lc((IRCD *)srv->data, lcsender);
-#ifdef USE_SERVICES
-  //TODO: notify services
-#endif
 #if IRCD_MULTICONNECT
   if (((struct peer_priv *)peer->iface->data)->link->cl->umode & A_MULTI)
     New_Request(peer->iface, 0, "ACK QUIT %s", sender);
 #endif
+#ifdef USE_SERVICES
+  ircd_sendto_services_mark_nick((IRCD *)srv->data,
+				 SERVICE_WANT_QUIT | SERVICE_WANT_RQUIT);
+#endif
   ircd_sendto_servers_all_ack((IRCD *)srv->data, cl, NULL, peer->iface->data,
 			      ":%s QUIT :%s", cl->nick, msg);
   ircd_prepare_quit(cl, cl->via, msg);
+#ifdef USE_SERVICES
+  ircd_sendto_services_mark_prefix((IRCD *)srv->data,
+				   SERVICE_WANT_QUIT | SERVICE_WANT_RQUIT);
+#endif
   Add_Request(I_PENDING, "*", 0, ":%s!%s@%s QUIT :%s", cl->nick, cl->user,
 	      cl->vhost, msg);
   cl->hold_upto = Time;
@@ -911,6 +916,12 @@ static int ircd_kill_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   if (!CLIENT_IS_REMOTE(tcl))
     New_Request(tcl->via->p.iface, 0, ":%s KILL %s :%s", cl->nick, tcl->nick,
 		reason);		/* notify the victim */
+#ifdef USE_SERVICES
+  ircd_sendto_services_prefix((IRCD *)srv->data, SERVICE_WANT_KILL,
+			      ":%s!%s@%s KILL %s :%s", cl->nick, cl->user,
+			      cl->vhost, tcl->nick, reason);
+  ircd_sendto_services_mark_nick((IRCD *)srv->data, SERVICE_WANT_KILL);
+#endif
   ircd_sendto_servers_all_ack((IRCD *)srv->data, tcl, NULL, pp,
 			      ":%s KILL %s :%s", cl->nick, tcl->nick, reason);
 			      /* broadcast KILL */

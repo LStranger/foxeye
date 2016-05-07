@@ -327,6 +327,8 @@ struct peer_priv
 #define SERVICE_WANT_USERLOG	0x10000000 /* FNAME_USERLOG */
 #define SERVICE_WANT_CONNLOG	0x20000000 /* FNAME_CONNLOG */
 
+#define SERVICE_IS_TRUSTED	0x80000000 /* cannot be set by services */
+
 #define SERVICE_FLAGS(x) (((uint32_t *)(x)->away)[1])
 #endif
 

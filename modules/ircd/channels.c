@@ -940,7 +940,9 @@ static inline void _ircd_mode_broadcast (IRCD *ircd, int id, CLIENT *sender,
     ptr += snprintf (&buff[ptr], sz - ptr, " %s", passed[i]);
     //TODO: errors check?
   /* notify local users who are on channel */
-//  if (ch->mode & (A_ANONYMOUS | A_QUIET)) ;
+#ifdef USE_SERVICES
+  ircd_sendto_services_mark_prefix (ircd, SERVICE_WANT_MODE);
+#endif
   if (ch->mode & A_QUIET) ;
   else if (CLIENT_IS_SERVER (sender))
     ircd_sendto_chan_local (ch, ":%s MODE %s %s%s", sender->lcnick, ch->name,
@@ -970,16 +972,19 @@ static inline void _ircd_mode_broadcast (IRCD *ircd, int id, CLIENT *sender,
   if (id < 0 && !CLIENT_IS_SERVER(sender) && !CLIENT_IS_REMOTE(sender))
     id = ircd_new_id();		/* make new id if it's local client */
 #endif
+#ifdef USE_SERVICES
+  ircd_sendto_services_mark_nick (ircd, SERVICE_WANT_MODE);
+#endif
   imp = strchr (ch->name, ':');	/* use it as mask ptr storage */
   if (imp)
   {
     imp++;
 #if IRCD_MULTICONNECT
     if (id >= 0) {
-      ircd_sendto_servers_mask_new(ircd, pp, imp, ":%s IMODE %d %s %s%s",
-				   sender->nick, id, ch->name, modepass, buff);
       ircd_sendto_servers_mask_old(ircd, pp, imp, ":%s MODE %s %s%s",
 				   sender->nick, ch->name, modepass, buff);
+      ircd_sendto_servers_mask_new(ircd, pp, imp, ":%s IMODE %d %s %s%s",
+				   sender->nick, id, ch->name, modepass, buff);
     } else
 #endif
       ircd_sendto_servers_mask(ircd, pp, imp, ":%s MODE %s %s%s",
@@ -988,10 +993,10 @@ static inline void _ircd_mode_broadcast (IRCD *ircd, int id, CLIENT *sender,
   else
 #if IRCD_MULTICONNECT
     if (id >= 0) {
-      ircd_sendto_servers_new(ircd, pp, ":%s IMODE %d %s %s%s",
-			      sender->nick, id, ch->name, modepass, buff);
       ircd_sendto_servers_old(ircd, pp, ":%s MODE %s %s%s",
 			      sender->nick, ch->name, modepass, buff);
+      ircd_sendto_servers_new(ircd, pp, ":%s IMODE %d %s %s%s",
+			      sender->nick, id, ch->name, modepass, buff);
     } else
 #endif
       ircd_sendto_servers_all(ircd, pp, ":%s MODE %s %s%s",
@@ -1397,6 +1402,36 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 	}
       }
     }
+#ifdef USE_SERVICES
+    /* notify local services */
+    if (toadd | todel)
+    {
+      char *c = modepass;
+
+      if (toadd)
+      {
+	*c++ = '+';
+	ircd_make_umode (c, toadd, MAXMODES+1);
+	c += strlen (c);
+      }
+      if (todel)
+      {
+	*c++ = '-';
+	ircd_make_umode (c, todel, MAXMODES+1);
+      }
+      if ((toadd & (A_OP | A_HALFOP)) || (todel & (A_OP | A_HALFOP)))
+        ircd_sendto_services_all ((IRCD *)srv->data,
+				  SERVICE_WANT_UMODE | SERVICE_WANT_OPER,
+				  ":%s MODE %s %s", peer->dname, peer->dname,
+				  modepass);
+      else
+        ircd_sendto_services_all ((IRCD *)srv->data, SERVICE_WANT_UMODE,
+				  ":%s MODE %s %s", peer->dname, peer->dname,
+				  modepass);
+    }
+#endif
+    cl->umode |= toadd;
+    cl->umode &= ~todel;
     toadd &= ~A_HALFOP;			/* localops should not be broadcasted */
     todel &= ~A_HALFOP;
     if (toadd | todel)			/* we have something changed */
@@ -1408,17 +1443,12 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 	*c++ = '+';
 	ircd_make_umode (c, toadd, MAXMODES+1);
 	c += strlen (c);
-	cl->umode |= toadd;
       }
       if (todel)
       {
 	*c++ = '-';
 	ircd_make_umode (c, todel, MAXMODES+1);
-	cl->umode &= ~todel;
       }
-#ifdef USE_SERVICES
-      //TODO: notify local services too
-#endif
       ircd_sendto_servers_new (((IRCD *)srv->data), NULL, ":%s IMODE %d %s %s",
 			       peer->dname, ircd_new_id(), peer->dname,
 			       modepass);
@@ -2160,14 +2190,19 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	ircd_make_umode (c, todel, MAXMODES+1);
       }
 #ifdef USE_SERVICES
-      //TODO: notify local services too
+      /* notify local services too */
+      if ((toadd & A_OP) || (todel & A_OP))
+        ircd_sendto_services_mark_all ((IRCD *)srv->data,
+				       SERVICE_WANT_UMODE | SERVICE_WANT_OPER);
+      else
+        ircd_sendto_services_mark_all ((IRCD *)srv->data, SERVICE_WANT_UMODE);
 #endif
 #if IRCD_MULTICONNECT
       if (id >= 0) {
-	ircd_sendto_servers_new(((IRCD *)srv->data), pp, ":%s IMODE %d %s %s",
-				sender, id, tgt->nick, modepass);
 	ircd_sendto_servers_old(((IRCD *)srv->data), pp, ":%s MODE %s %s",
 				sender, tgt->nick, modepass);
+	ircd_sendto_servers_new(((IRCD *)srv->data), pp, ":%s IMODE %d %s %s",
+				sender, id, tgt->nick, modepass);
       } else
 #endif
 	ircd_sendto_servers_all(((IRCD *)srv->data), pp, ":%s MODE %s %s",

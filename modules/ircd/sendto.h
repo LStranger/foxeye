@@ -190,24 +190,29 @@
 	       b, __VA_ARGS__); } while(0)
 
 #ifdef USE_SERVICES
+#ifdef __IN_IRCD_C /* in ircd.c */
+# define SERVICES_LIST_PATH(a) ME.c.lients
+#else
+# define SERVICES_LIST_PATH(a) (a)->token[0]->c.lients
+#endif
 /* mark local services to send; args: ircd, flags */
 #define ircd_sendto_services_mark_prefix(a,b) do { \
   register LINK *L; \
-  for (L = (a)->token[0]->c.lients; L; L = L->prev) \
+  for (L = SERVICES_LIST_PATH(a); L; L = L->prev) \
     if (CLIENT_IS_SERVICE(L->cl) && \
 	(SERVICE_FLAGS(L->cl) & (b)) && \
 	(SERVICE_FLAGS(L->cl) & SERVICE_WANT_PREFIX)) \
       L->cl->via->p.iface->ift |= I_PENDING; } while(0)
 #define ircd_sendto_services_mark_nick(a,b) do { \
   register LINK *L; \
-  for (L = (a)->token[0]->c.lients; L; L = L->prev) \
+  for (L = SERVICES_LIST_PATH(a); L; L = L->prev) \
     if (CLIENT_IS_SERVICE(L->cl) && \
 	(SERVICE_FLAGS(L->cl) & (b)) && \
 	!(SERVICE_FLAGS(L->cl) & SERVICE_WANT_PREFIX)) \
       L->cl->via->p.iface->ift |= I_PENDING; } while(0)
 #define ircd_sendto_services_mark_all(a,b) do { \
   register LINK *L; \
-  for (L = (a)->token[0]->c.lients; L; L = L->prev) \
+  for (L = SERVICES_LIST_PATH(a); L; L = L->prev) \
     if (CLIENT_IS_SERVICE(L->cl) && \
 	(SERVICE_FLAGS(L->cl) & (b))) \
       L->cl->via->p.iface->ift |= I_PENDING; } while(0)

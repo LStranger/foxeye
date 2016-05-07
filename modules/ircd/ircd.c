@@ -33,6 +33,7 @@
 #include <wchar.h>
 #include <signal.h>
 
+#define __IN_IRCD_C 1
 #include "ircd.h"
 #include "numerics.h"
 
@@ -1174,9 +1175,15 @@ static iftype_t _ircd_client_signal (INTERFACE *cli, ifsig_t sig)
 	    ircd_do_squit (peer->link, peer, reason);
 	  else
 	  {
+#ifdef USE_SERVICES
+	    ircd_sendto_services_mark_nick (Ircd, SERVICE_WANT_QUIT | SERVICE_WANT_RQUIT);
+#endif
 	    ircd_sendto_servers_all_ack (Ircd, peer->link->cl, NULL, NULL,
 					 ":%s QUIT :%s", peer->p.dname, reason);
 	    ircd_prepare_quit (peer->link->cl, peer, reason);
+#ifdef USE_SERVICES
+	    ircd_sendto_services_mark_prefix (Ircd, SERVICE_WANT_QUIT | SERVICE_WANT_RQUIT);
+#endif
 	    peer->link->cl->hold_upto = Time;
 	    Add_Request (I_PENDING, "*", 0, ":%s!%s@%s QUIT :%s", peer->p.dname,
 			 peer->link->cl->user, peer->link->cl->vhost, reason);
@@ -2973,6 +2980,16 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
   snprintf (buff, sizeof(buff), "%s@%s", cl->lcnick, Ircd->iface->name);
   Rename_Iface (peer->iface, buff);	/* rename iface to server.name@net */
   peer->iface->ift |= I_CLIENT;		/* it might be not set yet */
+#ifdef USE_SERVICES
+# if IRCD_MULTICONNECT
+  /* notify services */
+  ircd_sendto_services_all (Ircd, SERVICE_WANT_SERVER, "SERVER %s 2 %hu :%s",
+			    argv[0], cl->x.token + 1, cl->fname);
+# else
+  /* mark services and send along with servers, see below */
+  ircd_sendto_services_mark_all (Ircd, SERVICE_WANT_SERVER);
+# endif
+#endif
 #if IRCD_MULTICONNECT
   /* propagate new server over network now */
   if (cl->umode & A_MULTI)		/* it's updated already */
@@ -2982,17 +2999,13 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
     ircd_sendto_servers_new (Ircd, cl->via, "SERVER %s 2 %hu :%s", argv[0],
 			     cl->x.token + 1, cl->fname); //!
   if (clt != NULL)			/* cyclic, our map is changed! */
-    _ircd_recalculate_hops();
+    _ircd_recalculate_hops(); /* we got better path so recalculate hops map */
   else					/* don't send duplicates to RFC2813 */
 #endif
   ircd_sendto_servers_old (Ircd, cl->via, "SERVER %s 2 %hu :%s", argv[0],
 			   cl->x.token + 1, cl->fname); //!
   Add_Request(I_LOG, "*", F_SERV, "Received SERVER %s from %s (1 %s)", argv[0],
 	      cl->lcnick, cl->fname);
-#if IRCD_MULTICONNECT
-  if (cl->alt != NULL) /* it's not first instance */
-    _ircd_recalculate_hops(); /* we got better path so recalculate hops map */
-#endif
   _ircd_connection_burst (cl);		/* tell it everything I know */
   //TODO: BTIrcdGotServer
   return 1;
@@ -3236,6 +3249,9 @@ static int ircd_server_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
   if (atoi(argv[1]) != (int)cl->hops)
     Add_Request(I_LOG, "*", F_WARN, "ircd: hops count for %s from %s %s!=%hd",
 		argv[0], cl->lcnick, argv[1], cl->hops);
+#ifdef USE_SERVICES
+  ircd_sendto_services_mark_all (Ircd, SERVICE_WANT_SERVER);
+#endif
   ircd_sendto_servers_all (Ircd, pp, ":%s SERVER %s %hd %hd :%s", sender,
 			   argv[0], cl->hops + 1, cl->x.token + 1, info);
   Add_Request(I_LOG, "*", F_SERV, "Received SERVER %s from %s (%hd %s)",
@@ -4490,6 +4506,9 @@ static inline void _ircd_squit_one (LINK *link)
       continue;
     }
     ircd_quit_all_channels (Ircd, l->cl, 1, 1); /* it's user, remove it */
+#ifdef USE_SERVICES
+    ircd_sendto_services_mark_prefix (Ircd, SERVICE_WANT_QUIT);
+#endif
     Add_Request (I_PENDING, "*", 0, ":%s!%s@%s QUIT :%s %s", l->cl->nick,
 		 l->cl->user, l->cl->vhost, link->where->lcnick, server->lcnick);
 		 /* send split message */
@@ -4523,6 +4542,9 @@ static inline void _ircd_squit_one (LINK *link)
 static inline void _ircd_send_squit (LINK *link, peer_priv *via, const char *msg)
 {
   /* notify local servers about squit */
+#ifdef USE_SERVICES
+  ircd_sendto_services_mark_all (Ircd, SERVICE_WANT_SQUIT);
+#endif
   ircd_sendto_servers_all_ack (Ircd, link->cl, NULL, via, ":%s SQUIT %s :%s",
 			       link->where->lcnick, link->cl->lcnick, msg);
   Add_Request(I_LOG, "*", F_SERV, "Received SQUIT %s from %s (%s)",

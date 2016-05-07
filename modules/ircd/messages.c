@@ -579,7 +579,7 @@ static int ircd_privmsg_cb(INTERFACE *srv, struct peer_t *peer, const char *lcni
 #ifdef USE_SERVICES
 	if (CLIENT_IS_SERVICE (cl))
 	  _ircd_bmsgl_mask (ircd, c, &c[1], 0, peer->dname, NULL,
-			    ircd_find_client(NULL, NULL), "PRIVMSG", argv[1]);
+			    ircd->token[0]->lcnick, "PRIVMSG", argv[1]);
 	else
 #endif
 	  _ircd_bmsgl_mask (ircd, c, &c[1], 0, peer->dname, user,
@@ -596,7 +596,7 @@ static int ircd_privmsg_cb(INTERFACE *srv, struct peer_t *peer, const char *lcni
 #ifdef USE_SERVICES
 	if (CLIENT_IS_SERVICE (cl))
 	  New_Request (tcl->via->p.iface, 0, ":%s@%s PRIVMSG %s :%s",
-		       peer->dname, ircd_find_client(NULL, NULL), c, argv[1]);
+		       peer->dname, ircd->token[0]->lcnick, c, argv[1]);
 	else
 #endif
 	  New_Request (tcl->via->p.iface, 0, ":%s!%s@%s PRIVMSG %s :%s",
@@ -621,7 +621,7 @@ static int ircd_privmsg_cb(INTERFACE *srv, struct peer_t *peer, const char *lcni
 #ifdef USE_SERVICES
 	if (CLIENT_IS_SERVICE (cl))
 	  Add_Request(I_PENDING, "*", 0, ":%s@%s PRIVMSG %s :%s",
-		      peer->dname, ircd_find_client(NULL, NULL), c, argv[1]);
+		      peer->dname, ircd->token[0]->lcnick, c, argv[1]);
 	else
 #endif
 	  Add_Request(I_PENDING, "*", 0, ":%s!%s@%s PRIVMSG %s :%s",
@@ -688,7 +688,7 @@ static int ircd_notice_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnic
 #ifdef USE_SERVICES
 	if (CLIENT_IS_SERVICE (cl))
 	  _ircd_bmsgl_mask (ircd, c, &c[1], 0, peer->dname, NULL,
-			    ircd_find_client(NULL, NULL), "NOTICE", argv[1]);
+			    ircd->token[0]->lcnick, "NOTICE", argv[1]);
 	else
 #endif
 	  _ircd_bmsgl_mask (ircd, c, &c[1], 0, peer->dname, user,
@@ -703,7 +703,7 @@ static int ircd_notice_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnic
 #ifdef USE_SERVICES
 	if (CLIENT_IS_SERVICE (cl))
 	  New_Request (tcl->via->p.iface, 0, ":%s@%s NOTICE %s :%s",
-		       peer->dname, ircd_find_client(NULL, NULL), c, argv[1]);
+		       peer->dname, ircd->token[0]->lcnick, c, argv[1]);
 	else
 #endif
 	  New_Request (tcl->via->p.iface, 0, ":%s!%s@%s NOTICE %s :%s",
@@ -725,7 +725,7 @@ static int ircd_notice_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnic
 #ifdef USE_SERVICES
 	if (CLIENT_IS_SERVICE (cl))
 	  Add_Request(I_PENDING, "*", 0, ":%s@%s NOTICE %s :%s",
-		      peer->dname, ircd_find_client(NULL, NULL), c, argv[1]);
+		      peer->dname, ircd->token[0]->lcnick, c, argv[1]);
 	else
 #endif
 	  Add_Request(I_PENDING, "*", 0, ":%s!%s@%s NOTICE %s :%s",
@@ -762,7 +762,7 @@ static int ircd_squery_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnic
 #ifdef USE_SERVICES
   if (!CLIENT_IS_REMOTE (tcl))
   {
-    New_Request (tcl->via->p.iface, 0, ":%s SQUERY %s :%s", peer->dname, c,
+    New_Request (tcl->via->p.iface, 0, ":%s SQUERY %s :%s", peer->dname, argv[0],
 		 argv[1]);
     return 1;
   }
@@ -991,7 +991,7 @@ static int ircd_squery_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
   }
 #ifdef USE_SERVICES
   if (!CLIENT_IS_REMOTE(tcl))
-    New_Request(tcl->via->p.iface, 0, ":%s SQUERY %s :%s", sender, c, argv[1]);
+    New_Request(tcl->via->p.iface, 0, ":%s SQUERY %s :%s", sender, argv[0], argv[1]);
   else
 #endif
     _ircd_broadcast_msglist_old((IRCD *)srv->data, pp, token, sender, 1,
@@ -1231,7 +1231,7 @@ static int ircd_isquery(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   }
 #ifdef USE_SERVICES
   if (!CLIENT_IS_REMOTE(tcl))
-    New_Request(tcl->via->p.iface, 0, ":%s SQUERY %s :%s", sender, c, argv[2]);
+    New_Request(tcl->via->p.iface, 0, ":%s SQUERY %s :%s", sender, argv[1], argv[2]);
   else
 #endif
   {
