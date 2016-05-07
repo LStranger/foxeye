@@ -17,6 +17,9 @@ TODO:
 Sat May  7 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: pass ERR_YOUREBANNEDCREEP message to the killed
 	  client too, not just ERROR or KILL ones.
+	* modules/ircd/ircd.c: fixed problem on SERVICE collision, nick on hold
+	  should be dropped, and existing should be killed, so only possible
+	  collision is for real services.
 
 Fri May  6 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/socket.c: recheck listening socket after success on accept(), it
