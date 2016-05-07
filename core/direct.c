@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2016  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -2733,6 +2733,7 @@ static void _dport_handler (char *cname, char *ident, const char *host, void *d)
   dcc->connchain = NULL;
   dcc->iface = NULL;
   dcc->priv = NULL;
+  dcc->modules_data = NULL;
   time (&dcc->last_input);
   safe_free(&d);
   Set_Iface (NULL);

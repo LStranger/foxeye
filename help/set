@@ -6,9 +6,10 @@
 
 set nick
 :%* <string>
-:Name of bot to use on the botnet.
-:This is a name of bot to use on the botnet. Also it is default nickname\
- for connection to servers.
+:Name of service to use in the network.
+:This is a name of service to use in the network (bot on the botnet, ircd\
+ in the IRC network, etc.). Also it is default nickname for connection to\
+ servers.
  No default.
 
 set my-hostname
@@ -69,7 +70,7 @@ set motd
 :Filename of MOTD file.
 :MOTD (message of the day) is message that is usually shown to user when\
  he/she logins to partyline. This variable points to a file which contains\
- text of MOTD in %^printl%^() format (see documentation for details).
+ text of MOTD in %gprintl%n() format (see documentation for details).
  Default: $prefix/motd
 
 set cache-time
