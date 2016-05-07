@@ -1245,6 +1245,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
       if (req)
       {
 	if (strncmp (req->string, "ERROR ", 6) &&
+	    strncmp (NextWord(req->string), "465 ", 4) && /* ERR_YOUREBANNEDCREEP */
 	    strncmp (NextWord(req->string), "KILL ", 5))
 	  return REQ_OK;	/* skip anything but ERROR or KILL message */
 	DBG("sending last message to client \"%s\"", cl->nick);
@@ -2232,7 +2233,9 @@ static int _ircd_got_local_user (CLIENT *cl)
     uf = 0;
   if ((uf & U_DENY) || (cl->via->p.uf & U_DENY))
   {
-    ircd_do_unumeric (cl, ERR_YOUREBANNEDCREEP, cl, 0, cl->lcnick);
+    /* there might be some non-comment data in the field */
+    c = cl->lcnick ? strchr (cl->lcnick, ':') : NULL;
+    ircd_do_unumeric (cl, ERR_YOUREBANNEDCREEP, cl, 0, c ? c : cl->lcnick);
     _ircd_peer_kill (cl->via, "Bye!");
     return 1;
   }

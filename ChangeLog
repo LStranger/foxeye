@@ -14,6 +14,10 @@ TODO:
 	* *: to check Add_Request/New_Request coming to user to be translatable.
 
 --- [0.10.2]
+Sat May  7 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/ircd.c: pass ERR_YOUREBANNEDCREEP message to the killed
+	  client too, not just ERROR or KILL ones.
+
 Fri May  6 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/socket.c: recheck listening socket after success on accept(), it
 	  could get few incoming connections at once and no additional revents

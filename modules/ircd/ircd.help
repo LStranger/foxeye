@@ -21,6 +21,10 @@ module ircd
     u  - means this is a known server on that network;
     *  - means this is a hub where we have an autoconnect to.
  Flags e, v, f, m, i, q are reserved for future usage.
+ The %_network%_ subrecord on client that is a KILL record may contain an\
+ optional KILL comment which will be sent to client. Note that KILL comment\
+ should not contain any colon ('%^:%^'), otherwise part before first colon\
+ will be skipped.
  
  Field "hub" on server record contains mask(s) for servers that server can\
  introduce. Mask "!some.server" means wrong path (L:line analog).

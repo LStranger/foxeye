@@ -350,6 +350,9 @@ Transition from ircd.conf to foxeye configuration.
    i.e. it contains every field from C:line but also may contain extra
    field 'flags' which can be used to extent handshake (with Zlib for
    example).
+   Client record for a server should have flag 'u' (UNSHARED) in network
+   subrecord.  If you need to activate autoconnect for that server then
+   also flag '*' (AUTO) should be set.
    Note that you cannot have in FoxEye mixed autoconnects with RFC2813
    servers and servers capable to work with cyclic network scheme.  Once
    you have one of RFC2813 servers autoconnected then no more connects
@@ -410,12 +413,12 @@ Transition from ircd.conf to foxeye configuration.
    can be changed by standard means.  For all other info see 'C:line'
    description.
 
-      o:line
+      O:line
    In the FoxEye permissions are granted to users by setting flags to their
    personal client records' network subrecord appropriate way.  For Local
    IRC Operator you have to set flag 'h' (HALFOP) to them.
 
-      O:line
+      o:line
    In the FoxEye permissions are granted to users by setting flags to their
    personal client records' network subrecord appropriate way.  For IRC
    Operator you have to set flag 'o' (OP) to them.
@@ -433,8 +436,8 @@ Transition from ircd.conf to foxeye configuration.
       S:line
    The S:line which allows services to connect can be done the same way
    as it is done for any other connect, i.e. setting the hostmask and
-   the special subfield 'passwd' for such client.  No special definitions
-   are supported.
+   the special subfield 'passwd' for such client.  The network subrecord
+   for service should have flag 's' (SPEAK).
 
       U:line
    The U:line isn't supported as it is obsoleted these days.
