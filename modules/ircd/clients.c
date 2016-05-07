@@ -369,7 +369,8 @@ static int ircd_topic_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick
   }
   if (memb == NULL)
     return ircd_do_unumeric (cl, ERR_NOTONCHANNEL, cl, 0, argv[0]);
-  if ((ch->mode & A_TOPICLOCK) && !(memb->mode & (A_ADMIN | A_OP)))
+  if ((ch->mode & A_TOPICLOCK) && !(memb->mode & (A_ADMIN | A_OP)) &&
+      !(eum & A_SERVER)) /* override member mode for _ircd_do_command() */
   {
     if (ch->name[0] == '+')
       return ircd_do_cnumeric (cl, ERR_NOCHANMODES, ch, 0, NULL);
@@ -476,7 +477,8 @@ static int ircd_kick_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
       ircd_do_unumeric (cl, ERR_NOSUCHCHANNEL, cl, 0, chn);
     else if (memb == NULL)
       ircd_do_unumeric (cl, ERR_NOTONCHANNEL, cl, 0, chn);
-    else if (!(memb->mode & (A_OP | A_ADMIN)))
+    else if (!(memb->mode & (A_OP | A_ADMIN)) && !(eum & A_SERVER))
+      /* override member mode if that was _ircd_do_command() */
       ircd_do_cnumeric (cl, ERR_CHANOPRIVSNEEDED, memb->chan, 0, NULL);
     else if (!(tgt = ircd_find_client (lcl, NULL)) ||
 	     !(tm = _ircd_is_on_channel (tgt, memb->chan)))
