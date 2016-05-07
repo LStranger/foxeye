@@ -30,7 +30,7 @@
 #include <netinet/in.h>
 #include <ctype.h>
 
-#include <tree/tree.h>
+#include <tree.h>
 
 #include "socket.h"
 #include "direct.h"

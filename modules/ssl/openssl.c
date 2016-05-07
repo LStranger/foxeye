@@ -15,7 +15,20 @@
  *     with this program; if not, write to the Free Software Foundation, Inc.,
  *     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
- * This file is a part of FoxEye 'openssl' module.
+ *     In addition, as a special exception, the copyright holders give
+ *     permission to link the code of portions of this program with the
+ *     OpenSSL library under certain conditions as described in each
+ *     individual source file, and distribute linked combinations
+ *     including the two.
+ *     You must obey the GNU General Public License in all respects
+ *     for all of the code used other than OpenSSL.  If you modify
+ *     file(s) with this exception, you may extend this exception to your
+ *     version of the file(s), but you are not obligated to do so.  If you
+ *     do not wish to do so, delete this exception statement from your
+ *     version.  If you delete this exception statement from all source
+ *     files in the program, then also delete it here.
+ *
+ * This file is a part of FoxEye 'ssl' module.
  */
 
 #include "foxeye.h"
@@ -69,8 +82,8 @@ static void _freesslbuff(struct connchain_buffer **buf)
   if (*sb != NULL)
     *sb = (*buf)->next;
   else
-    ERROR("openssl: cannot find buffer %p in list to free it!", *buf);
-  DBG("openssl: freeing buffer %p", *buf);
+    ERROR("ssl: cannot find buffer %p in list to free it!", *buf);
+  DBG("ssl: freeing buffer %p", *buf);
 //  BIO_free((*buf)->in.bio);
 //  BIO_free((*buf)->out.bio);
   SSL_free((*buf)->ssl);
@@ -89,7 +102,7 @@ static void _s_check_saved_buffer(idx_t id, struct connchain_buffer *buf)
     i = 0;
   if (i > 0) {
     buf->in.inbuf += i;
-    dprint(6, "openssl: found stream data: size=%zd", i);
+    dprint(6, "ssl: found stream data: size=%zd", i);
   }
   /* check if there is old data left to push from buffers into socket */
   o = 0;
@@ -97,7 +110,7 @@ static void _s_check_saved_buffer(idx_t id, struct connchain_buffer *buf)
   /* kill chain when done */
   if (i < 0 && o < 0 && Connchain_Get(&buf->saved_chain, id, NULL, 0))
     buf->saved_chain = NULL;
-  DBG("openssl: cleared old chain");
+  DBG("ssl: cleared old chain");
 }
 
 /* does buffer part of _ccfilter_S_send() job */
@@ -113,15 +126,15 @@ static ssize_t _ssl_try_send_buffers(struct connchain_i **ch, idx_t id,
     if (i > 0)
       buf->out.inbuf += i;
     /* else
-      DBG("openssl: BIO_read error code %zd", i); */
+      DBG("ssl: BIO_read error code %zd", i); */
   }
   so = buf->out.inbuf - buf->out.bufptr;
   i = Connchain_Put(ch, id, &buf->out.buf[buf->out.bufptr], &so);
-  /* DBG("openssl: tried to send data, size=%zu sent=%zd", so, i); */
+  /* DBG("ssl: tried to send data, size=%zu sent=%zd", so, i); */
   if (i < 0)
     return (i);
   if (i > 0 && buf->out.inbuf > 0)
-    dprint(6, "openssl: sent encrypted data, size=%zd", i);
+    dprint(6, "ssl: sent encrypted data, size=%zd", i);
   if (so == 0)			/* done */
     buf->out.bufptr = buf->out.inbuf = 0;
   else
@@ -166,7 +179,7 @@ static bool _ssl_check_input_from_chain(struct connchain_i **ch, idx_t id,
       i = 0;
     if (i > 0) {
       buf->in.inbuf += i;
-      dprint(6, "openssl: got encrypted data from socket, size=%zd", i);
+      dprint(6, "ssl: got encrypted data from socket, size=%zd", i);
     }
   } else			/* not ready yet, try to pull saved buffers */
     _s_check_saved_buffer(id, buf);
@@ -175,7 +188,7 @@ static bool _ssl_check_input_from_chain(struct connchain_i **ch, idx_t id,
   if (i > 0) {
     i = BIO_write(buf->in.bio, &buf->in.buf[buf->in.bufptr], i);
     if (i <= 0) {		/* some error in BIO_write */
-      DBG("openssl: BIO_write error code %zd", i);
+      DBG("ssl: BIO_write error code %zd", i);
     } else {			/* some data pushed into BIO */
       if (buf->in.inbuf == buf->in.bufptr + i) /* all input consumed */
 	buf->in.bufptr = buf->in.inbuf = 0;
@@ -220,7 +233,7 @@ static ssize_t _ccfilter_S_send(struct connchain_i **ch, idx_t id, const char *s
     SSL_do_handshake(buf->ssl);
     if (!_ssl_check_input_from_chain(ch, id, b)) /* SSL may wait for data */
       return Connchain_Put (ch, id, str, sz); /* if not SSL then bypass data */
-    DBG("openssl: handshake is in progress");
+    DBG("ssl: handshake is in progress");
     if (!SSL_is_init_finished(buf->ssl))
       return (0);
   }
@@ -228,9 +241,9 @@ static ssize_t _ccfilter_S_send(struct connchain_i **ch, idx_t id, const char *s
   i = SSL_write(buf->ssl, str, *sz);
   if (i > 0) {			/* some data were processed */
     *sz -= i;
-    dprint(6, "openssl: pushed data: [%-*.*s]", (int)i, (int)i, str);
+    dprint(6, "ssl: pushed data: [%-*.*s]", (int)i, (int)i, str);
   } else if (i < 0) {		/* processing not available now */
-    DBG("openssl: SSL_write error code %d", SSL_get_error(buf->ssl, (int)i));
+    DBG("ssl: SSL_write error code %d", SSL_get_error(buf->ssl, (int)i));
     i = 0;
   }
   so = i;
@@ -289,13 +302,13 @@ static ssize_t _ccfilter_S_recv(struct connchain_i **ch, idx_t id, char *str,
   }
   i = SSL_read(buf->ssl, str, sz);
   if (i <= 0) {			/* some error in SSL_read */
-    /* DBG("openssl: SSL_read error code %d", SSL_get_error(buf->ssl, (int)i)); */
+    /* DBG("ssl: SSL_read error code %d", SSL_get_error(buf->ssl, (int)i)); */
     i = (*b)->error;		/* there might be error from connchain */
   } else			/* got some data */
-    dprint(6, "openssl: decrypted data: [%-*.*s]", (int)i, (int)i, str);
+    dprint(6, "ssl: decrypted data: [%-*.*s]", (int)i, (int)i, str);
   if (i >= 0)
     return (i);
-  ERROR("openssl: got %zd from connection chain, terminating", i);
+  ERROR("ssl: got %zd from connection chain, terminating", i);
 finish_filter:
   if (buf->saved_chain != NULL && Connchain_Get(&buf->saved_chain, id, NULL, 0))
     buf->saved_chain = NULL;
@@ -313,7 +326,7 @@ static struct connchain_buffer *_make_buffer(struct peer_t *peer,
   struct connchain_buffer *buf;
 
   buf = safe_malloc (sizeof(struct connchain_buffer));
-  DBG("openssl: allocated buffer %p", buf);
+  DBG("ssl: allocated buffer %p", buf);
   *recv = &_ccfilter_S_recv;		/* init the structure */
   *send = &_ccfilter_S_send;
   buf->in.inbuf = buf->in.bufptr = buf->out.inbuf = buf->out.bufptr = 0;
@@ -389,13 +402,13 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
 {
   INTERFACE *tmp;
   struct connchain_buffer *buf;
-  char *termreason = "module 'openssl' termination";
+  char *termreason = "module 'ssl' termination";
 
   switch (sig) {
   case S_TERMINATE:
-    UnregisterVariable("openssl-certificate-file");
-    UnregisterVariable("openssl-key-file");
-    UnregisterVariable("openssl-enable-server-bypass");
+    UnregisterVariable("ssl-certificate-file");
+    UnregisterVariable("ssl-key-file");
+    UnregisterVariable("ssl-enable-server-bypass");
     Delete_Binding("connchain-grow", &_ccfilter_S_init, NULL);
     Delete_Binding("connchain-grow", &_ccfilter_s_init, NULL);
     if (ShutdownR == NULL)
@@ -407,7 +420,7 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
       while (Get_Request());
       Unset_Iface();
     }
-    Delete_Help("openssl");
+    Delete_Help("ssl");
     if (ShutdownR == termreason)
       ShutdownR = NULL;
     /* free ctx */
@@ -426,28 +439,28 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
     tmp = Set_Iface(iface);
     if ((buf = sslbuflist)) do {
 	if (buf->peer->dname && *buf->peer->dname)
-	  New_Request(tmp, F_REPORT, _("OpenSSL link: used on peer %s as %s."),
+	  New_Request(tmp, F_REPORT, _("SSL link: used on peer %s as %s."),
 		      buf->peer->dname, SSL_CIPHER_get_version(SSL_get_current_cipher(buf->ssl)));
 	else
-	  New_Request(tmp, F_REPORT, _("OpenSSL link: used on nonamed peer (%hd) as %s."),
+	  New_Request(tmp, F_REPORT, _("SSL link: used on nonamed peer (%hd) as %s."),
 		      buf->peer->socket, SSL_CIPHER_get_version(SSL_get_current_cipher(buf->ssl)));
 	buf = buf->next;
       } while (buf);
     else
-      New_Request(tmp, F_REPORT, _("Module openssl: not used."));
+      New_Request(tmp, F_REPORT, _("Module ssl: not used."));
     Unset_Iface();
     break;
   case S_REG:
-    Add_Request (I_INIT, "*", F_REPORT, "module openssl");
-    RegisterString("openssl-certificate-file", ssl_certificate_file,
+    Add_Request (I_INIT, "*", F_REPORT, "module ssl");
+    RegisterString("ssl-certificate-file", ssl_certificate_file,
 		   sizeof(ssl_certificate_file), 0);
-    RegisterString("openssl-key-file", ssl_key_file, sizeof(ssl_key_file), 0);
-    RegisterBoolean("openssl-enable-server-bypass", &ssl_enable_bypass);
+    RegisterString("ssl-key-file", ssl_key_file, sizeof(ssl_key_file), 0);
+    RegisterBoolean("ssl-enable-server-bypass", &ssl_enable_bypass);
     break;
   case S_TIMEOUT:
     /* delayed init */
     if (_initialized) {
-      Add_Request (I_LOG, "*", F_WARN, "openssl: stray S_TIMEOUT signal to module!");
+      Add_Request (I_LOG, "*", F_WARN, "ssl: stray S_TIMEOUT signal to module!");
       break;				/* ignore it */
     }
     _initialized = TRUE;
@@ -500,21 +513,21 @@ SigFunction ModuleInit (char *args)
     return (NULL);
   }
   _initialized = FALSE;
-  Add_Help("openssl");
-  RegisterString("openssl-certificate-file", ssl_certificate_file,
+  Add_Help("ssl");
+  RegisterString("ssl-certificate-file", ssl_certificate_file,
 		 sizeof(ssl_certificate_file), 0);
-  RegisterString("openssl-key-file", ssl_key_file, sizeof(ssl_key_file), 0);
-  RegisterBoolean("openssl-enable-server-bypass", &ssl_enable_bypass);
+  RegisterString("ssl-key-file", ssl_key_file, sizeof(ssl_key_file), 0);
+  RegisterBoolean("ssl-enable-server-bypass", &ssl_enable_bypass);
   Add_Binding("connchain-grow", "S", 0, 0, &_ccfilter_S_init, NULL);
   Add_Binding("connchain-grow", "s", 0, 0, &_ccfilter_s_init, NULL);
   /* schedule init */
-  NewTimer(I_MODULE, "openssl", S_TIMEOUT, 1, 0, 0, 0);
+  NewTimer(I_MODULE, "ssl", S_TIMEOUT, 1, 0, 0, 0);
   return (&module_signal);
 }
 #else
 SigFunction ModuleInit (char *args)
 {
-  ERROR ("Cannot use OpenSSL, recompile package to get module 'openssl' working.");
+  ERROR ("Cannot use OpenSSL, recompile package to get module 'ssl' working.");
   return (NULL);
 }
 #endif /* USE_OPENSSL */

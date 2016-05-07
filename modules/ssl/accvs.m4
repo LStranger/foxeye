@@ -220,6 +220,6 @@ fi
 if test "$fe_cv_static" = yes; then
     STATICLIBS="${openssl_libs} ${STATICLIBS}"
 else
-    MODLIBS="MODLIBS_openssl=\"${openssl_libs}\" ${MODLIBS}"
+    MODLIBS="MODLIBS_ssl=\"${openssl_libs}\" ${MODLIBS}"
 fi
 # End of OpenSSL

@@ -105,7 +105,7 @@ Which modules are available?
    tcl		- support for scripts in Tcl language
    ircd		- standard (RFC2813) IRC server
    ziplink	- support for compressed connections
-   openssl	- support of SSL for every connection
+   ssl		- support for SSL/TLS on every connection
    syslog	- support for logging some messages to syslog
     Were planned to implement some other modules but they are either pending
     or unrequested. Feel free to write them or ask someone to implement:

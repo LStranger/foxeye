@@ -20,6 +20,8 @@ Sat May  7 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed problem on SERVICE collision, nick on hold
 	  should be dropped, and existing should be killed, so only possible
 	  collision is for real services.
+	* modules/ssl, debian/copyright, README: renamed 'openssl' module into
+	  'ssl' to comply with OpenSSL license, updated license information.
 
 Fri May  6 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/socket.c: recheck listening socket after success on accept(), it
