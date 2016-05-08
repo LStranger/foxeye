@@ -3030,7 +3030,7 @@ modeflag ircd_whochar2mode(char ch)
 
 void send_isupport(IRCD *ircd, CLIENT *cl)
 {
-  char isupport[MESSAGEMAX];
+  char isupport[2*MESSAGEMAX];
   char buff[MESSAGEMAX];
   size_t n, s, ptr, len;
   struct binding_t *b = NULL;
@@ -3092,7 +3092,12 @@ void send_isupport(IRCD *ircd, CLIENT *cl)
 	break;
     if (b == NULL)			/* finished all */
       break;
+    isupport[len++] = ' '; /* separator */
+    isupport[len] = '\0'; /* at least 2*MESSAGEMAX-400 left so don't check */
     b->func(&isupport[len], sizeof(isupport) - len);
+    if (isupport[len] == '\0') /* empty */
+      isupport[--len] = '\0';
+    //TODO: check for duplicates probably?
   }
   /* send leftovers */
   if (isupport[ptr])

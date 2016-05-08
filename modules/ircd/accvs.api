@@ -311,3 +311,9 @@
     "ircd-check-send" filtering on next send. Returns 0 if the message
     should be discarded.
       Matching: message type (command).  (userflags are ignored)
+
+-     "iirrccdd--iissuuppppoorrtt"  MASK
+  (int) void func(char *_b_u_f_f, size_t _b_u_f_f_s_i_z_e);
+    Used when RPL_ISUPPORT going to be sent to client, so binding can add
+    some messages to it putting them into _b_u_f_f of _b_u_f_f_s_i_z_e.
+      Matching: own server name.  (userflags are ignored)
