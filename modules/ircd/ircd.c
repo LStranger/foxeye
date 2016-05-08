@@ -115,7 +115,7 @@ static sig_atomic_t __ircd_have_started = 0;
 
 static tid_t _uplinks_timer = -1;
 
-static CLIENT ME = { .umode = A_SERVER, .via = NULL, .x.token = 0, .cs = NULL,
+static CLIENT ME = { .umode = A_SERVER, .via = NULL, .x.class = 0, .cs = NULL,
 		     .c.lients = NULL, .hops = 0 };
 
 #define MY_NAME ME.lcnick
@@ -463,8 +463,11 @@ static inline void _ircd_peer_kill (peer_priv *peer, const char *msg)
   if (peer->p.state == P_TALK) {
     if (CLIENT_IS_SERVER(peer->link->cl))
       ;//TODO: BTIrcdUnlinked
-    else
+    else {
+      ME.x.a.uc--;
+      DBG("ircd:updated local users count to %u", ME.x.a.uc);
       _ircd_bt_client(peer->link->cl, peer->link->cl->nick, NULL, MY_NAME);
+    }
   } else if (peer->p.state == P_IDLE)
     peer->link->cl->umode |= A_UPLINK;	/* only for registering uplink */
   if (peer->t > 0) {
@@ -1065,8 +1068,16 @@ static void _ircd_remote_user_gone(CLIENT *cl)
   } else if (cl->x.class == NULL) {
     cl->pcl = NULL;
     ERROR("ircd: client %s from %s is not in class", cl->nick, cl->cs->lcnick);
-  } else
+  } else {
     _ircd_class_out(l);
+    if (cl->cs->x.a.uc > 0)
+    {
+      cl->cs->x.a.uc--;
+      DBG("ircd:updated users count on %s to %u", cl->cs->lcnick, cl->cs->x.a.uc);
+    }
+    else
+      ERROR("ircd:internal error with users count on %s", cl->cs->lcnick);
+  }
   _ircd_bt_client(cl, cl->nick, NULL, cl->cs->lcnick); /* do bindtable */
   cl->cs = cl;		/* abandon server */
   /* converts active user into phantom on hold for this second */
@@ -2217,6 +2228,20 @@ static int ircd_quit_rb(INTERFACE *srv, struct peer_t *peer, int argc, const cha
   return 1;
 }
 
+static void _ircd_update_users_counters(void)
+{
+  size_t i;
+  unsigned int gu;
+
+  if (Ircd->token[0]->x.a.uc > Ircd->lu)
+    Ircd->lu = Ircd->token[0]->x.a.uc;
+  for (i = 0, gu = 0; i < Ircd->s; i++)
+    if (Ircd->token[i])
+      gu += Ircd->token[i]->x.a.uc;
+  if (gu > Ircd->gu)
+    Ircd->gu = gu;
+}
+
 static char _ircd_modesstring[128]; /* should be enough for two A-Za-z */
 
 /* adds it into lists, sets fields, sends notify to all servers */
@@ -2323,6 +2348,9 @@ static int _ircd_got_local_user (CLIENT *cl)
   ircd_sendto_servers_all (Ircd, NULL, "NICK %s 1 %s %s 1 +%s :%s",
 			   cl->nick, cl->user, cl->host, mb, cl->fname);
   cl->via->p.state = P_TALK;
+  ME.x.a.uc++;
+  DBG("ircd:updated local users count to %u", ME.x.a.uc);
+  _ircd_update_users_counters();
   ircd_do_unumeric (cl, RPL_WELCOME, cl, 0, NULL);
   ircd_do_unumeric (cl, RPL_YOURHOST, &ME, 0, NULL);
   ircd_do_unumeric (cl, RPL_CREATED, &ME, 0, COMPILETIME);
@@ -2585,7 +2613,7 @@ static inline void _ircd_burst_servers(INTERFACE *cl, const char *sn, LINK *l,
       if (tst && (l->cl->umode & A_MULTI)) /* new server type */
 	cmd = "ISERVER";		/* protocol extension */
       New_Request (cl, 0, ":%s %s %s %hu %hu :%s", sn, cmd, l->cl->nick,
-		   l->cl->hops + 1, l->cl->x.token + 1, l->cl->fname);
+		   l->cl->hops + 1, l->cl->x.a.token + 1, l->cl->fname);
       if (l->where == &ME || l->cl->via == l->where->via) /* recursion */
 	/* for alternative path only send multipath but don't go further */
 	_ircd_burst_servers(cl, l->cl->nick, l->cl->c.lients, tst);
@@ -2600,7 +2628,7 @@ static inline void _ircd_burst_servers(INTERFACE *cl, const char *sn, LINK *l)
   while (l) {
     if (CLIENT_IS_SERVER (l->cl)) {
       New_Request (cl, 0, ":%s SERVER %s %hu %hu :%s", sn, l->cl->nick,
-		   l->cl->hops + 1, l->cl->x.token + 1, l->cl->fname);
+		   l->cl->hops + 1, l->cl->x.a.token + 1, l->cl->fname);
       _ircd_burst_servers(cl, l->cl->nick, l->cl->c.lients); /* recursion */
     }
     l = l->prev;
@@ -2954,12 +2982,13 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
     memset(cl->id_cache, 0, sizeof(cl->id_cache));
 #endif
     strfcpy (cl->nick, argv[0], sizeof(cl->nick)); /* all done, fill data */
-    cl->x.token = _ircd_alloc_token();	/* right after class out! */ //!
-    Ircd->token[cl->x.token] = cl;
+    cl->x.a.token = _ircd_alloc_token();	/* right after class out! */ //!
+    Ircd->token[cl->x.a.token] = cl;
+    cl->x.a.uc = 0;
 #if IRCD_MULTICONNECT
   }
 #endif
-  DBG("ircd server: assigned token %hd", cl->x.token);
+  DBG("ircd server: assigned token %hd", cl->x.a.token);
   DBG("ircd client: unshifting %p prev %p", cl->via->link, cl->via->link->prev);
   for (lnk = &ME.c.lients; *lnk; lnk = &(*lnk)->prev) /* remove from the list */
     if (*lnk == cl->via->link)
@@ -2987,7 +3016,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
 # if IRCD_MULTICONNECT
   /* notify services */
   ircd_sendto_services_all (Ircd, SERVICE_WANT_SERVER, "SERVER %s 2 %hu :%s",
-			    argv[0], cl->x.token + 1, cl->fname);
+			    argv[0], cl->x.a.token + 1, cl->fname);
 # else
   /* mark services and send along with servers, see below */
   ircd_sendto_services_mark_all (Ircd, SERVICE_WANT_SERVER);
@@ -2997,16 +3026,16 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
   /* propagate new server over network now */
   if (cl->umode & A_MULTI)		/* it's updated already */
     ircd_sendto_servers_new (Ircd, cl->via, "ISERVER %s 2 %hu :%s", argv[0],
-			     cl->x.token + 1, cl->fname); //!
+			     cl->x.a.token + 1, cl->fname); //!
   else
     ircd_sendto_servers_new (Ircd, cl->via, "SERVER %s 2 %hu :%s", argv[0],
-			     cl->x.token + 1, cl->fname); //!
+			     cl->x.a.token + 1, cl->fname); //!
   if (clt != NULL)			/* cyclic, our map is changed! */
     _ircd_recalculate_hops(); /* we got better path so recalculate hops map */
   else					/* don't send duplicates to RFC2813 */
 #endif
   ircd_sendto_servers_old (Ircd, cl->via, "SERVER %s 2 %hu :%s", argv[0],
-			   cl->x.token + 1, cl->fname); //!
+			   cl->x.a.token + 1, cl->fname); //!
   Add_Request(I_LOG, "*", F_SERV, "Received SERVER %s from %s (1 %s)", argv[0],
 	      cl->lcnick, cl->fname);
   _ircd_connection_burst (cl);		/* tell it everything I know */
@@ -3136,8 +3165,9 @@ static CLIENT *_ircd_got_new_remote_server (peer_priv *pp, CLIENT *src,
   }
   /* else notokenized server may have no clients, ouch */
   cl->pcl = NULL;
-  cl->x.token = _ircd_alloc_token();
-  Ircd->token[cl->x.token] = cl;
+  cl->x.a.token = _ircd_alloc_token();
+  cl->x.a.uc = 0;
+  Ircd->token[cl->x.a.token] = cl;
 #if IRCD_MULTICONNECT
   cl->last_id = -1;			/* no ids received yet */
   memset(cl->id_cache, 0, sizeof(cl->id_cache));
@@ -3256,7 +3286,7 @@ static int ircd_server_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
   ircd_sendto_services_mark_all (Ircd, SERVICE_WANT_SERVER);
 #endif
   ircd_sendto_servers_all (Ircd, pp, ":%s SERVER %s %hd %hd :%s", sender,
-			   argv[0], cl->hops + 1, cl->x.token + 1, info);
+			   argv[0], cl->hops + 1, cl->x.a.token + 1, info);
   Add_Request(I_LOG, "*", F_SERV, "Received SERVER %s from %s (%hd %s)",
 	      argv[0], sender, cl->hops, cl->fname);
   return 1;
@@ -3360,9 +3390,9 @@ static int ircd_iserver(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 	   cl->lcnick, argv[1], cl->hops);
   if (clo == NULL)		/* don't send duplicate to RFC2813 servers */
     ircd_sendto_servers_old (Ircd, pp, ":%s SERVER %s %hd %hd :%s", sender,
-			     argv[0], cl->hops + 1, cl->x.token + 1, argv[3]);
+			     argv[0], cl->hops + 1, cl->x.a.token + 1, argv[3]);
   ircd_sendto_servers_new (Ircd, pp, ":%s ISERVER %s %hd %hd :%s", sender,
-			   argv[0], cl->hops + 1, cl->x.token + 1, argv[3]);
+			   argv[0], cl->hops + 1, cl->x.a.token + 1, argv[3]);
   Add_Request(I_LOG, "*", F_SERV, "Received ISERVER %s from %s (%hd %s)",
 	      argv[0], sender, cl->hops, cl->fname);
   return 1;
@@ -3709,6 +3739,9 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   link->flags = 0;
   on->c.lients = link;
   _ircd_class_rin(link); /* add it into class global list */
+  on->x.a.uc++;
+  DBG("ircd:updated users count on %s to %u", on->lcnick, on->x.a.uc);
+  _ircd_update_users_counters();
   unistrlower(tgt->lcnick, tgt->nick, sizeof(tgt->lcnick));
   if (Insert_Key(&Ircd->clients, tgt->lcnick, tgt, 1))
     ERROR("ircd:ircd_nick_sb: tree error on adding %s (%p)", tgt->lcnick, tgt);
@@ -3733,7 +3766,7 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 #endif
   ircd_sendto_servers_all(Ircd, pp, "NICK %s %hu %s %s %hu %s :%s",
 			  tgt->nick, tgt->hops, argv[2], argv[3],
-			  on->x.token + 1, argv[5], argv[6]);
+			  on->x.a.token + 1, argv[5], argv[6]);
   _ircd_bt_client(tgt, NULL, tgt->nick, on->lcnick);
   return 1;
 }
@@ -3872,7 +3905,7 @@ static int ircd_service_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
   else
     dprint(2, "ircd:CLIENT: new remote service name %s: %p", tgt->lcnick, tgt);
   ircd_sendto_servers_mask(Ircd, pp, argv[2], ":%s SERVICE %s %hu %s %s %hu :%s",
-			   sender, tgt->nick, on->x.token + 1, argv[2], argv[3],
+			   sender, tgt->nick, on->x.a.token + 1, argv[2], argv[3],
 			   tgt->hops, argv[5]);
 #ifdef USE_SERVICES
   /* notify services about new service, using server name instead of token */
@@ -4308,7 +4341,7 @@ static void _ircd_catch_undeleted_cl (void *cl)
 #if IRCD_MULTICONNECT
     ircd_clear_acks (Ircd, ((CLIENT *)cl)->via);
 #endif
-    _ircd_free_token (((CLIENT *)cl)->x.token);
+    _ircd_free_token (((CLIENT *)cl)->x.a.token);
     free_CLIENT(cl);
     return;
   }
@@ -4529,7 +4562,7 @@ static inline void _ircd_squit_one (LINK *link)
     }
     strfcpy (l->cl->host, server->lcnick, sizeof(l->cl->host));
   }
-  _ircd_free_token (server->x.token);	/* no token for gone server */
+  _ircd_free_token (server->x.a.token);	/* no token for gone server */
   for (l = Ircd->servers; l; l = l->prev) { /* for each local server */
     register peer_priv *pp = l->cl->via;
     register unsigned short i;

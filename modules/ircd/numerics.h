@@ -58,7 +58,9 @@
 #define RPL_TRACELOG		261, "%*"
 #define RPL_TRACEEND		262, "%= %V%?P.d%P?? :End of TRACE"
 #define RPL_TRYAGAIN		263, "%* :Please wait a while and try again."
-/* 264-266 reserved */
+/* 264 reserved */
+#define RPL_LOCALUSERS		265, ":Current local users: %P  Max: %*"
+#define RPL_GLOBALUSERS		266, ":Current global users: %P  Max: %*"
 /* 300 reserved */
 #define RPL_AWAY		301, "%# :%*"
 #define RPL_USERHOST		302, ":%*"

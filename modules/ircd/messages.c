@@ -423,13 +423,13 @@ static int _ircd_broadcast_msglist_new (IRCD *ircd, struct peer_priv *via,
 
   for (srv = ircd->servers; srv; srv = srv->prev) /* preset to ignore later */
     if (!(srv->cl->umode & A_MULTI) || srv->cl->via == via ||
-	srv->cl->x.token == token)
+	srv->cl->x.a.token == token)
       srv->cl->via->p.iface->ift |= I_PENDING;
   _ircd_broadcast_msglist_mark(ircd, nick, tlist, s);
   rc = 0;
   for (srv = ircd->servers; srv; srv = srv->prev) /* reset them now */
     if (!(srv->cl->umode & A_MULTI) || srv->cl->via == via ||
-	srv->cl->x.token == token)
+	srv->cl->x.a.token == token)
       srv->cl->via->p.iface->ift &= ~I_PENDING;
     else if (srv->cl->via->p.iface->ift & I_PENDING) /* it's targetted */
       rc = 1;
@@ -455,7 +455,7 @@ static int _ircd_broadcast_msglist_old (IRCD *ircd, struct peer_priv *via,
 #if IRCD_MULTICONNECT
 	(!all && (srv->cl->umode & A_MULTI)) ||
 #endif
-	srv->cl->x.token == token)
+	srv->cl->x.a.token == token)
       srv->cl->via->p.iface->ift |= I_PENDING;
   _ircd_broadcast_msglist_mark(ircd, nick, tlist, s);
   rc = 0;
@@ -464,7 +464,7 @@ static int _ircd_broadcast_msglist_old (IRCD *ircd, struct peer_priv *via,
 #if IRCD_MULTICONNECT
 	(!all && (srv->cl->umode & A_MULTI)) ||
 #endif
-	srv->cl->x.token == token)
+	srv->cl->x.a.token == token)
       srv->cl->via->p.iface->ift &= ~I_PENDING;
     else if (srv->cl->via->p.iface->ift & I_PENDING) /* it's targetted */
       rc = 1;

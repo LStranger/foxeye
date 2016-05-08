@@ -504,6 +504,13 @@ static inline int _ircd_query_lusers (IRCD *ircd, CLIENT *cl, struct peer_priv *
 #define COUNT_USERS_CHECK_STATE if (l->cl->via->p.state != P_TALK) continue; else
   COUNT_USERS (ircd->token[0]->c.lients, lu, ls, ll);
 #undef COUNT_USERS_CHECK_STATE
+  /* recheck counters */
+  if (ircd->token[0]->x.a.uc != (unsigned)(lu + op))
+  {
+    ERROR("local users count mismatch on recount: %u != %d, fixing it",
+	  ircd->token[0]->x.a.uc, lu + op);
+    ircd->token[0]->x.a.uc = lu + op;
+  }
   if (simple_match (smask, ircd->token[0]->lcnick) >= 0)
     gu = lu, gs = ls, gl = ll, lu += op, x = 1;
   else
@@ -512,12 +519,20 @@ static inline int _ircd_query_lusers (IRCD *ircd, CLIENT *cl, struct peer_priv *
   for (i = 1; i < ircd->s; i++)
     if (ircd->token[i] && simple_match (smask, ircd->token[i]->lcnick) >= 0)
     {
+      unsigned int su = 0, op_save = op;
 #define COUNT_USERS_CHECK_STATE 
-      COUNT_USERS (ircd->token[i]->c.lients, gu, gs, gl);
+      COUNT_USERS (ircd->token[i]->c.lients, su, gs, gl);
 #undef COUNT_USERS_CHECK_STATE
       if (CLIENT_IS_LOCAL(ircd->token[i]))
 	ll++;
       x++;
+      gu += su;
+      if (ircd->token[i]->x.a.uc != (su + op - op_save))
+      {
+	ERROR("users count on %s mismatch on recount: %u != %u, fixing it",
+	      ircd->token[i]->lcnick, ircd->token[i]->x.a.uc, su + op - op_save);
+	ircd->token[i]->x.a.uc = su + op - op_save;
+      }
     }
 #undef COUNT_USERS
   snprintf (buff, sizeof(buff), "There are %d users and %d services on %d servers",
@@ -535,13 +550,13 @@ static inline int _ircd_query_lusers (IRCD *ircd, CLIENT *cl, struct peer_priv *
   if (i > 0)
     ircd_do_unumeric (cl, RPL_LUSERCHANNELS, cl, (unsigned short)i, NULL);
   snprintf (buff, sizeof(buff), "I have %d clients and %d servers", lu, ll);
-  return ircd_do_unumeric (cl, RPL_LUSERME, cl, 0, buff);
-  // TODO: ircd-2.11.2
-  // RPL_LOCALUSERS		265, "%d %d :Current local users %d, max %d"
-  // RPL_GLOBALUSERS		266, "%d %d :Current global users %d, max %d"
-  // others:
-  // RPL_LOCALUSERS		265, ":Current local users: %d  Max: %d"
-  // RPL_GLOBALUSERS		266, ":Current global users: %d  Max: %d"
+  ircd_do_unumeric (cl, RPL_LUSERME, cl, 0, buff);
+  if (argc > 0)
+    return 1;
+  snprintf (buff, sizeof(buff), "%u", ircd->lu);
+  ircd_do_unumeric (cl, RPL_LOCALUSERS, cl, (unsigned short)lu, buff);
+  snprintf (buff, sizeof(buff), "%u", ircd->gu);
+  return ircd_do_unumeric (cl, RPL_GLOBALUSERS, cl, (unsigned short)gu, buff);
 }
 
 BINDING_TYPE_ircd_client_cmd(ircd_lusers_cb);

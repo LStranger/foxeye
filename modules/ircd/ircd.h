@@ -18,6 +18,10 @@
  * This file is a part of FoxEye IRCd module.
  */
 
+/* these are used in structures below */
+#include <direct.h>
+#include <tree.h>
+
 	/* "modes" for internal usage */
 #define A_ISON		(1<<0)
 #define A_PINGED	(1<<3)
@@ -60,10 +64,6 @@
 # undef IRCD_ID_HISTORY
 # define IRCD_ID_HISTORY 65536
 #endif
-
-/* these are used in structures below */
-#include <direct.h>
-#include <tree.h>
 
 typedef struct CLASS CLASS;		/* internally defined in ircd.c */
 typedef struct CLIENT CLIENT;		/* defined below */
@@ -185,7 +185,10 @@ struct CLIENT
   union {
     CLASS *class;			/* user's class */
     CLIENT *rto;			/* 'renamed to' if nick is on hold */
-    unsigned short int token;		/* server's token, unique */
+    struct _CLIENT_x_a {
+      unsigned short int token;		/* server's token, unique */
+      unsigned short int uc;		/* users count, for statistics */
+    } a;
   } x;
   union {
     MEMBER *hannels;			/* user's channels list */
@@ -238,6 +241,7 @@ typedef struct IRCD
   INTERFACE *iface;	/* has network name */
   INTERFACE *sub;	/* I_CLIENT with name @network to collect messages */
   NODE *clients;	/* clients list (name->CLIENT) */
+  unsigned int lu, gu;	/* max users count for statistics */
   NODE *channels;	/* channels list (name->CHANNEL) */
   CLASS *users;		/* local users lists */
   LINK *servers;	/* local servers list */
@@ -359,7 +363,7 @@ static inline unsigned short int client2token (CLIENT *cl)
 {
   if (cl != NULL && !cl->hold_upto &&
       (CLIENT_IS_SERVER(cl) || !CLIENT_IS_LOCAL(cl)))
-    return cl->cs->x.token;
+    return cl->cs->x.a.token;
   return 0;
 }
 /* should be called after correction and error message;

@@ -68,7 +68,7 @@
 #endif
 
 #if IRCD_MULTICONNECT /* don't send back to sender by cycle */
-#define __CHECK_TRANSIT__(_a_) if (L->cl->x.token != _a_)
+#define __CHECK_TRANSIT__(_a_) if (L->cl->x.a.token != _a_)
 #else /* we never can send to sender if not back on RFC2813 server */
 #define __CHECK_TRANSIT__(_a_)
 #endif
