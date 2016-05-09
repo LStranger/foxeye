@@ -1483,7 +1483,9 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	    p = p0;
 	}
       b = NULL;
-      if (p0 != 0)
+      if (p0 == 0)
+	i = 1;				/* binding sent reply itself */
+      else
 	b = Check_Bindtable (BTIrcdRegisterCmd, argv[1], U_ALL, U_ANYCH, NULL);
       if (b)
 	if (!b->name)
@@ -1505,7 +1507,9 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	  else if (p0 > p)
 	    p = p0;
 	}
-      if (p0 != 0)
+      if (p0 == 0)
+	i = 1;				/* binding sent reply itself */
+      else
 	if ((b = Check_Bindtable (BTIrcdClientCmd, argv[1], peer->p.uf, U_ANYCH,
 				  NULL)))
 	  if (!b->name)			/* passed thru filter and found cmd */

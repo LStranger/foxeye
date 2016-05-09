@@ -241,7 +241,10 @@
     for "ircd-client-cmd" will do and also user mode flags _u_m_o_d_e. Also
     used before "ircd-register-cmd" so _a_r_g_v may vary and nick of the
     client may be not known yet. Binding may return value bigger than 1
-    if it wants increased penalty for the message.
+    if it wants increased penalty for the message. If binding returns 0
+    (so denies executing) then no ERR_UNKNOWNCOMMAND will be sent so it's
+    in binding hands to send some numeric reply to user instead or simply
+    silently ignore the message.
       Matching: command.  (channel userflags are ignored)
       Matching stops after first reject.
 
