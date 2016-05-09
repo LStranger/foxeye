@@ -553,10 +553,13 @@ static int _imch_do_keyset (INTERFACE *srv, const char *rq, const char *ch,
   if (add < 0)
     return 0; /* invalid query */
   else if (add) {
-    //TODO: limit its length?
-    //TODO: ERR_KEYSET
-    strfcpy (_imch_channel->key, *param, sizeof(_imch_channel->key));
+    size_t len = unistrcut (*param, sizeof(_imch_channel->key), KEYLEN);
+
+    if (len > safe_strlen(*param))
+      goto _error; /* ERR_KEYSET */
+    strfcpy (_imch_channel->key, *param, len + 1);
   } else if (!_ircd_ignore_mkey_arg && safe_strcmp(_imch_channel->key, *param)) {
+_error:
     ircd_do_cnumeric (_imch_client, ERR_KEYSET, _imch_channel, 0, NULL);
     return 0;
   } else

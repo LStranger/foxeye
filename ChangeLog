@@ -20,6 +20,8 @@ Mon May  9 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  but binding should handle it itself.
 	* modules/ircd/ircd.c: added missing check for user sendq to early
 	  diagnose user link problems.
+	* modules/ircd/channels.c: check channel key size for KEYLEN, the check
+	  was missing.
 
 Sun May  8 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.*, modules/ircd/messages.c, modules/ircd/numerics.h, modules/ircd/queries.c:

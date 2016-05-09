@@ -2823,7 +2823,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
 #if IRCD_MULTICONNECT
   if (clt && clt->hold_upto) {
     ERROR("ircd: internal error on %s", cl->lcnick);
-    clt = NULL;
+    _ircd_force_drop_collision (&clt);
   } else if (clt && (!CLIENT_IS_SERVER(clt) || CLIENT_IS_LOCAL(clt) ||
 	     !(clt->umode & A_MULTI)))
 #else
@@ -4849,12 +4849,8 @@ int ircd_try_connect (CLIENT *rq, const char *name, const char *port)
     ERROR ("ircd:server %s has no host record, ignoring CONNECT", name);
   Unset_Iface();
   tmp->ift = I_DIED;
-//  ircd_mark_wallops();
-  //TODO: implement IWALLOPS
   ircd_sendto_wallops(Ircd, NULL, MY_NAME, "Connect '%s %s' from %s", name,
 		      port, rq->nick);
-//  ircd_sendto_servers_all(Ircd, NULL, ":%s WALLOPS :Connect '%s %s' from %s",
-//			  MY_NAME, name, port, rq->nick);
   return 1;
 }
 
