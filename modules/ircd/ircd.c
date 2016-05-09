@@ -1410,13 +1410,29 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	    break; /* binding has cancelled sending of message */
 	sw = strlen(req->string);
 	sr = sw + 1;			/* for statistics */
-	if (b == NULL && Peer_Put ((&peer->p), req->string, &sw) > 0)
+	if (b != NULL)
+	  req = NULL;			/* cancelled */
+	else if (Peer_Put ((&peer->p), req->string, &sw) > 0)
 	{
 	  peer->ms++;
 	  peer->bs += sr;
 	  req = NULL;			/* it's done */
 	}
-	//TODO: else check if sendq isn't exceeded limit
+	/* else check if sendq hasn't exceeded limit */
+	else if (!(cl->umode & (A_SERVER | A_SERVICE)))
+	{
+	  if (cl->x.class == NULL) {
+	    ERROR("ircd:classless client %s from %s", cl->nick, cl->cs->lcnick);
+	    if (cli->qsize > IRCD_DEFAULT_SENDQ)
+	      goto _sendq_exceeded;
+	  } else if (cli->qsize > cl->x.class->sendq) {
+_sendq_exceeded:
+	    ShutdownR = "Max SendQ exceeded";
+	    _ircd_client_signal(cli, S_TERMINATE);
+	    ShutdownR = NULL;
+	  }
+	}
+	//FIXME: do any sendq check for server/service too?
       }
       break;
   }

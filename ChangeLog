@@ -18,6 +18,8 @@ Mon May  9 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: clarified behavior when "ircd-client-filter"
 	  returns 0 - the IRCD should not send ERR_UNKNOWNCOMMAND to client
 	  but binding should handle it itself.
+	* modules/ircd/ircd.c: added missing check for user sendq to early
+	  diagnose user link problems.
 
 Sun May  8 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.*, modules/ircd/messages.c, modules/ircd/numerics.h, modules/ircd/queries.c:
