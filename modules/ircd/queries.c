@@ -1196,6 +1196,7 @@ static inline int _ircd_query_whowas (IRCD *ircd, CLIENT *cl, struct peer_priv *
       strftime(dummy.vhost, sizeof(dummy.vhost), "%c", &tmp);
       ircd_do_unumeric (cl, RPL_WHOISSERVER, &dummy, 0, ww->nick);
       n++;
+      DBG("ircd:whowas reply on %s: done %p, prev %p, %d of %d", dummy.nick, ww, ww->prev, n, max);
     }
     if (n)
       ircd_do_unumeric (cl, RPL_ENDOFWHOWAS, cl, 0, c);
@@ -1454,6 +1455,8 @@ static void _icchg_ww(INTERFACE *srv, const char *from, const char *lcnick,
     IrcdWhowasUsed = IrcdWhowasPtr;
   }
   IrcdWhowasPtr++;
+  if (IrcdWhowasUsed < IrcdWhowasPtr)
+    IrcdWhowasUsed = IrcdWhowasPtr;
   wwp = Find_Key(IrcdWhowasTree, lcnick);
   if (wwp != NULL) {
     if (Delete_Key(IrcdWhowasTree, wwp->lcnick, wwp))
@@ -1464,6 +1467,7 @@ static void _icchg_ww(INTERFACE *srv, const char *from, const char *lcnick,
   }
   ww->next = NULL;
   ww->prev = wwp;
+  DBG("ircd:_ilostc_ww: adding %s: %p after %p, %d of %d", nick, ww, ww->prev, IrcdWhowasPtr, IrcdWhowasUsed);
   strfcpy(ww->nick, nick, sizeof(ww->nick));
   strfcpy(ww->lcnick, lcnick, sizeof(ww->lcnick));
   if (Insert_Key(&IrcdWhowasTree, ww->lcnick, ww, 1))
