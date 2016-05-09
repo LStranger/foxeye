@@ -22,6 +22,8 @@ Mon May  9 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  diagnose user link problems.
 	* modules/ircd/channels.c: check channel key size for KEYLEN, the check
 	  was missing.
+	* modules/ircd/channels.c: set noop_since on channel if last operator
+	  on ! channel was deopped.
 
 Sun May  8 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.*, modules/ircd/messages.c, modules/ircd/numerics.h, modules/ircd/queries.c:

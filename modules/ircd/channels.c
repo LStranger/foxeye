@@ -1227,7 +1227,17 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 	    if (!(tar->mode & mf))
 	      continue;
 	    tar->mode &= ~mf;
-	    //TODO: need we set noop_since on MODE #chan -o nick ?
+	    if (mf == A_OP && ch->name[0] == '!')
+	    {
+	      /* set noop_since if it was last op in channel */
+	      register MEMBER *op;
+
+	      for (op = ch->users; op; op = op->prevnick)
+		if (op->mode & (A_OP | A_ADMIN))
+		  break;
+	      if (op)
+		ch->noop_since = Time;
+	    }
 	  } else if (ma) {		/* it has a parameter */
 	    ec = ma (srv, peer->dname, ch->name, add, &par);
 	    if (ec <= 0) {
@@ -1953,11 +1963,20 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	      passed[x++] = par;	/* one more param accepted */
 	    continue;
 	  }
-	  if (tar)			/* it has a target */
+	  if (tar) {			/* it has a target */
 	    tar->mode &= ~mf;
-	    //TODO: need we set noop_since on MODE #chan -o nick ?
-	  else if (ma)			/* it has a parameter */
-	  {
+	    if (mf == A_OP && ch->name[0] == '!')
+	    {
+	      /* set noop_since if it was last op in channel */
+	      register MEMBER *op;
+
+	      for (op = ch->users; op; op = op->prevnick)
+		if (op->mode & (A_OP | A_ADMIN))
+		  break;
+	      if (op)
+		ch->noop_since = Time;
+	    }
+	  } else if (ma) {		/* it has a parameter */
 	    ec = ma (srv, pp->p.dname, ch->name, add, &par);
 	    if (ec <= 0) {
 #if IRCD_MULTICONNECT
