@@ -4963,6 +4963,57 @@ const char *ircd_mark_wallops(void)
   return (MY_NAME);
 }
 
+CLIENT *ircd_find_by_userhost(const char *nick, int ns, const char *user, int us,
+			      const char *host, int hs)
+{
+  CLIENT *cl;
+  LEAF *leaf = NULL;
+  char lcnick[MB_LEN_MAX*NICKLEN+1];
+  char lchost[HOSTLEN+1];
+  int len;
+
+  DBG("ircd:ircd_find_by_userhost: nick=%.*s user=%.*s host=%.*s", ns, nick, us, user, hs, host);
+  /* it is easy with nick... */
+  if (nick && ns > 0)
+  {
+    len = unistrcut (nick, ns+1, NICKLEN);
+    if (len < ns)
+      return NULL;
+    unistrlower (lcnick, nick, len + 1);
+    cl = _ircd_find_client_lc (lcnick);
+    if (!cl)
+      return cl;
+    if (user && us > 0)
+      if (strcmp (user, cl->user))
+	return NULL;
+    if (!host || hs <= 0)
+      return cl;
+    unistrlower (lchost, host, hs < HOSTLEN ? hs + 1 : HOSTLEN + 1);
+    if (strcmp (lchost, cl->host))
+      return NULL;
+    return cl;
+  }
+  /* ouch, now comes a heavy scan... */
+  if (hs <= 0)
+    host = NULL;
+  if (us <= 0)
+    user = NULL;
+  if (host)
+    unistrlower (lchost, host, hs < HOSTLEN ? hs + 1 : HOSTLEN + 1);
+  else if (!user) /* nothing to find? */
+    return NULL;
+  while ((leaf = Next_Leaf (Ircd->clients, leaf, NULL)))
+  {
+    cl = leaf->s.data;
+    if (user)
+      if (strcmp (user, cl->user) != 0)
+	continue;
+    if (host && strcmp (lchost, cl->host) == 0)
+      return cl;
+  }
+  return NULL;
+}
+
 /* -- command line interface ---------------------------------------------- */
                 /* .+hub server mask */
 BINDING_TYPE_dcc (dc__phub);

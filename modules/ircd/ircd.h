@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2010-2016  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -372,6 +372,9 @@ static inline unsigned short int client2token (CLIENT *cl)
 int ircd_recover_done (struct peer_priv *, const char *);
 /* marks local +w users to send WALLOPS, returns own server name */
 const char *ircd_mark_wallops(void);
+/* special search for a regular client */
+CLIENT *ircd_find_by_userhost(const char *nick, int ns, const char *user, int us,
+			      const char *host, int hs);
 
 #if IRCD_MULTICONNECT
 /* args: link, who, where */

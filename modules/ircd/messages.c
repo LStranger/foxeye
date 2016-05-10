@@ -406,6 +406,7 @@ static void _ircd_broadcast_msglist_mark(IRCD *ircd, const char *nick,
       _ircd_mark_message_target(ircd->iface, nick, tlist[i]);
     } else
       tcl->cs->via->p.iface->ift |= I_PENDING;
+      //FIXME: do alternate way for exact targets?
   }
   if (need_unmark)
     for (lnk = ircd->token[0]->c.lients; lnk; lnk = lnk->prev) /* no locals */
@@ -476,12 +477,39 @@ static int _ircd_broadcast_msglist_old (IRCD *ircd, struct peer_priv *via,
 static inline CLIENT *_ircd_find_msg_target (const char *target,
 					     struct peer_priv *pp)
 {
-  CLIENT *tgt = ircd_find_client (target, pp);
+  CLIENT *tgt;
+  const char *c, *h;
 
-  if (tgt && CLIENT_IS_SERVER(tgt))
+  /* handle nickname!user@host */
+  if ((c = strchr(target, '!')))
+  {
+    h = strchr(c, '@');
+    if (h)
+      tgt = ircd_find_by_userhost(target, c - target, c + 1, h - c - 1, h + 1, -1);
+    else
+      tgt = NULL;
+  }
+  /* handle user[%host]@servername */
+  else if ((c = strchr(target, '@')))
+  {
+    tgt = ircd_find_client (c + 1, pp);
+    if (tgt && !CLIENT_IS_SERVER(tgt))
+      tgt = NULL;
+    if (tgt && !CLIENT_IS_ME(tgt))
+      return (tgt);
+    /* process user[%host] now */
+    h = strchr(target, '%');
+    if (h > c)
+      h = NULL;
+    tgt = ircd_find_by_userhost(NULL, 0, target, h ? h - target : c - target,
+				h ? h + 1 : NULL, h ? c - h - 1 : 0);
+  }
+  /* handle user%host */
+  else if ((c = strchr(target, '%')))
+    tgt = ircd_find_by_userhost(NULL, 0, target, c - target, c + 1, -1);
+  else if ((tgt = ircd_find_client (target, pp)) && CLIENT_IS_SERVER(tgt))
     return (NULL);
   return (tgt);
-  //TODO: proc not plain too: user[%host]@servername user%host nickname!user@host
 }
 
 #if 0
@@ -539,6 +567,11 @@ static int ircd_privmsg_cb(INTERFACE *srv, struct peer_t *peer, const char *lcni
   size_t s = 0, s2 = 0;
   char targets[MESSAGEMAX];
 
+#ifdef USE_SERVICES
+  /* forbidden for services */
+  if (CLIENT_IS_SERVICE(cl))
+    return 0;
+#endif
   if (argc == 0 || !*argv[0])
     return ircd_do_unumeric (cl, ERR_NORECIPIENT, cl, 0, NULL);
   if (argc == 1 || !*argv[1])
