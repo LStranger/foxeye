@@ -301,9 +301,6 @@ static int ircd_part_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 	  ircd_sendto_chan_local (memb->chan, ":%s!%s@%s PART %s :%s", cl->nick,
 				  user, vhost, memb->chan->name, msg);
       }
-#ifdef USE_SERVICES
-      //TODO: notify services
-#endif
       if (memb->chan->mode & A_INVISIBLE) ; /* local channel */
       else if ((cmask = strchr (c, ':'))) /* notify servers */
       {
@@ -383,6 +380,9 @@ static int ircd_topic_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick
 	    vhost);
   ch->topic_since = Time;
 #endif
+#ifdef USE_SERVICES
+  ircd_sendto_services_mark_prefix ((IRCD *)srv->data, SERVICE_WANT_TOPIC);
+#endif
   if (ch->mode & A_ANONYMOUS)
     ircd_sendto_chan_local(ch, ":anonymous!anonymous@anonymous. TOPIC %s :%s",
 			   ch->name, ch->topic);
@@ -395,6 +395,9 @@ static int ircd_topic_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick
   if (cmask)
   {
     cmask++; /* don't place this in macro below */
+#ifdef USE_SERVICES
+    ircd_sendto_services_mark_nick ((IRCD *)srv->data, SERVICE_WANT_TOPIC);
+#endif
     ircd_sendto_servers_mask_new ((IRCD *)srv->data, NULL, cmask,
 				  ":%s ITOPIC %d %s :%s", peer->dname,
 				  ircd_new_id(), ch->name, ch->topic);
@@ -403,10 +406,13 @@ static int ircd_topic_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick
 				  ch->topic);
     return 1;
   }
-  ircd_sendto_servers_new ((IRCD *)srv->data, NULL, ":%s ITOPIC %d %s :%s",
-			   peer->dname, ircd_new_id(), ch->name, ch->topic);
+#ifdef USE_SERVICES
+  ircd_sendto_services_mark_nick ((IRCD *)srv->data, SERVICE_WANT_TOPIC);
+#endif
   ircd_sendto_servers_old ((IRCD *)srv->data, NULL, ":%s TOPIC %s :%s",
 			   peer->dname, ch->name, ch->topic);
+  ircd_sendto_servers_new ((IRCD *)srv->data, NULL, ":%s ITOPIC %d %s :%s",
+			   peer->dname, ircd_new_id(), ch->name, ch->topic);
   return 1;
 }
 
@@ -504,9 +510,6 @@ static int ircd_kick_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
       } else
 	ircd_sendto_chan_local (memb->chan, ":%s!%s@%s KICK %s %s :%s",
 				peer->dname, user, vhost, chn, lcl, reason);
-#ifdef USE_SERVICES
-      //TODO: inform services
-#endif
       if (memb->chan->mode & A_INVISIBLE) ;
       else if ((cmask = strchr (memb->chan->name, ':'))) {
 	cmask++; /* not put '++' into macro below */

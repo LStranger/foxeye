@@ -381,9 +381,6 @@ static inline int _ircd_join_0_remote(IRCD *ircd, struct peer_priv *bysrv,
     else
       ircd_sendto_chan_local(ch, ":%s!%s@%s PART %s :%s", cl->nick,
 			     cl->user, cl->vhost, ch->name, key);
-#ifdef USE_SERVICES
-    //TODO: inform services
-#endif
     ircd_del_from_channel(ircd, cl->c.hannels, 0);
   }
   ircd_sendto_servers_all_ack(ircd, cl, CHANNEL0, bysrv, ":%s JOIN 0 :%s",
@@ -652,9 +649,6 @@ static int ircd_part_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     else
       ircd_sendto_chan_local(memb->chan, ":%s!%s@%s PART %s :%s", cl->nick,
 			     cl->user, cl->vhost, memb->chan->name, msg);
-#ifdef USE_SERVICES
-    //TODO: notify services
-#endif
     if ((cmask = strchr (chname, ':'))) /* notify servers */ {
       cmask++; /* not put '++' into macro below */
       ircd_sendto_servers_mask_all_ack((IRCD *)srv->data, cl, memb->chan, pp,
@@ -848,9 +842,6 @@ static int ircd_kick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
       } else
 	ircd_sendto_chan_local (tm->chan, ":%s!%s@%s KICK %s %s :%s",
 				sender, cl->user, cl->vhost, chn, lcl, reason);
-#ifdef USE_SERVICES
-      //TODO: inform services
-#endif
       if ((cmask = strchr (tm->chan->name, ':'))) {
 	cmask++; /* not put '++' into macro below */
 	ircd_sendto_servers_mask_all_ack ((IRCD *)srv->data, tgt, tm->chan,
@@ -984,6 +975,9 @@ static int _ircd_do_stopic(IRCD *ircd, const char *via, const char *sender,
 	   cl->vhost);
   ch->topic_since = Time;
 #endif
+#ifdef USE_SERVICES
+  ircd_sendto_services_mark_prefix(ircd, SERVICE_WANT_TOPIC);
+#endif
   if (CLIENT_IS_SERVER(cl)) //TODO: can servers set topics?
     ircd_sendto_chan_local(ch, ":%s TOPIC %s :%s", sender, ch->name, ch->topic);
   else if (CLIENT_IS_SERVICE(cl))
@@ -999,24 +993,30 @@ static int _ircd_do_stopic(IRCD *ircd, const char *via, const char *sender,
   if (cmask)
   {
     cmask++; /* not put '++' into macro below */
+#ifdef USE_SERVICES
+    ircd_sendto_services_mark_nick(ircd, SERVICE_WANT_TOPIC);
+#endif
 #if IRCD_MULTICONNECT
     if (id >= 0) {
-      ircd_sendto_servers_mask_new(ircd, pp, cmask, ":%s ITOPIC %d %s :%s",
-				   sender, id, ch->name, ch->topic);
       ircd_sendto_servers_mask_old(ircd, pp, cmask, ":%s TOPIC %s :%s", sender,
 				   ch->name, ch->topic);
+      ircd_sendto_servers_mask_new(ircd, pp, cmask, ":%s ITOPIC %d %s :%s",
+				   sender, id, ch->name, ch->topic);
     } else
 #endif
       ircd_sendto_servers_mask(ircd, pp, cmask, ":%s TOPIC %s :%s", sender,
 			       ch->name, ch->topic);
     return 1;
   }
+#ifdef USE_SERVICES
+  ircd_sendto_services_mark_nick(ircd, SERVICE_WANT_TOPIC);
+#endif
 #if IRCD_MULTICONNECT
   if (id >= 0) {
-    ircd_sendto_servers_new(ircd, pp, ":%s ITOPIC %d %s :%s",
-			    sender, id, ch->name, ch->topic);
     ircd_sendto_servers_old(ircd, pp, ":%s TOPIC %s :%s",
 			    sender, ch->name, ch->topic);
+    ircd_sendto_servers_new(ircd, pp, ":%s ITOPIC %d %s :%s",
+			    sender, id, ch->name, ch->topic);
   } else
 #endif
     ircd_sendto_servers_all(ircd, pp, ":%s TOPIC %s :%s",

@@ -966,9 +966,6 @@ static inline void _ircd_mode_broadcast (IRCD *ircd, int id, CLIENT *sender,
     ircd_sendto_chan_local (ch, ":%s!%s@%s MODE %s %s%s", sender->nick,
 			    sender->user, sender->vhost, ch->name, modepass,
 			    buff);
-#ifdef USE_SERVICES
-  //TODO: notify local services too
-#endif
   /* every server should know channel state too */
   if (ch->mode & A_INVISIBLE ||	/* don't broadcast local channel mode */
       ch->name[0] == '+')	/* nor mode +t for modeless channel */
@@ -1535,9 +1532,6 @@ static inline void _ircd_join_0_local (IRCD *ircd, CLIENT *cl, char *key)
     else
       ircd_sendto_chan_local (ch, ":%s!%s@%s PART %s :%s", cl->nick,
 			      cl->user, cl->vhost, ch->name, key);
-#ifdef USE_SERVICES
-    //TODO: inform services
-#endif
     ircd_del_from_channel (ircd, cl->c.hannels, 0);
   }
   ircd_sendto_servers_all_ack(ircd, cl, CHANNEL0, (struct peer_priv *)NULL,
@@ -2450,6 +2444,14 @@ MEMBER *ircd_add_to_channel (IRCD *ircd, struct peer_priv *bysrv, CHANNEL *ch,
   cl->c.hannels = memb;
   ch->users = memb;
   ch->count++;
+#ifdef USE_SERVICES
+  if (ch->count == 1)			/* newly created channel */
+    ircd_sendto_services_all (ircd, SERVICE_WANT_CHANNEL | SERVICE_WANT_VCHANNEL,
+			      "CHANNEL %s %hd", ch->name, ch->count);
+  else
+    ircd_sendto_services_all (ircd, SERVICE_WANT_VCHANNEL, "CHANNEL %s %hd",
+			      ch->name, ch->count);
+#endif
   if (mf & A_ADMIN)			/* support for ! channels */
     ch->creator = memb;
   modeadd = (mf & ~(A_ISON | Ircd_modechar_mask | ch->mode));
@@ -2490,6 +2492,11 @@ MEMBER *ircd_add_to_channel (IRCD *ircd, struct peer_priv *bysrv, CHANNEL *ch,
       if (modeadd && ch->count > 1)	/* mode of channel was updated */
 	_ircd_mode2cmode (madd, modeadd, sizeof(madd)); /* make channel mode */
       if (madd[0]) {
+#ifdef USE_SERVICES
+	ircd_sendto_services_nick(ircd, SERVICE_WANT_MODE, ":%s MODE %s +%s",
+				  cl->nick, ch->name, madd);
+	ircd_sendto_services_mark_prefix(ircd, SERVICE_WANT_MODE);
+#endif
 	if (bysrv)
 	  ircd_sendto_chan_butone(ch, cl, ":%s MODE %s +%s",
 				  bysrv->link->cl->lcnick, ch->name, madd);
@@ -2498,9 +2505,6 @@ MEMBER *ircd_add_to_channel (IRCD *ircd, struct peer_priv *bysrv, CHANNEL *ch,
 				  cl->user, cl->vhost, ch->name, madd);
       }
     }
-#ifdef USE_SERVICES
-    //inform services!
-#endif
   }
   else if (!CLIENT_IS_ME(cl) && !CLIENT_IS_REMOTE(cl)) /* notify only sender */
     New_Request (cl->via->p.iface, 0, ":%s!%s@%s JOIN %s", cl->nick, cl->user,
@@ -2598,6 +2602,10 @@ void ircd_del_from_channel (IRCD *ircd, MEMBER *memb, int tohold)
     {
       MASK *x;
 
+#ifdef USE_SERVICES
+      ircd_sendto_services_all (ircd, SERVICE_WANT_CHANNEL | SERVICE_WANT_VCHANNEL,
+				"CHANNEL %s 0", memb->chan->name);
+#endif
       CLEAR_MASKS (memb->chan->bans);
       CLEAR_MASKS (memb->chan->exempts);
       CLEAR_MASKS (memb->chan->invites);
@@ -2610,7 +2618,17 @@ void ircd_del_from_channel (IRCD *ircd, MEMBER *memb, int tohold)
 	ircd_drop_channel (ircd, memb->chan);
     }
     else
+    {
       memb->chan->mode = mf;
+#ifdef USE_SERVICES
+      if (memb->chan->count == 0)	/* emptied channel */
+	ircd_sendto_services_all (ircd, SERVICE_WANT_CHANNEL | SERVICE_WANT_VCHANNEL,
+				  "CHANNEL %s 0", memb->chan->name);
+      else
+	ircd_sendto_services_all (ircd, SERVICE_WANT_VCHANNEL, "CHANNEL %s %hd",
+				  memb->chan->name, memb->chan->count);
+#endif
+    }
   }
   else
     ERROR ("ircd:ircd_del_from_channel: not found %s on channel %s",
@@ -2926,9 +2944,6 @@ static inline void _ircd_do_reop(IRCD *ircd, CLIENT *me, CHANNEL *ch)
   who->mode |= A_OP;
   ircd_sendto_chan_local(ch, ":%s MODE %s +o %s", me->lcnick, ch->name,
 			 who->who->nick);
-#ifdef USE_SERVICES
-  //TODO: notify local services too
-#endif
   /* every server should know channel state too */
   cmask = strchr (ch->name, ':');
   if (cmask) {
