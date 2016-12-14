@@ -14,6 +14,10 @@ TODO:
 	* *: to check Add_Request/New_Request coming to user to be translatable.
 
 --- [0.10.2]
+Wed May 11 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/socket.c: handle case if socket has more data than buffer can
+	  receive (mark flags appropriately).
+
 Tue May 10 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.*, modules/ircd/messages.c: implemented handling
 	  message targets such as user[%host]@servername, user%host, and
