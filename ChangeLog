@@ -14,6 +14,9 @@ TODO:
 	* *: to check Add_Request/New_Request coming to user to be translatable.
 
 --- [0.10.2]
+Mon May 16 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/ircd.*: sending version flags in server handshake.
+
 Wed May 11 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/socket.c: handled case if socket has more data than buffer can
 	  receive (mark flags appropriately).

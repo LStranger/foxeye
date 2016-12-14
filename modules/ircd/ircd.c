@@ -2929,9 +2929,9 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
     memcpy (buff, "PASS ", 5);
     sz += 5;
     sz += snprintf (&buff[sz], sizeof(buff) - sz,
-		   " %s IRC|" PACKAGE " %s\r\n"
+		   " %s IRC|%s|" PACKAGE " %s\r\n"
 		   "SERVER %s 1 1 :%s",	/* own token is always 0 */
-		   _ircd_version_string, ftbf, MY_NAME,
+		   _ircd_version_string, ircd_version_flags, ftbf, MY_NAME,
 		   _ircd_description_string);
     if (sz >= sizeof(buff))
       sz = sizeof(buff) - 1;		/* recover from snprintf */
