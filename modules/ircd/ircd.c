@@ -417,6 +417,7 @@ static inline unsigned short int _ircd_alloc_token (void)
 static inline void _ircd_free_token (unsigned short int i)
 {
   Ircd->token[i] = NULL;
+  DBG("ircd:token %hu freed", i);
 }
 
 static inline void _ircd_bt_client(CLIENT *cl, const char *on, const char *nn,
@@ -440,36 +441,38 @@ static inline void _ircd_lserver_out (LINK *);
  * does not remove it from server's list nor converts into phantom
  * this function should be thread-safe!
  */
-static inline void _ircd_peer_kill (peer_priv *peer, const char *msg)
+static void _ircd_peer_kill (peer_priv *peer, const char *msg)
 {
+  CLIENT *cl;
+
   dprint(5, "ircd:ircd.c:_ircd_peer_kill: %p state=%#x", peer, (int)peer->p.state);
   if (peer->link == NULL) {		/* link might be not initialized yet */
     LOG_CONN ("ircd: killing unknown connection: %s", msg);
     peer->p.state = P_QUIT;
     return;
   }
-  LOG_CONN ("ircd: killing peer %s@%s: %s", peer->link->cl->user,
-	    peer->link->cl->host, msg);
+  cl = peer->link->cl;
+  LOG_CONN ("ircd: killing peer %s@%s: %s", cl->user, cl->host, msg);
   New_Request (peer->p.iface, 0, "ERROR :closing link to %s@%s: %s",
-	       peer->link->cl->user, peer->link->cl->host, msg);
-  peer->link->cl->umode &= ~A_UPLINK;	/* don't mix it with A_AWAY */
+	       cl->user, cl->host, msg);
+  cl->umode &= ~A_UPLINK;		/* don't mix it with A_AWAY */
   Set_Iface (peer->p.iface);		/* lock it for next call */
   if (peer->p.state != P_DISCONNECTED) {
-    if (CLIENT_IS_SERVER(peer->link->cl))
+    if (CLIENT_IS_SERVER(cl))		/* remove from Ircd->servers */
       _ircd_lserver_out (peer->link);
     else if (peer->p.state != P_IDLE)	/* no class on broken uplink attempt */
       _ircd_class_out (peer->link);
   }
   if (peer->p.state == P_TALK) {
-    if (CLIENT_IS_SERVER(peer->link->cl))
-      ;//TODO: BTIrcdUnlinked
-    else {
+    if (CLIENT_IS_SERVER(cl)) {
+      //TODO: BTIrcdUnlinked
+    } else {
       ME.x.a.uc--;
       DBG("ircd:updated local users count to %u", ME.x.a.uc);
-      _ircd_bt_client(peer->link->cl, peer->link->cl->nick, NULL, MY_NAME);
+      _ircd_bt_client(cl, cl->nick, NULL, MY_NAME);
     }
   } else if (peer->p.state == P_IDLE)
-    peer->link->cl->umode |= A_UPLINK;	/* only for registering uplink */
+    cl->umode |= A_UPLINK;		/* only for registering uplink */
   if (peer->t > 0) {
     FREE(&peer->i.token);
     peer->t = 0;
