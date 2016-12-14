@@ -4580,39 +4580,41 @@ static inline void _ircd_squit_one (LINK *link)
   /* notify local users about complete squit and clear server->c.lients */
   while ((l = server->c.lients))
   {
+    tgt = l->cl;
     server->c.lients = l->prev;
-    if (CLIENT_IS_SERVER (l->cl)) /* server is gone so free all */
+    if (CLIENT_IS_SERVER (tgt)) /* server is gone so free all */
     {
       pthread_mutex_lock (&IrcdLock);
-      if (l->cl != link->where) {	/* don't remove server back */
-	dprint(2, "ircd:CLIENT: del gone server %s: %p", l->cl->nick, l->cl);
-	free_CLIENT (l->cl);		/* see _ircd_do_squit */
+      if (tgt != link->where) {	/* don't remove server back */
+	dprint(2, "ircd:CLIENT: del gone server %s: %p", tgt->nick, tgt);
+	free_CLIENT (tgt);
       }
       /* link is about to be destroyed so don't remove token of l */
       free_LINK (l);			/* see _ircd_do_squit */
+      dprint(2, "ircd: link %p freed", l);
       pthread_mutex_unlock (&IrcdLock);
       continue;
     }
-    ircd_quit_all_channels (Ircd, l->cl, 1, 1); /* it's user, remove it */
+    ircd_quit_all_channels (Ircd, tgt, 1, 1); /* it's user, remove it */
 #ifdef USE_SERVICES
     ircd_sendto_services_mark_prefix (Ircd, SERVICE_WANT_QUIT);
 #endif
-    Add_Request (I_PENDING, "*", 0, ":%s!%s@%s QUIT :%s %s", l->cl->nick,
-		 l->cl->user, l->cl->vhost, link->where->lcnick, server->lcnick);
+    Add_Request (I_PENDING, "*", 0, ":%s!%s@%s QUIT :%s %s", tgt->nick,
+		 tgt->user, tgt->vhost, link->where->lcnick, server->lcnick);
 		 /* send split message */
     _ircd_class_out (l);		/* remove from global class list */
-    _ircd_bt_client(l->cl, l->cl->nick, NULL, server->lcnick); /* "ircd-client" */
-    l->cl->hold_upto = Time + _ircd_hold_period; /* put it in temp. unavailable list */
-    l->cl->x.rto = NULL;		/* convert active user into phantom */
-    l->cl->cs = l->cl;			/* it holds key for itself */
-    l->cl->away[0] = '\0';		/* it's used by nick change tracking */
-    if (l->cl->rfr != NULL && l->cl->rfr->cs == l->cl) { /* it was nick holder */
-      l->cl->pcl = l->cl->rfr;
-      l->cl->rfr = NULL;
+    _ircd_bt_client(tgt, tgt->nick, NULL, server->lcnick); /* "ircd-client" */
+    tgt->hold_upto = Time + _ircd_hold_period; /* put it in temp. unavailable list */
+    tgt->x.rto = NULL;			/* convert active user into phantom */
+    tgt->cs = tgt;			/* it holds key for itself */
+    tgt->away[0] = '\0';		/* it's used by nick change tracking */
+    if (tgt->rfr != NULL && tgt->rfr->cs == tgt) { /* it was nick holder */
+      tgt->pcl = tgt->rfr;
+      tgt->rfr = NULL;
       dprint(2, "ircd:CLIENT: converting holder %s (%p) into phantom, prev %p",
-	     l->cl->nick, l->cl, l->cl->pcl);
+	     tgt->nick, tgt, tgt->pcl);
     }
-    strfcpy (l->cl->host, server->lcnick, sizeof(l->cl->host));
+    strfcpy (tgt->host, server->lcnick, sizeof(tgt->host));
   }
   _ircd_free_token (server->x.a.token);	/* no token for gone server */
   for (l = Ircd->servers; l; l = l->prev) { /* for each local server */
