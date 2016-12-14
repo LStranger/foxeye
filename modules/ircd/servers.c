@@ -1098,9 +1098,10 @@ static int ircd_ack(INTERFACE *srv, struct peer_t *peer, unsigned short token,
     if (ircd_recover_done(pp, "ACK for unexpected channel") == 0)
       return (0);
   } else if (argc == 2 &&
-	     (pp->acks->where != NULL || strcmp(argv[1], pp->acks->who->nick))) {
+	     (pp->acks->where != NULL || pp->acks->who == NULL ||
+	      strcmp(argv[1], pp->acks->who->nick))) {
     ERROR("ircd:got unexpected ACK %s on %s (expected %s %s)", argv[0], argv[1],
-	  pp->acks->who->nick, channame);
+	  pp->acks->who ? pp->acks->who->nick : "(nil)", channame);
     if (ircd_recover_done(pp, "Unexpected ACK arguments") == 0)
       return (0);
   }

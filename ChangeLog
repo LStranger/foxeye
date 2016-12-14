@@ -15,8 +15,10 @@ TODO:
 
 --- [0.10.2]
 Wed May 11 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
-	* core/socket.c: handle case if socket has more data than buffer can
+	* core/socket.c: handled case if socket has more data than buffer can
 	  receive (mark flags appropriately).
+	* modules/ircd/servers.c: fixed received ACK check, args count should
+	  match expecting count.
 
 Tue May 10 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.*, modules/ircd/messages.c: implemented handling
