@@ -492,7 +492,10 @@ static inline void _ircd_recalculate_hops (void)
   for (i = 1; i < Ircd->s; i++) /* reset whole servers list */
     if ((t = Ircd->token[i]) != NULL)
     {
-      if (!CLIENT_IS_LOCAL(t)) {
+      if (t->via != NULL && t->via->link == NULL) {
+	ERROR ("ircd: server %s has no valid link!", t->lcnick);
+	t->hops = Ircd->s;
+      } else if (!CLIENT_IS_LOCAL(t)) {
 	t->via = NULL; /* don't reset local connects! */
 	t->hops = Ircd->s;
       }
@@ -511,7 +514,8 @@ static inline void _ircd_recalculate_hops (void)
 	  if (CLIENT_IS_SERVER(l->cl)) /* check linked servers */
 	  {
 	    hassubs = 1; /* mark for next iteration */
-	    if (l->cl->via == NULL) /* it's shortest, yes */
+	    if (l->cl->via == NULL || /* it's shortest, yes */
+		l->cl->via->p.state == P_QUIT) /* or ->via is dead */
 	    {
 	      l->cl->hops = hops + 1;
 	      l->cl->via = t->via;
@@ -528,7 +532,7 @@ static inline void _ircd_recalculate_hops (void)
   /* some servers don't get alternate paths but servers that we see them via
      can have alternates so let set alternates with those alternates */
   for (i = 1; i < Ircd->s; i++) /* iteration: scan whole servers list */
-    if ((t = Ircd->token[i]) != NULL && t->alt == NULL)
+    if ((t = Ircd->token[i]) != NULL && t->alt == NULL && t->via != NULL)
       t->alt = t->via->link->cl->alt;
 }
 #endif

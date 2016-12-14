@@ -21,6 +21,7 @@ Wed May 11 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  match expecting count.
 	* modules/ircd/ircd.c: corrected version string, it should match 2.10
 	  instead of 2.11, we don't support 2.11 features.
+	* modules/ircd/ircd.c: fixed problems in _ircd_recalculate_hops().
 
 Tue May 10 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.*, modules/ircd/messages.c: implemented handling
