@@ -865,8 +865,11 @@ static inline int _ircd_query_trace (IRCD *ircd, CLIENT *cl, struct peer_priv *v
 		    CHARSET_UNICODE))
       flags[p++] = 'u';
 #endif
+    /* special support for Zlib connection */
+    if (Connchain_Check(&tgt->cs->via->p, 'Z') < 0)
+      flags[p++] = 'z';
     flags[p] = '\0';
-    snprintf (tstr, sizeof(tstr), "%s V%.4s%s %d %d %d", next->nick, next->away,
+    snprintf (tstr, sizeof(tstr), "%s V%c%s %d %d %d", next->nick, next->away[3],
 	      flags, (int)(Time - tgt->cs->via->started), via->p.iface->qsize,
 	      tgt->cs->via->p.iface->qsize);
     ircd_do_unumeric (cl, RPL_TRACELINK, tgt, O_DLEVEL, tstr);

@@ -4925,19 +4925,17 @@ int ircd_show_trace (CLIENT *rq, CLIENT *tgt)
 			  CHARSET_UNICODE))
 	    flags[sc++] = 'u';
 #endif
+	  /* special support for Zlib connection */
+	  if (Connchain_Check(&tgt->via->p, 'Z') < 0)
+	    flags[sc++] = 'z';
 	  flags[sc] = '\0';
 	  for (ss = 0, sc = 0, i = 1; i < Ircd->s; i++)
 	    if (Ircd->token[i] != NULL && Ircd->token[i]->via == tgt->via)
-	      for (l = Ircd->token[i]->c.lients; l; l = l->prev)
+	      for (l = Ircd->token[i]->c.lients, ss++; l; l = l->prev)
 		if (!CLIENT_IS_SERVER(l->cl))
 		  sc++;
-		else
-#if IRCD_MULTICONNECT
-		     if (l->cl != tgt) /* don't count backlinks */
-#endif
-		  ss++;
-	  snprintf (buf, sizeof(buf), "- %dS %dC %s *!*@%s V%.4s%s", ss, sc,
-		    tgt->nick, tgt->host, tgt->away, flags);
+	  snprintf (buf, sizeof(buf), "- %dS %dC %s *!*@%s V%c%s", ss, sc,
+		    tgt->nick, tgt->host, tgt->away[3], flags);
 	  return ircd_do_unumeric (rq, RPL_TRACESERVER, tgt, 0, buf);
 #ifdef USE_SERVICES
 	} else if (CLIENT_IS_SERVICE (tgt)) {
