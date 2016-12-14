@@ -497,20 +497,34 @@ static inline int _ircd_query_lusers (IRCD *ircd, CLIENT *cl, struct peer_priv *
 #define COUNT_USERS(A,B,C,D) \
   for (l = A; l; l = l->prev) \
     COUNT_USERS_CHECK_STATE \
+    COUNT_USERS_CHECK_PATH \
     if (CLIENT_IS_SERVER(l->cl)) D++; \
     else if (CLIENT_IS_SERVICE(l->cl)) C++; \
     else if (l->cl->umode & (A_OP | A_HALFOP)) op++; \
     else B++
 #define COUNT_USERS_CHECK_STATE if (l->cl->via->p.state != P_TALK) continue; else
+#define COUNT_USERS_CHECK_PATH 
   COUNT_USERS (ircd->token[0]->c.lients, lu, ls, ll);
 #undef COUNT_USERS_CHECK_STATE
+#undef COUNT_USERS_CHECK_PATH
   /* recheck counters */
   if (ircd->token[0]->x.a.uc != (unsigned)(lu + op))
   {
-    ERROR("local users count mismatch on recount: %u != %d, fixing it",
+    ERROR("ircd:/lusers: local users count mismatch on recount: %u != %d, fixing it",
 	  ircd->token[0]->x.a.uc, lu + op);
     ircd->token[0]->x.a.uc = lu + op;
   }
+  if (ls != 0)
+  {
+    ERROR("ircd:/lusers: found servers in clients on ME: %u != 0", ls);
+    ls = 0;
+  }
+  for (l = ircd->servers; l; l = l->prev)
+    if (CLIENT_IS_SERVER(l->cl))
+      ls++;
+    else
+      ERROR("ircd:/lusers: client %s in local servers list isn't a server",
+	    l->cl->nick);
   if (simple_match (smask, ircd->token[0]->lcnick) >= 0)
     gu = lu, gs = ls, gl = ll, lu += op, x = 1;
   else
@@ -520,16 +534,28 @@ static inline int _ircd_query_lusers (IRCD *ircd, CLIENT *cl, struct peer_priv *
     if (ircd->token[i] && simple_match (smask, ircd->token[i]->lcnick) >= 0)
     {
       unsigned int su = 0, op_save = op;
+      if (!CLIENT_IS_SERVER(ircd->token[i]))
+      {
+	ERROR("ircd:token %d isn't a server but %s!!!", i, ircd->token[i]->nick);
+	ircd->token[i] = NULL;
+	continue;
+      }
 #define COUNT_USERS_CHECK_STATE 
+#if IRCD_MULTICONNECT
+# define COUNT_USERS_CHECK_PATH if (l->cl->via != ircd->token[i]->via) continue; else
+#else
+# define COUNT_USERS_CHECK_PATH 
+#endif
       COUNT_USERS (ircd->token[i]->c.lients, su, gs, gl);
 #undef COUNT_USERS_CHECK_STATE
+#undef COUNT_USERS_CHECK_PATH
       if (CLIENT_IS_LOCAL(ircd->token[i]))
 	ll++;
       x++;
       gu += su;
       if (ircd->token[i]->x.a.uc != (su + op - op_save))
       {
-	ERROR("users count on %s mismatch on recount: %u != %u, fixing it",
+	ERROR("ircd:/lusers: users count on %s mismatch on recount: %u != %u, fixing it",
 	      ircd->token[i]->lcnick, ircd->token[i]->x.a.uc, su + op - op_save);
 	ircd->token[i]->x.a.uc = su + op - op_save;
       }

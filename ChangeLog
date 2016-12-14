@@ -18,6 +18,7 @@ Mon May 16 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.*: sending version flags in server handshake.
 	* modules/ircd/ircd.c, modules/ircd/queries.c: show 'z' in trace reply
 	  on Zlib links.
+	* modules/ircd/queries.c: fixed wrong counters in LUSERS replies.
 
 Wed May 11 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/socket.c: handled case if socket has more data than buffer can
