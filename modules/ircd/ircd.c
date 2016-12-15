@@ -1183,7 +1183,8 @@ static iftype_t _ircd_client_signal (INTERFACE *cli, ifsig_t sig)
 	  Set_Iface(cli);
 	case P_LOGIN:			/* isn't registered yet */
 	case P_IDLE:
-	  sw = (peer->link->cl->umode & A_UPLINK) ? 1 : 0;
+	  sw = (peer->link != NULL && peer->link->cl->umode & A_UPLINK) ? 1 : 0;
+					/* no peer->link yet if P_DISCONNECTED */
 	  if (ShutdownR)
 	    _ircd_peer_kill (peer, ShutdownR);
 	  else
