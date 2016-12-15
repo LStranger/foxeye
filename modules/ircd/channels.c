@@ -1029,9 +1029,10 @@ static inline int _ircd_mode_mask_query_reply (INTERFACE *srv, CLIENT *cl,
   if (ch->name[0] == '+')		/* nomode channel */
     return ircd_do_cnumeric (cl, ERR_NOCHANMODES, ch, 0, NULL);
   b = Check_Bindtable (BTIrcdModechange, par, U_ALL, U_ANYCH, NULL);
-  ma = NULL;
   if (b == NULL && par[0] == 'O' && ch->creator != NULL)
     return ircd_do_cnumeric (cl, RPL_UNIQOPIS, ch, 0, ch->creator->who->nick);
+  ma = NULL;
+  mf = 0;
   while (b)
   {
     if (!b->name && b->key[1] == '*')	/* check for parameterized */
@@ -3093,7 +3094,7 @@ void send_isupport(IRCD *ircd, CLIENT *cl)
   isupport[len] = '\0';
   snprintf(buff, sizeof(buff), " CHANMODES=%s MODES=" STR(MAXMODES)
 			       " MAXCHANNELS=%ld NICKLEN=%u"
-			       " MAXLIST=beI:%ld NETWORK=%s EXCEPTS INVEX"
+			       " MAXLIST=beI:%ld NETWORK=%s EXCEPTS=e INVEX=I"
 			       " CASEMAPPING=utf-8 TOPICLEN=" STR(TOPICLEN)
 			       " CHANNELLEN=" STR(CHANNAMELEN)
 			       " IDCHAN=!:" STR(CHIDLEN) " RFC2812",
