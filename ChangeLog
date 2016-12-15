@@ -14,6 +14,9 @@ TODO:
 	* *: to check Add_Request/New_Request coming to user to be translatable.
 
 --- [0.10.2]
+Fri Oct  7 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* intl/VERSION: bump gettext included to 0.17 version.
+
 Sun May 29 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.*: sending version flags in server handshake.
 	* modules/ircd/channels.c: fixed wrong MODE query reply.
