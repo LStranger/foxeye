@@ -34,3 +34,4 @@ set ssl-enable-server-bypass
  SSL sequence then filter will be removed and client will have plain (unsecure)\
  connection. If set to %^no%^ then only secure connection is allowed for such\
  server.
+ Default: no.

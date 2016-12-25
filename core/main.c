@@ -406,7 +406,7 @@ static void print_version (void)
 
   uname (&buf);
   printf ("FoxEye " VERSION "\n");
-  printf (_("Copyright (C) 1999-2015 Andriy Gritsenko.\n\n\
+  printf (_("Copyright (C) 1999-2016 Andriy Gritsenko.\n\n\
 OS: %s %s on %s.\n"), buf.sysname, buf.release, buf.machine);
 }
 

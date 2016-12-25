@@ -5,9 +5,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: PACKAGE VERSION\n"
+"Project-Id-Version: foxeye 0.10.99\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2016-05-07 22:02+0300\n"
+"POT-Creation-Date: 2016-12-26 01:04+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -188,36 +188,36 @@ msgstr ""
 msgid "I don't know how disconnect %s."
 msgstr ""
 
-#: core/direct.c:2752
+#: core/direct.c:2753
 #, c-format
 msgid "Connection from %s terminated: %s"
 msgstr ""
 
-#: core/direct.c:2816
+#: core/direct.c:2817
 #, c-format
 msgid "Could not open listening port %hu%s, retrying in 10 seconds."
 msgstr ""
 
-#: core/direct.c:2817 core/direct.c:2826 core/direct.c:2836 core/direct.c:2911
+#: core/direct.c:2818 core/direct.c:2827 core/direct.c:2837 core/direct.c:2912
 msgid " for bots"
 msgstr ""
 
-#: core/direct.c:2825
+#: core/direct.c:2826
 #, c-format
 msgid "Cannot open listening port on %hu%s!"
 msgstr ""
 
-#: core/direct.c:2835
+#: core/direct.c:2836
 #, c-format
 msgid "Listening on port %hu%s."
 msgstr ""
 
-#: core/direct.c:2883
+#: core/direct.c:2884
 #, c-format
 msgid "Already listening on port %hu!"
 msgstr ""
 
-#: core/direct.c:2910
+#: core/direct.c:2911
 #, c-format
 msgid "Could not create listening thread for port on %hu%s!"
 msgstr ""
@@ -396,7 +396,7 @@ msgstr ""
 #: core/main.c:409
 #, c-format
 msgid ""
-"Copyright (C) 1999-2015 Andriy Gritsenko.\n"
+"Copyright (C) 1999-2016 Andriy Gritsenko.\n"
 "\n"
 "OS: %s %s on %s.\n"
 msgstr ""
