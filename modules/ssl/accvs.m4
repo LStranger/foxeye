@@ -204,6 +204,17 @@ int main(void) { exit(SSLeay() == OPENSSL_VERSION_NUMBER ? 0 : 1); }
     ])
 
     AC_DEFINE([USE_OPENSSL], [1], [Define if openssl package must be used for compilation/linking.])
+
+    dnl update LIBS for the module
+    openssl_libs="-lssl -lcrypto"
+    if test -n "$openssl_libpath"; then
+	openssl_libs="$openssl_libs -L$openssl_libpath -R$openssl_libpath"
+    fi
+    if test "$fe_cv_static" = yes; then
+	STATICLIBS="${openssl_libs} ${STATICLIBS}"
+    else
+	MODLIBS="MODLIBS_ssl=\"${openssl_libs}\" ${MODLIBS}"
+    fi
 fi
 
 LIBS="$fe_save_LIBS"
@@ -212,14 +223,5 @@ LDFLAGS="$fe_save_LDFLAGS"
 
 if test -n "$OPENSSL_CFLAGS"; then
     CPPFLAGS="$OPENSSL_CFLAGS $CPPFLAGS"
-fi
-openssl_libs="-lssl -lcrypto"
-if test -n "$openssl_libpath"; then
-    openssl_libs="$openssl_libs -L$openssl_libpath -R$openssl_libpath"
-fi
-if test "$fe_cv_static" = yes; then
-    STATICLIBS="${openssl_libs} ${STATICLIBS}"
-else
-    MODLIBS="MODLIBS_ssl=\"${openssl_libs}\" ${MODLIBS}"
 fi
 # End of OpenSSL

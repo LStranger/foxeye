@@ -17,6 +17,7 @@ TODO:
 Sun Dec 25 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/main.c, doc/foxeye.1, modules/ircd/queries.c: updated copyright
 	  year to 2016.
+	* configure: fixed build if openssl isn't available.
 
 Wed Dec 14 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed crash on terminating unfinished connection.
