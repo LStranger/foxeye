@@ -8,7 +8,7 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 	dh ${@} --parallel
 
 override_dh_auto_configure:
-	dh_auto_configure -- --enable-debug=info
+	dh_auto_configure -- --enable-debug=info --enable-ipv6
 	# make reproducible build: replace dates with ones from debian/changelog
 	CHANGELOG_DATE="`grep -m1 '^ --' debian/changelog|sed s/^.*\>\ \ //`"; \
 	COMPILETIME=`LANG=C LC_TIME=C LC_ALL=C date -u -d "$$CHANGELOG_DATE"`; \
