@@ -126,7 +126,10 @@ static int ircd_oper_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
     return ircd_do_unumeric (cl, ERR_NOOPERHOST, cl, 0, NULL);
   fl = Get_Flags (u, srv->name);
   if (!(fl & (U_OP | U_HALFOP)))
+  {
+    Unlock_Clientrecord (u);
     return ircd_do_unumeric (cl, ERR_NOOPERHOST, cl, 0, NULL);
+  }
   /* we hope we never get OPER flood so doing memory allocation here */
   pass = safe_strdup (Get_Field (u, "passwd", NULL));
   id = Get_LID (u);

@@ -17,6 +17,7 @@ TODO:
 Mon Jan  2 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/queries.c, modules/ircd/ircd.h: fixed issue with version
 	  flags pointer.
+	* modules/ircd/clients.c: fixed deadlock after failed OPER request.
 
 Sun Dec 25 2016 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/main.c, doc/foxeye.1, modules/ircd/queries.c: updated copyright
