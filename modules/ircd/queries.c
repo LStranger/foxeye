@@ -601,44 +601,44 @@ static int ircd_lusers_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
   DO_SERVER_QUERY (_ircd_query_lusers);
 }
 
-const char ircd_version_flags[] = {
+const char *ircd_version_flags =
 #ifdef IRCD_ENABLE_REHASH
-'E',
+"E"
 #endif
 #if IRCD_USES_ICONV
-'i',
+"i"
 #endif
 #ifdef IRCD_ENABLE_DIE
-'J',
+"J"
 #endif
 #ifdef IRCD_ENABLE_KILL
-'K',
+"K"
 #endif
 #if IRCD_MULTICONNECT
-'o',
+"o"
 #endif
 #ifdef IRCD_ENABLE_RESTART
-'R',
+"R"
 #endif
 #ifdef USE_SERVICES
-'s',
+"s"
 #endif
 #ifdef IRCD_ENABLE_SUMMON
-'S',
+"S"
 #endif
 #ifdef TOPICWHOTIME
-'T',
+"T"
 #endif
 #ifdef IRCD_ENABLE_USERS
-'U',
+"U"
 #endif
 #ifdef ENABLE_IPV6
-'6',
+"6"
 #endif
 #if ! IRCD_STRICT_NAMES
-'8',
+"8"
 #endif
-'\0' };
+;
 
 static inline int _ircd_query_version (IRCD *ircd, CLIENT *cl, struct peer_priv *via,
 				       int argc, const char **argv)
