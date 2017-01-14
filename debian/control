@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Andriy Grytsenko <andrej@rep.kiev.ua>
 Build-Depends:
  debhelper (>= 8.9.0~), pkg-config, tcl-dev,
- liblua5.1-dev | liblua5.2-dev, gettext,
+ liblua5.1-dev | liblua5.2-dev, gettext, openssl-dev,
  libidn11-dev, zlib1g-dev, locales-all | language-pack-uk-base
 Standards-Version: 3.9.6
 Homepage: http://foxeye.sf.net
