@@ -175,6 +175,7 @@ typedef struct LINK
 struct CLIENT
 {
   CLIENT *pcl;				/* list in class */
+  struct peer_priv *local;		/* not NULL if it's local connect */
   struct peer_priv *via;		/* the way to this link */
 #if IRCD_MULTICONNECT
   struct peer_priv *alt;		/* second shortest (link instance) */
@@ -292,8 +293,8 @@ struct peer_priv
 
 /* test for ME : valid always */
 #define CLIENT_IS_ME(x) ((x)->cs == NULL)
-/* test for local clients/servers : crashes on ME, invalid on phantoms */
-#define CLIENT_IS_LOCAL(x) ((x)->cs->via->link->cl == x)
+/* test for local clients/servers : valid always */
+#define CLIENT_IS_LOCAL(x) ((x)->local != NULL && (x)->via == (x)->local)
 /* test for remote clients : invalid on ME or phantoms */
 #define CLIENT_IS_REMOTE(x) ((x)->via == NULL)
 /* test for any server : valid always */

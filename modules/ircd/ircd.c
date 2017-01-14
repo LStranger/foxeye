@@ -726,6 +726,7 @@ __attribute__((warn_unused_result)) static inline CLIENT *
   }
   strfcpy(cl2->nick, on, sizeof(cl2->nick));
   cl2->via = NULL;			/* no structures for this */
+  cl2->local = NULL;
   cl2->host[0] = 0;			/* mark it to drop later */
   cl2->vhost[0] = 0;
   cl2->away[0] = 0;			/* it's used by nick tracking */
@@ -1304,9 +1305,19 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	return REQ_OK;		/* let every ERROR/KILL be delivered */
       }
       Rename_Iface(cli, NULL);	/* delete it from everywhere before checks */
+#if IRCD_MULTICONNECT
       /* note: server can be multiconnected and if so then cl->via != peer */
-      if (cl->lcnick[0] && Delete_Key (Ircd->clients, cl->lcnick, cl) == 0)
-	dprint(2, "ircd:CLIENT: del quitting name %s: %p", cl->lcnick, cl);
+      if (cl->via == peer)
+#endif
+      if (cl->lcnick[0])
+      {
+	if (Delete_Key (Ircd->clients, cl->lcnick, cl) < 0)
+	  ERROR("ircd:CLIENT: on quit: tree error on %s (%p)", cl->lcnick, cl);
+	else
+	  dprint(2, "ircd:CLIENT: del quitting name %s: %p", cl->lcnick, cl);
+      }
+      /* cleanup on local indication, it's not even a valid connect anymore */
+      cl->local = NULL;
       if (peer == _ircd_uplink)
 	_ircd_uplink = NULL;
       NoCheckFlood (&peer->penalty); /* no more messages will be accepted */
@@ -1343,7 +1354,12 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 		    cl->rfr->cs->nick);
 	    cl->rfr->x.rto = NULL; /* omit this reference */
 	  }
+#if IRCD_MULTICONNECT
+	/* server can be multiconnected and if so then don't create a phantom */
+	} else if (cl->via == peer) {
+#else
 	} else {
+#endif
 	  register CLIENT *phantom;
 
 	  phantom = _ircd_get_phantom(cl->nick, cl->lcnick);
@@ -1381,6 +1397,10 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	peer->link->where = NULL;
       } /* and it is not in any list except peers now */
       else if (cl->c.lients != NULL)
+#if IRCD_MULTICONNECT
+	/* it's not an error if server is still multiconnected elsewhere */
+	if (cl->via == peer)
+#endif
 	ERROR("ircd:clients list on dead server %s isn't empty!", cl->lcnick);
       peer->p.state = P_LASTWAIT;
     case P_LASTWAIT:
@@ -1737,6 +1757,7 @@ static void _ircd_handler (char *cln, char *ident, const char *host, void *data)
   peer->link->flags = 0;
   ME.c.lients = peer->link;
   cl->via = peer;
+  cl->local = peer;
   cl->x.class = NULL;
   peer->p.state = P_INITIAL;
   pthread_mutex_unlock (&IrcdLock);
@@ -2032,6 +2053,7 @@ static inline void _ircd_start_uplink2 (const char *name, char *host,
   pthread_mutex_lock (&IrcdLock);
   uplink = alloc_CLIENT();
   uplink->via = alloc_peer_priv();
+  uplink->local = uplink->via;
   uplink->via->p.network_type = "ircd";
   uplink->via->link = alloc_LINK();
   uplink->via->link->cl = uplink;
@@ -3249,6 +3271,7 @@ static CLIENT *_ircd_got_new_remote_server (peer_priv *pp, CLIENT *src,
   cl->c.lients = NULL;
   cl->umode = A_SERVER;
   cl->cs = cl;
+  cl->local = NULL;
   cl->hold_upto = 0;
   cl->hops = src->hops + 1;		/* ignore introduced number */
   cl->away[0] = 0;
@@ -3763,6 +3786,7 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   tgt->rfr = NULL;
   tgt->umode = 0;
   tgt->via = NULL;
+  tgt->local = NULL;
   tgt->c.hannels = NULL;
   tgt->away[0] = '\0';
   collision = _ircd_check_nick_collision(tgt->nick, sizeof(tgt->nick), pp,
@@ -3981,6 +4005,7 @@ static int ircd_service_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
   tgt->pcl = NULL;			/* service is out of classes */
   tgt->x.class = NULL;
   tgt->via = NULL;
+  tgt->local = NULL;
 #if IRCD_MULTICONNECT
   tgt->on_ack = 0;
 #endif
@@ -4800,6 +4825,14 @@ static void _ircd_do_squit (LINK *link, peer_priv *via, const char *msg)
   _ircd_send_squit (link, via, msg); /* notify local servers now */
   if (link->where != &ME) /* it's remote, for local see ircd_do_squit() */
   {
+#if IRCD_MULTICONNECT
+    if (link->cl->local != NULL) /* there is a local link in P_QUIT state */
+    {
+      /* let _ircd_client_request() process it as needed instead */
+      link->cl->via = link->cl->local;
+      return;
+    }
+#endif
     if (Delete_Key (Ircd->clients, link->cl->lcnick, link->cl)) /* remove it */
       ERROR("ircd:_ircd_do_squit: tree error on removing %s", link->cl->lcnick);
       // TODO: isn't it fatal?
@@ -4816,6 +4849,7 @@ static void _ircd_do_squit (LINK *link, peer_priv *via, const char *msg)
       strfcpy(phantom->nick, link->cl->lcnick, sizeof(phantom->nick));
       phantom->hold_upto = 1;
       phantom->on_ack = 0;	/* it will be freed by ircd_drop_ack */
+      phantom->local = NULL;
       _ircd_move_acks(link->cl, phantom);
       dprint(2, "ircd:CLIENT: added dummy phantom for %s: %p", phantom->nick,
 	     phantom);
