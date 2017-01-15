@@ -3043,6 +3043,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
     cl->via->link->cl = clt;
     clt->alt = clt->via;	/* shift shortest to alt */
     clt->via = cl->via;		/* and set shortest to this */
+    clt->local = cl->via;	/* and it is local connect as well */
     clt->hops = 1;
     clt->umode |= cl->umode;	/* copy A_UPLINK there */
     strfcpy (clt->fname, cl->fname, sizeof(clt->fname)); /* rewrite! */
