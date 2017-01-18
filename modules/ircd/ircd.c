@@ -1588,7 +1588,8 @@ _sendq_exceeded:
     cl = peer->link->cl;		/* binding might change it! */
     if (i == 0)				/* protocol failed */
     {
-      if (CLIENT_IS_SERVER (cl))
+      if (peer->p.state == P_QUIT) ;	/* no reply to a killed client */
+      else if (CLIENT_IS_SERVER (cl))
 	ircd_recover_done (peer, "Invalid command"); /* it might get squit */
       else
 	ircd_do_unumeric (cl, ERR_UNKNOWNCOMMAND, cl, 0, argv[1]);
