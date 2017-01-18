@@ -3048,6 +3048,9 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
     clt->hops = 1;
     clt->umode |= cl->umode;	/* copy A_UPLINK there */
     strfcpy (clt->fname, cl->fname, sizeof(clt->fname)); /* rewrite! */
+    strfcpy (clt->user, cl->user, sizeof(clt->user));
+    strfcpy (clt->host, cl->host, sizeof(clt->host));
+    strfcpy (clt->vhost, cl->vhost, sizeof(clt->vhost));
     pthread_mutex_lock (&IrcdLock);
     free_CLIENT (cl);
     pthread_mutex_unlock (&IrcdLock);

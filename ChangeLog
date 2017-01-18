@@ -17,6 +17,8 @@ TODO:
 Wed Jan 18 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: don't send error replies to a killed client.
 	* modules/ircd/ircd.c: fixed not initialized memory on remote ISERVER.
+	* modules/ircd/ircd.c: fixed connection data after local connect of
+	  already known server (as remote).
 
 Sun Jan 15 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.*: fixed issues with multiconnected SQUIT at the
