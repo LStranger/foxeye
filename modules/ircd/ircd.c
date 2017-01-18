@@ -3273,6 +3273,7 @@ static CLIENT *_ircd_got_new_remote_server (peer_priv *pp, CLIENT *src,
   cl->c.lients = NULL;
   cl->umode = A_SERVER;
   cl->cs = cl;
+  cl->via = NULL;			/* it will be recalculated */
   cl->local = NULL;
   cl->hold_upto = 0;
   cl->hops = src->hops + 1;		/* ignore introduced number */
