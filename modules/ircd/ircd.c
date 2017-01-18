@@ -1322,7 +1322,8 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	_ircd_uplink = NULL;
       NoCheckFlood (&peer->penalty); /* no more messages will be accepted */
       if (cl->umode & (A_SERVER | A_UPLINK)) { /* was it autoconnect who left? */
-	if (Get_Clientflags (cl->lcnick, Ircd->iface->name) & U_AUTO)
+	if ((cl->umode & A_UPLINK) || /* we may don't have lcnick set yet */
+	    (Get_Clientflags (cl->lcnick, Ircd->iface->name) & U_AUTO))
 	{
 #if IRCD_MULTICONNECT
 	  _ircd_uplinks--;
