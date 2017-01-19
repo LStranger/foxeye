@@ -403,6 +403,7 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
   INTERFACE *tmp;
   struct connchain_buffer *buf;
   char *termreason = "module 'ssl' termination";
+  const char term_signal[] = { S_TERMINATE };
 
   switch (sig) {
   case S_TERMINATE:
@@ -415,7 +416,14 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
       ShutdownR = termreason;
     while (sslbuflist) {		/* kill every SSL in progress */
       tmp = sslbuflist->peer->iface;
-      Send_Signal(tmp->ift, tmp->name, S_TERMINATE);
+#if __GNUC__ >= 4
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-security" /* for F_SIGNAL "string" */
+#endif
+      New_Request(tmp, F_SIGNAL, term_signal);
+#if __GNUC__ >= 4
+#pragma GCC diagnostic pop
+#endif
       Set_Iface(tmp);			/* it may have deferred termination */
       while (Get_Request());
       Unset_Iface();

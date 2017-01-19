@@ -21,6 +21,8 @@ Wed Jan 18 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  already known server (as remote).
 	* modules/ircd/ircd.c: fixed autoconnect retry on connection timeout
 	  on uplink attempt.
+	* modules/ssl/openssl.c, modules/ziplink/ziplink.c: fixed crash on
+	  module termination with some incomplete connection present.
 
 Sun Jan 15 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.*: fixed issues with multiconnected SQUIT at the
