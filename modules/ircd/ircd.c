@@ -2680,11 +2680,12 @@ static int ircd_nick_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 #if IRCD_MULTICONNECT
 /* recursive traverse into tree sending every server we found */
 static inline void _ircd_burst_servers(INTERFACE *cl, const char *sn, LINK *l,
-				       int tst)
+				       int tst, unsigned int token)
 {
   dprint(5, "ircd:ircd.c:_ircd_burst_servers: %s to %s", sn, cl->name);
   while (l) {
     if (CLIENT_IS_SERVER (l->cl) && (l->cl->hops >= l->where->hops) &&
+	l->cl->x.a.token != token &&	/* never send server back */
 	/* send any: our link, server behind this one,
 	   or if we send to A_MULTI then send other equal path too */
 	(tst || l->where == &ME || l->cl->via == l->where->via)) {
@@ -2696,7 +2697,7 @@ static inline void _ircd_burst_servers(INTERFACE *cl, const char *sn, LINK *l,
 		   l->cl->hops + 1, l->cl->x.a.token + 1, l->cl->fname);
       if (l->where == &ME || l->cl->via == l->where->via) /* recursion */
 	/* for alternative path only send multipath but don't go further */
-	_ircd_burst_servers(cl, l->cl->nick, l->cl->c.lients, tst);
+	_ircd_burst_servers(cl, l->cl->nick, l->cl->c.lients, tst, token);
     }
     l = l->prev;
   }
@@ -2752,7 +2753,7 @@ static void _ircd_connection_burst (CLIENT *cl)
   register int tst = (cl->umode & A_MULTI);
 
   /* Ircd->servers is our recipient */
-  _ircd_burst_servers(cl->via->p.iface, MY_NAME, Ircd->servers->prev, tst);
+  _ircd_burst_servers(cl->via->p.iface, MY_NAME, Ircd->servers->prev, tst, cl->x.a.token);
 #else
   _ircd_burst_servers(cl->via->p.iface, MY_NAME, Ircd->servers->prev);
 #endif

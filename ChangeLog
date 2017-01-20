@@ -24,6 +24,7 @@ Wed Jan 18 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ssl/openssl.c, modules/ziplink/ziplink.c: fixed crash on
 	  module termination with some incomplete connection present.
 	* modules/ircd/ircd.c: fixed uplink interface name (was empty).
+	* modules/ircd/ircd.c: added a test to not send ISERVER back to itself.
 
 Sun Jan 15 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.*: fixed issues with multiconnected SQUIT at the
