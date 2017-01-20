@@ -1991,7 +1991,7 @@ static int _ircd_uplink_req (INTERFACE *uli, REQUEST *req)
 
 //  dprint(5, "ircd:ircd.c:_ircd_uplink_req: name=%s state=%d req=%p",
 //	 NONULL(uli->name), (int)_uplink->p.state, req);
-  ul = _ircd_find_client_lc (_uplink->link->cl->lcnick);
+  ul = _ircd_find_client_lc (uli->name);
   if (ul && !ul->hold_upto && CLIENT_IS_LOCAL(ul)) /* it's connected already! */
     _uplink->p.state = P_LASTWAIT;	/* so abort this one */
   if (_ircd_uplink)		/* we got RFC2813 autoconnect connected */
@@ -1999,11 +1999,13 @@ static int _ircd_uplink_req (INTERFACE *uli, REQUEST *req)
   switch (_uplink->p.state)
   {
     case P_INITIAL:	/* got connected, switch to normal */
+      ul = _uplink->link->cl;
+      LOG_CONN ("ircd: connected to uplink %s at %s", uli->name, ul->host);
 #if IRCD_USES_ICONV
       /* set conversion to CHARSET_8BIT which is default */
       _uplink->p.iface->conv = Get_Conversion (CHARSET_8BIT);
 #endif
-      opt = _uplink->link->cl->away;
+      opt = ul->away;
       c = strchr (opt, '%');		/* check for flags */
       if (c)
 	while (*++c)			/* create connection chain */
@@ -2019,7 +2021,6 @@ static int _ircd_uplink_req (INTERFACE *uli, REQUEST *req)
 	if (Connchain_Check (&_uplink->p, *c) > 0)
 	  *opt++ = *c;
       *opt = '\0';			/* terminate options */
-      ul = _uplink->link->cl;
       sz = snprintf (buff, sizeof(buff), /* send PASS+SERVER to peer */
 		     "PASS %s %s IRC|" PACKAGE " %s\r\n"
 		     "SERVER %s 1 1 :%s", /* own token is always 1 */
@@ -2213,7 +2214,6 @@ static void _ircd_do_init_uplinks (void)
 	continue;
       }
       lid = FindLID (c);
-      c = cc;
       while (Get_Request());		/* we need queue to be empty */
       _ircd_sublist_buffer = hosts;
       i = Get_Hostlist (tmp, lid);
@@ -2228,6 +2228,7 @@ static void _ircd_do_init_uplinks (void)
 	Set_Flags (u, Ircd->iface->name, uf);
 	Unlock_Clientrecord (u);
 	ERROR ("ircd:uplink %s has no host record, reset autoconnect flag!", c);
+	c = cc;
 	continue;
       }
       hl = hosts;
@@ -2246,6 +2247,7 @@ static void _ircd_do_init_uplinks (void)
 	_ircd_start_uplink (c, ch);	/* create a connection thread */
       }
       /* we do ignoring too long hosts list too! */
+      c = cc;
     }
     Unset_Iface();
   }
@@ -3340,7 +3342,7 @@ static int ircd_server_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
       return 1;
     }
   }
-  else
+  /* only non-known yet servers may be introduced with SERVER */
 #endif
   if (cl)
     return _ircd_server_duplicate_link (cl->via, pp, lcsender, argv[0]);
