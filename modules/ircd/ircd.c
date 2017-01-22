@@ -2946,9 +2946,6 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
     _ircd_peer_kill (cl->via, "invalid token value");
     return 1;
   }
-  cl->via->t = token + 1;		/* no tokens there yet */
-  cl->via->i.token = safe_calloc (cl->via->t, sizeof(CLIENT *));
-  cl->via->i.token[token] = cl;
   /* if it's incoming connect then check every option flag we got
      for appliance to connection chain and answer accepted flags back
      don't using interface but connchain only to avoid message queue
@@ -3089,6 +3086,9 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
   }
 #endif
   DBG("ircd:server: assigned token %hd", cl->x.a.token);
+  cl->via->t = token + 1;		/* no tokens there yet */
+  cl->via->i.token = safe_calloc (cl->via->t, sizeof(CLIENT *));
+  cl->via->i.token[token] = cl;
   dprint(2, "ircd:CLIENT: unshifting %p prev %p", cl->via->link, cl->via->link->prev);
   for (lnk = &ME.c.lients; *lnk; lnk = &(*lnk)->prev) /* remove from the list */
     if (*lnk == cl->via->link)
@@ -3799,6 +3799,9 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     collision = NULL;
   } else
     collision = ircd_find_client(tgt->nick, pp);
+  if (collision != NULL)
+    DBG("found collided name %s on server %s(%p), got %s(%p)", tgt->nick,
+	collision->cs->lcnick, collision->cs, on->lcnick, on);
   if (collision != NULL && collision->cs == on) {
     dprint(4, "ircd: backup introduction of %s from %s by %s", tgt->nick,
 	   on->lcnick, peer->dname);
