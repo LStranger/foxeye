@@ -228,7 +228,7 @@ static int _ircd_class_in (struct peer_t *peer, char *user, char *host,
   for (td = clcl->glob; td; td = td->pcl)
     if ((!user || !strcmp (td->user, link->cl->user)) &&
 	!strcmp (td->host, link->cl->host)) {
-      if (!CLIENT_IS_REMOTE(td))
+      if (CLIENT_IS_LOCAL(td))
 	locnt++;
       glcnt++;
     }
@@ -858,7 +858,7 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
     } else
       c = c2;			/* it's not phantom at this moment */
     if (peer == NULL && peer->p.state != P_LOGIN && peer->p.state != P_IDLE &&
-	(!(CLIENT_IS_REMOTE(c)) && !(CLIENT_IS_SERVER(c))))
+	CLIENT_IS_LOCAL(c) && !CLIENT_IS_SERVER(c))
     {
       /* internal call - client message simulation */
       if ((b = Check_Bindtable (BTIrcdClientCmd, argv[1], U_ALL, U_ANYCH, NULL)))
@@ -867,10 +867,10 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
 			  c->vhost, A_SERVER, argc - 2, &argv[2]);
       return 0;
     }
-    if (((CLIENT_IS_ME(c)) ||
-	 (!(CLIENT_IS_REMOTE(c)) && !(CLIENT_IS_SERVER(c)))) &&
-	peer != c->via) /* we should not get our or our users messages back */
+    if ((CLIENT_IS_ME(c) ||
+	 (CLIENT_IS_LOCAL(c) && !CLIENT_IS_SERVER(c))) && peer != c->via)
     {
+      /* we should never get our or our users messages back */
       ERROR ("ircd: message %s from %s seems looped back by %s", argv[1],
 	     argv[0], peer ? peer->p.dname : "internal call");
       return (1);			/* ouch, it was looped back! */

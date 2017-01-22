@@ -295,7 +295,7 @@ struct peer_priv
 #define CLIENT_IS_ME(x) ((x)->cs == NULL)
 /* test for local clients/servers : valid always */
 #define CLIENT_IS_LOCAL(x) ((x)->local != NULL && (x)->via == (x)->local)
-/* test for remote clients : invalid on ME or phantoms */
+/* test for remote clients : invalid on servers or phantoms */
 #define CLIENT_IS_REMOTE(x) ((x)->via == NULL)
 /* test for any server : valid always */
 #define CLIENT_IS_SERVER(x) ((x)->umode & A_SERVER)

@@ -20,6 +20,8 @@ Sat Jan 21 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed invalid token setting on local connect of
 	  server which was already introduced as remote.
 	* modules/ircd/ircd.c: fixed wrong refused server name processing.
+	* modules/ircd/channels.c, modules/ircd/ircd.*: fixed invalid usage of
+	  CLIENT_IS_REMOTE() macro.
 
 Wed Jan 18 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: don't send error replies to a killed client.
