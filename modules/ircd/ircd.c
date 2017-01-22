@@ -3915,9 +3915,9 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 	(SERVICE_FLAGS(link->cl) & SERVICE_WANT_TOKEN))
       link->cl->via->p.iface->ift |= I_PENDING;
 #endif
-  ircd_sendto_servers_all(Ircd, pp, "NICK %s %hu %s %s %hu %s :%s",
-			  tgt->nick, tgt->hops, argv[2], argv[3],
-			  on->x.a.token + 1, argv[5], argv[6]);
+  ircd_sendto_servers_all_but(Ircd, pp, on, "NICK %s %hu %s %s %hu %s :%s",
+			      tgt->nick, tgt->hops, argv[2], argv[3],
+			      on->x.a.token + 1, argv[5], argv[6]);
   _ircd_bt_client(tgt, NULL, tgt->nick, on->lcnick);
   return 1;
 }
