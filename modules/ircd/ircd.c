@@ -499,6 +499,9 @@ static inline void _ircd_recalculate_hops (void)
 	t->via = NULL; /* don't reset local connects! */
 	t->hops = Ircd->s;
       }
+      else
+	DBG("ircd:ircd.c:_ircd_recalculate_hops: server %s is local (%hu)",
+	    t->lcnick, t->hops);
       t->alt = NULL; /* reset data */
     }
   hops = 1;
@@ -519,9 +522,15 @@ static inline void _ircd_recalculate_hops (void)
 	    {
 	      l->cl->hops = hops + 1;
 	      l->cl->via = t->via;
+	      DBG("ircd:ircd.c:_ircd_recalculate_hops: server %s seen via %s",
+		  l->cl->lcnick, t->lcnick);
 	    }
 	    else if (l->cl->alt == NULL && t->via != l->cl->via)
+	    {
+	      DBG("ircd:ircd.c:_ircd_recalculate_hops: server %s alt path via %s",
+		  l->cl->lcnick, t->lcnick);
 	      l->cl->alt = t->via; /* don't set alt the same as via */
+	    }
 	  }
 	  else if (l->cl->hops == Ircd->s)
 	    l->cl->hops = hops + 1; /* reset hops for users */
@@ -533,7 +542,11 @@ static inline void _ircd_recalculate_hops (void)
      can have alternates so let set alternates with those alternates */
   for (i = 1; i < Ircd->s; i++) /* iteration: scan whole servers list */
     if ((t = Ircd->token[i]) != NULL && t->alt == NULL && t->via != NULL)
+    {
       t->alt = t->via->link->cl->alt;
+      DBG("ircd:ircd.c:_ircd_recalculate_hops: server %s backup path via %s",
+	  t->lcnick, t->alt ? t->alt->link->cl->lcnick : NULL);
+    }
 }
 #endif
 
@@ -2680,24 +2693,25 @@ static int ircd_nick_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 #if IRCD_MULTICONNECT
 /* recursive traverse into tree sending every server we found */
 static inline void _ircd_burst_servers(INTERFACE *cl, const char *sn, LINK *l,
-				       int tst, unsigned int token)
+				       int tst, peer_priv *via)
 {
   dprint(5, "ircd:ircd.c:_ircd_burst_servers: %s to %s", sn, cl->name);
   while (l) {
     if (CLIENT_IS_SERVER (l->cl) && (l->cl->hops >= l->where->hops) &&
-	l->cl->x.a.token != token &&	/* never send server back */
+	l->cl->via != via &&		/* never send server back */
 	/* send any: our link, server behind this one,
 	   or if we send to A_MULTI then send other equal path too */
-	(tst || l->where == &ME || l->cl->via == l->where->via)) {
+	(tst || l->where == &ME ||
+	 (l->cl->via == l->where->via && l->cl->hops > l->where->hops))) {
       register char *cmd = "SERVER";
 
       if (tst && (l->cl->umode & A_MULTI)) /* new server type */
 	cmd = "ISERVER";		/* protocol extension */
       New_Request (cl, 0, ":%s %s %s %hu %hu :%s", sn, cmd, l->cl->nick,
 		   l->cl->hops + 1, l->cl->x.a.token + 1, l->cl->fname);
-      if (l->where == &ME || l->cl->via == l->where->via) /* recursion */
+      if (l->where == &ME || l->cl->hops > l->where->hops) /* recursion */
 	/* for alternative path only send multipath but don't go further */
-	_ircd_burst_servers(cl, l->cl->nick, l->cl->c.lients, tst, token);
+	_ircd_burst_servers(cl, l->cl->nick, l->cl->c.lients, tst, via);
     }
     l = l->prev;
   }
@@ -2753,7 +2767,7 @@ static void _ircd_connection_burst (CLIENT *cl)
   register int tst = (cl->umode & A_MULTI);
 
   /* Ircd->servers is our recipient */
-  _ircd_burst_servers(cl->via->p.iface, MY_NAME, Ircd->servers->prev, tst, cl->x.a.token);
+  _ircd_burst_servers(cl->via->p.iface, MY_NAME, Ircd->servers->prev, tst, cl->via);
 #else
   _ircd_burst_servers(cl->via->p.iface, MY_NAME, Ircd->servers->prev);
 #endif
@@ -3522,8 +3536,9 @@ static int ircd_iserver(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   if (clo == NULL)		/* don't send duplicate to RFC2813 servers */
     ircd_sendto_servers_old (Ircd, pp, ":%s SERVER %s %hd %hd :%s", sender,
 			     argv[0], cl->hops + 1, cl->x.a.token + 1, argv[3]);
-  ircd_sendto_servers_new (Ircd, pp, ":%s ISERVER %s %hd %hd :%s", sender,
-			   argv[0], cl->hops + 1, cl->x.a.token + 1, argv[3]);
+  else if (cl->hops > 1)	/* don't send it again if it's local connect */
+    ircd_sendto_servers_new (Ircd, pp, ":%s ISERVER %s %hd %hd :%s", sender,
+			     argv[0], cl->hops + 1, cl->x.a.token + 1, argv[3]);
   Add_Request(I_LOG, "*", F_SERV, "Received ISERVER %s from %s (%hd %s)",
 	      argv[0], sender, cl->hops, cl->fname);
   return 1;

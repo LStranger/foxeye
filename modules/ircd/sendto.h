@@ -147,11 +147,12 @@
       L->cl->via->p.iface->ift |= I_PENDING; \
       ircd_add_ack (L->cl->via, a, b); } \
   Add_Request (I_PENDING, "*", 0, __VA_ARGS__); } while(0)
-/* sends to every server with ack; args the same */
+/* sends to every server with ack; args the same;
+   also test to not send to $who as required for SQUIT */
 #define ircd_sendto_servers_all_ack(i,a,b,c,...) do {\
   LINK *L; \
   for (L = (i)->servers; L; L = L->prev) \
-    __TRANSIT__ if (L->cl->via != c) { \
+    __TRANSIT__ if (L->cl->via != c && L->cl != a) { \
       L->cl->via->p.iface->ift |= I_PENDING; \
       if (L->cl->umode & A_MULTI) \
 	ircd_add_ack (L->cl->via, a, b); } \
