@@ -2779,6 +2779,12 @@ static void _ircd_connection_burst (CLIENT *cl)
   dprint(5, "ircd: burst done for %s", cl->lcnick);
 }
 
+static inline void _kill_bad_server(CLIENT *cl, const char *msg)
+{
+  cl->lcnick[0] = '\0';			/* do not try to remove it */
+  _ircd_peer_kill(cl->via, msg);
+}
+
 /* trying to register new local server link... */
 BINDING_TYPE_ircd_register_cmd (ircd_server_rb);
 static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const char **argv)
@@ -2906,13 +2912,13 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
 #endif
   {
     // TODO: try to resolv that somehow?
-    _ircd_peer_kill (cl->via, "duplicate connection not allowed");
+    _kill_bad_server (cl, "duplicate connection not allowed");
     return 1;
   }
   cc = gettoken (cl->away, NULL);	/* split off server version string */
   if (strncmp (cl->away, "021", 3))	/* want 2.10+ version, RFC2813 */
   {
-    _ircd_peer_kill (cl->via, "old version");
+    _kill_bad_server (cl, "old version");
     return 1;
   }
   if (*cc)				/* got flags string */
@@ -2921,7 +2927,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
 
     if (*cc != '|' && strncmp (cc, "IRC|", 4)) /* RFC2813 */
     {
-      _ircd_peer_kill (cl->via, "unknown implementation");
+      _kill_bad_server (cl, "unknown implementation");
       return 1;
     }
     cc = cflags;			/* skip flags string */
@@ -2943,7 +2949,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
     }
   }
   if (token > SHRT_MAX) {
-    _ircd_peer_kill (cl->via, "invalid token value");
+    _kill_bad_server (cl, "invalid token value");
     return 1;
   }
   /* if it's incoming connect then check every option flag we got
@@ -2993,7 +2999,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
       sz = sizeof(buff) - 1;		/* recover from snprintf */
     if (Peer_Put (peer, buff, &sz) <= 0) /* put it into connchain buffers */
     {
-      _ircd_peer_kill (cl->via, "handshake error");
+      _kill_bad_server (cl, "handshake error");
       return 1;
     }
   }
@@ -3005,7 +3011,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
       if (Connchain_Grow (peer, *ccur) <= 0)
       {
 	snprintf (buff, sizeof(buff), "server option unavailable: %c", *ccur);
-	_ircd_peer_kill (cl->via, buff);
+	_kill_bad_server (cl, buff);
 	return 1;
       }
       else
@@ -3017,7 +3023,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
     if (Connchain_Grow (peer, *cc) <= 0)
     {
       snprintf (buff, sizeof(buff), "server option unavailable: %c", *cc);
-      _ircd_peer_kill (cl->via, buff);
+      _kill_bad_server (cl, buff);
       return 1;
     }
     else
@@ -3031,21 +3037,21 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
       _ircd_uplink = cl->via;		/* so this may be our uplink now */
     else		/* there is autoconnected RFC2813 server already */
     {
-      _ircd_peer_kill (cl->via, "extra uplink connect, bye, sorry");
+      _kill_bad_server (cl, "extra uplink connect, bye, sorry");
       return 1;
     }
   }
 #ifdef IRCD_P_FLAG
   if (!(cl->umode & A_ISON))		/* should be received 'P' flag */
   {
-    _ircd_peer_kill (cl->via, "option flag P is required");
+    _kill_bad_server (cl, "option flag P is required");
     return 1;
   }
 #endif
 #if IRCD_MULTICONNECT
   /* check if it's another connect of already known server */
-  if (clt && !(cl->umode & A_MULTI)) { /* another connect with another flags */
-    _ircd_peer_kill (cl->via, "duplicate connection not allowed");
+  if (clt && !(cl->umode & A_MULTI)) { /* another connect with different mode */
+    _kill_bad_server (cl, "duplicate connection not allowed");
     //FIXME: SQUIT another one too?
     return 1;
   }
@@ -4802,7 +4808,7 @@ static LINK *_ircd_check_multiconnect (LINK *link, peer_priv *via)
 	      s1 = s2; /* found one connect */
 	    else
 	      break; /* that will break outer loop too */
-	    }
+	  }
   }
   if (s2 != NULL) { /* it's multiconnected still, just notify */
     DBG ("ircd:ircd_do_squit: server %s is also connected via %s and %s",
