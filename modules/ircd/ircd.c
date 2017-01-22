@@ -451,6 +451,11 @@ static void _ircd_peer_kill (peer_priv *peer, const char *msg)
     peer->p.state = P_QUIT;
     return;
   }
+  if (peer->p.state == P_QUIT || peer->p.state == P_LASTWAIT)
+  {
+    ERROR ("ircd:ircd.c:_ircd_peer_kill: diplicate call!");
+    return;
+  }
   cl = peer->link->cl;
   LOG_CONN ("ircd: killing peer %s@%s: %s", cl->user, cl->host, msg);
   New_Request (peer->p.iface, 0, "ERROR :closing link to %s@%s: %s",
@@ -478,6 +483,21 @@ static void _ircd_peer_kill (peer_priv *peer, const char *msg)
     peer->t = 0;
   }
   peer->p.state = P_QUIT;		/* it will die eventually */
+#if IRCD_MULTICONNECT
+  /* note: server can be multiconnected and if it is then don't remove name */
+  if (cl->via != peer || cl->alt != NULL)
+    DBG("ircd:_ircd_peer_kill: %s appear to be available by other way, will not"
+	" touch name", cl->lcnick);
+  else
+#endif
+  /* remove key right away so it will be not foundable anymore */
+  if (cl->lcnick[0])
+  {
+    if (Delete_Key (Ircd->clients, cl->lcnick, cl) < 0)
+      ERROR("ircd:CLIENT: on quit: tree error on %s (%p)", cl->lcnick, cl);
+    else
+      dprint(2, "ircd:CLIENT: del quitting name %s: %p", cl->lcnick, cl);
+  }
   Unset_Iface();
 }
 
@@ -499,6 +519,8 @@ static inline void _ircd_recalculate_hops (void)
 	t->via = NULL; /* don't reset local connects! */
 	t->hops = Ircd->s;
       }
+      else if (t->via != NULL && t->via->p.state == P_QUIT)
+	DBG("ircd:ircd.c:_ircd_recalculate_hops: server %s is dying", t->lcnick);
       else
 	DBG("ircd:ircd.c:_ircd_recalculate_hops: server %s is local (%hu)",
 	    t->lcnick, t->hops);
@@ -1318,17 +1340,6 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	return REQ_OK;		/* let every ERROR/KILL be delivered */
       }
       Rename_Iface(cli, NULL);	/* delete it from everywhere before checks */
-#if IRCD_MULTICONNECT
-      /* note: server can be multiconnected and if so then cl->via != peer */
-      if (cl->via == peer)
-#endif
-      if (cl->lcnick[0])
-      {
-	if (Delete_Key (Ircd->clients, cl->lcnick, cl) < 0)
-	  ERROR("ircd:CLIENT: on quit: tree error on %s (%p)", cl->lcnick, cl);
-	else
-	  dprint(2, "ircd:CLIENT: del quitting name %s: %p", cl->lcnick, cl);
-      }
       /* cleanup on local indication, it's not even a valid connect anymore */
       cl->local = NULL;
       if (peer == _ircd_uplink)
@@ -4616,10 +4627,12 @@ CLIENT *ircd_find_client (const char *name, peer_priv *via)
 
   if (!name)
     return &ME;
-  dprint(5, "ircd:ircd.c:ircd_find_client: %s", name);
   c = _ircd_find_client (name);
-  if (c == NULL || (c->hold_upto == 0))
+  if (c == NULL || (c->hold_upto == 0)) {
+    dprint(5, "ircd:ircd.c:ircd_find_client: %s: %p", name, c);
     return (c);
+  } else
+    dprint(5, "ircd:ircd.c:ircd_find_client: %s: %p (phantom)", name, c);
   if (via == NULL)
     return (NULL);
   c = _ircd_find_phantom(c, via);
@@ -4816,13 +4829,14 @@ static LINK *_ircd_check_multiconnect (LINK *link, peer_priv *via)
   } else if (s1 != NULL) { /* it's single connected now so clear links further */
     DBG ("ircd:ircd_do_squit: server %s is also connected via %s",
 	 link->cl->lcnick, s1->where->lcnick);
+    if (s1->where == &ME)		/* we never record backlinks to me */
+      return s1;
     for (s2 = link->cl->c.lients; s2; s2 = s2->prev) /* find direct link */
       if (s2->cl == s1->where)
 	break;
     if (s2 == NULL) {
-      if (s1->where != &ME)		/* we never record backlinks to me */
-	ERROR ("ircd:ircd_do_squit: link from server %s to %s already gone, skip checks",
-	       link->cl->lcnick, s1->where->lcnick);
+      DBG ("ircd:ircd_do_squit: link from server %s to %s already gone, skip checks",
+	   link->cl->lcnick, s1->where->lcnick);
       return s1;
     }
     if (!_ircd_check_multiconnect (s2, via)) {
