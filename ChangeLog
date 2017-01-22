@@ -22,6 +22,7 @@ Sat Jan 21 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed wrong refused server name processing.
 	* modules/ircd/channels.c, modules/ircd/ircd.*: fixed invalid usage of
 	  CLIENT_IS_REMOTE() macro.
+	* modules/ircd/ircd.c: fixed crash on module termination.
 
 Wed Jan 18 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: don't send error replies to a killed client.

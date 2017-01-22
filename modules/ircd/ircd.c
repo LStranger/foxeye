@@ -4547,7 +4547,7 @@ static iftype_t _ircd_signal (INTERFACE *iface, ifsig_t sig)
 	INTERFACE *ifcl = IrcdPeers->p.iface;
 	register iftype_t rc;
 
-	dprint (5, "ircd: killing peer %s.", IrcdPeers->link->cl->lcnick);
+	dprint (5, "ircd: killing peer %s.", IrcdPeers->p.dname);
 	rc = _ircd_client_signal (ifcl, S_TERMINATE);
 	ifcl->ift |= rc;
 	Set_Iface (ifcl);
