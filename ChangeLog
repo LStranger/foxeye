@@ -24,6 +24,7 @@ Sat Jan 21 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  CLIENT_IS_REMOTE() macro.
 	* modules/ircd/ircd.c: fixed crash on module termination.
 	* modules/ircd/ircd.c: corrected point of removing name from the list.
+	* modules/ircd/ircd.c: fixed tokens handling in multiconnect mode.
 
 Wed Jan 18 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: don't send error replies to a killed client.

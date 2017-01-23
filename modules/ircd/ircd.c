@@ -3267,6 +3267,10 @@ static bool _ircd_add_token_to_server(peer_priv *pp, CLIENT *cl, long ntok)
       pp->i.token[pp->t++] = NULL;
   }
   if (pp->i.token[ntok])
+#if IRCD_MULTICONNECT
+    WARNING("ircd: got token %ld from %s which is already in use", ntok,
+	    pp->p.dname);
+#else
   {
     ERROR ("ircd: got token %ld from %s which is already in use", ntok,
 	   pp->p.dname);
@@ -3274,6 +3278,7 @@ static bool _ircd_add_token_to_server(peer_priv *pp, CLIENT *cl, long ntok)
       return FALSE;
   }
   else
+#endif
     pp->i.token[ntok] = cl;
   return TRUE;
 }
