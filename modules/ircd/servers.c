@@ -323,15 +323,18 @@ static int ircd_squit_sb(INTERFACE *srv, struct peer_t *peer, unsigned short tok
     if (pp->link->cl->umode & A_MULTI)
       New_Request(peer->iface, 0, "ACK SQUIT %s", argv[0]);
 #endif
-    ack = ircd_check_ack(pp, tgt, NULL);
-    if (ack != NULL) {
-      ack->contrary = 1;
-      return (1); /* ignore the message */
-    }
     for (l = cl->c.lients; l; l = l->prev)
       if (l->cl == tgt)
 	break;
     if (l == NULL) {			/* ambiguous sender */
+#if IRCD_MULTICONNECT
+      /* or it might be a duplicate still */
+      ack = ircd_check_ack(pp, tgt, NULL);
+      if (ack != NULL) {
+	ack->contrary = 1;
+	return (1); /* ignore the message */
+      }
+#endif
       ircd_do_squit(pp->link, pp, "Invalid SQUIT message");
       return 0;				/* kill our peer instead */
     }
