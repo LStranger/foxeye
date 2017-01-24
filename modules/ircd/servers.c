@@ -1106,7 +1106,7 @@ static int ircd_ack(INTERFACE *srv, struct peer_t *peer, unsigned short token,
 { /* args: <command> <target> [<channel>] */
   register struct peer_priv *pp = peer->iface->data; /* it's really peer */
   const char *channame;
-  ACK *ack;
+  ACK *ack = NULL;
 
   if (!(pp->link->cl->umode & A_MULTI)) /* it's ambiguous from RFC2813 server */
     return (0);
@@ -1131,14 +1131,14 @@ static int ircd_ack(INTERFACE *srv, struct peer_t *peer, unsigned short token,
 	  argv[0], argv[1], argv[2], pp->acks->who->nick, channame);
     if (ircd_recover_done(pp, "ACK for unexpected channel") == 0)
       return (0);
-    ack = pp->acks;
-  } else if ((ack = ircd_find_ack(pp, argv[1], NULL)) == NULL) {
+  } else if (argc == 2 && (ack = ircd_find_ack(pp, argv[1], NULL)) == NULL) {
     ERROR("ircd:got unexpected ACK %s on %s (expected %s %s)", argv[0], argv[1],
 	  pp->acks->who ? pp->acks->who->nick : "(nil)", channame);
     if (ircd_recover_done(pp, "Unexpected ACK arguments") == 0)
       return (0);
-    ack = pp->acks;
   }
+  if (ack == NULL)
+    ack = pp->acks;
   while (pp->acks != ack)
     ircd_drop_ack((IRCD *)srv->data, pp);
   ircd_drop_ack((IRCD *)srv->data, pp);
