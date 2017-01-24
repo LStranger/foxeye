@@ -13,7 +13,7 @@ TODO:
 	* modules/ircd: to review against IRCd 2.11.2 for compliance.
 	* *: to check Add_Request/New_Request coming to user to be translatable.
 
---- [0.10.2]
+--- [0.10.2] end (released 0.11.0)
 Tue Jan 24 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed dropping CLIENT where it should not.
 	* modules/ircd/servers.c: fixed ACKs processing.
