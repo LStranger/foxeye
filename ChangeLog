@@ -17,6 +17,7 @@ TODO:
 Tue Jan 24 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed dropping CLIENT where it should not.
 	* modules/ircd/servers.c: fixed ACKs processing.
+	* modules/ircd/ircd.c: fixed missing ACK QUIT on backup message.
 
 Mon Jan 23 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: revised phantoms relations, some problems found.

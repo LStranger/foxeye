@@ -849,6 +849,17 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
       //TODO: RFC2813:3.3 - KILL for (c) if it's a client instead?
     }
     if (c == NULL) {
+#if IRCD_MULTICONNECT
+      if ((peer->link->cl->umode & A_MULTI) &&
+	  strcasecmp (argv[1], "QUIT") == 0) {
+	/* delayed QUIT message may need special care, client isn't
+	   online for us anymore but we still should return ACK */
+	New_Request(peer->p.iface, 0, "ACK QUIT %s", argv[0]);
+	dprint(3, "ircd: message %s from %s seems to be delayed by %s", argv[1],
+	       argv[0], peer->p.dname);
+	return (1);
+      }
+#endif
       ERROR("ircd:invalid source [%s] from [%s]", argv[0],
 	    peer ? peer->link->cl->lcnick : "internal call");
       /* drop link if argv[0] is server name (RFC2813) */
