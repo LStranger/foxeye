@@ -14,6 +14,9 @@ TODO:
 	* *: to check Add_Request/New_Request coming to user to be translatable.
 
 --- [0.10.2]
+Tue Jan 24 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/ircd.c: fixed dropping CLIENT where it should not.
+
 Mon Jan 23 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: revised phantoms relations, some problems found.
 

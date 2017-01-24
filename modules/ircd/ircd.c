@@ -666,7 +666,7 @@ static void _ircd_try_drop_collision(CLIENT **ptr)
 #endif
     return;			/* not expired yet */
   dprint (2, "ircd: dropping nick %s from hold (was on %s)", cl->nick, cl->host);
-  if (cl->cs == cl) {		/* it has the nick key */
+  if (cl->lcnick[0] != '\0') {	/* it had the nick key */
     if (Delete_Key(Ircd->clients, cl->lcnick, cl) < 0)
       ERROR("ircd:_ircd_try_drop_collision: tree error on %s (%p)", cl->lcnick, cl);
     else
@@ -1470,8 +1470,13 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	}
       free_LINK (peer->link);	/* free all structures */
       dprint(2, "ircd: link %p freed", peer->link);
-      if (cl->via == peer && cl->pcl == NULL) {
-	/* neither server still connected, nor nick holder */
+#if IRCD_MULTICONNECT
+      if (cl->via == peer && cl->pcl == NULL && cl->on_ack == 0)
+#else
+      if (cl->via == peer && cl->pcl == NULL)
+#endif
+      {
+	/* neither server still connected, nor acks/nick holder */
 	dprint(2, "ircd:CLIENT: deleting client %p", cl);
 	free_CLIENT (cl);
       } else
