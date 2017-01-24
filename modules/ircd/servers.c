@@ -90,12 +90,42 @@ void ircd_drop_ack (IRCD *ircd, struct peer_priv *link)
 /* finds ack for client, on channel or global */
 ACK *ircd_check_ack (struct peer_priv *link, CLIENT *who, CHANNEL *where)
 {
-  register ACK *ack;
+  register ACK *ack, *possible = NULL;
 
   for (ack = link->acks; ack; ack = ack->next)
-    if (!ack->contrary && ack->who == who && ack->where == where)
+    if (ack->contrary) {
+      if (ack->who == who && ack->where == where)
+        possible = ack;
+    } else if (ack->who == who && ack->where == where)
       return ack;
+    else
+      return possible;
   return NULL;
+}
+
+static ACK *ircd_find_ack(struct peer_priv *link, const char *who, const char *where)
+{
+  register ACK *ack, *possible = NULL;
+
+  for (ack = link->acks; ack; ack = ack->next)
+  {
+    if (where == NULL && ack->where == NULL && strcmp(who, ack->who->nick) == 0) {
+      if (ack->contrary)
+	possible = ack;
+      else
+	return ack;
+    } else if (where != NULL && ack->where != NULL &&
+	       strcmp(who, ack->who->nick) == 0 &&
+	       ((ack->where == CHANNEL0 && strcmp(where, "0") == 0) ||
+		(ack->where != CHANNEL0 && strcmp(where, ack->where->name) == 0))) {
+      if (ack->contrary)
+	possible = ack;
+      else
+	return ack;
+    } else if (!ack->contrary)
+      break;
+  }
+  return possible;
 }
 
 
@@ -1076,6 +1106,7 @@ static int ircd_ack(INTERFACE *srv, struct peer_t *peer, unsigned short token,
 { /* args: <command> <target> [<channel>] */
   register struct peer_priv *pp = peer->iface->data; /* it's really peer */
   const char *channame;
+  ACK *ack;
 
   if (!(pp->link->cl->umode & A_MULTI)) /* it's ambiguous from RFC2813 server */
     return (0);
@@ -1094,20 +1125,22 @@ static int ircd_ack(INTERFACE *srv, struct peer_t *peer, unsigned short token,
     channame = "0";
   else
     channame = pp->acks->where->name;
-  if (argc == 3 && *argv[2] != '\0' &&
-      (pp->acks->where == NULL || strcmp(argv[2], channame))) {
+  if (argc >= 3 && *argv[2] != '\0' &&
+      (ack = ircd_find_ack(pp, argv[1], argv[2])) == NULL) {
     ERROR("ircd:got ACK %s on %s for unexpected channel %s (expected %s at %s)",
 	  argv[0], argv[1], argv[2], pp->acks->who->nick, channame);
     if (ircd_recover_done(pp, "ACK for unexpected channel") == 0)
       return (0);
-  } else if (argc == 2 &&
-	     (pp->acks->where != NULL || pp->acks->who == NULL ||
-	      strcmp(argv[1], pp->acks->who->nick))) {
+    ack = pp->acks;
+  } else if ((ack = ircd_find_ack(pp, argv[1], NULL)) == NULL) {
     ERROR("ircd:got unexpected ACK %s on %s (expected %s %s)", argv[0], argv[1],
 	  pp->acks->who ? pp->acks->who->nick : "(nil)", channame);
     if (ircd_recover_done(pp, "Unexpected ACK arguments") == 0)
       return (0);
+    ack = pp->acks;
   }
+  while (pp->acks != ack)
+    ircd_drop_ack((IRCD *)srv->data, pp);
   ircd_drop_ack((IRCD *)srv->data, pp);
   return (1);
 }
