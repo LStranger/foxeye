@@ -498,6 +498,10 @@ static int ircd_join_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
       else
 	m += ptr;
     } else
+#if !IRCD_MULTICONNECT
+    /* for multiconnected server don't set error */
+    if (!(pp->link->cl->umode & A_MULTI))
+#endif
       err = 1;
     if (*c == ',')
       c++;
@@ -654,6 +658,14 @@ static int ircd_part_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     *t = '\0';
     memb = ircd_find_member ((IRCD *)srv->data, chname, NULL);
     if (memb == NOSUCHCHANNEL) {
+#if !IRCD_MULTICONNECT
+      /* for multiconnected server don't set error */
+      if (pp->link->cl->umode & A_MULTI) {
+	DBG("ircd:got PART from %s for %s on nonexistent channel %s",
+	    peer->dname, sender, chname);
+	continue;
+      }
+#endif
       ERROR("ircd:got PART from %s for %s on nonexistent channel %s",
 	    peer->dname, sender, chname);
       ircd_recover_done(pp, "PART for nonexistent channel");
