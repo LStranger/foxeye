@@ -4,7 +4,7 @@ Upstream-Contact: andrej@rep.kiev.ua
 Source: http://sourceforge.net/p/foxeye/code/ci/master/tree/
 
 Files: *
-Copyright: 1999-2016 Andriy Grytsenko (LStranger) <andrej@rep.kiev.ua>
+Copyright: 1999-2017 Andriy Grytsenko (LStranger) <andrej@rep.kiev.ua>
 License: GPL-2+
 
 Files: modules/ssl/openssl.c

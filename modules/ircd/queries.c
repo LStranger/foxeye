@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2016  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2010-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -984,7 +984,7 @@ static inline int _ircd_query_info (IRCD *ircd, CLIENT *cl, struct peer_priv *vi
 		    " using few extensions to improve usability.");
   ircd_do_unumeric (cl, RPL_INFO, cl, 0, "Birth date: " COMPILETIME ".");
   /* other info */
-  ircd_do_unumeric (cl, RPL_INFO, cl, 0, "Copyright 1999 - 2016 "
+  ircd_do_unumeric (cl, RPL_INFO, cl, 0, "Copyright 1999 - 2017 "
 		    "Andriy Grytsenko and others.");
   ircd_do_unumeric (cl, RPL_INFO, cl, 0, "This program is free software;"
 		    " you can redistribute it and/or modify it under the terms"

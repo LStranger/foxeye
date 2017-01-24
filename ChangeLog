@@ -20,6 +20,8 @@ Tue Jan 24 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed missing ACK QUIT on backup message.
 	* modules/ircd/servers.c: don't send errors for duplicate JOIN and PART
 	  from a multiconnected server.
+	* core/main.c, modules/ircd/queries.c, doc/foxeye.1: updated copyright
+	  years in messages.
 
 Mon Jan 23 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: revised phantoms relations, some problems found.

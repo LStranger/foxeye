@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2016-12-26 01:04+0200\n"
+"POT-Creation-Date: 2017-01-20 22:46+0200\n"
 "PO-Revision-Date: 2014-10-11 22:22+0200\n"
 "Last-Translator: jcsl <trcs@gmx.com>\n"
 "Language-Team: Spanish <opensuse-translation-es@opensuse.org>\n"
@@ -418,11 +418,11 @@ msgstr ""
 #: core/main.c:409
 #, c-format
 msgid ""
-"Copyright (C) 1999-2016 Andriy Gritsenko.\n"
+"Copyright (C) 1999-2017 Andriy Gritsenko.\n"
 "\n"
 "OS: %s %s on %s.\n"
 msgstr ""
-"Copyright (C) 1999-2016 Andriy Gritsenko.\n"
+"Copyright (C) 1999-2017 Andriy Gritsenko.\n"
 "\n"
 "S.O.: %s %s en %s.\n"
 
@@ -972,17 +972,17 @@ msgstr "El saludo en %s para %s se ha reiniciado."
 msgid "Greeting on %s for %s set to: %s"
 msgstr "El saludo en %s para %s se ha establecido a: %s"
 
-#: modules/ssl/openssl.c:442
+#: modules/ssl/openssl.c:450
 #, c-format
 msgid "SSL link: used on peer %s as %s."
 msgstr ""
 
-#: modules/ssl/openssl.c:445
+#: modules/ssl/openssl.c:453
 #, c-format
 msgid "SSL link: used on nonamed peer (%hd) as %s."
 msgstr ""
 
-#: modules/ssl/openssl.c:450
+#: modules/ssl/openssl.c:458
 #, fuzzy
 msgid "Module ssl: not used."
 msgstr "Registro automático del módulo: no hay registros abiertos."
