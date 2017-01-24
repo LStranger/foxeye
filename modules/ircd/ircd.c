@@ -666,7 +666,7 @@ static void _ircd_try_drop_collision(CLIENT **ptr)
 #endif
     return;			/* not expired yet */
   dprint (2, "ircd: dropping nick %s from hold (was on %s)", cl->nick, cl->host);
-  if (cl->lcnick[0] != '\0') {	/* it had the nick key */
+  if (cl->cs == cl) {		/* it has the nick key */
     if (Delete_Key(Ircd->clients, cl->lcnick, cl) < 0)
       ERROR("ircd:_ircd_try_drop_collision: tree error on %s (%p)", cl->lcnick, cl);
     else
@@ -1146,6 +1146,12 @@ static void _ircd_remote_user_gone(CLIENT *cl)
   /* converts active user into phantom on hold for this second */
   cl->hold_upto = Time;
   cl->away[0] = '\0';	/* it's used by nick change tracking */
+  if (cl->rfr != NULL && cl->rfr->cs == cl) { /* it was a nick holder */
+    cl->pcl = cl->rfr;
+    cl->rfr = NULL;
+    dprint(2, "ircd:CLIENT: converted holder %s (%p) into phantom, prev %p",
+	   cl->nick, cl, cl->pcl);
+  }
   /* cl->via is already NULL for remotes */
   pthread_mutex_lock (&IrcdLock);
   if (l != NULL)	/* free structure */
@@ -1357,8 +1363,13 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
       Rename_Iface(cli, NULL);	/* delete it from everywhere before checks */
       if (cl->pcl != NULL)
 	_ircd_try_drop_collision(&cl->pcl);
-      /* check if it's neither a server connected elsewhere, nor a nick holder */
-      if (cl->pcl != NULL && cl->via == peer && cl->lcnick[0]) {
+#if IRCD_MULTICONNECT
+      /* note: server can be multiconnected and if so then cl->via != peer */
+      if (cl->via == peer)
+#endif
+      /* check if it's not a nick holder */
+      if (cl->pcl == NULL && cl->lcnick[0])
+      {
 	/* name is not needed anymore, drop it from tree */
 	if (Delete_Key (Ircd->clients, cl->lcnick, cl) < 0)
 	  ERROR("ircd:CLIENT: on quit: tree error on %s (%p)", cl->lcnick, cl);
@@ -1403,6 +1414,7 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	    cl->rfr->x.rto = NULL; /* drop this reference */
 	    cl->rfr = NULL;
 	  }
+	  cl->lcnick[0] = 0;	/* we deleted the key above */
 	} else {
 	  register CLIENT *phantom;
 
@@ -4686,13 +4698,6 @@ void ircd_prepare_quit (CLIENT *client, peer_priv *via, const char *msg)
     _ircd_remote_user_gone(client);
   else
     _ircd_peer_kill (client->via, msg);
-  if (client->rfr != NULL && client->rfr->cs == client) { /* it was nick holder */
-    client->pcl = client->rfr;
-    client->rfr = NULL;
-    dprint(2, "ircd:CLIENT: converted holder %s (%p) into phantom, prev %p",
-	   client->nick, client, client->pcl);
-  }
-  client->away[0] = '\0';		/* caller may not fill it */
   ircd_quit_all_channels (Ircd, client, 0, 1); /* remove and mark */
 }
 
@@ -4916,6 +4921,7 @@ static void _ircd_do_squit (LINK *link, peer_priv *via, const char *msg)
       phantom->hold_upto = 1;
       phantom->on_ack = 0;	/* it will be freed by ircd_drop_ack */
       phantom->local = NULL;
+      phantom->away[0] = '\0';
       _ircd_move_acks(link->cl, phantom);
       dprint(2, "ircd:CLIENT: added dummy phantom for %s: %p", phantom->nick,
 	     phantom);
