@@ -3093,12 +3093,17 @@ void send_isupport(IRCD *ircd, CLIENT *cl)
       isupport[len++] = buff[0];
   isupport[len] = '\0';
   snprintf(buff, sizeof(buff), " CHANMODES=%s MODES=" STR(MAXMODES)
-			       " MAXCHANNELS=%ld NICKLEN=%u"
+			       " MAXCHANNELS=%ld NICKLEN=%u NICKTEST=%s"
 			       " MAXLIST=beI:%ld NETWORK=%s EXCEPTS=e INVEX=I"
 			       " CASEMAPPING=utf-8 TOPICLEN=" STR(TOPICLEN)
 			       " CHANNELLEN=" STR(CHANNAMELEN)
 			       " IDCHAN=!:" STR(CHIDLEN) " RFC2812",
 	   _ircd_isupport_modestring, _ircd_max_channels, _ircd_nicklen,
+#if IRCD_STRICT_NAMES
+	   CHARSET_8BIT,
+#else
+	   Charset,
+#endif
 	   _ircd_max_bans, ircd->iface->name);
   strfcat(isupport, buff, sizeof(isupport));
   len = ptr = 0;
