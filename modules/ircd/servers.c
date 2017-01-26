@@ -543,7 +543,7 @@ static int ircd_njoin(INTERFACE *srv, struct peer_t *peer, unsigned short token,
   if (ircd_char2mode(srv, peer->dname, sender, argv[0], '\0') & A_INVISIBLE ||
       ((c = strchr(argv[0], ':')) != NULL &&
        (cl = ircd_find_client(NULL, NULL)) &&
-       simple_match(&c[1], cl->lcnick)) < 0) {
+       simple_match(&c[1], cl->lcnick) < 0)) {
     ERROR("ircd:invalid NJOIN channel %s via %s", argv[0], peer->dname);
     return ircd_recover_done(pp, "Invalid NJOIN channel");
   }
