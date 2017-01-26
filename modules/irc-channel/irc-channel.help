@@ -228,14 +228,14 @@ ss-irc kick
 :kick [channel["@"net]] nick [reason]
 :
 :Kicks user %_nick%_ from current channel with some %_reason%_ if bot have\
- enough priveleges to do that. If %_reason%_ is omitted then kicks with\
+ enough privileges to do that. If %_reason%_ is omitted then kicks with\
  reason from variable %circ-default-kick-reason%n.
 
 ss-irc kickban
 :kickban [channel["@"net]] ["-"|"@"]nick [reason]
 :
 :Sets ban and kicks user %_nick%_ from current channel with some %_reason%_\
- if bot have enough priveleges to do that. If %_reason%_ is omitted then\
+ if bot have enough privileges to do that. If %_reason%_ is omitted then\
  kicks with reason from variable %circ-default-kick-reason%n. Mask is formed\
  from current hostmask for %_nick%_ and may be modified by prefix "%^-%^" or\
  "%^@%^" as follows:
@@ -246,38 +246,38 @@ ss-irc kickban
 ss-irc voice
 :voice nick [channel["@"net]]
 :
-:Sets mode +v for %_nick%_ on some IRC channel if bot have enough priveleges\
+:Sets mode +v for %_nick%_ on some IRC channel if bot have enough privileges\
  to do that.
 
 ss-irc devoice
 :devoice nick [channel["@"net]]
 :
 :Removes mode +v for %_nick%_ on some IRC channel if bot have enough\
- priveleges to do that.
+ privileges to do that.
 
 ss-irc op
 :op nick [channel["@"net]]
 :
-:Sets mode +o for %_nick%_ on some IRC channel if bot have enough priveleges\
+:Sets mode +o for %_nick%_ on some IRC channel if bot have enough privileges\
  to do that.
 
 ss-irc deop
 :deop nick [channel["@"net]]
 :
 :Removes mode +o for %_nick%_ on some IRC channel if bot have enough\
- priveleges to do that.
+ privileges to do that.
 
 ss-irc hop
 :hop nick [channel["@"net]]
 :
-:Sets mode +h for %_nick%_ on some IRC channel if bot have enough priveleges\
+:Sets mode +h for %_nick%_ on some IRC channel if bot have enough privileges\
  to do that and network has that mode.
 
 ss-irc dehop
 :dehop nick [channel["@"net]]
 :
 :Removes mode +h for %_nick%_ on some IRC channel if bot have enough\
- priveleges to do that.
+ privileges to do that.
 
 ss-irc reset
 :reset [+b|+e|+I] [channel["@"net]]

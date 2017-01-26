@@ -1511,7 +1511,7 @@ static int ssirc_kick (struct peer_t *who, INTERFACE *where, char *args)
     return 0;
   else if (!me)
   {
-    New_Request (who->iface, 0, _("No operator priveleges on %s."),
+    New_Request (who->iface, 0, _("No operator privileges on %s."),
 		 where->name);
     return -1;
   }
@@ -1575,7 +1575,7 @@ static int ssirc_kickban (struct peer_t *who, INTERFACE *where, char *args)
     return 0;
   else if (!me)
   {
-    New_Request (who->iface, 0, _("No operator priveleges on %s."),
+    New_Request (who->iface, 0, _("No operator privileges on %s."),
 		 where->name);
     return -1;
   }
@@ -1647,7 +1647,7 @@ static int _ssirc_setmode (struct peer_t *who, INTERFACE *where, char *args,
     return 0;
   else if (!me)
   {
-    New_Request (who->iface, 0, _("No operator priveleges on %s."),
+    New_Request (who->iface, 0, _("No operator privileges on %s."),
 		 where->name);
     return -1;
   }
@@ -1743,7 +1743,7 @@ static int ssirc_reset (struct peer_t *who, INTERFACE *where, char *args)
     return 0;
   else if (!me)
   {
-    New_Request (who->iface, 0, _("No operator priveleges on %s."),
+    New_Request (who->iface, 0, _("No operator privileges on %s."),
 		 where->name);
     return -1;
   }
@@ -1782,7 +1782,7 @@ static int ssirc_invite (struct peer_t *who, INTERFACE *where, char *args)
     return 0;
   else if ((ch->mode & A_INVITEONLY) && !me)
   {
-    New_Request (who->iface, 0, _("No operator priveleges on %s."),
+    New_Request (who->iface, 0, _("No operator privileges on %s."),
 		 where->name);
     return -1;
   }

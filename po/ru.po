@@ -685,7 +685,7 @@ msgstr ""
 #: modules/irc-channel/chmanagement.c:1746
 #: modules/irc-channel/chmanagement.c:1785
 #, c-format
-msgid "No operator priveleges on %s."
+msgid "No operator privileges on %s."
 msgstr ""
 
 #: modules/irc-channel/chmanagement.c:1529

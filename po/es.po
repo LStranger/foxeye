@@ -707,7 +707,7 @@ msgstr "¡%s no es un canal IRC!"
 #: modules/irc-channel/chmanagement.c:1746
 #: modules/irc-channel/chmanagement.c:1785
 #, c-format
-msgid "No operator priveleges on %s."
+msgid "No operator privileges on %s."
 msgstr "Sin privilegios de operador en %s."
 
 #: modules/irc-channel/chmanagement.c:1529
