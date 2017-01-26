@@ -2,7 +2,8 @@ foxeye (0.11.0-1) unstable; urgency=medium
 
   * Updated to upstream version 0.11.0 (Closes: #835833).
   * Enabled ipv6 support in debian build.
-  * Added openssl-dev as build dependency to build 'ssl' module.
+  * Added libssl1.0-dev as build dependency to build 'ssl' module.
+  * Bump Standards-Version to 3.9.8.
 
  -- Andriy Grytsenko <andrej@rep.kiev.ua>  Wed, 25 Jan 2017 01:45:00 +0200
 
@@ -10,7 +11,7 @@ foxeye (0.10.2-2) unstable; urgency=medium
 
   * debian/rules: set LANG=C LC_TIME=C LC_ALL=C for dates override to make
     build reproducible even in different enforced language environment.
-  * Supressed debian-watch-may-check-gpg-signature lintian message since
+  * Suppressed debian-watch-may-check-gpg-signature lintian message since
     sourceforge does not support that feature.
 
  -- Andriy Grytsenko <andrej@rep.kiev.ua>  Wed, 28 Oct 2015 04:10:00 +0200

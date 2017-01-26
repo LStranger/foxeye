@@ -4,9 +4,9 @@ Priority: optional
 Maintainer: Andriy Grytsenko <andrej@rep.kiev.ua>
 Build-Depends:
  debhelper (>= 8.9.0~), pkg-config, tcl-dev,
- liblua5.1-dev | liblua5.2-dev, gettext, openssl-dev,
+ liblua5.1-dev | liblua5.2-dev, gettext, libssl1.0-dev,
  libidn11-dev, zlib1g-dev, locales-all | language-pack-uk-base
-Standards-Version: 3.9.6
+Standards-Version: 3.9.8
 Homepage: http://foxeye.sf.net
 Vcs-Git: git://git.code.sf.net/p/foxeye/code
 Vcs-Browser: http://sourceforge.net/p/foxeye/code/ci/master/tree/
