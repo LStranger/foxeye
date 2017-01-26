@@ -658,7 +658,7 @@ static int ircd_part_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     *t = '\0';
     memb = ircd_find_member ((IRCD *)srv->data, chname, NULL);
     if (memb == NOSUCHCHANNEL) {
-#if !IRCD_MULTICONNECT
+#if IRCD_MULTICONNECT
       /* for multiconnected server don't set error */
       if (pp->link->cl->umode & A_MULTI) {
 	DBG("ircd:got PART from %s for %s on nonexistent channel %s",
