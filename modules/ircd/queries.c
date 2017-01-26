@@ -514,14 +514,14 @@ static inline int _ircd_query_lusers (IRCD *ircd, CLIENT *cl, struct peer_priv *
 	  ircd->token[0]->x.a.uc, lu + op);
     ircd->token[0]->x.a.uc = lu + op;
   }
-  if (ls != 0)
+  if (ll != 0)
   {
-    ERROR("ircd:/lusers: found servers in clients on ME: %u != 0", ls);
-    ls = 0;
+    ERROR("ircd:/lusers: found servers in clients on ME: %u != 0", ll);
+    ll = 0;
   }
   for (l = ircd->servers; l; l = l->prev)
     if (CLIENT_IS_SERVER(l->cl))
-      ls++;
+      ll++;
     else
       ERROR("ircd:/lusers: client %s in local servers list isn't a server",
 	    l->cl->nick);
@@ -582,7 +582,7 @@ static inline int _ircd_query_lusers (IRCD *ircd, CLIENT *cl, struct peer_priv *
   snprintf (buff, sizeof(buff), "%u", ircd->lu);
   ircd_do_unumeric (cl, RPL_LOCALUSERS, cl, (unsigned short)lu, buff);
   snprintf (buff, sizeof(buff), "%u", ircd->gu);
-  return ircd_do_unumeric (cl, RPL_GLOBALUSERS, cl, (unsigned short)gu, buff);
+  return ircd_do_unumeric (cl, RPL_GLOBALUSERS, cl, (unsigned short)(gu + op), buff);
 }
 
 BINDING_TYPE_ircd_client_cmd(ircd_lusers_cb);
