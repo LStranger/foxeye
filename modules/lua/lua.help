@@ -19,5 +19,5 @@ lua
 set lua-max-timer
 :%* <seconds>
 :Maximum value for Lua function 'SetTimer'.
-:Defines maximum time for sheduled execution by Lua command %RSetTimer%n.
+:Defines maximum time for scheduled execution by Lua command %RSetTimer%n.
  Default: 172800.

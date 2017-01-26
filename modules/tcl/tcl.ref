@@ -50,7 +50,7 @@ transcoding for you now.
     - shedules to execute Tcl command <cmd> after <time> seconds are
       passed; returns timer identifier;
  killutimer <timerid>
-    - aborts sheduled execution of some Tcl command by it <timerid>.
+    - aborts scheduled execution of some Tcl command by it <timerid>.
 
     Also any function that is registered by any module (and also 'port'
 and 'module' from the core) is presented in interpreter as

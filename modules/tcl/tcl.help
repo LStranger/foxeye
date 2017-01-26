@@ -26,5 +26,5 @@ set tcl-default-network
 set tcl-max-timer
 :%* <seconds>
 :Maximum value for Tcl procedure 'utimer'.
-:Defines maximum time for sheduled execution by Tcl command %Rutimer%n.
+:Defines maximum time for scheduled execution by Tcl command %Rutimer%n.
  Default: 172800.

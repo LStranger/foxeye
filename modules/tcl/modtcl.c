@@ -1127,7 +1127,7 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
 	ERROR ("tcl:timer:not found timer for %lu.", (unsigned long int)Time);
 	break;
       }
-      dprint (5, "tcl:timer:found sheduled (%lu->%lu) cmd: %s",
+      dprint (5, "tcl:timer:found scheduled (%lu->%lu) cmd: %s",
 	      (unsigned long int)tt->when, (unsigned long int)Time, tt->cmd);
       if (Tcl_Eval (Interp, tt->cmd) != TCL_OK)
       {
