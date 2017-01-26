@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 1996-8 Michael R. Elkins <me@cs.hmc.edu>
  * Copyright (C) 1999 Thomas Roessler <roessler@guug.de>
- * Copyright (C) 1999-2012  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -214,6 +214,8 @@ void foxeye_setlocale (void)
     _charset_is_utf = TRUE;
   else
     _charset_is_utf = FALSE;
+  /* enforce LC_CTYPE for mbrtowc() call */
+  setlocale (LC_CTYPE, new_locale);
   if (changed)
     setenv("LC_ALL", new_locale, 1); /* reset environment */
 #ifdef ENABLE_NLS
