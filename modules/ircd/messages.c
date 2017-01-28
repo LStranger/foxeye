@@ -970,7 +970,10 @@ static int ircd_notice_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
 	Add_Request(I_LOG, "*", F_WARN, "ircd:invalid NOTICE target %s via %s",
 		    c, peer->dname);
       } else if (!CLIENT_IS_REMOTE(tcl)) {
-	if (CLIENT_IS_SERVICE(cl))
+	if (CLIENT_IS_SERVER(cl))
+	  New_Request(tcl->via->p.iface, 0, ":%s NOTICE %s :%s", sender, c,
+		      argv[1]);
+	else if (CLIENT_IS_SERVICE(cl))
 	  New_Request(tcl->via->p.iface, 0, ":%s@%s NOTICE %s :%s", sender,
 		      cl->cs->lcnick, c, argv[1]);
 	else
@@ -1201,7 +1204,10 @@ static int ircd_inotice(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 	Add_Request(I_LOG, "*", F_WARN, "ircd:invalid INOTICE target %s via %s",
 		    c, peer->dname);
       } else if (!CLIENT_IS_REMOTE(tcl)) {
-	if (CLIENT_IS_SERVICE(cl))
+	if (CLIENT_IS_SERVER(cl))
+	  New_Request(tcl->via->p.iface, 0, ":%s NOTICE %s :%s", sender, c,
+		      argv[2]);
+	else if (CLIENT_IS_SERVICE(cl))
 	  New_Request(tcl->via->p.iface, 0, ":%s@%s NOTICE %s :%s", sender,
 		      cl->cs->lcnick, c, argv[2]);
 	else

@@ -1038,10 +1038,10 @@ static void _ircd_do_whois (IRCD *ircd, CLIENT *cl, CLIENT *tgt, CLIENT *me)
     ircd_do_unumeric (cl, RPL_WHOISOPERATOR, tgt, 0, NULL);
 #ifdef SEND_WHOIS_NOTICE
     /* notify target about whois on them */
-    New_Request (tgt->via->p.iface, 0,
+    New_Request (tgt->cs->via->p.iface, 0,
 		 ":%s NOTICE %s :WHOIS on YOU requested by %s (%s@%s) [%s]",
 		 me->lcnick, tgt->nick, cl->nick, cl->user, cl->host,
-		 CLIENT_IS_LOCAL(cl) ? me->nick : cl->cs->nick);
+		 CLIENT_IS_LOCAL(cl) ? me->lcnick : cl->cs->nick);
 #endif
   }
   if (tgt->umode & A_AWAY) /* FIXME: make a message "Use /WHOIS %s %s" ? */
