@@ -21,6 +21,7 @@ Thu Jan 26 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  being used to validate names.
 	* modules/ircd/queries.c: added sending NOTICE to WHOISed operator (if
 	  defined at compile time config).
+	* modules/ircd/ircd.c: added support for class passwords.
 
 Wed Jan 25 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/servers.c: fixed invalid channel validation on NJOIN.

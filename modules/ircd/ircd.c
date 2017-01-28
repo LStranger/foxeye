@@ -2428,6 +2428,22 @@ static int _ircd_got_local_user (CLIENT *cl)
     _ircd_peer_kill (cl->via, "Bye!");
     return 1;
   }
+  if (cl->x.class != NULL && (clr = Lock_Clientrecord(cl->x.class->name)))
+  {
+    /* check if class record has a password so it should be verified */
+    c = Get_Field(clr, "passwd", NULL);
+    if (c && Check_Passwd(cl->vhost, c))
+    {
+      Unlock_Clientrecord(clr);
+      ircd_do_unumeric(cl, ERR_PASSWDMISMATCH, cl, 0, NULL);
+      _ircd_peer_kill(cl->via, "Bad Password");
+      return 1;
+    }
+    uf = Get_Flags(clr, Ircd->iface->name);
+    Unlock_Clientrecord(clr);
+  }
+  else
+    uf = 0;
   unistrlower (cl->lcnick, cl->nick, sizeof(cl->lcnick));
   if (Insert_Key (&Ircd->clients, cl->lcnick, cl, 1) < 0)
     ERROR("ircd:_ircd_got_local_user: tree error on %s", cl->lcnick);
@@ -2502,7 +2518,6 @@ static int _ircd_got_local_user (CLIENT *cl)
   ircd_do_unumeric (cl, RPL_MYINFO, &ME, 0, _ircd_modesstring);
   send_isupport (Ircd, cl);
   b = NULL;
-  uf = Get_Clientflags (cl->x.class->name, Ircd->iface->name);
   while ((b = Check_Bindtable (BTIrcdLocalClient, cl->nick, uf, U_ANYCH, b)))
     if (!b->name)			/* do lusers and custom messages */
       b->func (Ircd->iface, &cl->via->p, cl->umode);
