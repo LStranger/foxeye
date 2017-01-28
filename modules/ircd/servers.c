@@ -497,9 +497,9 @@ static int ircd_join_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
       else
 	m += ptr;
     } else
-#if !IRCD_MULTICONNECT
+#if IRCD_MULTICONNECT
     /* for multiconnected server don't set error */
-    if (!(pp->link->cl->umode & A_MULTI))
+    if (!(((struct peer_priv *)peer->iface->data)->link->cl->umode & A_MULTI))
 #endif
       err = 1;
     if (*c == ',')
