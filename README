@@ -107,6 +107,7 @@ Which modules are available?
    ziplink	- support for compressed connections
    ssl		- support for SSL/TLS on every connection
    syslog	- support for logging some messages to syslog
+   ircd-rusnet	- RusNet ircd IRC server extensions
     Were planned to implement some other modules but they are either pending
     or unrequested. Feel free to write them or ask someone to implement:
    botnet	- implementation of network of bots
@@ -120,7 +121,6 @@ Which modules are available?
    icq		- client for ICQ network
    irc-protection - antiflood, antispam and other
    ircd-console - "consolecmd" command for IRC operators
-   ircd-rusnet	- RusNet ircd IRC server extensions
    ircd-tkserv	- "temporary kill" support for ircd
    jabber	- client for Jabber network
    login	- "login", "logoff", and "cron" scripts for each chat user

@@ -1,0 +1,32 @@
+# first section is usage
+# second section is that config maker will put into config
+# third section is full help
+
+module ircd-rusnet
+:%*
+:
+:This module provides RusNet extensions for RFC IRC protocol. Note that it\
+ should be started (in config file) after module "ircd" to work properly.\
+ Differencies from standard IRC are:
+  - user modes: +x (hidden host) and +b (advanced restriction)
+  - channel modes: +c (no color messages) and +z (ascii-only nicks)
+  - channel mode for user: +h (half-op)
+  - improved collizion resolving
+  - improved autokill management
+ See also documentation file %rircd-rusnet.ref%n.
+
+set rusnet-rmotd-file
+:%* /path/to/file
+:Path to MOTD file for restricted users.
+:This variable defines where file containing MOTD for the server lies. It\
+ can contain full path to the file or path relative to starting config. If\
+ not defined or file is missing then no MOTD will be shown.
+ Default: "".
+
+set rusnet-eline-limit
+:%* <number>
+:Max users allowed matching to single ELINE.
+:This variable defines global limit of users who can match to each ELINE (an\
+ exception set by ELINE command) before exception will cease to work, the same\
+ way as a class overall limit works.
+ Default: 25.

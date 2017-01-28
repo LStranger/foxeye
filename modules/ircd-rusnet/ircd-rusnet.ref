@@ -1,0 +1,84 @@
+User modes:
+
+   +x   masked host
+
+   +b   RusNet-mode restriction
+
+
+Channel modes:
+
+   +c   color codes not allowed
+
+   +z   non-ASCII nick not allowed
+
+   +h   (parameter = nick) channel half-operator
+
+
+Numeric replies:
+
+       225   RPL_WHOISRMODE
+
+             <nick> :is Restricted
+
+         - Returned to client in reply to WHOIS command against client
+           who is restricted (+b user mode).
+
+       327   RPL_WHOISHOST
+             <nick> :Real host is <host>
+
+         - Returned to an OPER in reply to WHOIS command against client
+           whose host is masked (+x user mode).
+
+
+Client commands:
+
+      Command: KLINE
+   Parameters: <nickmask!usermask@hostmask> <hours> [reason]
+
+      Command: ELINE
+   Parameters: ["*!"]<usermask@hostmask> <hours> [reason]
+
+      Command: RLINE
+   Parameters: ["*!"]<usermask@hostmask> <hours> [reason]
+
+      Command: UNKLINE
+   Parameters: <nickmask!usermask@hostmask>
+
+      Command: UNELINE
+   Parameters: <usermask@hostmask>
+
+      Command: UNRLINE
+   Parameters: <usermask@hostmask>
+
+      Command: RCPAGE
+   Parameters: <nick> <charset>
+
+      Command: NICKSERV
+   Parameters: <command>
+
+      Command: CHANSERV
+   Parameters: <command>
+
+      Command: MEMOSERV
+   Parameters: <command>
+
+      Command: OPERSERV
+   Parameters: <command>
+
+
+Server commands (coming from services):
+
+      Command: RMODE
+   Parameters: <nick> <modechange>
+
+      Command: KLINE
+   Parameters: <servermask> <nickmask> <usermask> <hostmask> [<hours>|E] [:reason]
+
+      Command: ELINE
+   Parameters: <servermask> * <usermask> <hostmask> [<hours>] [:reason]
+
+      Command: RLINE
+   Parameters: <servermask> * <usermask> <hostmask> [<hours>] [:reason]
+
+      Command: RCPAGE
+   Parameters: <nick> <charset>

@@ -23,6 +23,8 @@ Sat Jan 28 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/messages.c: also send IPRIVMSG/INOTICE by alternate way
 	  for exact target to ensure delivery.
 	* modules/ircd/messages.c: implemented support for NOTICE from servers.
+	* modules/ircd-rusnet/*: new module, implementation RusNet IRC network
+	  extensions.
 
 Thu Jan 26 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/lib.c: enforced setting LC_CTYPE for mbrtowc() call sake.
