@@ -564,7 +564,14 @@ static inline void _ircd_recalculate_hops (void)
 	    {
 	      DBG("ircd:ircd.c:_ircd_recalculate_hops: server %s alt path via %s",
 		  l->cl->lcnick, t->lcnick);
-	      l->cl->alt = t->via; /* don't set alt the same as via */
+	      if (!(l->cl->via->link->cl->umode & A_MULTI))
+		ERROR("server %s has diplicate link while connected via RFC server %s",
+		      l->cl->lcnick, l->cl->via->link->cl->lcnick);
+	      else if (t->via->link->cl->umode & A_MULTI)
+		l->cl->alt = t->via; /* don't set alt the same as via */
+	      else
+		ERROR("server %s has duplicate link to RFC server %s",
+		      l->cl->lcnick, t->lcnick);
 	    }
 	  }
 	  else if (l->cl->hops == Ircd->s)
@@ -965,8 +972,14 @@ static inline int _ircd_do_server_numeric(peer_priv *peer, const char *sender,
 #if IRCD_MULTICONNECT
   if (CLIENT_IS_REMOTE(tgt) && id != -1)
   {
-    ircd_sendto_new(tgt, ":%s INUM %d %03d %s %s", sender, id, num, argv[2], buf);
+    CLIENT *cl = ircd_find_client(argv[0], peer);
+    ircd_sendto_new(tgt, cl, peer, ":%s INUM %d %03d %s %s", sender, id, num, argv[2], buf);
     ircd_sendto_old(tgt, ":%s %03d %s %s", sender, num, argv[2], buf);
+  }
+  else if (CLIENT_IS_REMOTE(tgt))
+  {
+    CLIENT *cl = ircd_find_client(argv[0], peer);
+    ircd_sendto_remote(tgt, cl, peer, ":%s %03d %s %s", sender, num, argv[2], buf);
   }
   else
 #endif
@@ -5021,7 +5034,7 @@ int ircd_do_unumeric (CLIENT *requestor, int n, const char *template,
     char *rnick = (requestor->nick[0]) ? requestor->nick : MY_NAME;
 
     if (CLIENT_IS_REMOTE(requestor)) {	/* send numeric or INUM */
-      ircd_sendto_new (requestor, ":%s INUM %d %03d %s %s", MY_NAME,
+      ircd_sendto_new (requestor, NULL, NULL, ":%s INUM %d %03d %s %s", MY_NAME,
 		       ircd_new_id(), n, rnick, buff);
       ircd_sendto_old (requestor, ":%s %03d %s %s", MY_NAME, n, rnick, buff);
     } else				/* send it directly */
@@ -5046,7 +5059,7 @@ int ircd_do_cnumeric (CLIENT *requestor, int n, const char *template,
       !b->func (Ircd->iface, n, requestor->nick, requestor->umode, buff))
   {
     if (CLIENT_IS_REMOTE(requestor)) {	/* send numeric or INUM */
-      ircd_sendto_new (requestor, ":%s INUM %d %03d %s %s", MY_NAME,
+      ircd_sendto_new (requestor, NULL, NULL, ":%s INUM %d %03d %s %s", MY_NAME,
 		       ircd_new_id(), n, requestor->nick, buff);
       ircd_sendto_old (requestor, ":%s %03d %s %s", MY_NAME, n,
 		       requestor->nick, buff);

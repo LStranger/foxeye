@@ -332,19 +332,18 @@ static int ircd_squit_sb(INTERFACE *srv, struct peer_t *peer, unsigned short tok
     return ircd_recover_done(pp, "SQUIT need more parameters");
   }
   tgt = ircd_find_client(argv[0], pp);	/* in case of backfired it's NULL */
-  if (tgt == NULL || !CLIENT_IS_SERVER(tgt))
+  if (tgt == NULL || !CLIENT_IS_SERVER(tgt)) {
 #if IRCD_MULTICONNECT
-  {
     if (tgt == NULL && (pp->link->cl->umode & A_MULTI)) {
-      New_Request(peer->iface, 0, "ACK SQUIT %s", argv[0]);
+      cl = _ircd_find_client_lc((IRCD *)srv->data, lcsender);
+      if (CLIENT_IS_SERVER(cl))
+	New_Request(peer->iface, 0, "ACK SQUIT %s", argv[0]);
       return (1);
       //TODO: log duplicate?
     } else
 #endif
       return ircd_recover_done(pp, "No such server");
-#if IRCD_MULTICONNECT
   }
-#endif
   cl = _ircd_find_client_lc((IRCD *)srv->data, lcsender);
   if (CLIENT_IS_SERVER(cl)) {
 #if IRCD_MULTICONNECT
@@ -375,8 +374,10 @@ static int ircd_squit_sb(INTERFACE *srv, struct peer_t *peer, unsigned short tok
       ircd_sendto_wallops((IRCD *)srv->data, NULL, me, "SQUIT %s from %s: %s",
 			  argv[0], cl->nick, argv[1]);
       ircd_do_squit(tgt->via->link, NULL, argv[1]); /* do job */
-    } else				/* or else forward it to it's links */
-      ircd_sendto_remote(tgt, ":%s SQUIT %s :%s", cl->nick, argv[0], argv[1]);
+    } else {				/* or else forward it to it's links */
+      ircd_sendto_new(tgt, cl, pp, ":%s SQUIT %s :%s", cl->nick, argv[0], argv[1]);
+      ircd_sendto_old(tgt, ":%s SQUIT %s :%s", cl->nick, argv[0], argv[1]);
+    }
   }
   return 1;
 }
@@ -777,7 +778,7 @@ static int ircd_invite_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
       ircd_add_invited (tgt, me->chan);
   }
   if (CLIENT_IS_REMOTE(tgt))
-    ircd_sendto_one (tgt, ":%s INVITE %s %s", sender, argv[0], argv[1]);
+    ircd_sendto_remote (tgt, cl, pp, ":%s INVITE %s %s", sender, argv[0], argv[1]);
   else
     ircd_sendto_one (tgt, ":%s!%s@%s INVITE %s %s", sender, cl->user, cl->vhost,
 		     argv[0], argv[1]);

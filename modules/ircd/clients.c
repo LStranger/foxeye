@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2016  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2010-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -229,7 +229,8 @@ static int ircd_squit_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick
 			 const char *user, const char *host, const char *vhost,
 			 modeflag eum, int argc, const char **argv)
 { /* args: <server> <comment> */
-  CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl;
+  struct peer_priv *pp = peer->iface->data; /* it's really peer */
+  CLIENT *cl = pp->link->cl;
   CLIENT *tgt;
 
   if (argc < 2)
@@ -252,8 +253,10 @@ static int ircd_squit_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick
     ircd_sendto_wallops((IRCD *)srv->data, NULL, me, "SQUIT %s from %s: %s",
 			argv[0], cl->nick, argv[1]);
     ircd_do_squit (tgt->via->link, NULL, argv[1]); /* do job */
-  } else				/* or else forward it to it's links */
-    ircd_sendto_remote (tgt, ":%s SQUIT %s :%s", peer->dname, argv[0], argv[1]);
+  } else {				/* or else forward it to it's links */
+    ircd_sendto_new (tgt, cl, NULL, ":%s SQUIT %s :%s", peer->dname, argv[0], argv[1]);
+    ircd_sendto_old (tgt, ":%s SQUIT %s :%s", peer->dname, argv[0], argv[1]);
+  }
   return 1;
 }
 
@@ -446,7 +449,7 @@ static int ircd_invite_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnic
   if (CLIENT_IS_REMOTE(tgt)) {
     if ((memb != NOSUCHCHANNEL) && (memb->chan->mode & A_INVISIBLE))
       return (1); /* TODO: send some numeric to client? */
-    ircd_sendto_one (tgt, ":%s INVITE %s %s", peer->dname, argv[0], argv[1]);
+    ircd_sendto_remote (tgt, cl, NULL, ":%s INVITE %s %s", peer->dname, argv[0], argv[1]);
   } else
     ircd_sendto_one (tgt, ":%s!%s@%s INVITE %s %s", peer->dname, user, vhost,
 		     argv[0], argv[1]);

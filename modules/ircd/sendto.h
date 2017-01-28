@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2016  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2010-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -37,32 +37,28 @@
   Add_Request (I_PENDING, "*", 0, __VA_ARGS__); } while(0)
 
 #if IRCD_MULTICONNECT
-/* sends to user; args: client, message... */
-#define ircd_sendto_remote(a,...) do {\
-  a->cs->via->p.iface->ift |= I_PENDING; \
-  if (a->cs->alt) \
-    a->cs->alt->p.iface->ift |= I_PENDING; \
-  Add_Request (I_PENDING, "*", 0, __VA_ARGS__); } while(0)
-#define ircd_sendto_one(a,...) do {\
-  if (!CLIENT_IS_REMOTE(a)) \
-    New_Request (a->via->p.iface, 0, __VA_ARGS__); \
-  else ircd_sendto_remote (a, __VA_ARGS__); } while(0)
-/* sends to remote user when using different syntax for new and old server types */
-#define ircd_sendto_new(a,...) do {\
-  if (a->cs->umode & A_MULTI) \
-    a->cs->via->p.iface->ift |= I_PENDING; \
-  if (a->cs->alt && (a->cs->alt->link->cl->umode & A_MULTI)) \
-    a->cs->alt->p.iface->ift |= I_PENDING; \
-  Add_Request (I_PENDING, "*", 0, __VA_ARGS__); } while(0)
-#define ircd_sendto_old(a,...) do {\
-  if (!(a->cs->umode & A_MULTI)) \
-    a->cs->via->p.iface->ift |= I_PENDING; \
-  if (a->cs->alt && !(a->cs->alt->link->cl->umode & A_MULTI)) \
-    a->cs->alt->p.iface->ift |= I_PENDING; \
-  Add_Request (I_PENDING, "*", 0, __VA_ARGS__); } while(0)
-#else
+/* sends to user only once; args: client, sender, via, message... */
+#define ircd_sendto_remote(a,b,c,...) do {\
+  if (a->cs->via != c && a->cs->via->link->cl != b) \
+    New_Request (a->cs->via->p.iface, 0, __VA_ARGS__); \
+  else if (a->cs->alt && a->cs->alt != c && a->cs->alt->link->cl != b) \
+    New_Request (a->cs->alt->p.iface, 0, __VA_ARGS__); } while(0)
+/* sends to local user; args: client, message... */
 #define ircd_sendto_one(a,...) New_Request (a->cs->via->p.iface, 0, __VA_ARGS__)
-#define ircd_sendto_remote ircd_sendto_one
+/* sends to remote user when using different syntax for new and old server types */
+#define ircd_sendto_new(a,b,c,...) do {\
+  if (a->cs->via != c && a->cs->via->link->cl != b && (a->cs->via->link->cl->umode & A_MULTI)) \
+    a->cs->via->p.iface->ift |= I_PENDING; \
+  if (a->cs->alt && a->cs->alt != c && a->cs->alt->link->cl != b) \
+    a->cs->alt->p.iface->ift |= I_PENDING; \
+  Add_Request (I_PENDING, "*", 0, __VA_ARGS__); } while(0)
+#define ircd_sendto_old(a,...) \
+  if (!(a->cs->via->link->cl->umode & A_MULTI)) \
+    New_Request (a->cs->via->p.iface, 0, __VA_ARGS__)
+#else
+#define ircd_sendto_remote(a,b,c,...) \
+  New_Request (a->cs->via->p.iface, 0, __VA_ARGS__)
+#define ircd_sendto_one(a,...) New_Request (a->cs->via->p.iface, 0, __VA_ARGS__)
 #define ircd_sendto_new(a,...)
 #define ircd_sendto_old ircd_sendto_one
 #endif
