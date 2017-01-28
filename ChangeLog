@@ -20,6 +20,8 @@ Sat Jan 28 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/servers.c: fixed ACKs processing.
 	* modules/ircd/clients.c, modules/ircd/ircd.c, modules/ircd/queries.c, modules/ircd/sendto.h, modules/ircd/servers.c:
 	  fixed sending numerics, they should be never sent back to the sender.
+	* modules/ircd/messages.c: also send IPRIVMSG/INOTICE by alternate way
+	  for exact target to ensure delivery.
 
 Thu Jan 26 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/lib.c: enforced setting LC_CTYPE for mbrtowc() call sake.

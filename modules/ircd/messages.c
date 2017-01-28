@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2016  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2010-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -406,7 +406,11 @@ static void _ircd_broadcast_msglist_mark(IRCD *ircd, const char *nick,
       _ircd_mark_message_target(ircd->iface, nick, tlist[i]);
     } else
       tcl->cs->via->p.iface->ift |= I_PENDING;
-      //FIXME: do alternate way for exact targets?
+#if IRCD_MULTICONNECT
+      /* still do alternate way for exact targets for better delivery chance */
+      if (tcl->cs->alt)
+	tcl->cs->alt->p.iface->ift |= I_PENDING;
+#endif
   }
   if (need_unmark)
     for (lnk = ircd->token[0]->c.lients; lnk; lnk = lnk->prev) /* no locals */
@@ -496,10 +500,10 @@ static inline CLIENT *_ircd_find_msg_target (const char *target,
     if (tgt && !CLIENT_IS_SERVER(tgt))
       tgt = NULL;
     if (tgt && !CLIENT_IS_ME(tgt))
-      return (tgt);
+      return (NULL);
     /* process user[%host] now */
     h = strchr(target, '%');
-    if (h > c)
+    if (h && h > c)
       h = NULL;
     tgt = ircd_find_by_userhost(NULL, 0, target, h ? h - target : c - target,
 				h ? h + 1 : NULL, h ? c - h - 1 : 0);
