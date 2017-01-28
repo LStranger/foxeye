@@ -2459,6 +2459,7 @@ MEMBER *ircd_add_to_channel (IRCD *ircd, struct peer_priv *bysrv, CHANNEL *ch,
   ch->mode |= A_ISON | (mf & ~Ircd_modechar_mask);
   if (memb->mode & A_OP)		/* operator added so reset this */
     ch->noop_since = 0;
+  ch->hold_upto = 0;			/* it's now active so reset this */
   if (!(ch->mode & A_QUIET))		/* notify users */
   {
     if(ch->mode & A_ANONYMOUS)
@@ -2574,7 +2575,7 @@ void ircd_del_from_channel (IRCD *ircd, MEMBER *memb, int tohold)
       for (op = memb->chan->users; op; op = op->prevnick)
 	if (op->mode & (A_OP | A_ADMIN))
 	  break;
-      if (op)
+      if (op == NULL)
 	op->chan->noop_since = Time;
     }
     if (tohold) {			/* it's split, mark it now! */
