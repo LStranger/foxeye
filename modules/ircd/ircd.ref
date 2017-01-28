@@ -320,6 +320,7 @@ Meaning of letters in VERSION reply:
    S  - Local /summon is enabled
    T  - RPL_TOPICWHOTIME is enabled
    U  - Local /users is enabled
+   W  - Opers will receive NOTICE on WHOIS on them
    6  - IPv6 supported
    8  - Any unicode chars in nick/channel are allowed
 

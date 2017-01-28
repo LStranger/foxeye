@@ -632,6 +632,9 @@ const char *ircd_version_flags =
 #ifdef IRCD_ENABLE_USERS
 "U"
 #endif
+#ifdef SEND_WHOIS_NOTICE
+"W"
+#endif
 #ifdef ENABLE_IPV6
 "6"
 #endif
@@ -1031,8 +1034,16 @@ static void _ircd_do_whois (IRCD *ircd, CLIENT *cl, CLIENT *tgt, CLIENT *me)
   } else
     ircd_do_unumeric (cl, RPL_WHOISSERVER, tgt->cs, 0, tgt->nick);
   if (tgt->umode & (A_OP | A_HALFOP))
-    //TODO: notify target about whois on them
+  {
     ircd_do_unumeric (cl, RPL_WHOISOPERATOR, tgt, 0, NULL);
+#ifdef SEND_WHOIS_NOTICE
+    /* notify target about whois on them */
+    New_Request (tgt->via->p.iface, 0,
+		 ":%s NOTICE %s :WHOIS on YOU requested by %s (%s@%s) [%s]",
+		 me->lcnick, tgt->nick, cl->nick, cl->user, cl->host,
+		 CLIENT_IS_LOCAL(cl) ? me->nick : cl->cs->nick);
+#endif
+  }
   if (tgt->umode & A_AWAY) /* FIXME: make a message "Use /WHOIS %s %s" ? */
     ircd_do_unumeric (cl, RPL_AWAY, tgt, 0, tgt->away[0] ? tgt->away : "Gone");
   ptr = 0;
