@@ -98,9 +98,7 @@ ACK *ircd_check_ack (struct peer_priv *link, CLIENT *who, CHANNEL *where)
         possible = ack;
     } else if (ack->who == who && ack->where == where)
       return ack;
-    else
-      return possible;
-  return NULL;
+  return possible;
 }
 
 static ACK *ircd_find_ack(struct peer_priv *link, const char *who, const char *where)
