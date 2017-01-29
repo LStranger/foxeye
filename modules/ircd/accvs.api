@@ -320,3 +320,20 @@
     Used when RPL_ISUPPORT going to be sent to client, so binding can add
     some messages to it putting them into _b_u_f_f of _b_u_f_f_s_i_z_e.
       Matching: own server name.  (userflags are ignored)
+
+-     "iirrccdd--ggoott--sseerrvveerr" MASK
+  (int) void func (INTERFACE *_s_r_v, struct peer_t *_p_e_e_r, modeflag _u_m,
+		   unsigned short _t_o_k_e_n, const char *_f_l_a_g_s);
+    Used when a server _p_e_e_r has been succesfully registered locally and
+    propagated to others. _s_r_v is IRCD interface which can be used to send
+    control messages (commands). Mode _u_m, server _t_o_k_e_n and negotiated
+    connection _f_l_a_g_s are also provided for any checks. This binding is
+    done before burst so binding can remember the server and module may
+    consider it in further processing.
+      Matching: server name.  (userflags are ignored)
+
+-     "iirrccdd--lloosstt--sseerrvveerr" MASK
+  (int) void func (INTERFACE *_s_r_v, struct peer_t *_p_e_e_r);
+    Used when a local server _p_e_e_r is disconnecting from network. _s_r_v is
+    IRCD interface which can be used to send control messages (commands).
+      Matching: server name.  (userflags are ignored)

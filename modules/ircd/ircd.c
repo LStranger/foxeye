@@ -100,6 +100,8 @@ static struct bindtable_t *BTIrcdClient;
 static struct bindtable_t *BTIrcdDoNumeric;
 static struct bindtable_t *BTIrcdCollision;
 static struct bindtable_t *BTIrcdCheckSend;
+static struct bindtable_t *BTIrcdGotServer;
+static struct bindtable_t *BTIrcdLostServer;
 
 /* access to IrcdPeers and allocators should be locked with this */
 static pthread_mutex_t IrcdLock = PTHREAD_MUTEX_INITIALIZER;
@@ -2875,6 +2877,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
   char *cc, *ourpass = NULL, *approved; /* initialize to avoid warning */
   char *ftbf;				/* those to be first */
   LINK **lnk;
+  struct binding_t *b = NULL;
   long token = 0;
   char buff[MB_LEN_MAX*MESSAGEMAX-1];
   register char *c;
@@ -3232,8 +3235,11 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
 			   cl->x.a.token + 1, cl->fname); //!
   Add_Request(I_LOG, "*", F_SERV, "Received SERVER %s from %s (1 %s)", argv[0],
 	      cl->lcnick, cl->fname);
+  /* tell other modules about connected server */
+  while ((b = Check_Bindtable(BTIrcdGotServer, cl->lcnick, U_ALL, U_ANYCH, b)))
+    if (b->name == NULL) /* internal only */
+      b->func(Ircd->iface, peer, cl->umode, cl->x.a.token, ftbf);
   _ircd_connection_burst (cl);		/* tell it everything I know */
-  //TODO: BTIrcdGotServer
   return 1;
 }
 
@@ -4824,7 +4830,6 @@ static inline void _ircd_squit_one (LINK *link)
       if (pp->i.token[i] == server)
 	pp->i.token[i] = NULL;		/* and clear if found */
   }
-  //TODO: BTIrcdLostServer
 }
 
 /* remote link squitted */
@@ -4979,6 +4984,7 @@ static void _ircd_do_squit (LINK *link, peer_priv *via, const char *msg)
 static inline void _ircd_lserver_out (LINK *l)
 {
   register LINK **s;
+  struct binding_t *b = NULL;
 
   for (s = &Ircd->servers; *s; s = &(*s)->prev)
     if ((*s) == l)
@@ -4990,6 +4996,13 @@ static inline void _ircd_lserver_out (LINK *l)
     ERROR ("ircd:_ircd_lserver_out: local server %s not found in list!",
 	   l->cl->lcnick);
   l->cl->umode &= ~A_UPLINK;	/* it's valid only for local connects */
+  if (l->cl->local == NULL)
+    ERROR("ircd:_ircd_lserver_out: server %s isn't a local one!", l->cl->lcnick);
+  else
+    /* tell other modules about disconnected server */
+    while ((b = Check_Bindtable(BTIrcdLostServer, l->cl->lcnick, U_ALL, U_ANYCH, b)))
+      if (b->name == NULL) /* internal only */
+	b->func(Ircd->iface, &l->cl->local->p);
 }
 
 /* if this server is multiconnected then we should only remove one instance
@@ -5528,8 +5541,8 @@ SigFunction ModuleInit (char *args)
   CheckVersion;
   //return NULL;
   /* create main bindtables */
-//  BTIrcdLinked = Add_Bindtable ("ircd-got-server", B_MASK);
-//  BTIrcdUnlinked = Add_Bindtable ("ircd-lost-server", B_MASK);
+  BTIrcdGotServer = Add_Bindtable ("ircd-got-server", B_MASK);
+  BTIrcdLostServer = Add_Bindtable ("ircd-lost-server", B_MASK);
   BTIrcdLocalClient = Add_Bindtable ("ircd-local-client", B_MASK);
 //  BTIrcdGotRemote = Add_Bindtable ("ircd-got-client", B_MASK);
   BTIrcdClient = Add_Bindtable ("ircd-client", B_MASK);
