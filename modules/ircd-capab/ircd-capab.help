@@ -1,0 +1,10 @@
+# first section is usage
+# second section is that config maker will put into config
+# third section is full help
+
+module ircd-capab
+:%*
+:
+:This module provides an extension for RFC IRC server protocol: %_CAPAB%_\
+ command which allows other ircd-related modules to control own protocol\
+ extensions to be sent to other servers.

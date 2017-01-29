@@ -1,0 +1,11 @@
+
+ Module "ircd-capab":
+ --------------------
+
+-     "iirrccdd--ccaappaabb"     UNIQ
+  (int) void func (INTERFACE *_s_r_v, struct peer_t *_p_e_e_r, const char *_c_a_p);
+    Used when a local server _p_e_e_r indicates a supported capability _c_a_p or
+    removes it (on server disconnect). In latter case _c_a_p will be NULL.
+    _s_r_v is IRCD interface which can be used to send control messages
+    (commands).
+      Matching: capability.  (userflags are ignored)
