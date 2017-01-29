@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2000-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2000-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -18,9 +18,9 @@
  * This file is a part of FoxEye source documentation. A module template.
  */
 
-#include "foxeye.h"
-#include "modules.h"
-#include "init.h"
+#include <foxeye.h>
+#include <modules.h>
+#include <init.h>
 
 /*
  * this function must receive signals:
@@ -30,6 +30,17 @@
  */
 static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
 {
+  switch (sig)
+  {
+    case S_TERMINATE:
+      return I_DIED;
+    case S_REPORT:
+      break;
+    case S_REG:
+      Add_Request(I_INIT, "*", F_REPORT, "module dummy");
+      break;
+    default: ;
+  }
   return 0;
 }
 

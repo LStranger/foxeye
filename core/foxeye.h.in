@@ -399,7 +399,8 @@ typedef enum
   A_REOP	= (1<<24),	/* server reop */
   A_TOPICLOCK	= (1<<25),	/* only ops may change topic */
   A_NOCOLOR	= (1<<26),	/* no color messages */
-  A_ASCIINICK	= (1<<27)	/* us-ascii nicks only */
+  A_ASCIINICK	= (1<<27),	/* us-ascii nicks only */
+  A_REGONLY	= (1<<28)	/* identified users only */
 } modeflag;
 
 #define A_MODEMASK	(A_MASKED-1)

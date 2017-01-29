@@ -1448,7 +1448,7 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
       Send_Signal(I_MODULE, "ircd*", S_FLUSH); /* inform modules about changes */
       FREE(IrcdRMotd);
       IrcdRMotdSize = 0;
-      break;
+      return I_DIED;
     case S_REPORT:
       // TODO......
       break;
@@ -1458,8 +1458,7 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
 		     sizeof(_rusnet_rmotd_file), 0);
       RegisterInteger("rusnet-eline-limit", &_rusnet_eline_limit);
       break;
-    default:
-      break;
+    default: ;
   }
   return 0;
 }
