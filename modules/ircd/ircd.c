@@ -3150,6 +3150,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
     clt->via = cl->via;		/* and set shortest to this */
     clt->local = cl->via;	/* and it is local connect as well */
     clt->hops = 1;
+    clt->umode &= ~A_PINGED;	/* drop pinged state from previous connect */
     clt->umode |= cl->umode;	/* copy A_UPLINK there */
     strfcpy (clt->fname, cl->fname, sizeof(clt->fname)); /* rewrite! */
     strfcpy (clt->user, cl->user, sizeof(clt->user));
