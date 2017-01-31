@@ -101,7 +101,7 @@ static void _ircd_got_server_capab(INTERFACE *srv, struct peer_t *peer,
     if (ptr + strlen(b->key) >= sizeof(message) - 1)
     {
       ERROR("ircd-capab: CAPAB list is too long (%d), truncating",
-	    ptr + strlen(b->key) + 1);
+	    ptr + (int)strlen(b->key) + 1);
       break;
     }
     if (ptr > 0)

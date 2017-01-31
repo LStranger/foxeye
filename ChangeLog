@@ -15,6 +15,9 @@ TODO:
 	* modules/ssl: add support for openssl-1.1 if possible.
 
 --- [0.11.0]
+Tue Jan 31 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd-rusnet/rusnet.c: fix message by /nickserv, etc.
+
 Sun Jan 29 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* doc/module.template.c: updated the module template.
 	* doc/modules.api, modules/ircd/ircd.c: added two bindtables related

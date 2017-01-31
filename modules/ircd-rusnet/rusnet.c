@@ -1308,6 +1308,8 @@ static int _rusnet_call_services(INTERFACE *srv, struct peer_t *peer,
 				 const char **argv)
 {
   const char *host = NULL, *ident = NULL;
+  char buf[MESSAGEMAX];
+  size_t ptr;
 
   if (argc < 1 || argv[0][0] == 0)
   {
@@ -1329,9 +1331,18 @@ static int _rusnet_call_services(INTERFACE *srv, struct peer_t *peer,
     New_Request(srv, 0, "408 %s %s :No such service", peer->dname, serv);
     return (1);
   }
-  /* compose message */
+  /* compose all args into a single message */
+  while (argc > 0)
+  {
+    if (ptr > 0 && ptr < MESSAGEMAX - 2)
+      buf[ptr++] = ' ';
+    strfcpy(&buf[ptr], argv[0], MESSAGEMAX - ptr);
+    ptr = strlen(buf);
+    argv++;
+    argc--;
+  }
   New_Request(srv, 0, ":%s PRIVMSG %s@" SERVICES_SERV " :%s", peer->dname, serv,
-	      argv[0]);
+	      buf);
   //FIXME: that was ugly hack, need to send SQUERY instead!
   return (1);
 }
