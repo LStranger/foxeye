@@ -1639,7 +1639,7 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
       ircd_drop_channel ((IRCD *)srv->data, ch);
       ch = NULL;
     }
-    nchn = NULL;
+    nchn = chn;
     if (cmask && simple_match (cmask, me->lcnick) <= 0)
       ircd_do_unumeric (cl, ERR_BADCHANMASK, cl, 0, cmask);
     else if ((b = Check_Bindtable (BTIrcdChannel, cnfc, U_ALL, U_ANYCH, NULL))
@@ -1715,8 +1715,8 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
     }
     if (mf && i == 0)			/* OK, user is allowed to join yet */
     {
-      if (ircd_check_modechange(peer->iface, cl->umode, nchn, mf, 1, 0, cl->nick,
-				cl->umode, 0))
+      if (ircd_check_modechange(peer->iface, cl->umode, nchn, ch ? ch->mode : mf,
+				1, 0, cl->nick, cl->umode, 0))
 	i = 1;				/* so he/she allowed at last */
     }
     if (x >= _ircd_max_channels)		/* joined too many channels already */
@@ -2588,7 +2588,7 @@ void ircd_del_from_channel (IRCD *ircd, MEMBER *memb, int tohold)
 	if (op->mode & (A_OP | A_ADMIN))
 	  break;
       if (op == NULL)
-	op->chan->noop_since = Time;
+	memb->chan->noop_since = Time;
     }
     if (tohold) {			/* it's split, mark it now! */
       if (memb->chan->name[0] == '!')	/* special support for safe channels */
