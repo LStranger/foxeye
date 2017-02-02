@@ -15,6 +15,13 @@ TODO:
 	* modules/ssl: add support for openssl-1.1 if possible.
 
 --- [0.11.0]
+Wed Feb  1 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/channels.c, modules/ircd/ircd.*: added check for channel
+	  rules when user changes nick using "ircd-check-modechange" bindtable,
+	  e.g. if channel has a policy to not accept certain nicks then such
+	  change will be refused. Sending a numeric on rejected join in now a
+	  mandatory call for these bindings.
+
 Tue Jan 31 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd-rusnet/rusnet.c: fixed message by /nickserv, etc.
 	* modules/ircd/ircd.c: fixed forgotten PING after server reconnect.

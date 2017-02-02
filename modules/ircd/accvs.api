@@ -149,18 +149,22 @@
       Matching stops after first binding call that returns 1.
 
 -     "iirrccdd--cchheecckk--mmooddeecchhaannggee" MASK
-  int func(INTERFACE *_s_r_v, modeflag _u_m_o_d_e, modeflag _m_m_o_d_e, int _a_d_d,
-	   modeflag _c_h_g, char *_t_g_t, modeflag _t_u_m_o_d_e, modeflag _t_c_m_o_d_e);
+  int func(INTERFACE *_u, modeflag _u_m_o_d_e, const char *_c_h_n, modeflag _c_m_o_d_e,
+	   int _a_d_d, modeflag _c_h_g, const char *_t_g_t, modeflag _t_u_m_o_d_e,
+	   modeflag _t_c_m_o_d_e);
     Used when someone with channel mode _u_m_o_d_e trying to make a modechange
     _c_h_g for some target _t_g_t which has user mode _t_u_m_o_d_e and channel mode
-    _t_c_m_o_d_e on the channel with modes _m_m_o_d_e. Binding gets modechange which
-    has all mode flags from all matching bindings of "ircd-modechange"
-    bindtable. _a_d_d indicates direction of the change and is 0 in case if
-    it is attempt to down mode and is 1 in case if it is attempt to raise
-    mode. Binding also may be called when user attempts to join channel
-    and in that case _u_m_o_d_e is user mode and _c_h_g is 0. Returns 0 in case
+    _t_c_m_o_d_e on the channel _c_h_n with modes _m_m_o_d_e. Binding gets modechange
+    which consists of all mode flags received from all matching bindings
+    of "ircd-modechange" bindtable. _a_d_d indicates direction of the change
+    and is 0 in case if it is attempt to down mode and is 1 in case if it
+    is attempt to raise mode. Binding also may be called when user either
+    attempts to join channel or changes their nick, and in that case _t_g_t
+    is user nick, _u_m_o_d_e is user mode and _c_h_g is 0. In latter case if
+    binding denies the join, it should send a message to the user using
+    user interface _u (it's NULL if user is remote). Returns 0 in case
     if modechange should be rejected or any other value otherwise.
-      Matching: channel name/user nick.  (userflags are ignored)
+      Matching: channel name.  (userflags are ignored)
       Matching stops after first reject.
 
 -     "iirrccdd--mmooddeecchhaannggee" MATCHCASE

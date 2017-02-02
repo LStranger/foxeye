@@ -432,6 +432,8 @@ void ircd_burst_channels (INTERFACE *, NODE *);
 void ircd_channels_report (INTERFACE *);
 void ircd_channels_chreop (IRCD *, CLIENT *);
 void send_isupport (IRCD *, CLIENT *);
+bool ircd_check_modechange(INTERFACE *, modeflag, const char *, modeflag, int,
+			   modeflag, const char *, modeflag, modeflag);
 
 	/* calls to client.c from channel.c */
 int ircd_names_reply (CLIENT *, CLIENT *, CHANNEL *, int);

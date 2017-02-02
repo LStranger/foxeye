@@ -2745,6 +2745,7 @@ static int ircd_nick_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
   CLIENT *cl = ((peer_priv *)peer->iface->data)->link->cl; /* it's really peer->link->cl */
   int is_casechange;
   char checknick[MB_LEN_MAX*NICKLEN+NAMEMAX+2];
+  MEMBER *ch;
 
 #ifdef USE_SERVICES
   /* forbidden for services! */
@@ -2764,6 +2765,11 @@ static int ircd_nick_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
     is_casechange = 0;
   if (cl->umode & A_RESTRICTED)
     return ircd_do_unumeric (cl, ERR_RESTRICTED, cl, 0, NULL);
+  /* also test joined channels rules for the nick */
+  for (ch = cl->c.hannels; ch; ch = ch->prevchan)
+    if (!ircd_check_modechange(peer->iface, cl->umode, ch->chan->name,
+			       ch->chan->mode, 1, 0, argv[0], cl->umode, 0))
+      return (1);		/* quiet, binding sent a message */
   _ircd_do_nickchange(cl, NULL, 0, argv[0], is_casechange);
   if (is_casechange)		/* no iface rename required */
     return (1);

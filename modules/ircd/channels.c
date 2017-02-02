@@ -897,8 +897,8 @@ static modeflag iumch_z(modeflag rumode, int add,
 
 /* restricted users cannot change any modes */
 BINDING_TYPE_ircd_check_modechange(ichmch_r);
-static int ichmch_r(INTERFACE *srv, modeflag umode, modeflag mmode, int add,
-		    modeflag chg, char *tgt, modeflag tumode, modeflag tcmode)
+static int ichmch_r(INTERFACE *u, modeflag umode, const char *chn, modeflag cmode, int add,
+		    modeflag chg, const char *tgt, modeflag tumode, modeflag tcmode)
 {
   if ((umode & A_RESTRICTED) && chg != 0)
     return 0;
@@ -1050,6 +1050,25 @@ static inline int _ircd_mode_mask_query_reply (INTERFACE *srv, CLIENT *cl,
   return 1;
 }
 
+bool ircd_check_modechange(INTERFACE *u, modeflag umode, const char *chname,
+			   modeflag cmode, int add, modeflag chg,
+			   const char *tgt, modeflag tumode, modeflag tcmode)
+{
+  struct binding_t *b = NULL;
+#define static register
+  BINDING_TYPE_ircd_check_modechange ((*ff));
+#undef static
+
+  while ((b = Check_Bindtable(BTIrcdCheckModechange, chname, U_ALL, U_ANYCH, b)))
+    if (b->name == NULL)
+    {
+      ff = b->func;
+      if (ff(u, umode, chname, cmode, add, chg, tgt, tumode, tcmode) == 0)
+	return FALSE;
+    }
+  return TRUE;
+}
+
 #define CONTINUE_ON_MODE_ERROR(A,B) if (ircd_do_cnumeric (cl, A, ch, 0, B)) continue;
 
 BINDING_TYPE_ircd_client_cmd(ircd_mode_cb); /* huge one as hell */
@@ -1177,10 +1196,9 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 	  }
 	  if (mf & A_PINGED)		/* check if A_ADMIN required but not */
 	    CONTINUE_ON_MODE_ERROR (ERR_UNIQOPPRIVSNEEDED, NULL);
-	  while (mf && (b = Check_Bindtable (BTIrcdCheckModechange, peer->dname,
-					     U_ALL, U_ANYCH, b)))
-	    if (!b->name && !b->func (srv, memb->mode, ch->mode, add, mf, tar,
-				      tar ? tar->who->umode : 0, tar ? tar->mode : 0))
+	  if (mf && !ircd_check_modechange(peer->iface, memb->mode, ch->name, ch->mode,
+					   add, mf, par, tar ? tar->who->umode : 0,
+					   tar ? tar->mode : 0))
 	      mf = 0;			/* change denied, stop */
 	  if (!mf) {
 	    if (!(memb->mode & (A_OP | A_ADMIN))) { /* check permissions */
@@ -1553,7 +1571,6 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
   struct binding_t *b;
 #define static register
   BINDING_TYPE_ircd_channel ((*f));
-  BINDING_TYPE_ircd_check_modechange ((*ff));
 #undef static
   MASK *cm;
   modeflag mf;
@@ -1698,12 +1715,8 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
     }
     if (mf && i == 0)			/* OK, user is allowed to join yet */
     {
-      b = NULL;
-      while ((b = Check_Bindtable(BTIrcdCheckModechange, nchn, U_ALL, U_ANYCH, b)))
-	if (!b->name && (ff = b->func) &&
-	    ff (srv, cl->umode, mf, 1, 0, cl->nick, cl->umode, 0) == 0)
-	  break;			/* denied! */
-      if (!b)
+      if (ircd_check_modechange(peer->iface, cl->umode, nchn, mf, 1, 0, cl->nick,
+				cl->umode, 0))
 	i = 1;				/* so he/she allowed at last */
     }
     if (x >= _ircd_max_channels)		/* joined too many channels already */
@@ -1894,10 +1907,9 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	    mf--;			/* reset the flag */
 	  }
 	  mf &= ~A_PINGED;		/* reset extra flag */
-	  while (mf && (b = Check_Bindtable (BTIrcdCheckModechange, pp->p.dname,
-					     U_ALL, U_ANYCH, b)))
-	    if (!b->name && !b->func (srv, whof, ch->mode, add, mf, tar,
-				      tar ? tar->who->umode : 0, tar ? tar->mode : 0))
+	  if (mf && !ircd_check_modechange(NULL, whof, ch->name, ch->mode, add,
+					   mf, par, tar ? tar->who->umode : 0,
+					   tar ? tar->mode : 0))
 	      mf = 0;			/* change denied, stop */
 	  if (!mf)			/* check permissions */
 	  {
