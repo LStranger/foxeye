@@ -1777,6 +1777,7 @@ static void _ircd_prehandler (pthread_t th, void **data, idx_t *as)
 #endif
   pthread_mutex_lock (&IrcdLock);
   *data = peer = alloc_peer_priv();
+  peer->p.dname = NULL;
   peer->p.network_type = "ircd";
   peer->p.state = P_DISCONNECTED;
   peer->p.priv = IrcdPeers;

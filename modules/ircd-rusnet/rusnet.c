@@ -1466,7 +1466,7 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
       Delete_Binding("ircd-client-cmd", &rusnet_memoserv_cb, NULL);
       Delete_Binding("ircd-client-cmd", &rusnet_operserv_cb, NULL);
       Send_Signal(I_MODULE, "ircd*", S_FLUSH); /* inform modules about changes */
-      FREE(IrcdRMotd);
+      FREE(&IrcdRMotd);
       IrcdRMotdSize = 0;
       return I_DIED;
     case S_REPORT:

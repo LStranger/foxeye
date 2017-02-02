@@ -3130,7 +3130,7 @@ void send_isupport(IRCD *ircd, CLIENT *cl)
 	len = NextWord(&isupport[ptr]) - &isupport[s];
 	if (len > 400)
 	  break;
-	ptr = len;
+	ptr = len + s;
       }
       len = ptr;
       ptr = s;
@@ -3143,16 +3143,19 @@ void send_isupport(IRCD *ircd, CLIENT *cl)
       ircd_do_unumeric(cl, RPL_ISUPPORT, cl, 0, &isupport[ptr]);
       ptr = len;
     }
+    if (len > ptr)
+      memmove(isupport, &isupport[ptr], len - ptr);
+    len -= ptr;
+    ptr = 0;
     while ((b = Check_Bindtable(BTIrcdIsupport, ircd->iface->name, U_ALL, U_ANYCH, b)))
       if (!b->name)
 	break;
     if (b == NULL)			/* finished all */
       break;
-    isupport[len++] = ' '; /* separator */
+    if (len > 0)
+      isupport[len++] = ' '; /* separator */
     isupport[len] = '\0'; /* at least 2*MESSAGEMAX-400 left so don't check */
     b->func(&isupport[len], sizeof(isupport) - len);
-    if (isupport[len] == '\0') /* empty */
-      isupport[--len] = '\0';
     //TODO: check for duplicates probably?
   }
   /* send leftovers */
