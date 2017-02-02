@@ -732,15 +732,24 @@ static modeflag rusnet_mch_z(modeflag rchmode, modeflag rmode, const char *targe
 }
 
 BINDING_TYPE_ircd_check_modechange(rusnet_cmch);
-static int rusnet_cmch(INTERFACE *srv, modeflag umode, modeflag mmode, int add,
-		       modeflag chg, char *tgt, modeflag tumode, modeflag tcmode)
+static int rusnet_cmch(INTERFACE *u, modeflag umode, const char *chname,
+		       modeflag cmode, int add, modeflag chg, const char *tgt,
+		       modeflag tumode, modeflag tcmode)
 {
   /* check for non-ascii nick for ascii-only channel */
-  if (add && chg == 0 && (mmode & A_ASCIINICK))
+  if (add && chg == 0 && (cmode & A_ASCIINICK))
     for (; *tgt; tgt++)
       if (*((uint8_t *)tgt) <= 0x20 || *((uint8_t *)tgt) > 0x7f)
       {
-	//FIXME: send numeric? ircd will send ERR_CANNOTJOIN anyway
+	if (u != NULL)
+	{
+	  tgt = strchr(u->name, '@'); /* split off network name */
+	  add = (++tgt) - (const char *)u->name; /* reuse int */
+	  if (!Lname_IsOn(tgt, NULL, NULL, &tgt))
+	    tgt = "server"; /* is this ever possible? */
+	  New_Request(u, 0, ":%s 470 %.*s %s :Only latin-coded nicknames allowed (+z)",
+		      tgt, add, u->name, chname);
+	}
 	return 0;
       }
   /* limitations for R-Mode */

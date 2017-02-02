@@ -21,6 +21,7 @@ Wed Feb  1 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  e.g. if channel has a policy to not accept certain nicks then such
 	  change will be refused. Sending a numeric on rejected join in now a
 	  mandatory call for these bindings.
+	* modules/ircd-rusnet/rusnet.c: added a ERR_7BIT numeric for +z mode.
 
 Tue Jan 31 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd-rusnet/rusnet.c: fixed message by /nickserv, etc.

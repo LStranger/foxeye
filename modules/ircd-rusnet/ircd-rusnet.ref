@@ -1,3 +1,6 @@
+        FoxEye module "ircd-rusnet" manual.
+
+
 User modes:
 
    +x   masked host
@@ -29,17 +32,50 @@ Numeric replies:
          - Returned to an OPER in reply to WHOIS command against client
            whose host is masked (+x user mode).
 
+       470   ERR_7BIT
+             <channel> :Only latin-coded nicknames allowed (+z)
+
+         - Returned to client in reply to JOIN command if target channel
+           has mode +z set and nick of client has any non-ascii character.
+
+           Also returned to client in reply to NICK command which would
+           otherwise change client's nick the way it will contain some
+           non-ascii character while client already joined a channel that
+           has mode +z set.
+
 
 Client commands:
 
       Command: KLINE
    Parameters: <nickmask!usermask@hostmask> <hours> [reason]
 
+   The command KLINE adds a record (K-line) which denies users matching
+   the mask to enter the IRC network.  This command MAY be accepted only
+   from IRC operators.  If reason is given then it will be shown to the
+   client on the KILL and in output of "STATS K" command.
+
       Command: ELINE
    Parameters: ["*!"]<usermask@hostmask> <hours> [reason]
 
+   The command ELINE adds a record (E-line) which overrides denial set by
+   any record for users matching the mask.  This command MAY be accepted
+   only from IRC operators.  If reason is given then it will be shown in
+   output of "STATS E" command.
+
       Command: RLINE
    Parameters: ["*!"]<usermask@hostmask> <hours> [reason]
+
+   The command RLINE adds a record (R-line) which sets a mask for clients
+   which will be given a restricted more on entering IRC network.  This
+   command MAY be accepted only from IRC operators.  If reason is given
+   then it will be shown in output of "STATS R" command.
+
+      Command: STATS
+   Parameters: see RFC2812
+
+   The STATS command accepts 3 other parameters: K, E, R, which show all
+   records (respectively) for KILL, exceptions from KILL, and restricted
+   mode masks.
 
       Command: UNKLINE
    Parameters: <nickmask!usermask@hostmask>
