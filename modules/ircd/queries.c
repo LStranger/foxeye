@@ -542,7 +542,7 @@ static inline int _ircd_query_lusers (IRCD *ircd, CLIENT *cl, struct peer_priv *
       }
 #define COUNT_USERS_CHECK_STATE 
 #if IRCD_MULTICONNECT
-# define COUNT_USERS_CHECK_PATH if (l->cl->via != ircd->token[i]->via) continue; else
+# define COUNT_USERS_CHECK_PATH if (l->cl->via != NULL && l->cl->via != ircd->token[i]->via) continue; else
 #else
 # define COUNT_USERS_CHECK_PATH 
 #endif
