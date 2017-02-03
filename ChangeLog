@@ -15,6 +15,10 @@ TODO:
 	* modules/ssl: add support for openssl-1.1 if possible.
 
 --- [0.11.0]
+Thu Feb  2 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/ircd.c: shifted strictness on server connection flags,
+	  some servers may sent not negotiated flags but all supported ones.
+
 Wed Feb  1 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c, modules/ircd/ircd.*: added check for channel
 	  rules when user changes nick using "ircd-check-modechange" bindtable,

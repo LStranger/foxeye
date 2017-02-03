@@ -3098,26 +3098,34 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
     char *ccur = ftbf;
 
     while (ccur != cc)
+    {
       if (Connchain_Grow (peer, *ccur) <= 0)
       {
+#if 0
 	snprintf (buff, sizeof(buff), "server option unavailable: %c", *ccur);
 	_kill_bad_server (cl, buff);
 	return 1;
+#else
+	ERROR("server %s sent unsupported option: %c", cl->lcnick, *ccur);
+#endif
       }
-      else
-	ccur++;
+      ccur++;
+    }
     Connchain_Grow (peer, 'x');		/* some filter might kill it */
   }
   while (*cc)
   {
     if (Connchain_Grow (peer, *cc) <= 0)
     {
+#if 0
       snprintf (buff, sizeof(buff), "server option unavailable: %c", *cc);
       _kill_bad_server (cl, buff);
       return 1;
+#else
+      ERROR("server %s sent unsupported option: %c", cl->lcnick, *cc);
+#endif
     }
-    else
-      cc++;
+    cc++;
   }
 #if IRCD_MULTICONNECT
   if (!(cl->umode & A_MULTI))
