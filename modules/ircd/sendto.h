@@ -151,12 +151,11 @@
       L->cl->via->p.iface->ift |= I_PENDING; \
       ircd_add_ack (L->cl->via, a, b); } \
   Add_Request (I_PENDING, "*", 0, __VA_ARGS__); } while(0)
-/* sends to every server with ack; args the same;
-   also test to not send to $who as required for SQUIT */
+/* sends to every server with ack; args the same */
 #define ircd_sendto_servers_all_ack(i,a,b,c,...) do {\
   LINK *L; \
   for (L = (i)->servers; L; L = L->prev) \
-    __TRANSIT__ if (L->cl->via != c && L->cl != a) { \
+    __TRANSIT__ if (L->cl->via != c) { \
       L->cl->via->p.iface->ift |= I_PENDING; \
       if (L->cl->umode & A_MULTI) \
 	ircd_add_ack (L->cl->via, a, b); } \
@@ -169,6 +168,15 @@
       L->cl->via->p.iface->ift |= I_PENDING; \
       if (L->cl->umode & A_MULTI) \
 	ircd_add_ack (L->cl->via, a, b); } \
+  Add_Request (I_PENDING, "*", 0, __VA_ARGS__); } while(0)
+/* sends to every new type server with ack; args the same as for all_ack;
+   also test to not send to $who as required for SQUIT */
+#define ircd_sendto_servers_new_ack(i,a,b,c,...) do {\
+  LINK *L; \
+  for (L = (i)->servers; L; L = L->prev) \
+    __TRANSIT__ if (L->cl->via != c && L->cl != a && L->cl->umode & A_MULTI) { \
+      L->cl->via->p.iface->ift |= I_PENDING; \
+      ircd_add_ack (L->cl->via, a, b); } \
   Add_Request (I_PENDING, "*", 0, __VA_ARGS__); } while(0)
 #else
 #define ircd_sendto_servers_all_but(i,a,b,...) \
@@ -183,6 +191,7 @@
   ircd_sendto_servers_all(i,c,__VA_ARGS__)
 #define ircd_sendto_servers_mask_all_ack(i,a,b,c,d,...) \
   ircd_sendto_servers_mask(i,c,d,__VA_ARGS__)
+#define ircd_sendto_servers_new_ack(a,...)
 #endif
 
 //TODO: implement IWALLOPS too

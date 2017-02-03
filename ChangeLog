@@ -18,6 +18,8 @@ TODO:
 Fri Feb  3 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed crash in multilink mode due to invalid
 	  freeing of client by ack while it was still kept to send last message.
+	* modules/ircd/ircd.c, modules/ircd/sendto.h: never send duplicate SQUIT
+	  to RFC servers.
 
 Thu Feb  2 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: shifted strictness on server connection flags,

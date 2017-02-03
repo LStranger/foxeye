@@ -4894,14 +4894,22 @@ static inline void _ircd_rserver_out (LINK *l)
 }
 
 /* notify local servers about squit */
-static inline void _ircd_send_squit (LINK *link, peer_priv *via, const char *msg)
+static inline void _ircd_send_squit (LINK *link, peer_priv *via, const char *msg, bool all)
 {
   /* notify local servers about squit */
-#ifdef USE_SERVICES
-  ircd_sendto_services_mark_all (Ircd, SERVICE_WANT_SQUIT);
+#if IRCD_MULTICONNECT
+  if (all) {
 #endif
-  ircd_sendto_servers_all_ack (Ircd, link->cl, NULL, via, ":%s SQUIT %s :%s",
-			       link->where->lcnick, link->cl->lcnick, msg);
+#ifdef USE_SERVICES
+    ircd_sendto_services_mark_all (Ircd, SERVICE_WANT_SQUIT);
+#endif
+    ircd_sendto_servers_all_ack(Ircd, link->cl, NULL, via, ":%s SQUIT %s :%s",
+				link->where->lcnick, link->cl->lcnick, msg);
+#if IRCD_MULTICONNECT
+  } else
+    ircd_sendto_servers_new_ack(Ircd, link->cl, NULL, via, ":%s SQUIT %s :%s",
+				link->where->lcnick, link->cl->lcnick, msg);
+#endif
   Add_Request(I_LOG, "*", F_SERV, "Received SQUIT %s from %s (%s)",
 	      link->cl->lcnick, link->where->lcnick, msg);
 }
@@ -4955,7 +4963,7 @@ static LINK *_ircd_check_multiconnect (LINK *link, peer_priv *via)
       return NULL;
     }
     /* well, link will be gone now, send notification and remove link */
-    _ircd_send_squit (s2, via, link->cl->lcnick);
+    _ircd_send_squit (s2, via, link->cl->lcnick, FALSE);
     _ircd_rserver_out (s2);
   }
   return s1; /* it's just a marker now */
@@ -4972,7 +4980,7 @@ static void _ircd_do_squit (LINK *link, peer_priv *via, const char *msg)
   /* the link might have incomplete burst, don't remove it if multiconnected */
   s = _ircd_check_multiconnect (link, via);
   if (s != NULL) { /* it's multiconnected, just notify now */
-    _ircd_send_squit (link, via, msg);
+    _ircd_send_squit (link, via, msg, FALSE);
     return;
   } /* else it's completely gone from network */
 #endif
@@ -4980,7 +4988,7 @@ static void _ircd_do_squit (LINK *link, peer_priv *via, const char *msg)
     if (CLIENT_IS_SERVER (s->cl) && s->cl != link->where) /* could point back */
       _ircd_do_squit (s, via, link->cl->lcnick); /* reason is the server gone */
   _ircd_squit_one (link); /* no one left behind; clear and notify users */
-  _ircd_send_squit (link, via, msg); /* notify local servers now */
+  _ircd_send_squit (link, via, msg, TRUE); /* notify local servers now */
   if (link->where != &ME) /* it's remote, for local see ircd_do_squit() */
   {
 #if IRCD_MULTICONNECT
