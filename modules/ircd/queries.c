@@ -1023,7 +1023,7 @@ static void _ircd_do_whois (IRCD *ircd, CLIENT *cl, CLIENT *tgt, CLIENT *me)
   size_t ptr;
   char mc;
   char buf[IRCMSGLEN];
-  register struct binding_t *b;
+  register struct binding_t *b = NULL;
 
   ircd_do_unumeric (cl, RPL_WHOISUSER, tgt, 0, tgt->fname);
   if (!CLIENT_IS_REMOTE (tgt)) {
@@ -1082,7 +1082,7 @@ static void _ircd_do_whois (IRCD *ircd, CLIENT *cl, CLIENT *tgt, CLIENT *me)
   /* special support for SSL client connections */
   if (tgt->umode & A_SSL)
     ircd_do_unumeric (cl, RPL_WHOISSECURE, tgt, 0, NULL);
-  while ((b = Check_Bindtable (BTIrcdWhois, tgt->nick, U_ALL, U_ANYCH, NULL)))
+  while ((b = Check_Bindtable (BTIrcdWhois, tgt->nick, U_ALL, U_ANYCH, b)))
     if (b->name == NULL)
       b->func (ircd, cl->nick, cl->umode, tgt->nick, tgt->host, tgt->vhost, tgt->umode);
 }
