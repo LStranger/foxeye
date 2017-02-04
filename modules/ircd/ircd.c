@@ -382,7 +382,9 @@ static inline void _ircd_real_drop_nick(CLIENT **ptr)
 
   dprint(2, "ircd:CLIENT: deleting phantom %s: %p <= %p", cl->nick, cl, cl->pcl);
   *ptr = cl->pcl;
-  if (cl->rfr != NULL)
+  if (CLIENT_IS_SERVER(cl))
+    cl->x.rto = NULL;
+  else if (cl->rfr != NULL)
     cl->rfr->x.rto = cl->x.rto;
   if (cl->x.rto != NULL)
     cl->x.rto->rfr = cl->rfr;
@@ -681,11 +683,11 @@ static void _ircd_try_drop_collision(CLIENT **ptr)
       ERROR("ircd:_ircd_try_drop_collision: tree error on %s (%p)", cl->lcnick, cl);
     else
       dprint(2, "ircd:CLIENT: del phantom name %s: %p", cl->lcnick, cl);
-    cl = (*ptr)->pcl;
+    cl = cl->pcl;
     if (cl != NULL)
       _ircd_bounce_collision(cl);
   }
-  _ircd_real_drop_nick(ptr);	/* if rfr ot x.rto then shift */
+  _ircd_real_drop_nick(ptr);
 }
 
 /* drops every phantom starting from given but leave CLIENT structure
@@ -722,7 +724,7 @@ static void _ircd_force_drop_collision(CLIENT **ptr)
     return;		/* ircd_drop_ack will call _ircd_try_drop_collision */
   }
 #endif
-  _ircd_real_drop_nick(ptr);	/* if rfr ot x.rto then shift */
+  _ircd_real_drop_nick(ptr);
 }
 
 /* create phantom client for old nick and set collision relations for it
@@ -1388,26 +1390,13 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	return REQ_OK;		/* let every ERROR/KILL be delivered */
       }
       Rename_Iface(cli, NULL);	/* delete it from everywhere before checks */
-      if (cl->pcl != NULL)
-	_ircd_try_drop_collision(&cl->pcl);
 #if IRCD_MULTICONNECT
       if (cl->on_ack < 1)
       {
 	ERROR("ircd:invalid reference count on quit: %d < 1", cl->on_ack);
 	cl->on_ack++;		/* it is required */
       }
-      /* note: server can be multiconnected and if so then cl->via != peer */
-      if (cl->via == peer)
 #endif
-      /* check if it's not a nick holder */
-      if (cl->pcl == NULL && cl->lcnick[0])
-      {
-	/* name is not needed anymore, drop it from tree */
-	if (Delete_Key (Ircd->clients, cl->lcnick, cl) < 0)
-	  ERROR("ircd:CLIENT: on quit: tree error on %s (%p)", cl->lcnick, cl);
-	else
-	  dprint(2, "ircd:CLIENT: del quitting name %s: %p", cl->lcnick, cl);
-      }
       /* cleanup on local indication, it's not even a valid connect anymore */
       cl->local = NULL;
       if (peer == _ircd_uplink)
@@ -1422,50 +1411,9 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 #endif
 	  _ircd_init_uplinks();	/* recheck uplinks list */
 	}
-      } else {			/* clear any collision relations */
-	/* it's either not logged or phantom at this point */
-	if (cl->rfr != NULL)
-	  _ircd_try_drop_collision(&cl->rfr);
-	/* cl->rfr is 'from' and cl->pcl is 'next holded' now */
-	if (cl->x.rto != NULL)
-	  ERROR("ircd:CLIENT: impossible relation (%p) => %p", cl, cl->x.rto);
-	cl->x.rto = NULL;	/* cleanup */
+      }
 	/* we have ->cs to itself for local client always, ->pcl is set above
 	   and ->x.rto is NULL for non-phantoms after leaving class */
-	if (cl->pcl != NULL) {
-	  /* it's a nick holder still, keep it */
-#if IRCD_MULTICONNECT
-	} else if (cl->hold_upto <= Time && cl->on_ack == 1) {
-#else
-	} else if (cl->hold_upto <= Time) {
-#endif
-	  if (cl->rfr != NULL) {
-	    DBG("ircd:CLIENT: clearing relation %p => (%p)", cl->rfr, cl);
-	    WARNING("ircd: next nick %s of %s is lost", cl->nick,
-		    cl->rfr->cs->nick);
-	    cl->rfr->x.rto = NULL; /* drop this reference */
-	    cl->rfr = NULL;
-	  }
-	  cl->lcnick[0] = 0;	/* we deleted the key above */
-	} else {
-	  register CLIENT *phantom;
-
-	  phantom = _ircd_get_phantom(cl->nick, cl->lcnick);
-	  phantom->x.rto = NULL;
-	  phantom->rfr = cl->rfr;
-	  cl->rfr = NULL;
-	  if (phantom->rfr != NULL)
-	    phantom->rfr->x.rto = phantom;
-	  DBG("ircd:CLIENT: phantom relation changed: %p => (%p)%p", cl->rfr, cl, phantom);
-	  phantom->hold_upto = cl->hold_upto;
-#if IRCD_MULTICONNECT
-	  cl->on_ack--;		/* it was a borrowed reference */
-	  _ircd_move_acks(cl, phantom);
-	  cl->on_ack++;		/* restore the status quo */
-#endif
-	  cl->lcnick[0] = 0;	/* we deleted the key */
-	}
-      }
       if (!CLIENT_IS_SERVER(cl)) { /* should be done for incomplete uplink too */
 	DBG("ircd:CLIENT: unshifting %p prev %p", peer->link, peer->link->prev);
 	pthread_mutex_lock (&IrcdLock);
@@ -1478,13 +1426,17 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	  ERROR("ircd:could not find %s in local client list", cl->nick);
 	pthread_mutex_unlock (&IrcdLock);
 	peer->link->where = NULL;
-      } /* and it is not in any list except peers now */
+	if (cl->x.rto != NULL)
+	  ERROR("ircd:CLIENT: impossible relation (%p) => %p", cl, cl->x.rto);
+	cl->x.rto = NULL;	/* cleanup */
+      } /* and it is not in any list except peers and keys now */
       else if (cl->c.lients != NULL)
 #if IRCD_MULTICONNECT
 	/* it's not an error if server is still multiconnected elsewhere */
 	if (cl->via == peer)
 #endif
 	ERROR("ircd:clients list on dead server %s isn't empty!", cl->lcnick);
+      /* cl->rfr is 'from' and cl->pcl is 'next holded' now */
       peer->p.state = P_LASTWAIT;
     case P_LASTWAIT:
       sw = 0;			/* trying to send what is still left */
@@ -1495,6 +1447,10 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
       Peer_Cleanup (&peer->p);
       cli->data = NULL;		/* disown it */
       cli->ift |= I_DIED;
+	/* it's either not logged or phantom at this point */
+      /* clear any collision relations */
+      if (cl->rfr != NULL)
+	_ircd_try_drop_collision(&cl->rfr);
       pthread_mutex_lock (&IrcdLock);
       for (pp = &IrcdPeers; *pp; pp = &(*pp)->p.priv)
 	if ((*pp) == peer)
@@ -1506,14 +1462,17 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
       dprint(2, "ircd: link %p freed", peer->link);
 #if IRCD_MULTICONNECT
       cl->on_ack--;		/* a borrowed reference, see _ircd_peer_kill() */
-      if (cl->via == peer && cl->pcl == NULL && cl->on_ack == 0)
+      if (cl->hold_upto && Time >= cl->hold_upto && cl->via == peer && cl->on_ack == 0)
+      /* server can be multiconnected and if so then cl->via != peer */
 #else
-      if (cl->via == peer && cl->pcl == NULL)
+      if (cl->hold_upto && Time >= cl->hold_upto)
 #endif
       {
 	/* neither server still connected, nor acks/nick holder */
-	dprint(2, "ircd:CLIENT: deleting client %p", cl);
-	free_CLIENT (cl);
+	if (cl->rfr != NULL)
+	  WARNING("ircd: next nick %s of %s is lost", cl->nick,
+		  cl->rfr->cs->nick);
+	_ircd_try_drop_collision(&cl);
       } else
 	dprint(5, "ircd:ircd.c:_ircd_client_request: leaving dying client %s intact",
 	       cl->lcnick);
@@ -3001,11 +2960,8 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
   unistrlower (cl->lcnick, argv[0], sizeof(cl->lcnick));
   clt = _ircd_find_client_lc (cl->lcnick);
 #if IRCD_MULTICONNECT
-  if (clt && clt->hold_upto) {
-    ERROR("ircd: internal error on %s", cl->lcnick);
-    _ircd_force_drop_collision (&clt);
-  } else if (clt && (!CLIENT_IS_SERVER(clt) || CLIENT_IS_LOCAL(clt) ||
-	     !(clt->umode & A_MULTI)))
+  if (clt && (clt->hold_upto || !CLIENT_IS_SERVER(clt) || CLIENT_IS_LOCAL(clt) ||
+	      !(clt->umode & A_MULTI)))
 #else
   if (clt)				/* it's already in our network */
 #endif
@@ -3183,7 +3139,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
     pthread_mutex_lock (&IrcdLock);
     free_CLIENT (cl);
     pthread_mutex_unlock (&IrcdLock);
-    dprint(2, "ircd:CLIENT: %s: released %p using %p", clt->nick, cl, clt);
+    dprint(2, "ircd:CLIENT: deleting %s: released %p using %p", clt->nick, cl, clt);
     cl = clt; /* replace CLIENT struct and skip token! */
   }
   else
@@ -4709,20 +4665,9 @@ static iftype_t _ircd_signal (INTERFACE *iface, ifsig_t sig)
 /* -- common functions ---------------------------------------------------- */
 void ircd_drop_nick (CLIENT *cl)
 {
+  /* it should be called only on phantom without acks left */
   dprint(5, "ircd:CLIENT:ircd_drop_nick: %s: %p", cl->nick, cl);
-  if (cl->umode & A_SERVER) {
-    dprint(2, "ircd:CLIENT: deleting server %p", cl);
-    free_CLIENT(cl);
-  } else if (cl->via != NULL && cl->via->p.state == P_QUIT)
-    return;				/* it's at last message sending */
-  else if (cl->via != NULL)
-    ERROR("ircd:ircd_drop_nick() not for nick on hold: %s", cl->nick);
-  else if (cl->cs->hold_upto != 0)
-    _ircd_try_drop_collision(&cl->cs);	/* phantom nick holder */
-  else if (cl->cs->rfr != NULL && cl->cs->rfr->cs == cl->cs)
-    _ircd_try_drop_collision(&cl->cs->rfr); /* active nick holder */
-  else
-    ERROR("ircd:ircd_drop_nick() reference error: %s -> %s", cl->nick, cl->cs->nick);
+  _ircd_try_drop_collision(&cl);
 }
 
 /* finds alive client which probably known for server pp */
@@ -4782,15 +4727,12 @@ static inline void _ircd_release_rserver(CLIENT *cl)
 #if IRCD_MULTICONNECT
   if (cl->on_ack) /* convert the server into phantom instead of freeing */
   {
-    cl->hold_upto = Time;
-    cl->away[0] = '\0';
-    cl->pcl = NULL;
     DBG("ircd:_ircd_release_rserver: holding %s(%p) until acks gone", cl->nick, cl);
     return;
   }
 #endif
-  dprint(2, "ircd:CLIENT: deleting gone server %s: %p", cl->nick, cl);
-  free_CLIENT(cl);
+  dprint(2, "ircd:CLIENT: clearing gone server %s: %p", cl->nick, cl);
+  _ircd_try_drop_collision(&cl);
 }
 
 /* clears link->cl and notifies local users about lost server */
@@ -4828,7 +4770,7 @@ static inline void _ircd_squit_one (LINK *link)
     if (CLIENT_IS_SERVER (tgt)) /* server is gone so free all */
     {
       pthread_mutex_lock (&IrcdLock);
-      if (tgt->lcnick[0] == '\0')	/* see _ircd_do_squit() */
+      if (tgt->hold_upto != 0)		/* see _ircd_do_squit() */
 	_ircd_release_rserver(tgt);
       /* link is about to be destroyed so don't remove token of l */
       free_LINK (l);			/* see _ircd_do_squit */
@@ -4887,7 +4829,7 @@ static inline void _ircd_rserver_out (LINK *l)
     ERROR ("ircd:_ircd_rserver_out: server %s not found on %s!", l->cl->nick,
 	   l->where->lcnick);
   pthread_mutex_lock (&IrcdLock);
-  if (l->cl->lcnick[0] == '\0')		/* see _ircd_do_squit() */
+  if (l->cl->hold_upto != 0)		/* see _ircd_do_squit() */
     _ircd_release_rserver(l->cl);
   free_LINK (l);
   pthread_mutex_unlock (&IrcdLock);
@@ -5004,12 +4946,9 @@ static void _ircd_do_squit (LINK *link, peer_priv *via, const char *msg)
       return;
     }
 #endif
-    if (Delete_Key (Ircd->clients, link->cl->lcnick, link->cl)) /* remove it */
-      ERROR("ircd:_ircd_do_squit: tree error on removing %s", link->cl->lcnick);
-      // TODO: isn't it fatal?
-    else
-      dprint (2, "ircd:CLIENT: del remote server name %s", link->cl->lcnick);
-    link->cl->lcnick[0] = '\0'; /* mark it to delete */
+    link->cl->hold_upto = Time; /* mark it to delete */
+    link->cl->pcl = NULL; /* it should be NULL as server is no-class entity */
+    link->cl->away[0] = '\0';
   }
 }
 
