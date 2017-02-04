@@ -4893,6 +4893,9 @@ static inline void _ircd_rserver_out (LINK *l)
   pthread_mutex_unlock (&IrcdLock);
 }
 
+/* see sendto.h: for SQUIT we have to check both sides of split to not send */
+#undef __TRANSIT__
+#define __TRANSIT__ if (L->cl != link->cl && L->cl != link->where) 
 /* notify local servers about squit */
 static inline void _ircd_send_squit (LINK *link, peer_priv *via, const char *msg, bool all)
 {
@@ -4913,6 +4916,8 @@ static inline void _ircd_send_squit (LINK *link, peer_priv *via, const char *msg
   Add_Request(I_LOG, "*", F_SERV, "Received SQUIT %s from %s (%s)",
 	      link->cl->lcnick, link->where->lcnick, msg);
 }
+#undef __TRANSIT__
+#define __TRANSIT__
 
 #if IRCD_MULTICONNECT
 /* check if server behind link */

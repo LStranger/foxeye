@@ -169,12 +169,11 @@
       if (L->cl->umode & A_MULTI) \
 	ircd_add_ack (L->cl->via, a, b); } \
   Add_Request (I_PENDING, "*", 0, __VA_ARGS__); } while(0)
-/* sends to every new type server with ack; args the same as for all_ack;
-   also test to not send to $who as required for SQUIT */
+/* sends to every new type server with ack; args the same as for all_ack */
 #define ircd_sendto_servers_new_ack(i,a,b,c,...) do {\
   LINK *L; \
   for (L = (i)->servers; L; L = L->prev) \
-    __TRANSIT__ if (L->cl->via != c && L->cl != a && L->cl->umode & A_MULTI) { \
+    __TRANSIT__ if (L->cl->via != c && L->cl->umode & A_MULTI) { \
       L->cl->via->p.iface->ift |= I_PENDING; \
       ircd_add_ack (L->cl->via, a, b); } \
   Add_Request (I_PENDING, "*", 0, __VA_ARGS__); } while(0)

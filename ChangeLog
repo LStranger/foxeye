@@ -22,6 +22,7 @@ Fri Feb  3 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  to RFC servers.
 	* modules/ircd/ircd.c: fixed _ircd_do_server_numeric() sender test, it
 	  might send INUM back to sender.
+	* modules/ircd/ircd.c: again fixed sending SQUIT back to the origin.
 
 Thu Feb  2 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: shifted strictness on server connection flags,
