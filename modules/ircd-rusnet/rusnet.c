@@ -688,7 +688,7 @@ static void rusnet_whois(INTERFACE *srv, const char *sender, modeflag sumf,
   }
 }
 
-static void _rusnet_make_collided_local(char *newnick, const char *nick, size_t ns)
+static void _rusnet_make_collided_local(char *nick, size_t ns)
 {
   size_t len, i;
 
@@ -697,8 +697,7 @@ static void _rusnet_make_collided_local(char *newnick, const char *nick, size_t 
   for (i = 1; i <= 5 && i < len && isdigit(nick[len - i]); i++)
   if (i > 5)
     len -= 5;
-  strfcpy(newnick, nick, len + 1);
-  snprintf(&newnick[len], ns - len, "%d",
+  snprintf(&nick[len], ns - len, "%d",
 	   10000 + (int) (60000.0 * random() / (RAND_MAX + 10000.0)));
 }
 
@@ -714,29 +713,30 @@ static void _rusnet_make_collided(char *newnick, const char *nick, size_t ns,
 }
 
 BINDING_TYPE_ircd_collision(rusnet_coll);
-static char *rusnet_coll(INTERFACE *srv, char *new, size_t nsize, int can,
-			 const char *cserv, const char *nserv)
+static int rusnet_coll(INTERFACE *srv, char *new, size_t nsize,
+		       const char *cserv, const char *nserv)
 {
-  static char collided[MB_LEN_MAX*NICKLEN+1];
+  char collided[MB_LEN_MAX*NICKLEN+1];
   const char *me;
 
   if (!Lname_IsOn(srv->name, NULL, NULL, &me))
   {
     ERROR("ircd-rusnet: cannot find own server name!");
-    new[0] = 0;
-    return NULL;
+    return -1;
   }
   if (strcmp(cserv, me) == 0)
   {
     /* rename local user */
-    _rusnet_make_collided_local(collided, new, sizeof(collided));
+    _rusnet_make_collided_local(new, nsize);
   }
   else
   {
     /* rename old nick */
-    _rusnet_make_collided(collided, new, sizeof(collided), cserv);
+    strfcpy(collided, new, sizeof(collided));
+    _rusnet_make_collided(new, collided, nsize, cserv);
   }
-  return collided;
+  /* ask to do rename */
+  return 2;
 }
 
 BINDING_TYPE_ircd_modechange(rusnet_mch_z);
@@ -1542,7 +1542,7 @@ SigFunction ModuleInit (char *args)
   Add_Binding("ircd-local-client", "*", 0, 0, (Function)&rusnet_lcl, NULL);
   Add_Binding("ircd-whois", "*", 0, 0, (Function)&rusnet_whois, NULL);
   /* rusnet-type collision resolving */
-  Add_Binding("ircd-collision", "*", 0, 0, (Function)&rusnet_coll, NULL);
+  Add_Binding("ircd-collision", "rusnet", 0, 0, &rusnet_coll, NULL);
   /* support latin-only channels (+z channelmode) */
   Add_Binding("ircd-modechange", "z", 0, 0, (Function)&rusnet_mch_z, NULL);
   Add_Binding("ircd-check-modechange", "*", 0, 0, &rusnet_cmch, NULL);
