@@ -4792,6 +4792,7 @@ static inline void _ircd_squit_one (LINK *link)
       if (pp->i.token[i] == server)
 	pp->i.token[i] = NULL;		/* and clear if found */
   }
+  server->x.rto = NULL;			/* both x.a.token and x.a.uc are done */
 }
 
 /* remote link squitted */
