@@ -273,7 +273,8 @@
     existing one then the user will be not renamed but killed instead.
     Server interface _s_r_v is provided so binding can make required checks.
     Parameters _e_s_e_r_v and _n_s_e_r_v are names of servers of those existing and
-    colliding users.
+    colliding users, and in case if existing user is a local one, _e_s_e_r_v
+    will be NULL.
       Matching: anything.  (userflags are ignored)
 
 -     "iirrccdd--sseett--mmeessssaaggee--ttaarrggeettss" MASK

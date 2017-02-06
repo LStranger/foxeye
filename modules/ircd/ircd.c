@@ -1107,7 +1107,10 @@ static CLIENT *_ircd_check_nick_collision(char *nick, size_t nsz, peer_priv *pp,
     if (nsz > sizeof(collnick))
       nsz = sizeof(collnick);
     strfcpy(collnick, nick, nsz);
-    res = f(Ircd->iface, collnick, nsz, collided->cs->lcnick, onserv);
+    if (CLIENT_IS_LOCAL(collided))
+      res = f(Ircd->iface, collnick, nsz, NULL, onserv);
+    else
+      res = f(Ircd->iface, collnick, nsz, collided->cs->lcnick, onserv);
     DBG("ircd:ircd.c:_ircd_check_nick_collision: binding resulted in %d (%s => %s)",
 	res, nick, collnick);
     if (res > 3)
@@ -1134,7 +1137,8 @@ static CLIENT *_ircd_check_nick_collision(char *nick, size_t nsz, peer_priv *pp,
   } else if (res == 2) {		/* binding asked to change collided */
     if (!CLIENT_IS_SERVICE(collided))	/* service cannot be renamed! */
       collided = _ircd_do_nickchange(collided, NULL, 0, collnick, 0);
-    if (_ircd_find_client(nick)) { /* ouch! we got the same for both collided! */
+    test = _ircd_find_client(nick);
+    if (test && test->hold_upto == 0) { /* ouch! we got the same for both collided! */
       ERROR("ircd:collision resolving conflict for nick %s", nick);
       nick[0] = '\0';
     }

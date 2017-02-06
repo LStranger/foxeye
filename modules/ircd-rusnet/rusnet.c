@@ -716,21 +716,14 @@ BINDING_TYPE_ircd_collision(rusnet_coll);
 static int rusnet_coll(INTERFACE *srv, char *new, size_t nsize,
 		       const char *cserv, const char *nserv)
 {
-  char collided[MB_LEN_MAX*NICKLEN+1];
-  const char *me;
-
-  if (!Lname_IsOn(srv->name, NULL, NULL, &me))
-  {
-    ERROR("ircd-rusnet: cannot find own server name!");
-    return -1;
-  }
-  if (strcmp(cserv, me) == 0)
+  if (cserv == NULL)
   {
     /* rename local user */
     _rusnet_make_collided_local(new, nsize);
   }
   else
   {
+    char collided[MB_LEN_MAX*NICKLEN+1];
     /* rename old nick */
     strfcpy(collided, new, sizeof(collided));
     _rusnet_make_collided(new, collided, nsize, cserv);
