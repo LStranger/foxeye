@@ -15,6 +15,10 @@ TODO:
 	* modules/ssl: add support for openssl-1.1 if possible.
 
 --- [0.11.0]
+Sun Feb  5 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd-rusnet/rusnet.c: collision changed nick should be
+	  different for local client and for remote client.
+
 Sat Feb  4 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: reworked phantoms handling on QUIT or on SQUIT,
 	  local client should be converted into phantom right away, and name

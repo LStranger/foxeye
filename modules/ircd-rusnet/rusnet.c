@@ -28,10 +28,9 @@
 #include <direct.h>
 #include <list.h>
 
-//#include <sys/types.h>
-//#include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <ctype.h>
 
 #include "../ircd/ircd.h"
 
@@ -689,15 +688,29 @@ static void rusnet_whois(INTERFACE *srv, const char *sender, modeflag sumf,
   }
 }
 
+static void _rusnet_make_collided_local(char *newnick, const char *nick, size_t ns)
+{
+  size_t len, i;
+
+  len = unistrcut(nick, ns - 5, RUSNET_NICKLEN - 5); /* nickXXXXX */
+  /* cut last five digits only if there are exactly five */
+  for (i = 1; i <= 5 && i < len && isdigit(nick[len - i]); i++)
+  if (i > 5)
+    len -= 5;
+  strfcpy(newnick, nick, len + 1);
+  snprintf(&newnick[len], ns - len, "%d",
+	   10000 + (int) (60000.0 * random() / (RAND_MAX + 10000.0)));
+}
+
 static void _rusnet_make_collided(char *newnick, const char *nick, size_t ns,
 				  const char *serv)
 {
   size_t len;
 
   *newnick = '1';
-  len = unistrcut(nick, ns - 6, NICKLEN - 6); /* 1nickXXXXX */
+  len = unistrcut(nick, ns - 6, RUSNET_NICKLEN - 6); /* 1nickXXXXX */
   strfcpy(newnick + 1, nick, len + 1);
-  b64enc(newnick + len, gen_crc(serv), ns - len);
+  b64enc(newnick + len + 1, gen_crc(serv), ns - len - 1);
 }
 
 BINDING_TYPE_ircd_collision(rusnet_coll);
@@ -705,12 +718,18 @@ static char *rusnet_coll(INTERFACE *srv, char *new, size_t nsize, int can,
 			 const char *cserv, const char *nserv)
 {
   static char collided[MB_LEN_MAX*NICKLEN+1];
+  const char *me;
 
-  if (can)
+  if (!Lname_IsOn(srv->name, NULL, NULL, &me))
   {
-    /* rename newcomer */
-    strfcpy(collided, new, sizeof(collided));
-    _rusnet_make_collided(new, collided, nsize, nserv);
+    ERROR("ircd-rusnet: cannot find own server name!");
+    new[0] = 0;
+    return NULL;
+  }
+  if (strcmp(cserv, me) == 0)
+  {
+    /* rename local user */
+    _rusnet_make_collided_local(collided, new, sizeof(collided));
   }
   else
   {
