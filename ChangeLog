@@ -18,6 +18,7 @@ TODO:
 Sun Feb  5 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd-rusnet/rusnet.c: collision changed nick should be
 	  different for local client and for remote client.
+	* modules/ircd/queries.c: fixed invalid call of "ricd-whois" bindings.
 
 Sat Feb  4 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: reworked phantoms handling on QUIT or on SQUIT,
