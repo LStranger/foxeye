@@ -3974,7 +3974,7 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 	(SERVICE_FLAGS(link->cl) & SERVICE_WANT_TOKEN))
       link->cl->via->p.iface->ift |= I_PENDING;
 #endif
-  ircd_sendto_servers_all_but(Ircd, pp, on, "NICK %s %hu %s %s %hu %s :%s",
+  ircd_sendto_servers_all_but(Ircd, pp, on->via, "NICK %s %hu %s %s %hu %s :%s",
 			      tgt->nick, tgt->hops, argv[2], argv[3],
 			      on->x.a.token + 1, argv[5], argv[6]);
   _ircd_bt_client(tgt, NULL, tgt->nick, on->lcnick);
@@ -4118,9 +4118,9 @@ static int ircd_service_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
     //TODO: isn't it fatal?
   else
     dprint(2, "ircd:CLIENT: new remote service name %s: %p", tgt->lcnick, tgt);
-  ircd_sendto_servers_mask(Ircd, pp, argv[2], ":%s SERVICE %s %hu %s %s %hu :%s",
-			   sender, tgt->nick, on->x.a.token + 1, argv[2], argv[3],
-			   tgt->hops, argv[5]);
+  ircd_sendto_servers_mask_but(Ircd, pp, on->via, argv[2], ":%s SERVICE %s %hu %s %s %hu :%s",
+			       sender, tgt->nick, on->x.a.token + 1, argv[2],
+			       argv[3], tgt->hops, argv[5]);
 #ifdef USE_SERVICES
   /* notify services about new service, using server name instead of token */
   ircd_sendto_services_all(Ircd, SERVICE_WANT_SERVICE,

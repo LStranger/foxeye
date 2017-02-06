@@ -90,16 +90,23 @@
 #define ircd_sendto_servers_mask(a,b,c,...) do {\
   register LINK *L; \
   for (L = (a)->servers; L; L = L->prev) \
-    if (simple_match (c, L->cl->lcnick) >= 0 && L->cl->via != b) \
+    if (L->cl->via != b && simple_match (c, L->cl->lcnick) >= 0) \
       __TRANSIT__ L->cl->via->p.iface->ift |= I_PENDING; \
   Add_Request (I_PENDING, "*", 0, __VA_ARGS__); } while(0)
 #if IRCD_MULTICONNECT
-/* sends to every server; args: ircd, from_peer, but, message...
-   similar to ircd_sendto_servers_all, but not send to server $but */
+/* sends to every server; args: ircd, from_peer, to_peer, message...
+   similar to ircd_sendto_servers_all, but not send to $to_peer */
 #define ircd_sendto_servers_all_but(i,a,b,...) do {\
   register LINK *L; \
   for (L = (i)->servers; L; L = L->prev) \
-    if (L->cl->via != a && L->cl != b) \
+    if (L->cl->via != a && L->cl->via != b) \
+      __TRANSIT__ L->cl->via->p.iface->ift |= I_PENDING; \
+  Add_Request (I_PENDING, "*", 0, __VA_ARGS__); } while(0)
+/* the same but using mask; args: ircd, from_peer, to_peer, mask, message... */
+#define ircd_sendto_servers_mask_but(i,a,b,c,...) do {\
+  register LINK *L; \
+  for (L = (i)->servers; L; L = L->prev) \
+    if (L->cl->via != a && L->cl->via != b && simple_match (c, L->cl->lcnick) >= 0) \
       __TRANSIT__ L->cl->via->p.iface->ift |= I_PENDING; \
   Add_Request (I_PENDING, "*", 0, __VA_ARGS__); } while(0)
 /* sends to every new type server */
@@ -180,6 +187,8 @@
 #else
 #define ircd_sendto_servers_all_but(i,a,b,...) \
   ircd_sendto_servers_all(i,a,__VA_ARGS__)
+#define ircd_sendto_servers_mask_but(i,a,b,c,...) \
+  ircd_sendto_servers_mask(i,a,c,__VA_ARGS__)
 #define ircd_sendto_servers_new(a,...)
 #define ircd_sendto_servers_ack(a,...)
 #define ircd_sendto_servers_mask_new(a,...)
