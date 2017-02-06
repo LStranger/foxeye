@@ -107,7 +107,8 @@ static ACK *ircd_find_ack(struct peer_priv *link, const char *who, const char *w
 
   for (ack = link->acks; ack; ack = ack->next)
   {
-    if (where == NULL && ack->where == NULL && strcmp(who, ack->who->nick) == 0) {
+    if (where == NULL && ack->where == NULL &&
+	(ack->who == NULL || strcmp(who, ack->who->nick)) == 0) {
       if (ack->contrary)
 	possible = ack;
       else
