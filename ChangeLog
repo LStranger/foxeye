@@ -15,6 +15,9 @@ TODO:
 	* modules/ssl: add support for openssl-1.1 if possible.
 
 --- [0.11.0]
+Mon Feb  6 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/queries.c: don't notify users on WHOIS on themselves.
+
 Sun Feb  5 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd-rusnet/rusnet.c: collision changed nick should be
 	  different for local client and for remote client.
