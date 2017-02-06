@@ -18,7 +18,7 @@ TODO:
 Sun Feb  5 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd-rusnet/rusnet.c: collision changed nick should be
 	  different for local client and for remote client.
-	* modules/ircd/queries.c: fixed invalid call of "ricd-whois" bindings.
+	* modules/ircd/queries.c: fixed invalid call of "ircd-whois" bindings.
 	* modules/ircd/ircd.c: reworked collisions handling: simplified a call
 	  to the bindings; eliminated try to "fix" wrong nickchange from a
 	  server - if server made such error then it hardly is good enough to

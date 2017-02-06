@@ -1091,6 +1091,10 @@ static void _ircd_do_whois (IRCD *ircd, CLIENT *cl, CLIENT *tgt, CLIENT *me)
       f = (void(*)())b->func;
       f(ircd->iface, cl->nick, cl->umode, tgt->nick, tgt->host, tgt->vhost, tgt->umode);
     }
+  /* binding might send some message, deliver it to user before RPL_ENDOFWHOIS */
+  Set_Iface(ircd->iface);
+  while(Get_Request());
+  Unset_Iface();
 }
 
 static inline int _ircd_query_whois (IRCD *ircd, CLIENT *cl, struct peer_priv *via,
