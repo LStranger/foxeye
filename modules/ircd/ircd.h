@@ -387,7 +387,7 @@ ACK *ircd_check_ack (struct peer_priv *, CLIENT *, CHANNEL *);
 /* removes all acks from link */
 #define ircd_clear_acks(I,pp) while (pp->acks) ircd_drop_ack (I,pp)
 /* generates new id for new type commands from my clients or me */
-int ircd_new_id (void);
+int ircd_new_id (CLIENT *);
 /* if id isn't received yet then register it and return 1, else return 0 */
 int ircd_test_id (CLIENT *, int);
 #endif

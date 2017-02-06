@@ -971,8 +971,10 @@ static inline void _ircd_mode_broadcast (IRCD *ircd, int id, CLIENT *sender,
       ch->name[0] == '+')	/* nor mode +t for modeless channel */
     return;
 #if IRCD_MULTICONNECT
-  if (id < 0 && !CLIENT_IS_SERVER(sender) && !CLIENT_IS_REMOTE(sender))
-    id = ircd_new_id();		/* make new id if it's local client */
+  if (id < 0 && !CLIENT_IS_LOCAL(sender))
+    id = ircd_new_id(sender->cs); /* allocate id for IMODE */
+  else if (id < 0)
+    id = ircd_new_id(NULL);	/* make new id if it's local client */
 #endif
 #ifdef USE_SERVICES
   ircd_sendto_services_mark_nick (ircd, SERVICE_WANT_MODE);
@@ -981,28 +983,18 @@ static inline void _ircd_mode_broadcast (IRCD *ircd, int id, CLIENT *sender,
   if (imp)
   {
     imp++;
-#if IRCD_MULTICONNECT
-    if (id >= 0) {
-      ircd_sendto_servers_mask_old(ircd, pp, imp, ":%s MODE %s %s%s",
-				   sender->nick, ch->name, modepass, buff);
-      ircd_sendto_servers_mask_new(ircd, pp, imp, ":%s IMODE %d %s %s%s",
-				   sender->nick, id, ch->name, modepass, buff);
-    } else
-#endif
-      ircd_sendto_servers_mask(ircd, pp, imp, ":%s MODE %s %s%s",
-			       sender->nick, ch->name, modepass, buff);
+    ircd_sendto_servers_mask_old(ircd, pp, imp, ":%s MODE %s %s%s",
+				 sender->nick, ch->name, modepass, buff);
+    ircd_sendto_servers_mask_new(ircd, pp, imp, ":%s IMODE %d %s %s%s",
+				 sender->nick, id, ch->name, modepass, buff);
   }
   else
-#if IRCD_MULTICONNECT
-    if (id >= 0) {
-      ircd_sendto_servers_old(ircd, pp, ":%s MODE %s %s%s",
-			      sender->nick, ch->name, modepass, buff);
-      ircd_sendto_servers_new(ircd, pp, ":%s IMODE %d %s %s%s",
-			      sender->nick, id, ch->name, modepass, buff);
-    } else
-#endif
-      ircd_sendto_servers_all(ircd, pp, ":%s MODE %s %s%s",
-			      sender->nick, ch->name, modepass, buff);
+  {
+    ircd_sendto_servers_old(ircd, pp, ":%s MODE %s %s%s",
+			    sender->nick, ch->name, modepass, buff);
+    ircd_sendto_servers_new(ircd, pp, ":%s IMODE %d %s %s%s",
+			    sender->nick, id, ch->name, modepass, buff);
+  }
 }
 #undef __TRANSIT__
 #define __TRANSIT__
@@ -1481,7 +1473,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 	ircd_make_umode (c, todel, MAXMODES+1);
       }
       ircd_sendto_servers_new (((IRCD *)srv->data), NULL, ":%s IMODE %d %s %s",
-			       peer->dname, ircd_new_id(), peer->dname,
+			       peer->dname, ircd_new_id(NULL), peer->dname,
 			       modepass);
       ircd_sendto_servers_old (((IRCD *)srv->data), NULL, ":%s MODE %s %s",
 			       peer->dname, peer->dname, modepass);
@@ -2089,7 +2081,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
       free_MASK(mm);
     }
     if (x > 0)
-      _ircd_mode_broadcast((IRCD *)srv->data, -1, src, ch, imp, NULL, 0,
+      _ircd_mode_broadcast((IRCD *)srv->data, id, src, ch, imp, NULL, 0,
 			   modepass, passed, x);
 #if IRCD_MULTICONNECT
     if (errors < 0)
@@ -2266,6 +2258,13 @@ static int ircd_mode_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     ERROR ("ircd:incomplete MODE command by %s via %s", sender, peer->dname);
     return ircd_recover_done (pp, "incomplete MODE command");
   }
+#if IRCD_MULTICONNECT
+  if (pp->link->cl->umode & A_MULTI)
+  {
+    ERROR ("ircd:illegal MODE command via %s", peer->dname);
+    return ircd_recover_done (pp, "illegal MODE command");
+  }
+#endif
   return _ircd_do_smode(srv, pp, token, -1, sender, lcsender, argc, argv);
 }
 
@@ -2963,14 +2962,14 @@ static inline void _ircd_do_reop(IRCD *ircd, CLIENT *me, CHANNEL *ch)
   if (cmask) {
     cmask++;
     ircd_sendto_servers_mask_new(ircd, NULL, cmask, ":%s IMODE %d %s +o %s",
-				 me->lcnick, ircd_new_id(), ch->name,
+				 me->lcnick, ircd_new_id(NULL), ch->name,
 				 who->who->nick);
     ircd_sendto_servers_mask_old(ircd, NULL, cmask, ":%s MODE %s +o %s",
 				 me->lcnick, ch->name, who->who->nick);
     return;
   }
   ircd_sendto_servers_new(ircd, NULL, ":%s IMODE %d %s +o %s", me->lcnick,
-			  ircd_new_id(), ch->name, who->who->nick);
+			  ircd_new_id(NULL), ch->name, who->who->nick);
   ircd_sendto_servers_old(ircd, NULL, ":%s MODE %s +o %s", me->lcnick, ch->name,
 			  who->who->nick);
 }

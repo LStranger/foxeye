@@ -133,16 +133,6 @@ static int localid = 0;
 
 #define IRCD_ID_MAXVAL 0x7fffffff /* INT32_MAX - for 32bit arch compatibility */
 
-/* generate new id for own messages */
-int ircd_new_id(void)
-{
-  if (localid == IRCD_ID_MAXVAL)
-    localid = 0;
-  else
-    localid++;
-  return (localid);
-}
-
 #define ID_MAP_MASK (IRCD_ID_HISTORY-1)
 
 /* bit manipulation functions; borrowed from SLURM sources */
@@ -273,6 +263,27 @@ int ircd_test_id(CLIENT *cl, int id)
   bit_set((bitstr_t *)cl->id_cache, (id & ID_MAP_MASK));
   cl->last_id = id;
   return (1);
+}
+
+/* generate new id for own messages */
+int ircd_new_id(CLIENT *cl)
+{
+  if (cl)
+  {
+    if (!CLIENT_IS_SERVER(cl))
+      return (-1);
+    if (cl->last_id == IRCD_ID_MAXVAL)
+      cl->last_id = 0;
+    else
+      cl->last_id++;
+    bit_set((bitstr_t *)cl->id_cache, (cl->last_id & ID_MAP_MASK));
+    return (cl->last_id);
+  }
+  if (localid == IRCD_ID_MAXVAL)
+    localid = 0;
+  else
+    localid++;
+  return (localid);
 }
 #endif
 
@@ -722,12 +733,20 @@ static int ircd_topic_sb(INTERFACE *srv, struct peer_t *peer, unsigned short tok
   CLIENT *cl;
   MEMBER *memb;
   struct peer_priv *pp = peer->iface->data; /* it's really peer */
+  int id = -1;
 
   /* check number of parameters and if channel isn't local one */
   if (argc != 2) {
     ERROR("ircd:got TOPIC from %s with %d(<2) parameters", peer->dname, argc);
     return ircd_recover_done(pp, "Invalid number of parameters");
   }
+#if IRCD_MULTICONNECT
+  if (pp->link->cl->umode & A_MULTI)
+  {
+    ERROR("ircd:illegal TOPIC command via %s", peer->dname);
+    return ircd_recover_done(pp, "illegal TOPIC command");
+  }
+#endif
   cl = _ircd_find_client_lc((IRCD *)srv->data, lcsender);
   memb = ircd_find_member ((IRCD *)srv->data, argv[0], NULL);
   /* we should never get TOPIC from A_MULTI link so no reason to check acks */
@@ -736,8 +755,11 @@ static int ircd_topic_sb(INTERFACE *srv, struct peer_t *peer, unsigned short tok
 	  peer->dname, sender, argv[0]);
     return ircd_recover_done(pp, "TOPIC for nonexistent channel");
   }
-  return _ircd_do_stopic((IRCD *)srv->data, peer->dname, sender, pp, 0, -1, cl,
-			 memb->chan, argv[1]);
+#if IRCD_MULTICONNECT
+  id = ircd_new_id(cl->cs);
+#endif
+  return _ircd_do_stopic((IRCD *)srv->data, peer->dname, sender, pp, token, id,
+			 cl, memb->chan, argv[1]);
 }
 
 BINDING_TYPE_ircd_server_cmd(ircd_invite_sb);
@@ -1041,31 +1063,19 @@ static int _ircd_do_stopic(IRCD *ircd, const char *via, const char *sender,
 #ifdef USE_SERVICES
     ircd_sendto_services_mark_nick(ircd, SERVICE_WANT_TOPIC);
 #endif
-#if IRCD_MULTICONNECT
-    if (id >= 0) {
-      ircd_sendto_servers_mask_old(ircd, pp, cmask, ":%s TOPIC %s :%s", sender,
-				   ch->name, ch->topic);
-      ircd_sendto_servers_mask_new(ircd, pp, cmask, ":%s ITOPIC %d %s :%s",
-				   sender, id, ch->name, ch->topic);
-    } else
-#endif
-      ircd_sendto_servers_mask(ircd, pp, cmask, ":%s TOPIC %s :%s", sender,
-			       ch->name, ch->topic);
+    ircd_sendto_servers_mask_old(ircd, pp, cmask, ":%s TOPIC %s :%s", sender,
+				 ch->name, ch->topic);
+    ircd_sendto_servers_mask_new(ircd, pp, cmask, ":%s ITOPIC %d %s :%s",
+				 sender, id, ch->name, ch->topic);
     return 1;
   }
 #ifdef USE_SERVICES
   ircd_sendto_services_mark_nick(ircd, SERVICE_WANT_TOPIC);
 #endif
-#if IRCD_MULTICONNECT
-  if (id >= 0) {
-    ircd_sendto_servers_old(ircd, pp, ":%s TOPIC %s :%s",
-			    sender, ch->name, ch->topic);
-    ircd_sendto_servers_new(ircd, pp, ":%s ITOPIC %d %s :%s",
-			    sender, id, ch->name, ch->topic);
-  } else
-#endif
-    ircd_sendto_servers_all(ircd, pp, ":%s TOPIC %s :%s",
-			    sender, ch->name, ch->topic);
+  ircd_sendto_servers_old(ircd, pp, ":%s TOPIC %s :%s",
+			  sender, ch->name, ch->topic);
+  ircd_sendto_servers_new(ircd, pp, ":%s ITOPIC %d %s :%s",
+			  sender, id, ch->name, ch->topic);
   return 1;
 }
 

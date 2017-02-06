@@ -426,6 +426,8 @@ static int _ircd_broadcast_msglist_new (IRCD *ircd, struct peer_priv *via,
   register LINK *srv;
   int rc;
 
+  if (id < 0)
+    id = ircd_new_id(ircd->token[token]);
   for (srv = ircd->servers; srv; srv = srv->prev) /* preset to ignore later */
     if (!(srv->cl->umode & A_MULTI) || srv->cl->via == via ||
 	srv->cl->x.a.token == token)
@@ -448,7 +450,7 @@ static int _ircd_broadcast_msglist_new (IRCD *ircd, struct peer_priv *via,
 #endif
 
 static int _ircd_broadcast_msglist_old (IRCD *ircd, struct peer_priv *via,
-			unsigned short token, const char *nick, int all,
+			unsigned short token, const char *nick,
 			const char *targets, const char **tlist, size_t s,
 			const char *mode, const char *msg)
 {
@@ -458,7 +460,7 @@ static int _ircd_broadcast_msglist_old (IRCD *ircd, struct peer_priv *via,
   for (srv = ircd->servers; srv; srv = srv->prev) /* preset to ignore later */
     if (srv->cl->via == via ||
 #if IRCD_MULTICONNECT
-	(!all && (srv->cl->umode & A_MULTI)) ||
+	(srv->cl->umode & A_MULTI) ||
 #endif
 	srv->cl->x.a.token == token)
       srv->cl->via->p.iface->ift |= I_PENDING;
@@ -467,7 +469,7 @@ static int _ircd_broadcast_msglist_old (IRCD *ircd, struct peer_priv *via,
   for (srv = ircd->servers; srv; srv = srv->prev) /* reset them now */
     if (srv->cl->via == via ||
 #if IRCD_MULTICONNECT
-	(!all && (srv->cl->umode & A_MULTI)) ||
+	(srv->cl->umode & A_MULTI) ||
 #endif
 	srv->cl->x.a.token == token)
       srv->cl->via->p.iface->ift &= ~I_PENDING;
@@ -670,9 +672,9 @@ static int ircd_privmsg_cb(INTERFACE *srv, struct peer_t *peer, const char *lcni
   }
   if (s)
   {
-    _ircd_broadcast_msglist_new (ircd, NULL, 0, ircd_new_id(), peer->dname,
+    _ircd_broadcast_msglist_new (ircd, NULL, 0, ircd_new_id(NULL), peer->dname,
 				 targets, tlist, s, "PRIVMSG", argv[1]);
-    _ircd_broadcast_msglist_old (ircd, NULL, 0, peer->dname, 0,
+    _ircd_broadcast_msglist_old (ircd, NULL, 0, peer->dname,
 				 targets, tlist, s, "PRIVMSG", argv[1]);
   }
   return 1;
@@ -773,9 +775,9 @@ static int ircd_notice_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnic
   }
   if (s)
   {
-    _ircd_broadcast_msglist_new (ircd, NULL, 0, ircd_new_id(), peer->dname,
+    _ircd_broadcast_msglist_new (ircd, NULL, 0, ircd_new_id(NULL), peer->dname,
 				 targets, tlist, s, "NOTICE", argv[1]);
-    _ircd_broadcast_msglist_old (ircd, NULL, 0, peer->dname, 0,
+    _ircd_broadcast_msglist_old (ircd, NULL, 0, peer->dname,
 				 targets, tlist, s, "NOTICE", argv[1]);
   }
   return 1;
@@ -804,9 +806,9 @@ static int ircd_squery_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnic
     return 1;
   }
 #endif
-  _ircd_broadcast_msglist_new(ircd, NULL, 0, ircd_new_id(),
-			      peer->dname, argv[0], argv, 1, "SQUERY", argv[1]);
-  _ircd_broadcast_msglist_old(ircd, NULL, 0, peer->dname, 0,
+  _ircd_broadcast_msglist_new(ircd, NULL, 0, ircd_new_id(NULL), peer->dname,
+			      argv[0], argv, 1, "SQUERY", argv[1]);
+  _ircd_broadcast_msglist_old(ircd, NULL, 0, peer->dname,
 			      argv[0], argv, 1, "SQUERY", argv[1]);
   return 1;
 }
@@ -838,13 +840,22 @@ static int ircd_privmsg_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
 	  argc);
     return ircd_recover_done(pp, "Invalid number of parameters");
   }
+#if IRCD_MULTICONNECT
+  if (pp->link->cl->umode & A_MULTI)
+  {
+    ERROR("ircd:illegal PRIVMSG command via %s", peer->dname);
+    return ircd_recover_done(pp, "illegal PRIVMSG command");
+  }
+#endif
   cl = _ircd_find_client_lc(ircd, lcsender);
   for (c = (char *)argv[0]; c; c = cnext)
   {
     if ((cnext = strchr(c, ',')))
       *cnext++ = 0;
     if (s == max_targets) {
-      _ircd_broadcast_msglist_old(ircd, pp, token, sender, 1,
+      _ircd_broadcast_msglist_new(ircd, pp, token, -1, sender,
+				  targets, tlist, s, "PRIVMSG", argv[1]);
+      _ircd_broadcast_msglist_old(ircd, pp, token, sender,
 				  targets, tlist, s, "PRIVMSG", argv[1]);
       s = s2 = 0;
     }
@@ -908,8 +919,12 @@ static int ircd_privmsg_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
     }
   }
   if (s)
-    _ircd_broadcast_msglist_old(ircd, pp, token, sender, 1,
+  {
+    _ircd_broadcast_msglist_new(ircd, pp, token, -1, sender,
 				targets, tlist, s, "PRIVMSG", argv[1]);
+    _ircd_broadcast_msglist_old(ircd, pp, token, sender,
+				targets, tlist, s, "PRIVMSG", argv[1]);
+  }
   return 1;
 }
 
@@ -935,13 +950,22 @@ static int ircd_notice_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
 		peer->dname, argc);
     return (1);
   }
+#if IRCD_MULTICONNECT
+  if (pp->link->cl->umode & A_MULTI)
+  {
+    ERROR("ircd:illegal NOTICE command via %s", peer->dname);
+    return ircd_recover_done(pp, "illegal NOTICE command");
+  }
+#endif
   cl = _ircd_find_client_lc(ircd, lcsender);
   for (c = (char *)argv[0]; c; c = cnext)
   {
     if ((cnext = strchr(c, ',')))
       *cnext++ = 0;
     if (s == max_targets) {
-      _ircd_broadcast_msglist_old(ircd, pp, token, sender, 1,
+      _ircd_broadcast_msglist_new(ircd, pp, token, -1, sender,
+				  targets, tlist, s, "NOTICE", argv[1]);
+      _ircd_broadcast_msglist_old(ircd, pp, token, sender,
 				  targets, tlist, s, "NOTICE", argv[1]);
       s = s2 = 0;
     }
@@ -1004,8 +1028,12 @@ static int ircd_notice_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
     }
   }
   if (s)
-    _ircd_broadcast_msglist_old(ircd, pp, token, sender, 1,
+  {
+    _ircd_broadcast_msglist_new(ircd, pp, token, -1, sender,
 				targets, tlist, s, "NOTICE", argv[1]);
+    _ircd_broadcast_msglist_old(ircd, pp, token, sender,
+				targets, tlist, s, "NOTICE", argv[1]);
+  }
   return 1;
 }
 
@@ -1023,6 +1051,13 @@ static int ircd_squery_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
 	  argc);
     return ircd_recover_done(pp, "Invalid number of parameters");
   }
+#if IRCD_MULTICONNECT
+  if (pp->link->cl->umode & A_MULTI)
+  {
+    ERROR("ircd:illegal SQUERY command via %s", peer->dname);
+    return ircd_recover_done(pp, "illegal SQUERY command");
+  }
+#endif
   //cl = _ircd_find_client_lc((IRCD *)srv->data, lcsender);
   if (!(tcl = _ircd_find_msg_target(argv[0], pp)) ||
       !CLIENT_IS_SERVICE(tcl)) {
@@ -1034,8 +1069,12 @@ static int ircd_squery_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
     New_Request(tcl->via->p.iface, 0, ":%s SQUERY %s :%s", sender, argv[0], argv[1]);
   else
 #endif
-    _ircd_broadcast_msglist_old((IRCD *)srv->data, pp, token, sender, 1,
+  {
+    _ircd_broadcast_msglist_new((IRCD *)srv->data, pp, token, -1, sender,
+				argv[1], &argv[1], 1, "SQUERY", argv[2]);
+    _ircd_broadcast_msglist_old((IRCD *)srv->data, pp, token, sender,
 				argv[0], argv, 1, "SQUERY", argv[1]);
+  }
   return (1);
 }
 
@@ -1138,7 +1177,7 @@ static int ircd_iprivmsg(INTERFACE *srv, struct peer_t *peer, unsigned short tok
   if (s) {
     _ircd_broadcast_msglist_new(ircd, pp, token, id, sender,
 				targets, tlist, s, "PRIVMSG", argv[2]);
-    _ircd_broadcast_msglist_old(ircd, pp, token, sender, 0,
+    _ircd_broadcast_msglist_old(ircd, pp, token, sender,
 				targets, tlist, s, "PRIVMSG", argv[2]);
   }
   return 1;
@@ -1240,7 +1279,7 @@ static int ircd_inotice(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   if (s) {
     _ircd_broadcast_msglist_new(ircd, pp, token, id, sender,
 				targets, tlist, s, "NOTICE", argv[2]);
-    _ircd_broadcast_msglist_old(ircd, pp, token, sender, 0,
+    _ircd_broadcast_msglist_old(ircd, pp, token, sender,
 				targets, tlist, s, "NOTICE", argv[2]);
   }
   return 1;
@@ -1280,7 +1319,7 @@ static int ircd_isquery(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   {
     _ircd_broadcast_msglist_new(ircd, pp, token, id, sender,
 				argv[1], &argv[1], 1, "SQUERY", argv[2]);
-    _ircd_broadcast_msglist_old(ircd, pp, token, sender, 0,
+    _ircd_broadcast_msglist_old(ircd, pp, token, sender,
 				argv[1], &argv[1], 1, "SQUERY", argv[2]);
   }
   return (1);

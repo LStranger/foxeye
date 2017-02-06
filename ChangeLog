@@ -21,6 +21,10 @@ Mon Feb  6 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  second, idle should be last, that's how it used to be.
 	* modules/ircd/ircd.c: fixed token processing in SERVER and ISERVER:
 	  even if link is already known, token should be added to the peer.
+	* modules/ircd/servers.c, modules/ircd/channels.c, modules/ircd/clients.c, modules/ircd/ircd.*, modules/ircd/messages.c:
+	  denied sending messages such as MODE, TOPIC, PRIVMSG, NOTICE, SQUERY
+	  and numerics via multiconnect capable links to avoid cycles. Those
+	  messages will be converted to messages with IDs and sent reliably.
 
 Sun Feb  5 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd-rusnet/rusnet.c: collision changed nick should be

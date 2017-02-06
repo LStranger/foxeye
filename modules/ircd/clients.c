@@ -164,7 +164,7 @@ static int ircd_oper_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
     cl->umode |= A_OP;			/* global oper */
     New_Request (peer->iface, 0, ":%s MODE %s +o", peer->dname, peer->dname);
     ircd_sendto_servers_new ((IRCD *)srv->data, NULL, ":%s IMODE %d %s +o",
-			     peer->dname, ircd_new_id(), peer->dname);
+			     peer->dname, ircd_new_id(NULL), peer->dname);
 #ifdef USE_SERVICES
     ircd_sendto_services_mark_nick ((IRCD *)srv->data, SERVICE_WANT_OPER);
 #endif
@@ -406,7 +406,7 @@ static int ircd_topic_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick
 #endif
     ircd_sendto_servers_mask_new ((IRCD *)srv->data, NULL, cmask,
 				  ":%s ITOPIC %d %s :%s", peer->dname,
-				  ircd_new_id(), ch->name, ch->topic);
+				  ircd_new_id(NULL), ch->name, ch->topic);
     ircd_sendto_servers_mask_old ((IRCD *)srv->data, NULL, cmask,
 				  ":%s TOPIC %s :%s", peer->dname, ch->name,
 				  ch->topic);
@@ -418,7 +418,7 @@ static int ircd_topic_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick
   ircd_sendto_servers_old ((IRCD *)srv->data, NULL, ":%s TOPIC %s :%s",
 			   peer->dname, ch->name, ch->topic);
   ircd_sendto_servers_new ((IRCD *)srv->data, NULL, ":%s ITOPIC %d %s :%s",
-			   peer->dname, ircd_new_id(), ch->name, ch->topic);
+			   peer->dname, ircd_new_id(NULL), ch->name, ch->topic);
   return 1;
 }
 
@@ -743,7 +743,7 @@ static int ircd_away_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
     cl->away[0] = '\0';
     cl->umode &= ~A_AWAY;
     ircd_sendto_servers_new((IRCD *)srv->data, NULL, ":%s IMODE %d %s :-a",
-			    peer->dname, ircd_new_id(), peer->dname);
+			    peer->dname, ircd_new_id(NULL), peer->dname);
     ircd_sendto_servers_old((IRCD *)srv->data, NULL, ":%s MODE %s :-a",
 			    peer->dname, peer->dname);
 #ifdef USE_SERVICES
@@ -758,7 +758,7 @@ static int ircd_away_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
   strfcpy(cl->away, argv[0], len + 1); /* unistrcut includes '\0' */
   cl->umode |= A_AWAY;
   ircd_sendto_servers_new((IRCD *)srv->data, NULL, ":%s IMODE %d %s :+a",
-			  peer->dname, ircd_new_id(), peer->dname);
+			  peer->dname, ircd_new_id(NULL), peer->dname);
   ircd_sendto_servers_old((IRCD *)srv->data, NULL, ":%s MODE %s :+a",
 			  peer->dname, peer->dname);
 #ifdef USE_SERVICES

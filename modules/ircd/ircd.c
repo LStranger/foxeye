@@ -975,16 +975,27 @@ static inline int _ircd_do_server_numeric(peer_priv *peer, const char *sender,
       b->func(Ircd->iface, num, argv[2], tgt->umode, buf))
     return 1;				/* aborted by binding */
 #if IRCD_MULTICONNECT
-  if (CLIENT_IS_REMOTE(tgt) && id != -1)
+  if (CLIENT_IS_REMOTE(tgt))
   {
-    ircd_sendto_new(tgt, ircd_find_client(sender, peer), peer,
+    CLIENT *src = ircd_find_client(sender, peer);
+    /* send INUM if possible to get better delivery chance */
+    if (src == NULL) {
+      ERROR("ircd: source %s of numeric %s not found!", sender, argv[1]);
+      return 0;
+    } else if (id < 0) {
+      if (peer && (peer->link->cl->umode & A_MULTI)) {
+	ERROR("ircd: illegal numeric via %s, INUM expected", peer->p.dname);
+	return 0;
+      } else if (CLIENT_IS_ME(src))
+	id = ircd_new_id(NULL);
+      else if (CLIENT_IS_SERVER(src) || CLIENT_IS_REMOTE(src))
+	id = ircd_new_id(src->cs);
+      else
+	id = ircd_new_id(NULL);
+    }
+    ircd_sendto_new(tgt, src, peer,
 		    ":%s INUM %d %03d %s %s", sender, id, num, argv[2], buf);
     ircd_sendto_old(tgt, ":%s %03d %s %s", sender, num, argv[2], buf);
-  }
-  else if (CLIENT_IS_REMOTE(tgt))
-  {
-    ircd_sendto_remote(tgt, ircd_find_client(sender, peer), peer,
-		       ":%s %03d %s %s", sender, num, argv[2], buf);
   }
   else
 #endif
@@ -5001,7 +5012,7 @@ int ircd_do_unumeric (CLIENT *requestor, int n, const char *template,
 
     if (CLIENT_IS_REMOTE(requestor)) {	/* send numeric or INUM */
       ircd_sendto_new (requestor, NULL, NULL, ":%s INUM %d %03d %s %s", MY_NAME,
-		       ircd_new_id(), n, rnick, buff);
+		       ircd_new_id(NULL), n, rnick, buff);
       ircd_sendto_old (requestor, ":%s %03d %s %s", MY_NAME, n, rnick, buff);
     } else				/* send it directly */
       New_Request (requestor->via->p.iface, 0, ":%s %03d %s %s", MY_NAME, n,
@@ -5026,7 +5037,7 @@ int ircd_do_cnumeric (CLIENT *requestor, int n, const char *template,
   {
     if (CLIENT_IS_REMOTE(requestor)) {	/* send numeric or INUM */
       ircd_sendto_new (requestor, NULL, NULL, ":%s INUM %d %03d %s %s", MY_NAME,
-		       ircd_new_id(), n, requestor->nick, buff);
+		       ircd_new_id(NULL), n, requestor->nick, buff);
       ircd_sendto_old (requestor, ":%s %03d %s %s", MY_NAME, n,
 		       requestor->nick, buff);
     } else				/* send it directly */
