@@ -19,6 +19,8 @@ Mon Feb  6 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/queries.c: don't notify users on WHOIS on themselves.
 	* modules/ircd/queries.c: reordered WHOIS replies: channels should be
 	  second, idle should be last, that's how it used to be.
+	* modules/ircd/ircd.c: fixed token processing in SERVER and ISERVER:
+	  even if link is already known, token should be added to the peer.
 
 Sun Feb  5 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd-rusnet/rusnet.c: collision changed nick should be

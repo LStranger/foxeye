@@ -3425,6 +3425,23 @@ static int ircd_server_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
     ircd_do_squit (pp->link, pp, "bogus SERVER sender");
     return 1;
   }
+  if (argc > 3)
+  {
+    if ((ntok = atoi (argv[2])) <= 0 || ntok > SHRT_MAX)
+    {
+      ERROR ("Server %s sent us invalid token %ld", peer->dname, ntok);
+      if (ircd_recover_done (pp, "Invalid token"))
+	ircd_do_squit (pp->link, pp, "Invalid token"); /* cannot continue */
+      return 1;
+    }
+    ntok--;				/* tokens are sent from 1 */
+    info = argv[3];
+  }
+  else
+  {
+    ntok = -1L;
+    info = argv[2];
+  }
   cl = _ircd_find_client (argv[0]);
   if (cl == &ME)
   {
@@ -3442,6 +3459,7 @@ static int ircd_server_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
     if (tst)
     {
       dprint (3, "%s: backup command SERVER %s", peer->dname, argv[0]);
+      _ircd_add_token_to_server (pp, cl, ntok);
       return 1;
     }
   }
@@ -3457,23 +3475,6 @@ static int ircd_server_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
   {
     ERROR ("ircd: %s introduced by %s is not hostname", nhn, peer->dname);
     return ircd_recover_done (pp, "Bogus server name");
-  }
-  if (argc > 3)
-  {
-    if ((ntok = atoi (argv[2])) <= 0 || ntok > SHRT_MAX)
-    {
-      ERROR ("Server %s sent us invalid token %ld", peer->dname, ntok);
-      if (ircd_recover_done (pp, "Invalid token"))
-	ircd_do_squit (pp->link, pp, "Invalid token"); /* cannot continue */
-      return 1;
-    }
-    ntok--;				/* tokens are sent from 1 */
-    info = argv[3];
-  }
-  else
-  {
-    ntok = -1L;
-    info = argv[2];
   }
   if ((c = _ircd_validate_hub (pp, nhn)))
   {
@@ -3543,6 +3544,14 @@ static int ircd_iserver(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     ircd_do_squit (pp->link, pp, "bogus SERVER sender");
     return 1;
   }
+  if ((ntok = atoi (argv[2])) <= 0 || ntok > SHRT_MAX)
+  {
+    ERROR ("Server %s sent us invalid token %ld", peer->dname, ntok);
+    if (ircd_recover_done (pp, "Invalid token"))
+      ircd_do_squit (pp->link, pp, "Invalid token"); /* cannot continue */
+    return 1;
+  }
+  ntok--;				/* tokens are sent from 1 */
   cl = _ircd_find_client (argv[0]);
   if (cl == &ME)
   {
@@ -3565,6 +3574,7 @@ static int ircd_iserver(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     if (tst)
     {
       dprint (3, "%s: backup command ISERVER %s", peer->dname, argv[0]);
+      _ircd_add_token_to_server (pp, cl, ntok);
       return 1;
     }
   }
@@ -3579,14 +3589,6 @@ static int ircd_iserver(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     ERROR ("ircd: %s introduced by %s is not hostname", nhn, peer->dname);
     return ircd_recover_done (pp, "Bogus server name");
   }
-  if ((ntok = atoi (argv[2])) <= 0 || ntok > SHRT_MAX)
-  {
-    ERROR ("Server %s sent us invalid token %ld", peer->dname, ntok);
-    if (ircd_recover_done (pp, "Invalid token"))
-      ircd_do_squit (pp->link, pp, "Invalid token"); /* cannot continue */
-    return 1;
-  }
-  ntok--;				/* tokens are sent from 1 */
   if ((c = _ircd_validate_hub (pp, nhn)))
   {
     ircd_do_squit (pp->link, NULL, c);
