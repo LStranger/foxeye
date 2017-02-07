@@ -917,8 +917,8 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
       return (1);		/* just ignore it then */
     } else
       c = c2;			/* it's not phantom at this moment */
-    if (peer == NULL && peer->p.state != P_LOGIN && peer->p.state != P_IDLE &&
-	CLIENT_IS_LOCAL(c) && !CLIENT_IS_SERVER(c))
+    if (peer == NULL || (peer->p.state != P_LOGIN && peer->p.state != P_IDLE &&
+			 CLIENT_IS_LOCAL(c) && !CLIENT_IS_SERVER(c)))
     {
       /* internal call - client message simulation */
       if ((b = Check_Bindtable (BTIrcdClientCmd, argv[1], U_ALL, U_ANYCH, NULL)))
@@ -4173,6 +4173,8 @@ static modeflag incl_ircd(const char *net, const char *public,
   if (name == NULL)			/* it's request for channel data */
   {
     ch = _ircd_find_channel_c (public);
+    DBG("ircd:inspect-client: net %s ch %s: %p%s", net, public, ch,
+	ch && ch->hold_upto ? " (on hold)" : "");
     if (ch == NULL || ch->hold_upto)
       return 0;
     if (host)
@@ -4194,6 +4196,8 @@ static modeflag incl_ircd(const char *net, const char *public,
     MASK *m, *e;
 
     ch = _ircd_find_channel_c (public);
+    DBG("ircd:inspect-client: net %s mask %s ch %s: %p%s", net, name, public, ch,
+	ch && ch->hold_upto ? " (on hold)" : "");
     if (ch == NULL || ch->hold_upto)
       return 0;
     for (m = ch->invites; m; m = m->next) /* invite overrides ban */
@@ -4232,6 +4236,8 @@ static modeflag incl_ircd(const char *net, const char *public,
     return 0;				/* no invite/ban/exempt */
   }
   cl = _ircd_find_client_lc (name);	/* it's request for client data */
+  DBG("ircd:inspect-client: net %s cl %s: %p%s", net, name, cl,
+      cl && cl->hold_upto ? " (on hold)" : "");
   if (cl == NULL || cl->hold_upto)	/* no such client found */
     return 0;
   if (CLIENT_IS_SERVER(cl))

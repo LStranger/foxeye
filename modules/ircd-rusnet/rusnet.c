@@ -879,6 +879,60 @@ static int rusnet_check_quit(INTERFACE *srv, struct peer_t *peer, modeflag umode
   return 1;
 }
 
+BINDING_TYPE_ircd_client_filter(rusnet_check_topic);
+static int rusnet_check_topic(INTERFACE *srv, struct peer_t *peer, modeflag umode,
+			      int argc, const char **argv)
+{ /* args: <channel> <topic> */
+  char lcname[MB_LEN_MAX*CHANNAMELEN+1];
+  modeflag cf;
+
+  if (argc != 2)
+    return 1;
+  unistrlower(lcname, peer->dname, sizeof(lcname));
+  cf = Inspect_Client(srv->name, argv[0], lcname, NULL, NULL, NULL, NULL);
+  DBG("ircd-rusnet: TOPIC by %s on %s: flags are %#x", peer->dname, argv[0], cf);
+  if ((cf & (A_OP | A_HALFOP)) != A_HALFOP)
+    /* handled by ircd */
+    return 1;
+  /* send to ircd to process anyway */
+  New_Request(srv, 0, ":%s TOPIC %s :%s", peer->dname, argv[0], argv[1]);
+  /* it's done, do not process further */
+  return 0;
+}
+
+BINDING_TYPE_ircd_client_filter(rusnet_check_kick);
+static int rusnet_check_kick(INTERFACE *srv, struct peer_t *peer, modeflag umode,
+			     int argc, const char **argv)
+{ /* args: <channel> <user> [<comment>] */
+  char lcname[MB_LEN_MAX*CHANNAMELEN+1];
+  modeflag cf;
+
+  /* FIXME: only supported form is a single user and a single channel */
+  if (argc < 2)
+    return 1;
+  unistrlower(lcname, peer->dname, sizeof(lcname));
+  cf = Inspect_Client(srv->name, argv[0], lcname, NULL, NULL, NULL, NULL);
+  DBG("ircd-rusnet: KICK by %s on %s: flags are %#x", peer->dname, argv[0], cf);
+  if ((cf & (A_OP | A_HALFOP)) != A_HALFOP)
+    /* handled by ircd */
+    return 1;
+  unistrlower(lcname, argv[1], sizeof(lcname));
+  cf = Inspect_Client(srv->name, argv[0], lcname, NULL, NULL, NULL, NULL);
+  if (cf == 0)
+    /* no such user in the channel: let ircd send diagnostics */
+    return 1;
+  if (cf & (A_OP | A_HALFOP))
+    /* seniority: don't kick other operators */
+    return 1;
+  /* send to ircd to process anyway */
+  if (argc == 2)
+    New_Request(srv, 0, ":%s KICK %s %s", peer->dname, argv[0], argv[1]);
+  else
+    New_Request(srv, 0, ":%s KICK %s %s :%s", peer->dname, argv[0], argv[1], argv[2]);
+  /* it's done, do not process further */
+  return 0;
+}
+
 static int _rusnet_check_msg(INTERFACE *srv, struct peer_t *peer, modeflag umode,
 			     bool notice, int argc, const char **argv)
 {
@@ -1469,6 +1523,8 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
       Delete_Binding("ircd-modechange", (Function)&rusnet_mch_t, NULL);
       Delete_Binding("ircd-modechange", (Function)&rusnet_mch_k, NULL);
       Delete_Binding("ircd-modechange", (Function)&rusnet_mch_i, NULL);
+      Delete_Binding("ircd-client-filter", &rusnet_check_topic, NULL);
+      Delete_Binding("ircd-client-filter", &rusnet_check_kick, NULL);
       Delete_Binding ("ircd-stats-reply", (Function)&rusnet_stats_k, NULL);
       Delete_Binding ("ircd-stats-reply", (Function)&rusnet_stats_e, NULL);
       Delete_Binding ("ircd-stats-reply", (Function)&rusnet_stats_r, NULL);
@@ -1594,7 +1650,8 @@ SigFunction ModuleInit (char *args)
   Add_Binding("ircd-modechange", "t", 0, 0, (Function)&rusnet_mch_t, NULL);
   Add_Binding("ircd-modechange", "k", 0, 0, (Function)&rusnet_mch_k, NULL);
   Add_Binding("ircd-modechange", "i", 0, 0, (Function)&rusnet_mch_i, NULL);
-  //FIXME: ircd-client-filter on KICK and TOPIC to allow halfop do change
+  Add_Binding("ircd-client-filter", "topic", 0, 0, &rusnet_check_topic, NULL);
+  Add_Binding("ircd-client-filter", "kick", 0, 0, &rusnet_check_kick, NULL);
   /* stats k, e, r for above */
   Add_Binding ("ircd-stats-reply", "k", 0, 0, (Function)&rusnet_stats_k, NULL);
   Add_Binding ("ircd-stats-reply", "e", 0, 0, (Function)&rusnet_stats_e, NULL);
