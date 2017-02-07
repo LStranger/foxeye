@@ -404,13 +404,14 @@ static void _ircd_broadcast_msglist_mark(IRCD *ircd, const char *nick,
 	  lnk->cl->via->p.iface->ift |= I_PENDING;
       need_unmark = 1;
       _ircd_mark_message_target(ircd->iface, nick, tlist[i]);
-    } else
+    } else {
       tcl->cs->via->p.iface->ift |= I_PENDING;
 #if IRCD_MULTICONNECT
       /* still do alternate way for exact targets for better delivery chance */
       if (tcl->cs->alt)
 	tcl->cs->alt->p.iface->ift |= I_PENDING;
 #endif
+    }
   }
   if (need_unmark)
     for (lnk = ircd->token[0]->c.lients; lnk; lnk = lnk->prev) /* no locals */
