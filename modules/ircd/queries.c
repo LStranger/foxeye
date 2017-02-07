@@ -727,7 +727,7 @@ static void _ircd_tell_links(CLIENT *cl, CLIENT *server, char *where,
   for (tgt = server->c.lients; tgt; tgt = tgt->prev)
     if (CLIENT_IS_SERVER(tgt->cl) &&
 #if IRCD_MULTICONNECT
-	(tgt->cl != server) && (tgt->cl->via == via) && /* ignore backlink */
+	(tgt->cl->pcl == server) && /* ignore backlink */
 #endif
 	simple_match (smask, tgt->cl->lcnick) >= 0)
       _ircd_tell_links(cl, tgt->cl, server->lcnick, smask, via);

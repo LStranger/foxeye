@@ -23,6 +23,8 @@ Tue Feb  7 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: token for introduced server should be sent to
 	  multiconnected server back as well to be able to introduce clients
 	  from another direction later.
+	* modules/ircd/ircd.c, modules/ircd/queries.c: reworked multiconnect
+	  checks on CONNECT and SQUIT, it's simpler and more reliable now.
 
 Mon Feb  6 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/queries.c: don't notify users on WHOIS on themselves.

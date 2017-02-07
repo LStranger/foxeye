@@ -2776,10 +2776,9 @@ static inline void _ircd_burst_servers(INTERFACE *cl, const char *sn, LINK *l,
 {
   dprint(5, "ircd:ircd.c:_ircd_burst_servers: %s to %s", sn, cl->name);
   while (l) {
-    if (CLIENT_IS_SERVER (l->cl) && l->cl != tgt &&
+    if (CLIENT_IS_SERVER (l->cl) && l->cl != tgt && l->cl->pcl == l->where) {
 	/* send any server behind currently processed except for
 	   A_MULTI case where never send target server back */
-	(tst || l->where == l->cl->pcl)) {
       register char *cmd = "SERVER";
 
       if (tst && (l->cl->umode & A_MULTI)) /* new server type */
@@ -3201,10 +3200,10 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
       dprint(2, "ircd:CLIENT: new local server name %s", cl->lcnick);
 #if IRCD_MULTICONNECT
   }
+  cl->pcl = &ME;
 #endif
   dprint(2, "ircd:CLIENT: local server link %s: %p", cl->lcnick, cl);
   cl->umode |= A_SERVER; //!
-  cl->pcl = &ME;
   peer->state = P_TALK;			/* we registered it */
   snprintf (buff, sizeof(buff), "%s@%s", cl->lcnick, Ircd->iface->name);
   Rename_Iface (peer->iface, buff);	/* rename iface to server.name@net */
@@ -3378,7 +3377,6 @@ static CLIENT *_ircd_got_new_remote_server (peer_priv *pp, CLIENT *src,
     }
   }
   /* else notokenized server may have no clients, ouch */
-  cl->pcl = src;
   cl->x.a.token = _ircd_alloc_token();
   cl->x.a.uc = 0;
   Ircd->token[cl->x.a.token] = cl;
@@ -3387,6 +3385,7 @@ static CLIENT *_ircd_got_new_remote_server (peer_priv *pp, CLIENT *src,
   cl->last_id = -1;			/* no ids received yet */
   memset(cl->id_cache, 0, sizeof(cl->id_cache));
   cl->on_ack = 0;
+  cl->pcl = src;
 #endif
   cl->c.lients = NULL;
   cl->umode = A_SERVER;
@@ -3459,7 +3458,7 @@ static int ircd_server_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
     return 1;
   }
 #if IRCD_MULTICONNECT
-  if (cl && CLIENT_IS_SERVER(cl) && src->alt) /* it may be backup introduce */
+  if (cl && CLIENT_IS_SERVER(cl)) /* it may be backup introduce */
   {
     register LINK *tst = src->c.lients;
 
@@ -3491,24 +3490,12 @@ static int ircd_server_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
     return 1;
   }
   /* ok, we got and checked everything, create data and announce */
-#if IRCD_MULTICONNECT
-  if (cl)
-  {
-    /* we got and verified duplicate connection */
-    _ircd_add_token_to_server (pp, cl, ntok);
-    /* map might change completely */
-    _ircd_recalculate_hops();
-  }
-  else
-  {
-#endif
   cl = _ircd_got_new_remote_server (pp, src, ntok, argv[0], nhn, info);
   if (!cl)
     return 1; /* peer was squited */
   cl->via = src->via;
 #if IRCD_MULTICONNECT
   cl->alt = src->alt;
-  }
 #endif
   link = alloc_LINK();
   link->where = src;
@@ -3627,7 +3614,15 @@ static int ircd_iserver(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   dprint(2, "ircd:server: added link %p on serv %s prev %p", link, sender,
 	 link->prev);
   cl->umode |= A_MULTI;			/* it's not set on new */
-  /* don't create backlink, it will be created by request */
+  /* create also backward link */
+  link = alloc_LINK();
+  link->where = cl;
+  link->cl = src;
+  link->prev = cl->c.lients;
+  link->flags = 0;
+  cl->c.lients = link;
+  dprint(2, "ircd:server: added link %p on serv %s prev %p", link, argv[0],
+	 link->prev);
   if (cl->via) /* it's not first connection */
     _ircd_recalculate_hops();
   else
@@ -3641,9 +3636,14 @@ static int ircd_iserver(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   if (clo == NULL)		/* don't send duplicate to RFC2813 servers */
     ircd_sendto_servers_old (Ircd, pp, ":%s SERVER %s %hd %hd :%s", sender,
 			     argv[0], cl->hops + 1, cl->x.a.token + 1, argv[3]);
-  else if (cl->hops > 1)	/* don't send it again if it's local connect */
-    ircd_sendto_servers_new (Ircd, ((pp->link->cl == src) ? pp : NULL),
-			     ":%s ISERVER %s %hd %hd :%s", sender,
+  if (pp->link->cl == cl->pcl)
+    /* don't send back sender's own link */
+    ircd_sendto_servers_new (Ircd, pp, ":%s ISERVER %s %hd %hd :%s", sender,
+			     argv[0], cl->hops + 1, cl->x.a.token + 1, argv[3]);
+  else
+  /* for multiconnected server also send it back, we may need that to
+     introduce some new user or service so sender should know our token */
+    ircd_sendto_servers_new (Ircd, NULL, ":%s ISERVER %s %hd %hd :%s", sender,
 			     argv[0], cl->hops + 1, cl->x.a.token + 1, argv[3]);
   Add_Request(I_LOG, "*", F_SERV, "Received ISERVER %s from %s (%hd %s)",
 	      argv[0], sender, cl->hops, cl->fname);
@@ -4866,58 +4866,58 @@ static inline void _ircd_send_squit (LINK *link, peer_priv *via, const char *msg
 #define __TRANSIT__
 
 #if IRCD_MULTICONNECT
+static LINK *_ircd_find_connect(LINK *via, LINK *check)
+{
+  register LINK *s;
+
+  for ( ; via; via = via->prev)
+    if (via == check)			/* the same path, skip */
+      continue;
+    else if (via->cl == check->cl)	/* found new connect! */
+      break;
+    else if (!CLIENT_IS_SERVER(via->cl))
+      continue;
+    else if (via->cl->pcl != via->where) /* backup path, skip */
+      continue;
+    else if (!(via->cl->umode & A_MULTI)) /* no second path if behind it */
+      continue;
+    else if ((s = _ircd_find_connect(via->cl->c.lients, check)) != NULL)
+      return s;
+
+  return (via);
+}
+
 /* check if server behind link */
 static LINK *_ircd_check_multiconnect (LINK *link, peer_priv *via)
 {
-  LINK *s1 = NULL, *s2 = NULL;
-  register CLIENT *t;
-  size_t i;
+  LINK *s1 = NULL;
 
   if (link->cl->umode & A_MULTI)
-  {
-    /* scan local server links first */
-    if (link->where != &ME) for (s1 = Ircd->servers; s1; s1 = s1->prev)
-      if (s1->cl == link->cl)
-	break; /* the squit'ed server is also our link */
-    /* also scan all servers to check for multiconnect after link removal */
-    for (i = 1; s2 == NULL && i < Ircd->s; i++)
-      if ((t = Ircd->token[i]) == NULL || t == link->cl || t == link->where)
-	continue; /* got another server which is neither one of this pair */
-      else /* scan its links for squit'ed server */
-	for (s2 = t->c.lients; s2; s2 = s2->prev)
-	  if (s2->cl == link->cl) {
-	    if (s1 == NULL)
-	      s1 = s2; /* found one connect */
-	    else
-	      break; /* that will break outer loop too */
-	  }
-  }
-  if (s2 != NULL) { /* it's multiconnected still, just notify */
-    DBG ("ircd:ircd_do_squit: server %s is also connected via %s and %s",
-	 link->cl->lcnick, s1->where->lcnick, s2->where->lcnick);
-  } else if (s1 != NULL) { /* it's single connected now so clear links further */
-    DBG ("ircd:ircd_do_squit: server %s is also connected via %s",
-	 link->cl->lcnick, s1->where->lcnick);
-    if (s1->where == &ME)		/* we never record backlinks to me */
-      return s1;
-    for (s2 = link->cl->c.lients; s2; s2 = s2->prev) /* find direct link */
-      if (s2->cl == s1->where)
-	break;
-    if (s2 == NULL) {
-      DBG ("ircd:ircd_do_squit: link from server %s to %s already gone, skip checks",
-	   link->cl->lcnick, s1->where->lcnick);
-      return s1;
-    }
-    if (!_ircd_check_multiconnect (s2, via)) {
-      ERROR ("ircd:ircd_do_squit: server %s multi-connected via dead-end %s, clearing up",
-	     link->cl->lcnick, s2->cl->lcnick);
-      return NULL;
-    }
-    /* well, link will be gone now, send notification and remove link */
-    _ircd_send_squit (s2, via, link->cl->lcnick, FALSE);
-    _ircd_rserver_out (s2);
-  }
-  return s1; /* it's just a marker now */
+    s1 = _ircd_find_connect(Ircd->servers, link);
+  if (s1 != NULL)
+    DBG("ircd:ircd_do_squit: server %s is also connected via %s",
+	link->cl->lcnick, s1->where->lcnick);
+  return s1;
+}
+
+static void _ircd_drop_backlink(LINK *link)
+{
+  register LINK **s = &link->cl->c.lients;
+
+  while (*s)
+    if ((*s)->cl == link->where)
+      break;
+    else
+      s = &(*s)->prev;
+  if (*s == NULL)
+    return;
+
+  link = *s;
+  *s = link->prev;
+  pthread_mutex_lock(&IrcdLock);
+  free_LINK(link);
+  dprint(2, "ircd: link %p freed", link);
+  pthread_mutex_unlock(&IrcdLock);
 }
 #endif
 
@@ -4931,6 +4931,7 @@ static void _ircd_do_squit (LINK *link, peer_priv *via, const char *msg)
   /* the link might have incomplete burst, don't remove it if multiconnected */
   s = _ircd_check_multiconnect (link, via);
   if (s != NULL) { /* it's multiconnected, just notify now */
+    _ircd_drop_backlink (link);
     _ircd_send_squit (link, via, msg, FALSE);
     return;
   } /* else it's completely gone from network */
