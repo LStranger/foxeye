@@ -2771,12 +2771,12 @@ static int ircd_nick_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 #if IRCD_MULTICONNECT
 /* recursive traverse into tree sending every server we found */
 static inline void _ircd_burst_servers(INTERFACE *cl, const char *sn, LINK *l,
-				       int tst, peer_priv *via)
+				       int tst, CLIENT *tgt)
 {
   dprint(5, "ircd:ircd.c:_ircd_burst_servers: %s to %s", sn, cl->name);
   while (l) {
-    if (CLIENT_IS_SERVER (l->cl) && (l->cl->hops >= l->where->hops) &&
-	l->cl->via != via &&		/* never send server back */
+    /* never send target server links back */
+    if (CLIENT_IS_SERVER (l->cl) && l->where != tgt && l->cl != tgt &&
 	/* send any: our link, server behind this one,
 	   or if we send to A_MULTI then send other equal path too */
 	(tst || l->where == &ME ||
@@ -2789,7 +2789,7 @@ static inline void _ircd_burst_servers(INTERFACE *cl, const char *sn, LINK *l,
 		   l->cl->hops + 1, l->cl->x.a.token + 1, l->cl->fname);
       if (l->where == &ME || l->cl->hops > l->where->hops) /* recursion */
 	/* for alternative path only send multipath but don't go further */
-	_ircd_burst_servers(cl, l->cl->nick, l->cl->c.lients, tst, via);
+	_ircd_burst_servers(cl, l->cl->nick, l->cl->c.lients, tst, tgt);
     }
     l = l->prev;
   }
@@ -2845,7 +2845,7 @@ static void _ircd_connection_burst (CLIENT *cl)
   register int tst = (cl->umode & A_MULTI);
 
   /* Ircd->servers is our recipient */
-  _ircd_burst_servers(cl->via->p.iface, MY_NAME, Ircd->servers->prev, tst, cl->via);
+  _ircd_burst_servers(cl->via->p.iface, MY_NAME, Ircd->servers->prev, tst, cl);
 #else
   _ircd_burst_servers(cl->via->p.iface, MY_NAME, Ircd->servers->prev);
 #endif
@@ -3529,7 +3529,7 @@ static int ircd_server_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
 #if IRCD_MULTICONNECT
   /* for multiconnected server also send it back, we may need that to
      introduce some new user or service so sender should know our token */
-  if (pp->link->cl->umode & A_MULTI)
+  if (pp->link->cl->umode & A_MULTI && pp->link->cl != src)
     peer->iface->ift |= I_PENDING;
 #endif
   ircd_sendto_servers_all (Ircd, pp, ":%s SERVER %s %hd %hd :%s", sender,
@@ -3644,7 +3644,8 @@ static int ircd_iserver(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     ircd_sendto_servers_old (Ircd, pp, ":%s SERVER %s %hd %hd :%s", sender,
 			     argv[0], cl->hops + 1, cl->x.a.token + 1, argv[3]);
   else if (cl->hops > 1)	/* don't send it again if it's local connect */
-    ircd_sendto_servers_new (Ircd, NULL, ":%s ISERVER %s %hd %hd :%s", sender,
+    ircd_sendto_servers_new (Ircd, ((pp->link->cl == src) ? pp : NULL),
+			     ":%s ISERVER %s %hd %hd :%s", sender,
 			     argv[0], cl->hops + 1, cl->x.a.token + 1, argv[3]);
   Add_Request(I_LOG, "*", F_SERV, "Received ISERVER %s from %s (%hd %s)",
 	      argv[0], sender, cl->hops, cl->fname);
