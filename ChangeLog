@@ -18,6 +18,8 @@ TODO:
 Tue Feb  7 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd-rusnet/rusnet.c: added support for TOPIC and KICK by a
 	  channel half-op. KICK is limited to one client at a time for half-op.
+	* modules/ircd/channels.c, modules/ircd/clients.c, modules/ircd/ircd.*, modules/ircd/queries.c, modules/ircd/servers.c:
+	  fixed support on multiple mode chars on a channel member.
 
 Mon Feb  6 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/queries.c: don't notify users on WHOIS on themselves.

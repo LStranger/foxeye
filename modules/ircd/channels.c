@@ -2394,8 +2394,10 @@ static void _ircd_log_channel (IRCD *ircd, const char *name, const char *topic,
  */
 
 /* returns whochar for first appropriate mode within Ircd_modechar_list */
-char ircd_mode2whochar (modeflag mf)
+char *ircd_mode2whochar (modeflag mf, char *buf, size_t sb)
 {
+  size_t p = 0;
+
   if (mf & Ircd_modechar_mask)
   {
     char wm[16];
@@ -2406,9 +2408,11 @@ char ircd_mode2whochar (modeflag mf)
     for (i = 0; (ch = Ircd_modechar_list[i]); i++) /* scan Ircd_modechar_list */
       if (Ircd_whochar_list[i] != ' ')	/* if it's supported */
 	if (strchr (wm, ch))		/* and present in mf */
-	  return Ircd_whochar_list[i];	/* then return whochar */
+	  if (p + 1 < sb)
+	    buf[p++] = Ircd_whochar_list[i];
   }
-  return '\0';
+  buf[p] = '\0';
+  return buf;
 }
 
 /* adds to existing channel and does local broadcast */
@@ -2864,6 +2868,13 @@ void ircd_channels_flush (IRCD *ircd, char *modestring, size_t s)
   *c = '\0'; /* terminate the string */
 }
 
+#if IRCD_MULTICONNECT
+#define UPDATE_BUFF if (mf & A_MULTI) \
+    t = snprintf (buff, sizeof(buff), "IMODE %d %s +", ircd_new_id(NULL), ch->name);
+#else
+#define UPDATE_BUFF
+#endif
+
 #define FILL_BUFFER(What,Char) \
     for (mask = ch->What; mask; mask = mask->next) \
     { \
@@ -2873,6 +2884,7 @@ void ircd_channels_flush (IRCD *ircd, char *modestring, size_t s)
       { \
 	New_Request (to, 0, "%.*s%s", (int)(t + l), buff, \
 		     &buff[t + MAXMODES + 1]); \
+	UPDATE_BUFF \
 	l = s = 0; \
       } \
       buff[t + l] = Char; \
@@ -2882,7 +2894,7 @@ void ircd_channels_flush (IRCD *ircd, char *modestring, size_t s)
       s += (k + 1); \
     }
 
-void ircd_burst_channels (INTERFACE *to, NODE *channels)
+void ircd_burst_channels (INTERFACE *to, NODE *channels, modeflag mf)
 {
   LEAF *leaf = NULL;
   CHANNEL *ch;
@@ -2890,6 +2902,7 @@ void ircd_burst_channels (INTERFACE *to, NODE *channels)
   MASK *mask;
   size_t s, l, t;
   char buff[MB_LEN_MAX*IRCMSGLEN+1];
+  char mb[8];
 
   while ((leaf = Next_Leaf (channels, leaf, NULL)))
   {
@@ -2902,7 +2915,6 @@ void ircd_burst_channels (INTERFACE *to, NODE *channels)
     m = ch->users;
     while (m)				/* do NJOIN */
     {
-      register char c;
       l = snprintf (buff, sizeof(buff), "NJOIN %s :", ch->name); /* start size */
       while (m)
       {
@@ -2914,10 +2926,9 @@ void ircd_burst_channels (INTERFACE *to, NODE *channels)
 	  buff[l++] = ',';
 	if (m->mode & A_ADMIN)		/* creator */
 	  s = snprintf (&buff[l], sizeof(buff) - l, "@@%s", m->who->nick);
-	else if ((c = ircd_mode2whochar (m->mode)))
-	  s = snprintf (&buff[l], sizeof(buff) - l, "%c%s", c, m->who->nick);
 	else
-	  s = snprintf (&buff[l], sizeof(buff) - l, "%s", m->who->nick);
+	  s = snprintf (&buff[l], sizeof(buff) - l, "%s%s",
+			ircd_mode2whochar(m->mode, mb, sizeof(mb)), m->who->nick);
 	l += s;
 	m = m->prevnick;
       }
@@ -2928,9 +2939,19 @@ void ircd_burst_channels (INTERFACE *to, NODE *channels)
     if (ch->mode != A_ISON || ch->limit || ch->key[0]) /* do not-mask modes */
     {
       _ircd_make_cmode (buff, sizeof(buff), ch, 1);
+#if IRCD_MULTICONNECT
+      if (mf & A_MULTI)
+	New_Request (to, 0, "IMODE %d %s +%s", ircd_new_id(NULL), ch->name, buff);
+      else
+#endif
       New_Request (to, 0, "MODE %s +%s", ch->name, buff);
     }
     l = s = 0;				/* do masks */
+#if IRCD_MULTICONNECT
+    if (mf & A_MULTI)
+      t = snprintf (buff, sizeof(buff), "IMODE %d %s +", ircd_new_id(NULL), ch->name);
+    else
+#endif
     t = snprintf (buff, sizeof(buff), "MODE %s +", ch->name); /* CCC\0 */
     buff[t + MAXMODES] = '\0';
     FILL_BUFFER(bans,'b')

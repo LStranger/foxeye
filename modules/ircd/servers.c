@@ -537,9 +537,9 @@ static int ircd_njoin(INTERFACE *srv, struct peer_t *peer, unsigned short token,
   MEMBER *tgt;
   register MEMBER *t;
   CLIENT *cl;
-  const char *c;
+  const char *c, *n;
   struct peer_priv *pp = peer->iface->data; /* it's really peer */
-  size_t mptr;
+  size_t mptr, mflen;
   modeflag mf;
   register modeflag amf;
   char clname[MB_LEN_MAX*NICKLEN+1];
@@ -562,20 +562,19 @@ static int ircd_njoin(INTERFACE *srv, struct peer_t *peer, unsigned short token,
   mptr = 0;
   c = argv[1];
   while (*c) {
-    if (mptr < sizeof(msg)-1) {
-      if (mptr == 0)
-	msg[0] = *c;
-      else
-	msg[mptr+1] = *c;
-    }
+    n = c;
     if (c[0] == '@' && c[1] == '@') {
       mf = A_ADMIN;
-      c += 2;
+      mflen = 2;
     } else {
-      mf = ircd_whochar2mode(*c);
-      if (mf != 0)
-	c++;
+      mf = 0;
+      mflen = 0;
+      while ((amf = ircd_whochar2mode(c[mflen])) != 0) {
+	mf |= amf;
+	mflen++;
+      }
     }
+    c += mflen;
     for (i = 0; i < sizeof(clname)-1 && *c != '\0' && *c != ','; c++)
       clname[i++] = *c;
     while (*c != '\0' && *c++ != ',');	/* skip ',' if any */
@@ -604,14 +603,12 @@ static int ircd_njoin(INTERFACE *srv, struct peer_t *peer, unsigned short token,
       t = ircd_add_to_channel(srv->data, pp, tgt->chan, cl, mf);
     if (t == NULL)		/* not approved to add */
       continue; //TODO: make debug message?
-    if (mptr + strlen(clname) >= sizeof(msg) - 4) /* it's impossible! ERROR? */
+    if (mptr + mflen + strlen(clname) >= sizeof(msg) - 3) /* it's impossible! ERROR? */
       continue;
     if (mptr != 0)
       msg[mptr++] = ',';
-    if (mf != 0)
-      mptr++;			/* it already took the char, see above */
-    if (mf & A_ADMIN)
-      msg[mptr++] = '@';
+    for (i = 0; i < mflen; i++)
+      msg[mptr++] = n[i];
     mptr += strfcpy(&msg[mptr], clname, sizeof(msg) - mptr);
   }
   if (tgt) {			/* do broadcast to neighbours */

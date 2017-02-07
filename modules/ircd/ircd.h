@@ -416,7 +416,7 @@ void ircd_drop_channel (IRCD *, CHANNEL *);
 /* args: buf, umode, sizeof(buf); returns buf */
 char *ircd_make_umode (char *, modeflag, size_t);
 /* returns whochar for first appropriate mode */
-char ircd_mode2whochar (modeflag);
+char *ircd_mode2whochar (modeflag, char *, size_t);
 /* does backward conversion */
 modeflag ircd_whochar2mode(char);
 /* args: ircd, servername, nick, channame, mode char
@@ -428,7 +428,7 @@ modeflag ircd_char2umode(INTERFACE *, const char *, char, CLIENT *);
 
 	/* calls to channel.c from ircd.c */
 void ircd_channels_flush (IRCD *, char *, size_t);
-void ircd_burst_channels (INTERFACE *, NODE *);
+void ircd_burst_channels (INTERFACE *, NODE *, modeflag);
 void ircd_channels_report (INTERFACE *);
 void ircd_channels_chreop (IRCD *, CLIENT *);
 void send_isupport (IRCD *, CLIENT *);

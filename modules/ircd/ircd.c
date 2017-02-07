@@ -2853,7 +2853,7 @@ static void _ircd_connection_burst (CLIENT *cl)
     if (Ircd->token[i] != NULL && Ircd->token[i]->via != cl->via)
       _ircd_burst_clients (cl->via->p.iface, i + 1, Ircd->token[i]->c.lients,
 			   Ircd->token[i]->hops + 1, umode);
-  ircd_burst_channels (cl->via->p.iface, Ircd->channels);
+  ircd_burst_channels (cl->via->p.iface, Ircd->channels, cl->umode);
   dprint(5, "ircd: burst done for %s", cl->lcnick);
 }
 

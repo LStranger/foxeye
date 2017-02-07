@@ -578,13 +578,14 @@ static inline void _ircd_who_reply (CLIENT *rq, CLIENT *srv, CLIENT *tgt,
 
   if (m)
   {
-    char ch[2];
+    char ch[8];
 
     ch[1] = 0;
-    if (m->mode & A_ADMIN)
+    if (m->mode & A_ADMIN) {
       ch[0] = '@';
-    else
-      ch[0] = ircd_mode2whochar (m->mode);
+      ch[1] = 0;
+    } else
+      ircd_mode2whochar (m->mode, ch, sizeof(ch));
     snprintf (buf, sizeof(buf), "%s %s %s %s %s %c%s%s :%hu %s", m->chan->name,
 	      tgt->user, tgt->vhost, srv->lcnick, tgt->nick,
 	      (tgt->umode & A_AWAY) ? 'G' : 'H',

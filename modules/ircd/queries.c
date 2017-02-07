@@ -123,7 +123,6 @@ int ircd_names_reply (CLIENT *me, CLIENT *cl, CHANNEL *ch, int done)
   MEMBER *cm = ch->users, *here;
   size_t p, s, x;
   char buf[IRCMSGLEN-24]; /* :myname INUM xxxxxx 353 Nick = #chan :@some */
-  register char c;
 
   if (ch->mode & (A_QUIET | A_ANONYMOUS)) /* no listing */
     return done;
@@ -150,13 +149,11 @@ int ircd_names_reply (CLIENT *me, CLIENT *cl, CHANNEL *ch, int done)
       }
       s = 0;
     }
-    if (cm->mode & A_ADMIN)
-      c = '@';
-    else
-      c = ircd_mode2whochar (cm->mode);
-    buf[p+s] = c;
-    if (c)
+    if (cm->mode & A_ADMIN) {
+      buf[p+s] = '@';
       s++;
+    } else
+      s += strlen(ircd_mode2whochar (cm->mode, &buf[p+s], sizeof(buf)-p-s));
     s += snprintf (&buf[p+s], x - p - s, "%s ", cm->who->nick);
   } while ((cm = cm->prevnick));
   if (s)
@@ -1021,7 +1018,6 @@ static void _ircd_do_whois (IRCD *ircd, CLIENT *cl, CLIENT *tgt, CLIENT *me)
 {
   MEMBER *m;
   size_t ptr;
-  char mc;
   char buf[IRCMSGLEN];
   register struct binding_t *b = NULL;
 #define static register
@@ -1040,10 +1036,6 @@ static void _ircd_do_whois (IRCD *ircd, CLIENT *cl, CLIENT *tgt, CLIENT *me)
 	if (!_ircd_is_on_channel (cl, m->chan))
 	  continue;
     }
-    if (m->mode & A_ADMIN)
-      mc = '@';
-    else
-      mc = ircd_mode2whochar (m->mode);
     if (ptr + strlen (m->chan->name) > sizeof(buf) - 3) /* reserved for " +" */
     {
       ircd_do_unumeric (cl, RPL_WHOISCHANNELS, tgt, 0, buf);
@@ -1051,8 +1043,10 @@ static void _ircd_do_whois (IRCD *ircd, CLIENT *cl, CLIENT *tgt, CLIENT *me)
     }
     if (ptr)
       buf[ptr++] = ' ';
-    if (mc)
-      buf[ptr++] = mc;
+    if (m->mode & A_ADMIN)
+      buf[ptr++] = '@';
+    else
+      ptr += strlen(ircd_mode2whochar(m->mode, &buf[ptr], sizeof(buf) - ptr));
     ptr += strfcpy (&buf[ptr], m->chan->name, sizeof(buf) - ptr);
   }
   if (ptr)
