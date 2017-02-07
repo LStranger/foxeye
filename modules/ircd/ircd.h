@@ -141,7 +141,8 @@ typedef struct LINK
 #define LINK_FL_GOT_ID 0x1
 #endif
 
-/* pcl is CLASS->glob thru all servers including us or NULL if it's server
+/* pcl is CLASS->glob thru all servers including us if it's user/service
+   or pointer to the previous server hop if it's server
    everything is valid only when via->s.state != P_DISCONNECTED
    via is valid only if it's local client or any server
    and if it's remote server then it's the shortest way to send message

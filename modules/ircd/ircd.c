@@ -562,6 +562,7 @@ static inline void _ircd_recalculate_hops (void)
 	    {
 	      l->cl->hops = hops + 1;
 	      l->cl->via = t->via;
+	      l->cl->pcl = t;
 	      DBG("ircd:ircd.c:_ircd_recalculate_hops: server %s seen via %s",
 		  l->cl->lcnick, t->lcnick);
 	    }
@@ -2775,21 +2776,17 @@ static inline void _ircd_burst_servers(INTERFACE *cl, const char *sn, LINK *l,
 {
   dprint(5, "ircd:ircd.c:_ircd_burst_servers: %s to %s", sn, cl->name);
   while (l) {
-    /* never send target server links back */
-    if (CLIENT_IS_SERVER (l->cl) && l->where != tgt && l->cl != tgt &&
-	/* send any: our link, server behind this one,
-	   or if we send to A_MULTI then send other equal path too */
-	(tst || l->where == &ME ||
-	 (l->cl->via == l->where->via && l->cl->hops > l->where->hops))) {
+    if (CLIENT_IS_SERVER (l->cl) && l->cl != tgt &&
+	/* send any server behind currently processed except for
+	   A_MULTI case where never send target server back */
+	(tst || l->where == l->cl->pcl)) {
       register char *cmd = "SERVER";
 
       if (tst && (l->cl->umode & A_MULTI)) /* new server type */
 	cmd = "ISERVER";		/* protocol extension */
       New_Request (cl, 0, ":%s %s %s %hu %hu :%s", sn, cmd, l->cl->nick,
 		   l->cl->hops + 1, l->cl->x.a.token + 1, l->cl->fname);
-      if (l->where == &ME || l->cl->hops > l->where->hops) /* recursion */
-	/* for alternative path only send multipath but don't go further */
-	_ircd_burst_servers(cl, l->cl->nick, l->cl->c.lients, tst, tgt);
+      _ircd_burst_servers(cl, l->cl->nick, l->cl->c.lients, tst, tgt);
     }
     l = l->prev;
   }
@@ -3207,6 +3204,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
 #endif
   dprint(2, "ircd:CLIENT: local server link %s: %p", cl->lcnick, cl);
   cl->umode |= A_SERVER; //!
+  cl->pcl = &ME;
   peer->state = P_TALK;			/* we registered it */
   snprintf (buff, sizeof(buff), "%s@%s", cl->lcnick, Ircd->iface->name);
   Rename_Iface (peer->iface, buff);	/* rename iface to server.name@net */
@@ -3380,7 +3378,7 @@ static CLIENT *_ircd_got_new_remote_server (peer_priv *pp, CLIENT *src,
     }
   }
   /* else notokenized server may have no clients, ouch */
-  cl->pcl = NULL;
+  cl->pcl = src;
   cl->x.a.token = _ircd_alloc_token();
   cl->x.a.uc = 0;
   Ircd->token[cl->x.a.token] = cl;
@@ -4817,6 +4815,7 @@ static inline void _ircd_squit_one (LINK *link)
 	pp->i.token[i] = NULL;		/* and clear if found */
   }
   server->x.rto = NULL;			/* both x.a.token and x.a.uc are done */
+  server->pcl = NULL;			/* it's required to be NULL */
 }
 
 /* remote link squitted */
@@ -4952,7 +4951,6 @@ static void _ircd_do_squit (LINK *link, peer_priv *via, const char *msg)
     }
 #endif
     link->cl->hold_upto = Time; /* mark it to delete */
-    link->cl->pcl = NULL; /* it should be NULL as server is no-class entity */
     link->cl->away[0] = '\0';
   }
 }
