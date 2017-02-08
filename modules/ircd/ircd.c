@@ -3633,18 +3633,20 @@ static int ircd_iserver(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   if (atoi(argv[1]) != (int)cl->hops)
     dprint(5, "ircd: hops count for %s from %s: got %s, have %hd", argv[0],
 	   cl->lcnick, argv[1], cl->hops);
+  /* don't send to the target so set token appropriately */
+  token = cl->x.a.token;
   if (clo == NULL)		/* don't send duplicate to RFC2813 servers */
     ircd_sendto_servers_old (Ircd, pp, ":%s SERVER %s %hd %hd :%s", sender,
-			     argv[0], cl->hops + 1, cl->x.a.token + 1, argv[3]);
+			     argv[0], cl->hops + 1, token + 1, argv[3]);
   if (pp->link->cl == cl->pcl)
     /* don't send back sender's own link */
     ircd_sendto_servers_new (Ircd, pp, ":%s ISERVER %s %hd %hd :%s", sender,
-			     argv[0], cl->hops + 1, cl->x.a.token + 1, argv[3]);
+			     argv[0], cl->hops + 1, token + 1, argv[3]);
   else
   /* for multiconnected server also send it back, we may need that to
      introduce some new user or service so sender should know our token */
     ircd_sendto_servers_new (Ircd, NULL, ":%s ISERVER %s %hd %hd :%s", sender,
-			     argv[0], cl->hops + 1, cl->x.a.token + 1, argv[3]);
+			     argv[0], cl->hops + 1, token + 1, argv[3]);
   Add_Request(I_LOG, "*", F_SERV, "Received ISERVER %s from %s (%hd %s)",
 	      argv[0], sender, cl->hops, cl->fname);
   return 1;
