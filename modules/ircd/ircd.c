@@ -1626,7 +1626,15 @@ _sendq_exceeded:
       WARNING("ircd: invalid prefix from peer \"%s\"", peer->p.dname);
     else if (CLIENT_IS_SERVER (cl))	/* got server protocol input */
     {
+#if IRCD_MULTICONNECT
+      /* we should never get our messages back from RFC server,
+         although servers should come from a multiconnected server */
+      if (strcmp(argv[0], MY_NAME) == 0 && (!(peer->link->cl->umode & A_MULTI) ||
+					    (strcasecmp(argv[1], "SERVER") != 0 &&
+					     strcasecmp(argv[1], "ISERVER") != 0)))
+#else
       if (strcmp (argv[0], MY_NAME) == 0) /* got my own message from the peer */
+#endif
       {
 	ERROR("ircd:server %s sent my \"%s\" back to me", cl->lcnick, argv[1]);
 	ircd_recover_done (peer, "Invalid sender"); /* it might get squit */
@@ -3515,7 +3523,7 @@ static int ircd_server_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
 #if IRCD_MULTICONNECT
   /* for multiconnected server also send it back, we may need that to
      introduce some new user or service so sender should know our token */
-  if (pp->link->cl->umode & A_MULTI && pp->link->cl != src)
+  if ((pp->link->cl->umode & A_MULTI) && pp->link->cl != src)
     peer->iface->ift |= I_PENDING;
 #endif
   ircd_sendto_servers_all (Ircd, pp, ":%s SERVER %s %hd %hd :%s", sender,
