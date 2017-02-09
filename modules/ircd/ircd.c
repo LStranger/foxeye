@@ -378,10 +378,21 @@ static void _ircd_class_update (void)
 /* deletes already deleted from Ircd->clients phantom structure */
 static inline void _ircd_real_drop_nick(CLIENT **ptr)
 {
-  register CLIENT *cl = *ptr;
+  CLIENT *cl = *ptr;
+  CLIENT **cspptr;
 
-  dprint(2, "ircd:CLIENT: deleting phantom %s: %p <= %p", cl->nick, cl, cl->pcl);
+  if (cl->cs->rfr->cs == cl->cs)
+    cspptr = &cl->cs->rfr;
+  else
+    cspptr = &cl->cs->pcl;
+  dprint(2, "ircd:CLIENT: deleting phantom %s: (%p=>%p) %p <= %p", cl->nick,
+	 cl->cs, *cspptr, cl, cl->pcl);
   *ptr = cl->pcl;
+  if (*cspptr == cl)
+  {
+    DBG("ircd:CLIENT: clearing phantom %p from host %p", cl, cl->cs);
+    *cspptr = cl->pcl;
+  }
   if (CLIENT_IS_SERVER(cl))
     cl->x.rto = NULL;
   else if (cl->rfr != NULL)
