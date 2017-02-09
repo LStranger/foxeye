@@ -381,7 +381,7 @@ static inline void _ircd_real_drop_nick(CLIENT **ptr)
   CLIENT *cl = *ptr;
   CLIENT **cspptr;
 
-  if (cl->cs->rfr->cs == cl->cs)
+  if (cl->cs->rfr && cl->cs->rfr->cs == cl->cs)
     cspptr = &cl->cs->rfr;
   else
     cspptr = &cl->cs->pcl;
@@ -859,7 +859,7 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
 	     c2->away[0] != '\0')
       c = c2;			/* found collision originated from this link */
     /* it's real client, check if message may come from the link */
-    else if (c->cs->via != peer)
+    else if (!CLIENT_IS_ME(c) && c->cs->via != peer)
 #if IRCD_MULTICONNECT
     if (!(peer->link->cl->umode & A_MULTI)) /* else if (X && Y) */
 #endif
@@ -940,7 +940,12 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
 			  c->vhost, A_SERVER, argc - 2, &argv[2]);
       return 0;
     }
+#if IRCD_MULTICONNECT
+    if (((CLIENT_IS_ME(c) && strcasecmp(argv[1], "SERVER") != 0 &&
+	  strcasecmp(argv[1], "ISERVER") != 0) ||
+#else
     if ((CLIENT_IS_ME(c) ||
+#endif
 	 (CLIENT_IS_LOCAL(c) && !CLIENT_IS_SERVER(c))) && peer != c->via)
     {
       /* we should never get our or our users messages back */
