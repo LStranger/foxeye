@@ -795,6 +795,7 @@ __attribute__((warn_unused_result)) static inline CLIENT *
   cl2->away[0] = 0;			/* it's used by nick tracking */
   cl2->umode = 0;
 #if IRCD_MULTICONNECT
+  cl2->alt = NULL;
   cl2->on_ack = 0;
 #endif
   /* fields c.hannels, hops, user, fname are irrelevant for phantoms */
@@ -3827,6 +3828,21 @@ static int _ircd_remote_nickchange(CLIENT *tgt, peer_priv *pp,
   return 1;
 }
 
+#if IRCD_MULTICONNECT
+/* creates an empty phantom to use for ack */
+static inline CLIENT *_get_null_phantom(const char *nick, const char *lcnick,
+					CLIENT *onserv)
+{
+  CLIENT *cl = _ircd_get_phantom(nick, lcnick);
+
+  cl->rfr = NULL;
+  cl->x.rto = NULL;
+  if (onserv)
+    strfcpy(cl->away, onserv->lcnick, sizeof(cl->away));
+  return cl;
+}
+#endif
+
 BINDING_TYPE_ircd_server_cmd(ircd_nick_sb);
 static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short token,
 			const char *sender, const char *lcsender,
@@ -3855,7 +3871,7 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     Add_Request(I_LOG, "*", F_MODES, "KILL %s :Invalid server %hu", argv[0], ct);
 #if IRCD_MULTICONNECT
     if (pp->link->cl->umode & A_MULTI)
-      ircd_add_ack(pp, NULL, NULL);
+      ircd_add_ack(pp, _get_null_phantom(argv[0], NULL, on), NULL);
 #endif
     return ircd_recover_done(pp, "Bogus source server");
   }
@@ -4048,7 +4064,7 @@ static int ircd_service_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
     Add_Request(I_LOG, "*", F_MODES, "KILL %s :Invalid server %hu", argv[0], ct);
 #if IRCD_MULTICONNECT
     if (pp->link->cl->umode & A_MULTI)
-      ircd_add_ack(pp, NULL, NULL);
+      ircd_add_ack(pp, _get_null_phantom(argv[0], NULL, on), NULL);
 #endif
     return ircd_recover_done(pp, "Bogus source server");
   }
@@ -4083,7 +4099,7 @@ static int ircd_service_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
     Add_Request(I_LOG, "*", F_MODES, "KILL %s :Service name collision", argv[0]);
 #if IRCD_MULTICONNECT
     if (pp->link->cl->umode & A_MULTI)
-      ircd_add_ack(pp, NULL, NULL);
+      ircd_add_ack(pp, _get_null_phantom(argv[0], tgt->lcnick, on), NULL);
 #endif
     return ircd_recover_done(pp, "Duplicate service");
   }
@@ -4101,7 +4117,7 @@ static int ircd_service_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
     Add_Request(I_LOG, "*", F_MODES, "KILL %s :Invalid SERVICE name", argv[0]);
 #if IRCD_MULTICONNECT
     if (pp->link->cl->umode & A_MULTI)
-      ircd_add_ack(pp, NULL, NULL);
+      ircd_add_ack(pp, _get_null_phantom(argv[0], NULL, on), NULL);
 #endif
     return ircd_recover_done(pp, "Bogus SERVICE name");
   }
