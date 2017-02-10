@@ -1252,16 +1252,18 @@ static int _rusnet_qlist_r(INTERFACE *tmp, REQUEST *r)
       {
 	/* Lname found instead */
 	lid_t lid = FindLID(c);
+	userflag uf = 0;
 
 	rcvr->host = 1;
 	clr = Lock_byLID(lid);
 	if (clr)
 	{
 	  rcvr->msg = safe_strdup(Get_Field(clr, rcvr->net, &rcvr->exp));
+	  uf = Get_Flags(clr, rcvr->net);
 	  Unlock_Clientrecord(clr);
 	}
-	/* get all hosts for Lname */
-	if (Get_Hostlist(tmp, lid))
+	/* get all hosts for Lname but if it's not a server */
+	if (!(uf & U_UNSHARED) && Get_Hostlist(tmp, lid))
 	  Get_Request();
 	rcvr->host = 0;
 	FREE(&rcvr->msg);
