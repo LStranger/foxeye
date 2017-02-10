@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2016  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -276,9 +276,9 @@ static struct clrec_t *_findbyhost (const char *mask)
   return u;
 }
 
-static int _check_subpattern(char **ptr, char end1, char end2)
+static int _check_subpattern(const char **ptr, char end1, char end2)
 {
-  char *c;
+  const char *c;
   int r = 0, r1, r2;
 
   for (c = *ptr; *c && *c != end1 && *c != end2; c++)
@@ -322,21 +322,24 @@ static int _add_usermask (struct clrec_t *user, const char *mask)
   user_hr **h;
   int r;
   char lcmask[HOSTMASKLEN+1];
-  char *c = lcmask;
+  const char *c = mask;
+  const char *m = mask;
 
-  if (user->uid > ID_ANY && strchr(user->lname, '.'))
-    /* it's server name rather than user name */
-    strfcpy (lcmask, mask, sizeof(lcmask));
-  else
-    unistrlower (lcmask, mask, sizeof(lcmask));
   /* test the pattern to contain not just wildcards */
   r = _check_subpattern(&c, '!', '@');
   if (*c == '!')
     c++, r += _check_subpattern(&c, '@', 0);
   if (*c == '@')
-    c++, r += _check_subpattern(&c, 0, 0);
+    m = ++c, r += _check_subpattern(&c, 0, 0);
   if (r < 1)			/* at least a single non-wildcard char required */
     return 0;
+  /* sanity check on the host record */
+  for ( ; *m; m++)
+    if (*m == '.' || *m == ':') /* either domain, or IPv4, or IPv6 address */
+      break;
+  if (!*m)
+    return 0;
+  unistrlower (lcmask, mask, sizeof(lcmask));
   /* check for aliases */
   if (user->flag & U_ALIAS)	/* no need lock since threads has R/O access */
     user = user->u.owner;
@@ -2858,8 +2861,7 @@ static int dc__phost (struct peer_t *dcc, char *args)
   if (!user)				/* no user */
     return 0;
   args = NextWord (args);
-  if (strlen (args) < 5 || match ("*.*", args) < 0 ||
-      _add_usermask (user, args) == 0) /* validation of hostmask */
+  if (_add_usermask (user, args) == 0) /* validation of hostmask */
   {
     New_Request (dcc->iface, 0, "Invalid hostmask pattern: %s", args);
     return 0;
