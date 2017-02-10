@@ -325,16 +325,22 @@ static int _add_usermask (struct clrec_t *user, const char *mask)
   int r;
   char lcmask[HOSTMASKLEN+1];
   const char *c = mask;
+  const char *m = mask;
 
   /* test the pattern to contain not just wildcards */
   r = _check_subpattern(&c, '!', '@');
   if (*c == '!')
     c++, r += _check_subpattern(&c, '@', 0);
   if (*c == '@')
-    c++, r += _check_subpattern(&c, 0, 0);
+    m = ++c, r += _check_subpattern(&c, 0, 0);
   if (r < 1)			/* at least a single non-wildcard char required */
     return 0;
-  unistrlower (lcmask, mask, sizeof(lcmask));
+  if (m - mask > IDENTLEN + PASSWDMAX) /* too big i:p part of the mask */
+    return 0;
+  if (m > mask)
+    /* keep ident + password intact */
+    memmove (lcmask, mask, m - mask);
+  unistrlower (lcmask + (m - mask), m, sizeof(lcmask) - (m - mask));
   /* check for aliases */
   if (user->flag & U_ALIAS)	/* no need lock since threads has R/O access */
     user = user->u.owner;
