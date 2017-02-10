@@ -1259,7 +1259,7 @@ static int _rusnet_qlist_r(INTERFACE *tmp, REQUEST *r)
 	if (clr)
 	{
 	  rcvr->msg = safe_strdup(Get_Field(clr, rcvr->net, &rcvr->exp));
-	  uf = Get_Flags(clr, rcvr->net);
+	  uf = Get_Flags(clr, &rcvr->net[1]);
 	  Unlock_Clientrecord(clr);
 	}
 	/* get all hosts for Lname but if it's not a server */
