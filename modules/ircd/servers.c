@@ -371,11 +371,13 @@ static int ircd_squit_sb(INTERFACE *srv, struct peer_t *peer, unsigned short tok
       ack = ircd_check_ack(pp, tgt, NULL);
       if (ack != NULL) {
 	ack->contrary = 1;
-	return (1); /* ignore the message */
       }
-#endif
+      /* at this point we might have cleaned it as a backlink */
+      return (1); /* ignore the message */
+#else
       ircd_do_squit(pp->link, pp, "Invalid SQUIT message");
       return 0;				/* kill our peer instead */
+#endif
     }
     ircd_do_squit(l, pp, argv[1]);
   } else if (cl->hold_upto) {
