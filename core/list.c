@@ -285,6 +285,8 @@ static int _check_subpattern(const char **ptr, char end1, char end2)
   {
     if (*c == '*' || *c == '?') /* wildcard */
       continue;
+    if (*c == ':') /* delimiter of password or IPv6 parts */
+      continue;
     if (*c == '[') /* range */
     {
       if (*c == '-')
@@ -323,21 +325,14 @@ static int _add_usermask (struct clrec_t *user, const char *mask)
   int r;
   char lcmask[HOSTMASKLEN+1];
   const char *c = mask;
-  const char *m = mask;
 
   /* test the pattern to contain not just wildcards */
   r = _check_subpattern(&c, '!', '@');
   if (*c == '!')
     c++, r += _check_subpattern(&c, '@', 0);
   if (*c == '@')
-    m = ++c, r += _check_subpattern(&c, 0, 0);
+    c++, r += _check_subpattern(&c, 0, 0);
   if (r < 1)			/* at least a single non-wildcard char required */
-    return 0;
-  /* sanity check on the host record */
-  for ( ; *m; m++)
-    if (*m == '.' || *m == ':') /* either domain, or IPv4, or IPv6 address */
-      break;
-  if (!*m)
     return 0;
   unistrlower (lcmask, mask, sizeof(lcmask));
   /* check for aliases */
