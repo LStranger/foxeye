@@ -21,6 +21,7 @@ Fri Feb 10 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c, modules/ircd/clients.c, modules/ircd/servers.c:
 	  fixed invalid ISERVER and SQUIT processing when processed server was
 	  a phantom.
+	* modules/ircd/ircd.c: implemented following class name change.
 
 Thu Feb  9 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: never create ACK for NULL client.

@@ -372,6 +372,31 @@ static void _ircd_class_update (void)
   }
 }
 
+BINDING_TYPE_new_lname(_ircd_class_rename);
+static void _ircd_class_rename(char *newln, char *oldln)
+{
+  CLASS *cls;
+
+  if (strcmp(oldln, DEFCLASSNAME) == 0)
+    return;
+  cls = Ircd->users;
+  if (newln != NULL) for ( ; cls; cls = cls->next)
+  {
+    if (strcmp(oldln, cls->name) == 0)
+    {
+      /* found our target */
+      if (strcmp(newln, DEFCLASSNAME) == 0)
+	/* forbidden name, ignore it */
+	break;
+      FREE(&cls->name);
+      cls->name = safe_strdup(newln);
+      break;
+    }
+  }
+  if (cls) /* something changed, let do update */
+    _ircd_class_update();
+}
+
 
 /* -- common internal functions ------------------------------------------- */
 
@@ -5481,6 +5506,7 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
       Delete_Binding ("ircd-stats-reply", (Function)&_istats_l, NULL);
       Delete_Binding ("ircd-stats-reply", (Function)&_istats_m, NULL);
       Delete_Binding ("dcc", &dc__phub, NULL);
+      Delete_Binding ("new-lname", (Function)&_ircd_class_rename, NULL);
       _ircd_signal (Ircd->iface, S_TERMINATE);
       ircd_channel_proto_end(&Ircd->channels);
       ircd_client_proto_end();
@@ -5626,6 +5652,7 @@ SigFunction ModuleInit (char *args)
   Add_Binding ("ircd-stats-reply", "m", 0, 0, (Function)&_istats_m, NULL);
   Add_Help("ircd");
   Add_Binding ("dcc", "+hub", U_MASTER, U_MASTER, &dc__phub, NULL);
+  Add_Binding ("new-lname", "*", 0, 0, (Function)&_ircd_class_rename, NULL);
   Ircd = safe_calloc (1, sizeof(IRCD));
   ircd_channel_proto_start (Ircd);
   ircd_client_proto_start();
