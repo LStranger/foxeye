@@ -416,7 +416,7 @@ static inline CLIENT *_ircd_find_client (const char *name)
 
 static inline unsigned short int _ircd_alloc_token (void)
 {
-  unsigned short int i = 0;
+  unsigned short int i = 1;
 
   while (i < Ircd->s)
     if (Ircd->token[i] == NULL)
@@ -940,12 +940,7 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
 			  c->vhost, A_SERVER, argc - 2, &argv[2]);
       return 0;
     }
-#if IRCD_MULTICONNECT
-    if (((CLIENT_IS_ME(c) && strcasecmp(argv[1], "SERVER") != 0 &&
-	  strcasecmp(argv[1], "ISERVER") != 0) ||
-#else
     if ((CLIENT_IS_ME(c) ||
-#endif
 	 (CLIENT_IS_LOCAL(c) && !CLIENT_IS_SERVER(c))) && peer != c->via)
     {
       /* we should never get our or our users messages back */
@@ -1642,15 +1637,7 @@ _sendq_exceeded:
       WARNING("ircd: invalid prefix from peer \"%s\"", peer->p.dname);
     else if (CLIENT_IS_SERVER (cl))	/* got server protocol input */
     {
-#if IRCD_MULTICONNECT
-      /* we should never get our messages back from RFC server,
-         although servers should come from a multiconnected server */
-      if (strcmp(argv[0], MY_NAME) == 0 && (!(peer->link->cl->umode & A_MULTI) ||
-					    (strcasecmp(argv[1], "SERVER") != 0 &&
-					     strcasecmp(argv[1], "ISERVER") != 0)))
-#else
       if (strcmp (argv[0], MY_NAME) == 0) /* got my own message from the peer */
-#endif
       {
 	ERROR("ircd:server %s sent my \"%s\" back to me", cl->lcnick, argv[1]);
 	ircd_recover_done (peer, "Invalid sender"); /* it might get squit */
@@ -2794,41 +2781,39 @@ static int ircd_nick_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
   return 1;
 }
 
-#if IRCD_MULTICONNECT
 /* recursive traverse into tree sending every server we found */
 static inline void _ircd_burst_servers(INTERFACE *cl, const char *sn, LINK *l,
-				       int tst, CLIENT *tgt)
+#if IRCD_MULTICONNECT
+				       int tst,
+#endif
+				       CLIENT *tgt)
 {
   dprint(5, "ircd:ircd.c:_ircd_burst_servers: %s to %s", sn, cl->name);
   while (l) {
-    if (CLIENT_IS_SERVER (l->cl) && l->cl != tgt && l->cl->pcl == l->where) {
+    if (CLIENT_IS_SERVER (l->cl) && l->cl != tgt) {
+#if IRCD_MULTICONNECT
 	/* send any server behind currently processed except for
 	   A_MULTI case where never send target server back */
       register char *cmd = "SERVER";
 
       if (tst && (l->cl->umode & A_MULTI)) /* new server type */
 	cmd = "ISERVER";		/* protocol extension */
-      New_Request (cl, 0, ":%s %s %s %hu %hu :%s", sn, cmd, l->cl->nick,
-		   l->cl->hops + 1, l->cl->x.a.token + 1, l->cl->fname);
-      _ircd_burst_servers(cl, l->cl->nick, l->cl->c.lients, tst, tgt);
-    }
-    l = l->prev;
-  }
-}
+      if (tst || l->cl->pcl == l->where)
+	/* for A_MULTI send backup paths as well as main paths */
+	New_Request (cl, 0, ":%s %s %s %hu %hu :%s", sn, cmd, l->cl->nick,
+		     l->cl->hops + 1, l->cl->x.a.token + 1, l->cl->fname);
+      if (l->cl->pcl == l->where)
+	/* do recursion only for main path, backup can be 1 link at most */
+	_ircd_burst_servers(cl, l->cl->nick, l->cl->c.lients, tst, tgt);
 #else
-static inline void _ircd_burst_servers(INTERFACE *cl, const char *sn, LINK *l)
-{
-  dprint(5, "ircd:ircd.c:_ircd_burst_servers: %s to %s", sn, cl->name);
-  while (l) {
-    if (CLIENT_IS_SERVER (l->cl)) {
       New_Request (cl, 0, ":%s SERVER %s %hu %hu :%s", sn, l->cl->nick,
 		   l->cl->hops + 1, l->cl->x.a.token + 1, l->cl->fname);
-      _ircd_burst_servers(cl, l->cl->nick, l->cl->c.lients); /* recursion */
+      _ircd_burst_servers(cl, l->cl->nick, l->cl->c.lients, tgt); /* recursion */
+#endif
     }
     l = l->prev;
   }
 }
-#endif
 
 static inline void _ircd_burst_clients (INTERFACE *cl, unsigned short t,
 					LINK *s, unsigned short hops,
@@ -2868,7 +2853,7 @@ static void _ircd_connection_burst (CLIENT *cl)
   /* Ircd->servers is our recipient */
   _ircd_burst_servers(cl->via->p.iface, MY_NAME, Ircd->servers->prev, tst, cl);
 #else
-  _ircd_burst_servers(cl->via->p.iface, MY_NAME, Ircd->servers->prev);
+  _ircd_burst_servers(cl->via->p.iface, MY_NAME, Ircd->servers->prev, cl);
 #endif
   for (i = 0; i < Ircd->s; i++)
     if (Ircd->token[i] != NULL && Ircd->token[i]->via != cl->via)
@@ -3355,6 +3340,7 @@ static char *_ircd_validate_hub (peer_priv *pp, const char *nhn)
 /* adds src into tokens list on pp using ntok */
 static bool _ircd_add_token_to_server(peer_priv *pp, CLIENT *cl, long ntok)
 {
+  //FIXME: support ntok < 0
   if (ntok >= pp->t)
   {
     size_t add = ntok - pp->t + 1;
@@ -3648,6 +3634,8 @@ static int ircd_iserver(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   cl->c.lients = link;
   dprint(2, "ircd:server: added link %p on serv %s prev %p", link, argv[0],
 	 link->prev);
+  /* ensure it's not a phantom anymore */
+  cl->hold_upto = 0;
   if (cl->via) /* it's not first connection */
     _ircd_recalculate_hops();
   else
@@ -3663,7 +3651,7 @@ static int ircd_iserver(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   if (clo == NULL)		/* don't send duplicate to RFC2813 servers */
     ircd_sendto_servers_old (Ircd, pp, ":%s SERVER %s %hd %hd :%s", sender,
 			     argv[0], cl->hops + 1, token + 1, argv[3]);
-  if (pp->link->cl == cl->pcl)
+  if (pp->link->cl == src)
     /* don't send back sender's own link */
     ircd_sendto_servers_new (Ircd, pp, ":%s ISERVER %s %hd %hd :%s", sender,
 			     argv[0], cl->hops + 1, token + 1, argv[3]);
