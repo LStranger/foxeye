@@ -429,8 +429,21 @@ static inline unsigned short int _ircd_alloc_token (void)
   return i;
 }
 
-static inline void _ircd_free_token (unsigned short int i)
+static inline void _ircd_free_token (CLIENT *cl)
 {
+  register unsigned short int i = cl->x.a.token;
+
+  if (i == 0 || i >= Ircd->s || Ircd->token[i] != cl)
+  {
+    for (i = 0; i < Ircd->s; i++)
+      if (Ircd->token[i] == cl)
+	break;
+    if (i == Ircd->s) {
+      ERROR("ircd:client %p has invalid token set: %hu", cl, cl->x.a.token);
+      return;
+    } else
+      ERROR("ircd:client %p has invalid token set: %hu!=%hu", cl, cl->x.a.token, i);
+  }
   Ircd->token[i] = NULL;
   DBG("ircd:token %hu freed", i);
 }
@@ -3352,18 +3365,22 @@ static bool _ircd_add_token_to_server(peer_priv *pp, CLIENT *cl, long ntok)
       pp->i.token[pp->t++] = NULL;
   }
   if (pp->i.token[ntok])
-#if IRCD_MULTICONNECT
-    WARNING("ircd: got token %ld from %s which is already in use", ntok,
-	    pp->p.dname);
-#else
   {
+#if IRCD_MULTICONNECT
+    if (pp->i.token[ntok] != cl)
+    {
+      ERROR("ircd: got token %ld from %s which is already in use", ntok,
+	    pp->p.dname);
+      return FALSE;
+    }
+#else
     ERROR ("ircd: got token %ld from %s which is already in use", ntok,
 	   pp->p.dname);
     if (!ircd_recover_done (pp, "Invalid token"))
       return FALSE;
+#endif
   }
   else
-#endif
     pp->i.token[ntok] = cl;
   return TRUE;
 }
@@ -3609,6 +3626,27 @@ static int ircd_iserver(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   }
   /* ok, we got and checked everything, create data and announce */
   clo = cl;
+  if (cl && cl->hold_upto)
+  {
+    /* it was phantomized, ensure it's not a phantom anymore */
+    cl->hold_upto = 0;
+    if (cl->pcl)
+      /* is this ever possible? */
+      _ircd_force_drop_collision(&cl->pcl);
+    cl->pcl = src;
+    cl->via = NULL;			/* it will be set below */
+    /* and also allocate a token for it right now */
+    cl->x.a.token = _ircd_alloc_token();
+    cl->x.a.uc = 0;
+    Ircd->token[cl->x.a.token] = cl;
+    DBG("ircd:token %hu set to %s", cl->x.a.token, cl->nick);
+    /* reset ids cache and update info */
+    cl->last_id = -1;			/* no ids received yet */
+    memset(cl->id_cache, 0, sizeof(cl->id_cache));
+    cl->hops = src->hops + 1;		/* ignore introduced number */
+    cl->away[0] = 0;
+    strfcpy(cl->fname, argv[3], sizeof(cl->fname));
+  }
   if (!cl)
     cl = _ircd_got_new_remote_server (pp, src, ntok, argv[0], nhn, argv[3]);
   else
@@ -3634,8 +3672,6 @@ static int ircd_iserver(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   cl->c.lients = link;
   dprint(2, "ircd:server: added link %p on serv %s prev %p", link, argv[0],
 	 link->prev);
-  /* ensure it's not a phantom anymore */
-  cl->hold_upto = 0;
   if (cl->via) /* it's not first connection */
     _ircd_recalculate_hops();
   else
@@ -4605,7 +4641,7 @@ static void _ircd_catch_undeleted_cl (void *cl)
 #if IRCD_MULTICONNECT
     ircd_clear_acks (Ircd, ((CLIENT *)cl)->via);
 #endif
-    _ircd_free_token (((CLIENT *)cl)->x.a.token);
+    _ircd_free_token ((CLIENT *)cl);
     dprint(2, "ircd:CLIENT: deleting client %p", cl);
     free_CLIENT(cl);
     return;
@@ -4831,7 +4867,7 @@ static inline void _ircd_squit_one (LINK *link)
     dprint(2, "ircd: link %p freed", l);
     pthread_mutex_unlock (&IrcdLock);
   }
-  _ircd_free_token (server->x.a.token);	/* no token for gone server */
+  _ircd_free_token (server);		/* no token for gone server */
   for (l = Ircd->servers; l; l = l->prev) { /* for each local server */
     register peer_priv *pp = l->cl->via;
     register unsigned short i;

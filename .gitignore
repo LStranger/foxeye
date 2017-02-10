@@ -20,7 +20,7 @@ config.*
 depcomp
 install-sh
 missing
-stamp-h*
+stamp-*
 */.deps
 doc/foxeye.1
 core/foxeye.h
@@ -36,3 +36,4 @@ po/*.sin
 po/*.header
 po/Rules-quot
 po/*.gmo
+po/Makevars.template

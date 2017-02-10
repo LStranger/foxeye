@@ -246,7 +246,7 @@ static int ircd_squit_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick
       ircd_do_unumeric (cl, ERR_NOSUCHSERVER, cl, 0, argv[0]);
     return ircd_do_unumeric (cl, ERR_NOPRIVILEGES, cl, 0, NULL);
   }
-  if (!tgt || CLIENT_IS_ME(tgt) || !CLIENT_IS_SERVER(tgt))
+  if (!tgt || tgt->hold_upto || CLIENT_IS_ME(tgt) || !CLIENT_IS_SERVER(tgt))
     return ircd_do_unumeric (cl, ERR_NOSUCHSERVER, cl, 0, argv[0]);
   /* we doing squit only for shortest way despite of possible multiconnect! */
   if (CLIENT_IS_LOCAL(tgt)) {		/* squit if it's local link */

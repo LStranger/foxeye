@@ -344,9 +344,9 @@ static int ircd_squit_sb(INTERFACE *srv, struct peer_t *peer, unsigned short tok
     return ircd_recover_done(pp, "SQUIT need more parameters");
   }
   tgt = ircd_find_client(argv[0], pp);	/* in case of backfired it's NULL */
-  if (tgt == NULL || !CLIENT_IS_SERVER(tgt)) {
+  if (tgt == NULL || tgt->hold_upto || !CLIENT_IS_SERVER(tgt)) {
 #if IRCD_MULTICONNECT
-    if (tgt == NULL && (pp->link->cl->umode & A_MULTI)) {
+    if ((tgt == NULL || tgt->hold_upto) && (pp->link->cl->umode & A_MULTI)) {
       cl = _ircd_find_client_lc((IRCD *)srv->data, lcsender);
       if (CLIENT_IS_SERVER(cl))
 	New_Request(peer->iface, 0, "ACK SQUIT %s", argv[0]);
