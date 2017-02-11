@@ -604,6 +604,20 @@ Bindings API:
     in the network.
 	Reenterability: none
 
+  int UUppddaattee__PPuubblliicc (const char *_n_e_t, const char *_p_u_b, modeflag _c_h_a_n_g_e,
+		     const char *_t_g_t, const char *_t_o_p_i_c, const char *_b_y,
+		     time_t _a_t);
+    Calls a network-specific procedure for community _p_u_b on the network
+    _n_e_t to update either topic of community, or its mode in accordance
+    with flags _c_h_a_n_g_e and target _t_g_t. If _c_h_a_n_g_e contains lower bit set to
+    0 then appropriate flags should be downed on the community, otherwise
+    flags should be raised. If _t_o_p_i_c is not NULL, then it attempted to be
+    changed, taking into consideration the values of _b_y (as a person who
+    changed it) and _a_t (as a time of change), if those parameters can be
+    supported by a network. Returns 0 if no change was successed, another
+    value otherwise.
+	Reenterability: none
+
 Listfile API:
 -------------
   int AAdddd__CClliieennttrreeccoorrdd (const char *_n_a_m_e, const unsigned char *_m_a_s_k,

@@ -192,6 +192,18 @@ UNLD  "uunnllooaadd"         MASK
     the Inspect_Client() function for more details.
       Matching: network type.
 
+-     "uuppddaattee--ppuubblliicc" UNIQ
+  int func(const char *_n_e_t, const char *_p_u_b_l_i_c, modeflag _c_h_a_n_g_e,
+	   const char *_t_g_t, const char *_t_o_p_i_c, const char *_b_y,
+	   time_t _a_t);
+    Used by Update_Public() function for calling a network-specific
+    procedure for community _p_u_b_l_i_c on the network _n_e_t to update either
+    _t_o_p_i_c of community, or its mode in accordance with flags _c_h_a_n_g_e and
+    change target _t_g_t. Values _b_y and _a_t are related to the _t_o_p_i_c and may
+    be ignored by the binding. See description of the Update_Public()
+    function for more details.
+      Matching: network type.
+
 -     "ttiimmee--sshhiifftt"     MASK
   (int) void func(int _d_e_l_t_a);
     Used when system time slipped (due to time correction or freezing).

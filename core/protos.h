@@ -54,6 +54,8 @@ int Lname_IsOn (const char *, const char *, const char *, const char **)
 modeflag Inspect_Client (const char *, const char *, const char *,
 			 const char **, const char **, time_t *, short *)
 	__attribute__((warn_unused_result));
+int Update_Public (const char *, const char *, modeflag, const char *,
+		   const char *, const char *, time_t);
 int Add_Help (const char *) __attribute__((nonnull(1))); /* help.c */
 void Delete_Help (const char *);
 int Get_Help (const char *, const char *, INTERFACE *, userflag, userflag,

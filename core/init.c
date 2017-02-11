@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2016  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -1936,6 +1936,7 @@ static int dc_chelp(struct peer_t *dcc, char *args)
 
 static struct bindtable_t *BT_IsOn = NULL;
 static struct bindtable_t *BT_Inspect = NULL;
+static struct bindtable_t *BT_Update = NULL;
 
 int Lname_IsOn (const char *net, const char *pub, const char *lname,
 		const char **name)
@@ -1992,6 +1993,36 @@ modeflag Inspect_Client (const char *net, const char *pub, const char *name,
     return 0;		/* no such network/service */
   f = (modeflag (*)())bind->func;
   return f (net, pub, name, lname, host, idle, cnt);
+}
+
+int Update_Public (const char *net, const char *pub, modeflag change,
+		   const char *tgt, const char *topic, const char *by, time_t at)
+{
+  struct binding_t *bind;
+  const char *nt;
+  struct clrec_t *netw;
+#define static register
+  BINDING_TYPE_update_public ((*f));
+#undef static
+
+  if (!net)
+    return 0;
+  netw = Lock_Clientrecord (net);
+  if (netw)
+  {
+    if ((Get_Flags (netw, NULL) & U_SPECIAL) &&
+	(nt = Get_Field (netw, ".logout", NULL))) /* get network type */
+      bind = Check_Bindtable (BT_Update, nt, U_ALL, U_ANYCH, NULL);
+    else
+      bind = NULL;
+    Unlock_Clientrecord (netw);
+  }
+  else
+    bind = NULL;
+  if (!bind || bind->name)
+    return 0;		/* no such network/service */
+  f = bind->func;
+  return f (net, pub, change, tgt, topic, by, at);
 }
 
 /* ----------------------------------------------------------------------------
@@ -2089,6 +2120,7 @@ INTERFACE *init (void)
   BT_Script = Add_Bindtable ("script", B_UNIQMASK);
   BT_IsOn = Add_Bindtable ("ison", B_UNIQ);
   BT_Inspect = Add_Bindtable ("inspect-client", B_UNIQ);
+  BT_Update = Add_Bindtable ("update-public", B_UNIQ);
 
   _add_fn ("set", &cfg_set, NULL);		/* add operators */
   _add_fn ("script", &cfg_script, NULL);	/* but don't ask */

@@ -22,6 +22,9 @@ Fri Feb 10 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  fixed invalid ISERVER and SQUIT processing when processed server was
 	  a phantom.
 	* modules/ircd/ircd.c: implemented following class name change.
+	* core/protos.h, core/init.c, doc/modules.api: added new bindtable
+	  "update-public" and new function Update_Public() as a shortcut to a
+	  network-specific function to change mode or topic of a community.
 
 Thu Feb  9 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: never create ACK for NULL client.
