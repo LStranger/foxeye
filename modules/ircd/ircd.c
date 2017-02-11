@@ -919,6 +919,7 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
       if (peer != NULL && (peer->link->cl->umode & A_MULTI))
       {
 	if (strcasecmp (argv[1], "QUIT") == 0 ||
+	    strcasecmp (argv[1], "SQUIT") == 0 ||
 	    (argc == 3 && strcasecmp (argv[1], "NICK") == 0))
 	  /* delayed QUIT or NICK message may need special care, client isn't
 	     online for us anymore but we still should return ACK */
@@ -943,8 +944,8 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
 	(ack = ircd_check_ack(peer, c, NULL))) /* sender has quited/renamed */
     {
       /* some backfired messages need special care right now */
-      if (!strcasecmp (argv[1], "QUIT"))
-	New_Request(peer->p.iface, 0, "ACK QUIT %s", argv[0]);
+      if (!strcasecmp (argv[1], "QUIT") || !strcasecmp (argv[1], "SQUIT"))
+	New_Request(peer->p.iface, 0, "ACK %s %s", argv[1], argv[0]);
       dprint(3, "ircd: message %s from %s seems to be delayed by %s", argv[1],
 	     argv[0], peer->p.dname);
       return (1);
@@ -960,9 +961,10 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
 	     argv[1]);
 #if IRCD_MULTICONNECT
       /* handle remote ":killed NICK :someone" message as well */
-      if (peer != NULL && (peer->link->cl->umode & A_MULTI) && is_nickchange) {
-	New_Request(peer->p.iface, 0, "ACK NICK %s", argv[0]);
-      }
+      if (peer != NULL && (peer->link->cl->umode & A_MULTI))
+	if (is_nickchange || strcasecmp (argv[1], "QUIT") == 0 ||
+	    strcasecmp (argv[1], "SQUIT") == 0)
+	  New_Request(peer->p.iface, 0, "ACK %s %s", argv[1], argv[0]);
 #endif
       return (1);		/* just ignore it then */
     } else if (!is_nickchange)	/* ircd_nick_sb needs original sender */
