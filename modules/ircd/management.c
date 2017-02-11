@@ -85,7 +85,7 @@ static int ss_ircd_mhub (struct peer_t *dcc, INTERFACE *srv, char *args)
   for (ff = fp = f = safe_strdup(Get_Field(u, "hub", NULL)); f && *f; )
   {
     fn = gettoken(f, &fc);
-    while (match(f, r) >= 0)
+    while (match(r, f) > 0)
     {
       DBG("ircd:-hub: %s matches %s, skipping it", f, r);
       f = fn;
@@ -104,6 +104,8 @@ static int ss_ircd_mhub (struct peer_t *dcc, INTERFACE *srv, char *args)
       f = fn;
     }
   }
+  if (fp)
+    *fp = '\0';
   if (ff)
     ret = Set_Field(u, "hub", ff, 0);
   Unlock_Clientrecord (u);
