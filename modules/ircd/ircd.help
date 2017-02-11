@@ -237,6 +237,14 @@ ss-ircd -hub
 :Removes all matched masks from %_server%_ which were previously added using\
  command %c+hub%n.
 
+ss-ircd class
+:class name [ul/loc uh/glob u/class pingfreq sendq]
+:
+:Shows or changes parameters on class %_name%_. If %_parameters%_ argument is\
+ not given then shows existing parameters. If %_parameters%_ argument is\
+ given then command replaces any existing parameters. See also %yhelp set\
+ ircd-default-class%n.
+
 flood-type ircd-errors
 :
 :

@@ -120,7 +120,62 @@ static int ss_ircd_mhub (struct peer_t *dcc, INTERFACE *srv, char *args)
 }
 
 		/* .class name [parameters] */
-//either show, or change class parameters
+BINDING_TYPE_ss_ (ss_ircd_class);
+static int ss_ircd_class (struct peer_t *dcc, INTERFACE *srv, char *args)
+{
+  char *c, *p;
+  struct clrec_t *u;
+  char n[NAMEMAX+2];
+  userflag uf;
+
+  if (!args)		/* needs at least 1 param */
+    return 0;
+  if (!srv || !srv->name)
+  {
+    New_Request(dcc->iface, 0, "Fatal: no ircd server is running");
+    return -1;
+  }
+  p = gettoken(args, &c);
+  u = Lock_Clientrecord (args);
+  if (!u)
+  {
+    New_Request(dcc->iface, 0, "Class %s not found", args);
+    if (*p)
+      *c = ' ';
+    return 0;
+  }
+  uf = Get_Flags(u, srv->name);
+  if (uf & (U_UNSHARED | U_SPEAK)) /* server or service */
+  {
+    New_Request(dcc->iface, 0, "The name %s is not a class", args);
+    Unlock_Clientrecord(u);
+    if (*p)
+      *c = ' ';
+    return 0;
+  }
+  args = safe_strdup(Get_Field(u, NULL, NULL)); /* unalias the name */
+  snprintf(n, sizeof(n), "@%s", srv->name);
+  if (!*p)		/* just a query */
+  {
+    p = Get_Field(u, n, NULL);
+    New_Request(dcc->iface, 0, "Class %s: u/l u/g u/c pf sq: %s", args,
+		p ? p : "defaults");
+  }
+  else			/* setting a param */
+  {
+    //FIXME: do validations?
+    if (Set_Field(u, n, p, 0) == 0)
+      New_Request(dcc->iface, 0, "Failed to update class %s settings", args);
+    else
+      New_Request(dcc->iface, 0, "Class %s: u/l u/g u/c pf sq: %s", args, p);
+  }
+  Unlock_Clientrecord(u);
+  FREE(&args);
+  if (*p)
+    *c = ' ';
+  return 1;
+}
+
 		/* .bounce class [ip [port]] */
 //either show, or change bounce address for class
 		/* .history server */
@@ -131,13 +186,14 @@ void ircd_management_proto_end (void)
 {
   Delete_Binding ("ss-ircd", &ss_ircd_phub, NULL);
   Delete_Binding ("ss-ircd", &ss_ircd_mhub, NULL);
+  Delete_Binding ("ss-ircd", &ss_ircd_class, NULL);
 }
 
 void ircd_management_proto_start (void)
 {
   Add_Binding ("ss-ircd", "+hub", U_MASTER, U_MASTER, &ss_ircd_phub, NULL);
   Add_Binding ("ss-ircd", "-hub", U_MASTER, U_MASTER, &ss_ircd_mhub, NULL);
-  //Add_Binding ("ss-ircd", "class", U_MASTER, U_MASTER, &ss_ircd_class, NULL);
+  Add_Binding ("ss-ircd", "class", U_MASTER, U_MASTER, &ss_ircd_class, NULL);
   //Add_Binding ("ss-ircd", "bounce", U_OP, U_OP, &ss_ircd_bounce, NULL);
   //Add_Binding ("ss-ircd", "history", U_OP, U_HALFOP, &ss_ircd_history, NULL);
 }
