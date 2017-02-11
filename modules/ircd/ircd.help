@@ -231,6 +231,12 @@ ss-ircd +hub
  server that matches none of added masks then it will be unlinked for such\
  behavior.
 
+ss-ircd -hub
+:%* server mask
+:
+:Removes all matched masks from %_server%_ which were previously added using\
+ command %c+hub%n.
+
 flood-type ircd-errors
 :
 :
