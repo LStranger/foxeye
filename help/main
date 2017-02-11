@@ -45,6 +45,12 @@ chcharset
  to or from sessions for some client or service. This setting affects only\
  local connects and are not shared with other bots in the botnet.
 
+lang
+:%* [language name]
+:
+:Sets or displays your language name which is used to show messages if\
+ there is any translation for it. Otherwise system default will be used.
+
 chat
 :%* [channel]
 :
@@ -245,6 +251,8 @@ function module
    irc-channel  - basic client support for channels of IRC network.
    irc-ctcp     - support for basic CTCP DCC commands.
    ircd         - basic IRC server (RFC2810...RFC2813).
+   ircd-capab   - CAPAB server protocol command
+   ircd-rusnet  - RusNet ircd IRC server extensions
    logs         - customisable saving and rotating of log files.
    lua          - support for scripts in Lua language.
    modes        - implementation of commands +ban, -ban, and few more.

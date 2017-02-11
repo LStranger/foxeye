@@ -54,6 +54,7 @@ Z	compressed link (zlib)
 
 known custom field's names (name type-of-service meaning):
 events		OWN	list of custom events
+lang		*	language to translate messages
 nick		irc	list of nicks for network
 net-parms	irc	saved list of network parameters
 umode		irc	set this mode on registration

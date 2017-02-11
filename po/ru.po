@@ -38,7 +38,7 @@ msgstr ""
 #: core/direct.c:379 core/direct.c:396 core/direct.c:2182 core/direct.c:2184
 #: core/init.c:1926
 msgid "Usage: "
-msgstr "Использование:"
+msgstr "Использование: "
 
 #: core/direct.c:388
 #, c-format

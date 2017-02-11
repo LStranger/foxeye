@@ -364,6 +364,13 @@ void Dcc_Parse (peer_t *dcc, char *name, char *cmd, userflag gf, userflag cf,
   {
     StrTrim (++cmd);
     arg = NextWord (cmd);
+#ifdef ENABLE_NLS
+    if (dcc->lang[0])
+    {
+      setenv("LANGUAGE", dcc->lang, 1);
+      textdomain(PACKAGE);
+    }
+#endif
     if (!*arg)
       arg = NULL;
     if (ssbt && service && (bind = Check_Bindtable (ssbt, cmd, gf, cf, NULL)) &&
@@ -386,6 +393,13 @@ void Dcc_Parse (peer_t *dcc, char *name, char *cmd, userflag gf, userflag cf,
       {
 	if (arg) *arg = 0;
 	New_Request (dcc->iface, 0, _("Nothing appropriated to: %s"), cmd);
+#ifdef ENABLE_NLS
+	if (dcc->lang[0])
+	{
+	  setenv("LANGUAGE", locale, 1);
+	  textdomain(PACKAGE);
+	}
+#endif
 	return;
       }
       else if (bind->name)
@@ -395,6 +409,13 @@ void Dcc_Parse (peer_t *dcc, char *name, char *cmd, userflag gf, userflag cf,
       if (res == 0)
 	Get_Help (bind->key, NULL, dcc->iface, gf, cf, BT_Dcc, _("Usage: "), 0);
     }
+#ifdef ENABLE_NLS
+    if (dcc->lang[0])
+    {
+      setenv("LANGUAGE", locale, 1);
+      textdomain(PACKAGE);
+    }
+#endif
     if (res > 0)
       Add_Request (I_LOG, "*", F_CMDS, "#%s# %s %s", name, bind->key,
 		   NONULL(arg));
@@ -988,6 +1009,9 @@ static void get_chat (char *name, char *ident, char *host, peer_t *dcc,
   time_t t;
   int telnet = 0;
   struct clrec_t *user;
+#ifdef ENABLE_NLS
+  register const char *lang;
+#endif
 
   /* turn off echo if telnet and check password */
   t = time(NULL) + dcc_timeout;
@@ -1038,6 +1062,16 @@ static void get_chat (char *name, char *ident, char *host, peer_t *dcc,
   ident = safe_strdup (Get_Field (user, "passwd", NULL));
 #ifdef HAVE_ICONV
   host = safe_strdup (Get_Field (user, "charset", NULL));
+#endif
+#ifdef ENABLE_NLS
+  lang = Get_Field (user, "lang", NULL);
+  if (lang)
+    strfcpy (dcc->lang, lang, sizeof(dcc->lang));
+  else
+    dcc->lang[0] = '\0';
+  name = strchr (dcc->lang, '.');
+  if (name)
+    *name = '\0';
 #endif
   name = safe_strdup (Get_Field (user, NULL, NULL)); /* unaliasing */
   dcc->uf = Get_Flags (user, "");
@@ -1856,6 +1890,37 @@ static int dc_chcharset (peer_t *dcc, char *args)
 }
 #endif
 
+#ifdef ENABLE_NLS
+		/* .lang [<language name>] */
+BINDING_TYPE_dcc (dc_lang);
+static int dc_lang (peer_t *dcc, char *args)
+{
+  char *dot;
+  struct clrec_t *u;
+
+  if (args)
+  {
+    dot = strchr (args, '.');
+    if (dot)
+      *dot = '\0';
+    if (strcmp (args, dcc->lang) != 0)	/* changed */
+    {
+      strfcpy (dcc->lang, args, sizeof(dcc->lang));
+      if ((u = Lock_Clientrecord (dcc->iface->name)))
+      {
+	Set_Field (u, "lang", args, 0);
+	Unlock_Clientrecord (u);
+      }
+      /* change it right away to let _say_current work with changed value */
+      setenv("LANGUAGE", dcc->lang[0] ? dcc->lang : locale, 1);
+      textdomain(PACKAGE);
+    }
+  }
+  _say_current (dcc, dcc->lang[0] ? dcc->lang : locale);
+  return 1;
+}
+#endif
+
 		/* .chat [<botnet channel #>] */
 BINDING_TYPE_dcc (dc_chat);
 static int dc_chat (peer_t *dcc, char *args)
@@ -2394,6 +2459,9 @@ static void _dc_init_bindings (void)
 #ifdef HAVE_ICONV
   NB (charset, 0);
   NB (chcharset, U_MASTER);
+#endif
+#ifdef ENABLE_NLS
+  NB (lang, U_ACCESS);
 #endif
   NB (chat, U_ACCESS);
   NB (color, 0);

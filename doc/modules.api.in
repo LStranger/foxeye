@@ -21,8 +21,8 @@ Preamble.
     on any functionality beyond of this API. If you found something from
     existing code and that isn't stated in this document then be sure it
     may be changed in the future and it WILL be changed even. And if you
-    think you cannot do something without hook then you just don't know
-    that you can do it with no hooks. Enjoy! :)
+    think you cannot do something without a hack then you just don't know
+    yet that you can do it without any hacks. Enjoy! :)
 
 What is an interface.
 --------------------

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2016  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -51,6 +51,9 @@ struct peer_t
   userflag uf;				/* global+direct flags */
   idx_t socket;				/* what socket we have messages to */
   char start[20];			/* chat-on time */
+#ifdef ENABLE_NLS
+  char lang[12];			/* contains language, no encoding */
+#endif
 };
 
 int Check_Passwd (const char *, char *);		/* plain, encrypted */

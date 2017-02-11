@@ -219,6 +219,7 @@ void foxeye_setlocale (void)
   if (changed)
     setenv("LC_ALL", new_locale, 1); /* reset environment */
 #ifdef ENABLE_NLS
+  setenv("LANGUAGE", locale, 1);
   bindtextdomain (PACKAGE, LOCALEDIR);
   textdomain (PACKAGE);
 #endif

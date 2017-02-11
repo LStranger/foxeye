@@ -66,6 +66,8 @@ static int ss_ircd_phub (struct peer_t *dcc, INTERFACE *srv, char *args)
 //either show, or change class parameters
 		/* .bounce class [ip [port]] */
 //either show, or change bounce address for class
+		/* .history server */
+//show last 10 connects of chosen server
 
 /* -- common module interface --------------------------------------------- */
 void ircd_management_proto_end (void)
@@ -76,8 +78,9 @@ void ircd_management_proto_end (void)
 void ircd_management_proto_start (void)
 {
   Add_Binding ("ss-ircd", "+hub", U_MASTER, U_MASTER, &ss_ircd_phub, NULL);
-  //Add_Binding ("ss-ircd", "-hub", U_MASTER, U_MASTER, &ss_ircd_phub, NULL);
-  //Add_Binding ("ss-ircd", "class", U_MASTER, U_MASTER, &ss_ircd_phub, NULL);
-  //Add_Binding ("ss-ircd", "bounce", U_MASTER, U_MASTER, &ss_ircd_phub, NULL);
+  //Add_Binding ("ss-ircd", "-hub", U_MASTER, U_MASTER, &ss_ircd_mhub, NULL);
+  //Add_Binding ("ss-ircd", "class", U_MASTER, U_MASTER, &ss_ircd_class, NULL);
+  //Add_Binding ("ss-ircd", "bounce", U_OP, U_OP, &ss_ircd_bounce, NULL);
+  //Add_Binding ("ss-ircd", "history", U_OP, U_HALFOP, &ss_ircd_history, NULL);
 }
 #endif
