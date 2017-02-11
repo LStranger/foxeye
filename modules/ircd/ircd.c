@@ -5364,39 +5364,6 @@ CLIENT *ircd_find_by_userhost(const char *nick, int ns, const char *user, int us
   return NULL;
 }
 
-/* -- command line interface ---------------------------------------------- */
-                /* .+hub server mask */
-BINDING_TYPE_dcc (dc__phub);
-static int dc__phub (struct peer_t *dcc, char *args)
-{
-  char *c, *r;
-  struct clrec_t *u;
-  int ret;
-
-  if (!args)
-    return 0;				/* need exactly 2 args */
-  r = gettoken (args, &c);
-  if (!*r)
-    return 0;				/* need exactly 2 args */
-  u = Lock_Clientrecord (args);
-  if (!u)
-  {
-    New_Request (dcc->iface, 0, "Server %s not found", args);
-    if (*r)
-      *c = ' ';
-    return 0;
-  }
-  args = safe_strdup(Get_Field(u, NULL, NULL)); /* unalias the name */
-  ret = Grow_Field (u, "hub", r);
-  Unlock_Clientrecord (u);
-  if (ret)
-    New_Request (dcc->iface, 0, "Added hub mask \"%s\" for %s.", r, args);
-  else
-    New_Request (dcc->iface, 0, "Failed to add hub mask \"%s\" for %s.", r, args);
-  FREE(&args);
-  *c = ' ';
-  return 1;
-}
 
 /* -- common module interface --------------------------------------------- */
 static void _ircd_register_all (void)
@@ -5505,7 +5472,6 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
 #endif
       Delete_Binding ("ircd-stats-reply", (Function)&_istats_l, NULL);
       Delete_Binding ("ircd-stats-reply", (Function)&_istats_m, NULL);
-      Delete_Binding ("dcc", &dc__phub, NULL);
       Delete_Binding ("new-lname", (Function)&_ircd_class_rename, NULL);
       _ircd_signal (Ircd->iface, S_TERMINATE);
       ircd_channel_proto_end(&Ircd->channels);
@@ -5513,6 +5479,7 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
       ircd_server_proto_end();
       ircd_queries_proto_end();
       ircd_message_proto_end();
+      ircd_management_proto_end();
       Delete_Help("ircd");
       FREE (&Ircd->token);
       FREE (&Ircd);
@@ -5651,7 +5618,6 @@ SigFunction ModuleInit (char *args)
   Add_Binding ("ircd-stats-reply", "l", 0, 0, (Function)&_istats_l, NULL);
   Add_Binding ("ircd-stats-reply", "m", 0, 0, (Function)&_istats_m, NULL);
   Add_Help("ircd");
-  Add_Binding ("dcc", "+hub", U_MASTER, U_MASTER, &dc__phub, NULL);
   Add_Binding ("new-lname", "*", 0, 0, (Function)&_ircd_class_rename, NULL);
   Ircd = safe_calloc (1, sizeof(IRCD));
   ircd_channel_proto_start (Ircd);
@@ -5659,6 +5625,7 @@ SigFunction ModuleInit (char *args)
   ircd_server_proto_start();
   ircd_queries_proto_start();
   ircd_message_proto_start();
+  ircd_management_proto_start();
   /* need to add interface into Ircd->iface ASAP! */
   _ircd_corrections = FloodType ("ircd-errors"); /* sets corrections */
   _ircd_client_recvq = FloodType ("ircd-penalty");

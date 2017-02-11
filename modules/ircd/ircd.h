@@ -460,6 +460,9 @@ void ircd_queries_register (void);
 	/* messages.c bindings */
 void ircd_message_proto_start (void);
 void ircd_message_proto_end (void);
+	/* management.c bindings */
+void ircd_management_proto_start (void);
+void ircd_management_proto_end (void);
 
 	/* from queries.c */
 const char *ircd_version_flags;

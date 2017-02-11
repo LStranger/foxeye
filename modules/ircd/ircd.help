@@ -223,7 +223,7 @@ set ircd-max-channels
  is reached, user attempt to join will be refused.
  Default: 20.
 
-+hub
+ss-ircd +hub
 :%* server mask
 :
 :Allows %_server%_ to introduce other servers to us. The %_mask%_ is simple\
