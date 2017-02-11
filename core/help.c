@@ -33,20 +33,22 @@ static char *EOL (const char *s)
   return strpbrk (s, "\r\n");
 }
 
+typedef struct HELPGR HELPGR;
+
 typedef struct HELP
 {
   char *key;			/* lower case */
   char *data;
-  void *helpgr;
+  HELPGR *helpgr;
   struct HELP *next;		/* in helpfile */
 } HELP;
 
-typedef struct HELPGR
+struct HELPGR
 {
   char *key;			/* case-insensitive */
   NODE *tree;
-  struct HELPGR *next;
-} HELPGR;
+  HELPGR *next;
+};
 
 typedef struct HELPFILE
 {

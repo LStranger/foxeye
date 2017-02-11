@@ -807,7 +807,8 @@ __attribute__((warn_unused_result)) static inline CLIENT *
       else if (cl->rfr->cs != cl) {	/* convert to nick holder */
 	DBG("ircd:CLIENT: clearing phantom relation: %p => (%p)", cl->rfr, cl->rfr->x.rto);
 	_ircd_try_drop_collision(&cl->rfr);
-	if (cl->rfr != NULL && cl->rfr->x.rto == cl) {
+	if (cl->rfr == NULL) ;		/* successed to drop phantoms */
+	else if (cl->rfr->x.rto == cl) {
 	  /* client's previous nick is still kept on hold */
 	  WARNING("ircd: previous nick %s of %s is lost due to collision",
 		  cl->rfr->cs->lcnick, cl->lcnick);

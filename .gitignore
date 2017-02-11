@@ -37,3 +37,4 @@ po/*.header
 po/Rules-quot
 po/*.gmo
 po/Makevars.template
+*.tar.xz
