@@ -880,6 +880,7 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
   CLIENT *c;
   register CLIENT *c2;
   int t;
+  bool is_nickchange;
 #if IRCD_MULTICONNECT
   ACK *ack;
 #endif
@@ -913,12 +914,15 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
       //TODO: RFC2813:3.3 - KILL for (c) if it's a client instead?
     }
     if (c == NULL) {
+      /* client already gone, only thing we can do is to drop the message */
 #if IRCD_MULTICONNECT
-      if ((peer->link->cl->umode & A_MULTI) &&
-	  strcasecmp (argv[1], "QUIT") == 0) {
-	/* delayed QUIT message may need special care, client isn't
-	   online for us anymore but we still should return ACK */
-	New_Request(peer->p.iface, 0, "ACK QUIT %s", argv[0]);
+      if (peer != NULL && (peer->link->cl->umode & A_MULTI))
+      {
+	if (strcasecmp (argv[1], "QUIT") == 0 ||
+	    (argc == 3 && strcasecmp (argv[1], "NICK") == 0))
+	  /* delayed QUIT or NICK message may need special care, client isn't
+	     online for us anymore but we still should return ACK */
+	  New_Request(peer->p.iface, 0, "ACK %s %s", argv[1], argv[0]);
 	dprint(3, "ircd: message %s from %s seems to be delayed by %s", argv[1],
 	       argv[0], peer->p.dname);
 	return (1);
@@ -931,44 +935,38 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
 	ircd_do_squit(peer->link, peer, "invalid source");
       return (0);
     }
+    is_nickchange = (c->hold_upto && !(CLIENT_IS_SERVER(c)) && argc == 3 &&
+		     strcmp(argv[1], "NICK") == 0);
 #if IRCD_MULTICONNECT
     //TODO: rewrite acks check for QUIT and NICK here!
-    if (peer && c->hold_upto && !(CLIENT_IS_SERVER(c)) &&
-	(ack = ircd_check_ack(peer, c, NULL)) && /* sender has quited/renamed */
-	strcasecmp(argv[1], "NICK"))	/* ircd_nick_sb handles this case */
+    if (peer && !is_nickchange &&	/* ircd_nick_sb handles this case */
+	(ack = ircd_check_ack(peer, c, NULL))) /* sender has quited/renamed */
     {
       /* some backfired messages need special care right now */
       if (!strcasecmp (argv[1], "QUIT"))
-	ack->contrary = 1;
+	New_Request(peer->p.iface, 0, "ACK QUIT %s", argv[0]);
       dprint(3, "ircd: message %s from %s seems to be delayed by %s", argv[1],
 	     argv[0], peer->p.dname);
       return (1);
     }
 #endif
+    /* we might send a nickchange and party still sends us messages
+       from the old nick, let handle that case and follow it now */
     c2 = c;
-    while (c2 != NULL && c2->hold_upto)
-      c2 = c2->x.rto;		/* if it's phantom then go to current nick */
-    if (c2 == NULL) {			/* sender has quited at last */
+    while (c != NULL && c->hold_upto)
+      c = c->x.rto;		/* if it's phantom then go to current nick */
+    if (c == NULL) {			/* sender has quited at last */
       dprint(3, "ircd: sender [%s] of message %s is offline for us", argv[0],
 	     argv[1]);
 #if IRCD_MULTICONNECT
       /* handle remote ":killed NICK :someone" message as well */
-      if (peer != NULL && (peer->link->cl->umode & A_MULTI) &&
-	  argc == 3 && !strcmp(argv[1], "NICK")) {
+      if (peer != NULL && (peer->link->cl->umode & A_MULTI) && is_nickchange) {
 	New_Request(peer->p.iface, 0, "ACK NICK %s", argv[0]);
-	/* ack sent, add phantom for new nick after old nick phantom */
-	c2 = _ircd_get_phantom(argv[2], NULL);
-	c2->hold_upto = Time + CHASETIMELIMIT;
-	c2->x.rto = c->x.rto;
-	if (c2->x.rto != NULL)
-	  c2->x.rto->rfr = c2;
-	c2->rfr = c;
-	c->x.rto = c2;
       }
 #endif
       return (1);		/* just ignore it then */
-    } else
-      c = c2;			/* it's not phantom at this moment */
+    } else if (!is_nickchange)	/* ircd_nick_sb needs original sender */
+      c2 = c;			/* c is not a phantom at this point */
     if (peer == NULL || (peer->p.state != P_LOGIN && peer->p.state != P_IDLE &&
 			 CLIENT_IS_LOCAL(c) && !CLIENT_IS_SERVER(c)))
     {
@@ -990,8 +988,8 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
     t = client2token (c);
     while ((b = Check_Bindtable (BTIrcdServerCmd, argv[1], U_ALL, U_ANYCH, b)))
       if (!b->name)
-	i |= b->func (Ircd->iface, peer ? &peer->p : NULL, t, argv[0],
-		      c->lcnick, argc - 2, &argv[2]);
+	i |= b->func (Ircd->iface, peer ? &peer->p : NULL, t, c2->nick,
+		      c2->lcnick, argc - 2, &argv[2]);
     return i;
   }
   return 0;
