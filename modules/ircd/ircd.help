@@ -224,7 +224,7 @@ set ircd-max-channels
  Default: 20.
 
 ss-ircd +hub
-:%* server mask
+:+hub server mask
 :
 :Allows %_server%_ to introduce other servers to us. The %_mask%_ is simple\
  pattern to filter introduced servers: if the %_server%_ introduces some\
@@ -232,7 +232,7 @@ ss-ircd +hub
  behavior.
 
 ss-ircd -hub
-:%* server mask
+:-hub server mask
 :
 :Removes all matched masks from %_server%_ which were previously added using\
  command %c+hub%n.

@@ -19,6 +19,7 @@ TODO:
 Sat Feb 11 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.*: added support for language on per-session basis.
 	* modules/ircd/management.c: added command "-hub" to negate "+hub".
+	* core/direct.c: correctly show usage on ss-* bindings on wrong use.
 
 Fri Feb 10 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/list.c: fixed host pattern check, +host failed on IPv6 address.

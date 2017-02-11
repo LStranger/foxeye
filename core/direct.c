@@ -382,8 +382,7 @@ void Dcc_Parse (peer_t *dcc, char *name, char *cmd, userflag gf, userflag cf,
 	res = 0;
       Unset_Iface();
       if (res == 0)
-	Get_Help (Bindtable_Name (ssbt), bind->key, dcc->iface, gf, cf, ssbt,
-		  _("Usage: "), 0);
+	Get_Help (NULL, bind->key, dcc->iface, gf, cf, ssbt, _("Usage: "), 0);
     }
     else
     {
