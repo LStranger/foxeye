@@ -16,6 +16,9 @@ TODO:
 	* core/help.*: add support for custom help languages.
 
 --- [0.11.0]
+Sun Feb 12 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/ircd.c: reworked multiconnect diagnostics on SQUIT.
+
 Sat Feb 11 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.*: added support for language on per-session basis.
 	* modules/ircd/management.c: added command "-hub" to negate "+hub".

@@ -65,6 +65,22 @@
 # define IRCD_ID_HISTORY 65536
 #endif
 
+/* Detailed explanation of structures relations:
+ * 1) each client or server, or phantom is present in names tree (IRCD)client
+ *    by lcnick;
+ * 2) each client or server, while registered, has associated LINK which is
+ *    present in closer server list:
+ *    - for local client it's (IRCD)users :: CLASS :: LINK...
+ *    - for local server it's (IRCD)servers :: LINK...
+ *    - for remote client or server it's (CLIENT)c.lients :: LINK...
+ * 3) each remote client has a backward reference to the server as (CLIENT)cs,
+ *    for remote server it's reference to the server itself;
+ * 4) each local client or server LINK is also present in associated peer_priv
+ *    structure, it's the same LINK which is referenced via (IRCD);
+ * 5) each local or remote server has associated token in a list:
+ *    - local list is (IRCD)token[]
+ *    - each peer list is (peer_priv)i.token[] */
+
 typedef struct CLASS CLASS;		/* internally defined in ircd.c */
 typedef struct CLIENT CLIENT;		/* defined below */
 typedef struct MEMBER MEMBER;

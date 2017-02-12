@@ -4825,10 +4825,10 @@ static inline void _ircd_release_rserver(CLIENT *cl)
   _ircd_try_drop_collision(&cl);
 }
 
-/* clears link->cl and notifies local users about lost server */
-static inline void _ircd_squit_one (LINK *link)
+/* clears link->cl, all tokens, and notifies local users about lost server */
+static inline void _ircd_squit_one (CLIENT *server, CLIENT *where)
 {
-  CLIENT *server = link->cl, *tgt;
+  CLIENT *tgt;
   LINK *l;
   LEAF *leaf = NULL;
 
@@ -4859,9 +4859,9 @@ static inline void _ircd_squit_one (LINK *link)
     server->c.lients = l->prev;
     if (CLIENT_IS_SERVER (tgt)) /* server is gone so free all */
     {
+      ERROR("ircd:_ircd_squit_one: unexpected link %p to server %s (%p)",
+	    l, tgt->lcnick, tgt);
       pthread_mutex_lock (&IrcdLock);
-      if (tgt->hold_upto != 0)		/* see _ircd_do_squit() */
-	_ircd_release_rserver(tgt);
       /* link is about to be destroyed so don't remove token of l */
       free_LINK (l);			/* see _ircd_do_squit */
       dprint(2, "ircd: link %p freed", l);
@@ -4873,7 +4873,7 @@ static inline void _ircd_squit_one (LINK *link)
     ircd_sendto_services_mark_prefix (Ircd, SERVICE_WANT_QUIT);
 #endif
     Add_Request (I_PENDING, "*", 0, ":%s!%s@%s QUIT :%s %s", tgt->nick,
-		 tgt->user, tgt->vhost, link->where->lcnick, server->lcnick);
+		 tgt->user, tgt->vhost, where->lcnick, server->lcnick);
 		 /* send split message */
     _ircd_class_out (l);		/* remove from global class list */
     _ircd_bt_client(tgt, tgt->nick, NULL, server->lcnick); /* "ircd-client" */
@@ -4904,90 +4904,11 @@ static inline void _ircd_squit_one (LINK *link)
   }
   server->x.rto = NULL;			/* both x.a.token and x.a.uc are done */
   server->pcl = NULL;			/* it's required to be NULL */
+  server->hold_upto = Time;		/* mark it to delete */
+  server->away[0] = '\0';
 }
-
-/* remote link squitted */
-static inline void _ircd_rserver_out (LINK *l)
-{
-  register LINK **s;
-
-  dprint(2, "ircd:server: unshifting link %p prev %p", l, l->prev);
-  for (s = &l->where->c.lients; *s; s = &(*s)->prev)
-    if ((*s) == l)
-      break;
-  if (*s)
-    *s = l->prev;
-  else
-    ERROR ("ircd:_ircd_rserver_out: server %s not found on %s!", l->cl->nick,
-	   l->where->lcnick);
-  pthread_mutex_lock (&IrcdLock);
-  if (l->cl->hold_upto != 0)		/* see _ircd_do_squit() */
-    _ircd_release_rserver(l->cl);
-  free_LINK (l);
-  pthread_mutex_unlock (&IrcdLock);
-}
-
-/* see sendto.h: for SQUIT we have to check both sides of split to not send */
-#undef __TRANSIT__
-#define __TRANSIT__ if (L->cl != link->cl && L->cl != link->where) 
-/* notify local servers about squit */
-static inline void _ircd_send_squit (LINK *link, peer_priv *via, const char *msg, bool all)
-{
-  /* notify local servers about squit */
-#if IRCD_MULTICONNECT
-  if (all) {
-#endif
-#ifdef USE_SERVICES
-    ircd_sendto_services_mark_all (Ircd, SERVICE_WANT_SQUIT);
-#endif
-    ircd_sendto_servers_all_ack(Ircd, link->cl, NULL, via, ":%s SQUIT %s :%s",
-				link->where->lcnick, link->cl->lcnick, msg);
-#if IRCD_MULTICONNECT
-  } else
-    ircd_sendto_servers_new_ack(Ircd, link->cl, NULL, via, ":%s SQUIT %s :%s",
-				link->where->lcnick, link->cl->lcnick, msg);
-#endif
-  Add_Request(I_LOG, "*", F_SERV, "Received SQUIT %s from %s (%s)",
-	      link->cl->lcnick, link->where->lcnick, msg);
-}
-#undef __TRANSIT__
-#define __TRANSIT__
 
 #if IRCD_MULTICONNECT
-static LINK *_ircd_find_connect(LINK *via, LINK *check)
-{
-  register LINK *s;
-
-  for ( ; via; via = via->prev)
-    if (via == check)			/* the same path, skip */
-      continue;
-    else if (via->cl == check->cl)	/* found new connect! */
-      break;
-    else if (!CLIENT_IS_SERVER(via->cl))
-      continue;
-    else if (via->cl->pcl != via->where) /* backup path, skip */
-      continue;
-    else if (!(via->cl->umode & A_MULTI)) /* no second path if behind it */
-      continue;
-    else if ((s = _ircd_find_connect(via->cl->c.lients, check)) != NULL)
-      return s;
-
-  return (via);
-}
-
-/* check if server behind link */
-static LINK *_ircd_check_multiconnect (LINK *link, peer_priv *via)
-{
-  LINK *s1 = NULL;
-
-  if (link->cl->umode & A_MULTI)
-    s1 = _ircd_find_connect(Ircd->servers, link);
-  if (s1 != NULL)
-    DBG("ircd:ircd_do_squit: server %s is also connected via %s",
-	link->cl->lcnick, s1->where->lcnick);
-  return s1;
-}
-
 static void _ircd_drop_backlink(LINK *link)
 {
   register LINK **s = &link->cl->c.lients;
@@ -5002,49 +4923,177 @@ static void _ircd_drop_backlink(LINK *link)
 
   link = *s;
   *s = link->prev;
+  dprint(2, "ircd:server: unshifting link %p prev %p", link, link->prev);
   pthread_mutex_lock(&IrcdLock);
   free_LINK(link);
   dprint(2, "ircd: link %p freed", link);
   pthread_mutex_unlock(&IrcdLock);
 }
+
+/* recursively scans all tree to find a remote link to client */
+static bool _ircd_find_connect(LINK *via, CLIENT *cl)
+{
+  via->cl->pcl = via->where;
+  for (via = via->cl->c.lients; via; via = via->prev)
+  {
+    DBG("_ircd_find_connect: testing link (%p) %s=>%s: path is %s",
+        via,via->where->lcnick,via->cl->lcnick,via->cl->pcl?via->cl->pcl->lcnick:"[nil]");
+    if (via->cl == cl) {
+      DBG("ircd:_ircd_find_connect: server %s is also connected via %s",
+	  cl->lcnick, via->where->lcnick);
+      return TRUE;
+    } else if (CLIENT_IS_SERVER(via->cl) && via->cl->pcl == NULL &&
+	       _ircd_find_connect(via, cl))
+      return TRUE;
+  }
+  return FALSE;
+}
+
+/* tries to find a path to server cl, ignoring local link ign */
+static inline bool _ircd_server_is_reachable(CLIENT *cl, LINK *ign)
+{
+  LINK *s1 = NULL;
+  unsigned short int i;
+  register CLIENT *t;
+
+  DBG("ircd:_ircd_server_is_reachable: %s (%p) (ign=%p)", cl->lcnick, cl, ign);
+  if (!(cl->umode & A_MULTI))
+    return FALSE;
+  /* stage 1: check local links if it's not a local link gone */
+  if (ign == NULL)
+    for (s1 = Ircd->servers; s1; s1 = s1->prev)
+      if (s1->cl == cl) {
+	DBG("ircd:_ircd_find_connect: server %s is also connected locally",
+	    cl->lcnick);
+      return TRUE;
+    }
+  /* here goes a heavy part: we reset all remote tree and scan it
+     that will definitely unbalance it but fortunately _ircd_recalculate_hops
+     will be called right away, see ircd_do_squit below */
+
+  /* stage 2: reset all remote servers */
+  for (i = 1; i < Ircd->s; i++)
+    if ((t = Ircd->token[i]) != NULL) {
+      if (t->local == NULL) /* reset only remote servers, don't touch local */
+       t->pcl = NULL;
+    }
+  /* stage 3: check all remote links recursively */
+  for (s1 = Ircd->servers; s1; s1 = s1->prev)
+    if (s1 != ign && _ircd_find_connect(s1, cl))
+      return TRUE;
+  return FALSE;
+}
 #endif
 
-/* server is gone; notifies network recursively and clears link->cl
-   does not not remove link->cl from link->where */
-static void _ircd_do_squit (LINK *link, peer_priv *via, const char *msg)
+/* remote link squitted, free the link and backlink
+   returns TRUE if there is no more path to the server */
+static inline bool _ircd_rserver_out (LINK *l, bool nocheck)
 {
-  register LINK *s;
+  register LINK **s;
+  bool res = TRUE;
 
+  dprint(2, "ircd:server: unshifting link %p prev %p", l, l->prev);
+  for (s = &l->where->c.lients; *s; s = &(*s)->prev)
+    if ((*s) == l)
+      break;
+  if (*s)
+    *s = l->prev;
+  else
+    ERROR ("ircd:_ircd_rserver_out: server %s not found on %s!", l->cl->nick,
+	   l->where->lcnick);
 #if IRCD_MULTICONNECT
-  /* the link might have incomplete burst, don't remove it if multiconnected */
-  s = _ircd_check_multiconnect (link, via);
-  if (s != NULL) { /* it's multiconnected, just notify now */
-    _ircd_drop_backlink (link);
-    _ircd_send_squit (link, via, msg, FALSE);
+  _ircd_drop_backlink(l);
+  if (!nocheck)
+    res = !_ircd_server_is_reachable(l->cl, NULL);
+#endif
+  pthread_mutex_lock (&IrcdLock);
+  free_LINK (l);
+  pthread_mutex_unlock (&IrcdLock);
+  return res;
+}
+
+/* see sendto.h: for SQUIT we have to check both sides of split to not send */
+#undef __TRANSIT__
+#define __TRANSIT__ if (L->cl != cl && L->cl != where)
+/* notify local servers about squit */
+static inline void _ircd_send_squit (CLIENT *cl, CLIENT *where, peer_priv *via,
+				     const char *msg, bool all)
+{
+  /* notify local servers about squit */
+#if IRCD_MULTICONNECT
+  if (all) {
+#endif
+#ifdef USE_SERVICES
+    ircd_sendto_services_mark_all (Ircd, SERVICE_WANT_SQUIT);
+#endif
+    ircd_sendto_servers_all_ack(Ircd, cl, NULL, via, ":%s SQUIT %s :%s",
+				where->lcnick, cl->lcnick, msg);
+#if IRCD_MULTICONNECT
+  } else
+    ircd_sendto_servers_new_ack(Ircd, cl, NULL, via, ":%s SQUIT %s :%s",
+				where->lcnick, cl->lcnick, msg);
+#endif
+  Add_Request(I_LOG, "*", F_SERV, "Received SQUIT %s from %s (%s)",
+	      cl->lcnick, where->lcnick, msg);
+}
+#undef __TRANSIT__
+#define __TRANSIT__
+
+/* server is gone; notifies network recursively and clears all remote tree data
+   clears all tokens if server is not reachable anymore
+   does not not free anything on a local connect */
+static void _ircd_do_squit (LINK *link, peer_priv *via, const char *msg, bool nocheck)
+{
+  CLIENT *cl = link->cl;
+  CLIENT *where = link->where;
+
+  /* clear the remote link before processing */
+  if (where != &ME)
+#if IRCD_MULTICONNECT
+  {
+    if (!_ircd_rserver_out(link, nocheck))
+      goto _send_squit;
+  }
+  else if (_ircd_server_is_reachable(cl, link))
+  {
+_send_squit:
+    /* it's multiconnected, just notify now */
+    _ircd_send_squit (cl, where, via, msg, FALSE);
     return;
   } /* else it's completely gone from network */
+#else
+    _ircd_rserver_out(link, TRUE);
 #endif
-  for (s = link->cl->c.lients ; s; s = s->prev) /* squit all behind it first */
-    if (CLIENT_IS_SERVER (s->cl) && s->cl != link->where) /* could point back */
-      _ircd_do_squit (s, via, link->cl->lcnick); /* reason is the server gone */
-  _ircd_squit_one (link); /* no one left behind; clear and notify users */
-  _ircd_send_squit (link, via, msg, TRUE); /* notify local servers now */
-  if (link->where != &ME) /* it's remote, for local see ircd_do_squit() */
+  for (link = cl->c.lients; link; ) /* squit all behind it first */
+    if (CLIENT_IS_SERVER (link->cl)) {
+      _ircd_do_squit (link, via, cl->lcnick, TRUE);
+			/* squit reason is the name of server which have gone */
+      link = cl->c.lients; /* rescan list again since prev may be removed now */
+    } else
+      link = link->prev;
+#if IRCD_MULTICONNECT
+  if (cl->hold_upto == 0)
+  /* it might be already cleared in _ircd_squit_one() */
+#endif
+  _ircd_squit_one (cl, where); /* no one left behind; clear and notify users */
+  _ircd_send_squit (cl, where, via, msg, TRUE); /* notify local servers now */
+  if (where != &ME) /* it's remote, for local see ircd_do_squit() */
   {
 #if IRCD_MULTICONNECT
-    if (link->cl->local != NULL) /* there is a local link in P_QUIT state */
+    if (cl->local != NULL) /* there is a local link in P_QUIT state */
     {
       /* let _ircd_client_request() process it as needed instead */
-      link->cl->via = link->cl->local;
+      cl->via = cl->local;
       return;
     }
 #endif
-    link->cl->hold_upto = Time; /* mark it to delete */
-    link->cl->away[0] = '\0';
+    pthread_mutex_lock (&IrcdLock);
+    _ircd_release_rserver(cl);
+    pthread_mutex_unlock (&IrcdLock);
   }
 }
 
-/* local link squitted */
+/* local link squitted, remove link from IRCD->servers but don't free link */
 static inline void _ircd_lserver_out (LINK *l)
 {
   register LINK **s;
@@ -5075,16 +5124,14 @@ static inline void _ircd_lserver_out (LINK *l)
 void ircd_do_squit (LINK *link, peer_priv *via, const char *msg)
 {
   dprint(5, "ircd:ircd.c:ircd_do_squit: %s", link->cl->nick);
-  _ircd_do_squit (link, via, msg); /* notify everyone */
-  if (link->where == &ME) /* it's local */
+  _ircd_do_squit (link, via, msg, FALSE); /* notify everyone */
+  if (link->where == &ME) /* it's local, remotes were done in _ircd_do_squit */
   {
 #if IRCD_MULTICONNECT
     ircd_clear_acks (Ircd, link->cl->via); /* clear acks */
 #endif
     _ircd_peer_kill (link->cl->via, msg); /* it will free structures */
   }
-  else
-    _ircd_rserver_out (link); /* remove it from link->where list and free it */
 #if IRCD_MULTICONNECT
   _ircd_recalculate_hops(); /* recalculate all hops map */
 #endif
