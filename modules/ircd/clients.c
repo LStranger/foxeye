@@ -253,9 +253,8 @@ static int ircd_squit_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick
     ircd_sendto_wallops((IRCD *)srv->data, NULL, me, "SQUIT %s from %s: %s",
 			argv[0], cl->nick, argv[1]);
     ircd_do_squit (tgt->via->link, NULL, argv[1]); /* do job */
-  } else {				/* or else forward it to it's links */
-    ircd_sendto_new (tgt, cl, NULL, ":%s SQUIT %s :%s", peer->dname, argv[0], argv[1]);
-    ircd_sendto_old (tgt, ":%s SQUIT %s :%s", peer->dname, argv[0], argv[1]);
+  } else {				/* or else forward it to its link */
+    ircd_sendto_one (tgt, ":%s SQUIT %s :%s", peer->dname, argv[0], argv[1]);
   }
   return 1;
 }
