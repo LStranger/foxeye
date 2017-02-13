@@ -1480,6 +1480,10 @@ int dispatcher (INTERFACE *start_if)
   {
     if (_got_signal)
     {
+      char * argv[5];			/* required for restart */
+      char options[16];
+      int i;
+
       Set_Iface (NULL);			/* lock the dispatcher */
       /* Current is from last iface_run() so it should be valid even if dead */
       switch (_got_signal)
@@ -1494,13 +1498,26 @@ int dispatcher (INTERFACE *start_if)
 	  break;
 	case SIGINT:
 	  Add_Request (I_LOG, "*", F_BOOT, "Got SIGINT: restarting...");
-	  for (i = 0; i < _Inum; i++)		/* mark all listeners to die */
-	    if (Interface[i]->a.ift & I_CONNECT)
-	      Interface[i]->a.ift |= I_FINWAIT;	/* modules: unset flag later */
-	  ShutdownR = "Restart requested.";
-	  init();				/* restart */
-	  ShutdownR = NULL;
-	  break;
+	  /* stop everything */
+	  _bot_shutdown ("Restart requested.", 0);
+	  /* forge command line arguments */
+	  argv[0] = RunPath;
+	  argv[1] = options;
+	  options[0] = '-';
+	  if (O_DLEVEL > 5)
+	    O_DLEVEL = 5;
+	  for (i = 1; O_DLEVEL > 0; O_DLEVEL--)
+	    options[i++] = 'd';
+	  if (O_QUIET)
+	    options[i++] = 'q';
+	  if (O_DDLOG)
+	    options[i++] = 'D';
+	  options[i] = '\0';
+	  argv[2] = strrchr(Config, '/') + 1;
+	  argv[3] = NULL;
+	  /* re-exec itself */
+	  execv(argv[0], argv);
+	  /* should be never reached */
 	case SIGTERM:
 	default:
 	  bot_shutdown ("Got SIGTERM, shutdown...", 0);
