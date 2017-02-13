@@ -22,6 +22,7 @@ Mon Feb 13 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/help.c, core/protos.h, doc/modules.api: added new function
 	  Get_Help_L() for any custom language help, not default one.
 	* core/direct.c, core/init.c: localized help in direct chat messages.
+	* core/lib.c: fixed printl() wrapping with multibyte encodings.
 
 Sun Feb 12 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: reworked multiconnect diagnostics on SQUIT.

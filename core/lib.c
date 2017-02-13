@@ -262,6 +262,7 @@ size_t unistrcut (const char *line, size_t len, int maxchars)
     size_t todo = len;
     mbstate_t ms;
 
+    memset(&ms, 0, sizeof(ms));		/* reset the state! */
     while (chsize > 0 && todo > 0 && *ch)
     {
       cursize = mbrlen(ch, todo, &ms);
@@ -749,41 +750,26 @@ int Have_Wildcard (const char *str)
 }
 
 
-/* bs is max space available if text doesn't fit in linelen s
- * bs >= s if no wrapping
- * bs == 0 if wrapping enabled */
-static ssize_t _try_subst (char *buf, size_t bs, const char *text, size_t s)
-{
-  size_t n = safe_strlen (text);
-
-  if (!n || s == 0)			/* don't print, don't wrap */
-    return -1;
-  if (n > s && bs == 0)			/* wrap to next line */
-    return 0;
-  else if (n > s && n > bs)		/* no so much space available */
-    n = bs;
-  memcpy (buf, text, n);
-  return n;
-}
-
 /*
  * count real chars in line and correct its size in case of invalid chars
  */
-static int _count_chars (const char *line, size_t *len)
+static int _count_chars (const char *line, size_t *len, int max)
 {
   if (MB_CUR_MAX > 1)			/* multibyte charset is in use */
   {
     register ssize_t cursize;
     int chars = 0;
     const char *ch = line;
-    size_t todo = *len;
+    ssize_t todo = *len;
     mbstate_t ms;
 
     memset(&ms, 0, sizeof(ms));		/* reset the state! */
-    while (todo > 0 && *ch)
+    while (todo > 0 && *ch && chars < max)
     {
       cursize = mbrlen(ch, todo, &ms);
       if (cursize <= 0)			/* break at invalid char */
+	break;
+      if (cursize > todo)		/* buf overflow */
 	break;
       chars++;
       ch += cursize;
@@ -793,8 +779,34 @@ static int _count_chars (const char *line, size_t *len)
       *len -= todo;
     return chars;
   }
-  else					/* 8bit encoding - just return */
+  else if ((int)*len <= max)		/* 8bit encoding - just return */
     return *len;
+  *len = max;
+  return max;
+}
+
+/* bs is max space available if text doesn't fit in linelen s
+ * bs >= s if no wrapping
+ * bs == 0 if wrapping enabled */
+static ssize_t _try_subst (char *buf, size_t bs, const char *text, size_t s, int max)
+{
+  size_t n = safe_strlen (text);
+
+  if (!n || s == 0)			/* don't print, don't wrap */
+    return -1;
+  if (bs == 0)
+  {
+    if (n > s)				/* wrap to next line */
+      return 0;
+    bs = n;
+    _count_chars (text, &bs, max);
+    if (bs < n)				/* no so much space available */
+      return 0;
+  }
+  else					/* correct size if needed */
+    _count_chars (text, &bs, n);
+  memcpy (buf, text, bs);
+  return bs;
 }
 
 typedef struct {
@@ -833,6 +845,8 @@ static void makeidlestr (printl_t *p)
     snprintf (p->idlestr, sizeof(p->idlestr), "%2dd:%02dh", p->idle/86400,
 	      (p->idle%86400)/3600);
 }
+
+#define LEFT_CHARS (ll ? (ssize_t)(ll - p->i) : nn)
 
 /* returns new buffer pointer */
 /* ll - line length, q - need check for '?' */
@@ -877,19 +891,20 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
       cc = strchr (t, '\n');
       if (cc && cc < end)
 	end = cc;			/* now end is template for parse */
-      n = end - t;
-      if (ll && (size_t)n > ll - p->i)
-	n = ll - p->i;			/* now n is template that fit here */
-      nn = &buf[s-1] - c;		/* rest chars in buff */
+      fw = end - t;
+      nn = &buf[s-1] - c;		/* rest octets in buff */
       if (nn < 0)
         nn = 0;
-      cc = memchr (t, '%', n);
+      if (fw > nn)			/* how many octets we can put here? */
+	fw = nn;
+      _count_chars(t, &fw, LEFT_CHARS); /* fw now contains size that fits */
+      cc = memchr (t, '%', fw);
       if (!cc)				/* next subst is over */
       {					/* try by words */
 	const char *cs;
 
-	if (end > &t[n])		/* if template doesn't fit */
-	  for (cc = cs = t; *cs && cc <= &t[n]; cc = NextWord ((char *)cs))
+	if (end > &t[fw])		/* if template doesn't fit */
+	  for (cc = cs = t; *cs && cc <= &t[fw]; cc = NextWord ((char *)cs))
 	    cs = cc;
 	else
 	  cs = end;
@@ -900,106 +915,107 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
 	if (!q || *cc != '?')
 	  while (cc > t && (*(cc-1) == ' ' || *(cc-1) == '\t')) cc--;
 	/* cc now is after last fitting word */
-	n = cc - t;
-	if (n > nn)			/* how many chars we can put here? */
-	  n = nn;
-	if (n) memcpy (c, t, n);
-	c += n;
+	fw = cc - t;
+	if (fw) memcpy (c, t, fw);
+	c += fw;
 	t = cs;				/* first word for next line (or NL?) */
 	break;
       }
-      n = cc - t;			/* chars to subst */
-      if (n > nn)			/* how many chars we can put here? */
-	n = nn;
-      if (n) memcpy (c, t, n);
-      nn -= n;
+      fw = cc - t;			/* octets to subst */
+      n = _count_chars(t, &fw, LEFT_CHARS);
+      if (fw) memcpy (c, t, fw);
+      nn -= fw;				/* octets left in buff */
       t = cc;				/* we are on '%' now */
       p->i += n;			/* and we have line space for it */
-      c += n;
+      c += fw;
       if (ll && p->i != 0)		/* nmax is max for line, 0 to wrap */
 	nmax = 0;				/* wrap: drop line to ll */
       else
 	nmax = nn;				/* rest of buffer */
       fix = &t[1];
+      n = LEFT_CHARS;
       fw = 0;
       if (*fix >= '0' && *fix <= '9')	/* we have fixed field width here */
       {
 	fw = (int)strtol (fix, (char **)&fix, 10);
-	if (fw < nn)
+	if (fw < n)
 	{
 	  nmax = nn;		/* disable wrapping: assume field has width n */
-	  nn = fw;
+	  n = fw;
 	}
       }
-      else if (ll && (size_t)nn > ll - p->i)
-	nn = ll - p->i;			/* nn is rest for line - at least 1 */
-      n = 0;
       tbuf[0] = 0;
       if ((cc = strchr (mircsubst, *fix)))
       {
 	p->color = ++cc - mircsubst;	/* mIRC color incremented by 1 */
 	snprintf (tbuf, sizeof(tbuf), "\003%d", p->color - 1);
       }
-      else switch (*fix)		/* nmax must be 0 (wrap) or nmax > nn */
+      else switch (*fix)		/* nmax must be 0 (wrap) or nmax == nn */
       {
 	case 'N':			/* the user nick */
-	  n = _try_subst (c, nmax, p->nick, nn);
+	  n = _try_subst (c, nmax, p->nick, nn, n);
 	  break;
 	case '=':			/* my nick */
-	  n = _try_subst (c, nmax, Nick, nn);
+	  n = _try_subst (c, nmax, Nick, nn, n);
 	  break;
 	case '@':			/* the host name */
-	  n = _try_subst (c, nmax, p->host, nn);
+	  n = _try_subst (c, nmax, p->host, nn, n);
 	  break;
 	case 'L':			/* the user lname */
-	  n = _try_subst (c, nmax, p->lname, nn);
+	  n = _try_subst (c, nmax, p->lname, nn, n);
 	  break;
 	case '#':			/* channel(s) */
-	  n = _try_subst (c, nmax, p->chan, nn);
+	  n = _try_subst (c, nmax, p->chan, nn, n);
 	  break;
 	case '-':			/* idle string */
 	  makeidlestr (p);
-	  n = _try_subst (c, nmax, p->idlestr, nn);
+	  n = _try_subst (c, nmax, p->idlestr, nn, n);
 	  break;
 	case 's':
 	  if (unbuf.sysname[0] == 0)
 	    uname (&unbuf);
-	  n = _try_subst (c, nmax, unbuf.sysname, nn);
+	  n = _try_subst (c, nmax, unbuf.sysname, nn, n);
 	  break;
 	case 'I':			/* IPv4 in dot notation */
 	  inet_ntop (AF_INET, &p->ip, tbuf, sizeof(tbuf));
+	  n = -1;
 	  break;
 	case 'P':			/* port number, zero is "" */
 	  snprintf (tbuf, sizeof(tbuf), "%.0hu", p->port);
 	  n = -1;			/* in case of zero mark as empty */
 	  break;
 	case 't':			/* current time */
-	  n = _try_subst (c, nmax, TimeString, nn);
+	  n = _try_subst (c, nmax, TimeString, nn, n);
 	  break;
 	case 'n':			/* color stop */
 	  p->color = 0;
 	  if (nn) *c++ = '\003';
 	  t = &fix[1];
+	  n = 0;
 	  break;
 	case '^':
 	  p->bold ^= 1;
 	  if (nn) *c++ = '\002';
 	  t = &fix[1];
+	  n = 0;
 	  break;
 	case '_':
 	  p->ul ^= 1;
 	  if (nn) *c++ = '\037';
 	  t = &fix[1];
+	  n = 0;
 	  break;
 	case 'v':
 	  p->inv ^= 1;
 	  if (nn) *c++ = '\026';
 	  t = &fix[1];
+	  n = 0;
 	  break;
 	case 'f':
 	  p->flash ^= 1;
 	  if (nn) *c++ = '\006';
 	  t = &fix[1];
+	  n = 0;
 	  break;
 	case '?':
 	  p->t = &fix[2];			/* skip "%?x" */
@@ -1052,25 +1068,27 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
 	  t = p->t;
 	  break;
 	case '*':
-	  n = _try_subst (c, nmax, p->message, nn);
+	  n = _try_subst (c, nmax, p->message, nn, n);
 	  break;
 	case 'V':
-	  n = _try_subst (c, nmax, PACKAGE "-" VERSION, nn);
+	  n = _try_subst (c, nmax, PACKAGE "-" VERSION, nn, n);
 	  break;
 	case '%':			/* just a percent */
 	  if (nn) *c++ = '%';
+	  p->i++;
 	default:
 	  t = &fix[1];			/* all other are ignored */
+	  n = 0;
       }
       if (*tbuf)
-	n = _try_subst (c, nmax, tbuf, nn);
+	n = _try_subst (c, nmax, tbuf, nn, n);
       if (n)
       {
 	if (n > 0)			/* if something was added */
 	{
 	  register int chars;
 
-	  chars = _count_chars (c, &n);
+	  chars = _count_chars (c, &n, n);
 	  c += n;
 	  p->i += chars;
 	  n = chars;
