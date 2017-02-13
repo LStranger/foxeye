@@ -321,9 +321,9 @@ Common API:
     help file added on module init.
 	Reenterability: none
 
-  int GGeett__HHeellpp (const char *_f_s_t, const char *_s_e_c, INTERFACE *_i_f_a_c_e,
-		userflag _g_u_f, userflag _c_u_f, struct bindtable_t *_t_a_b_l_e,
-		char *_p_r_e_f_i_x, int _m_o_d_e);
+  int GGeett__HHeellpp__LL (const char *_f_s_t, const char *_s_e_c, INTERFACE *_i_f_a_c_e,
+		  userflag _g_u_f, userflag _c_u_f, struct bindtable_t *_t_a_b_l_e,
+		  char *_p_r_e_f_i_x, int _m_o_d_e, const char *_l_a_n_g);
     Finds help matches first keyword _f_s_t and second keyword _s_e_c that are
     in bindtable _t_a_b_l_e and allowed for user with global userflags _g_u_f or
     channel userflags _c_u_f, then send help to that topics to interface
@@ -332,9 +332,17 @@ Common API:
     otherwise full one. Special case 1: if _m_o_d_e is -1 then it works as
     if it is 0 but quietly if no help found. Special case 2: if _f_s_t is
     NULL but _s_e_c is not then assume first keyword is name of _t_a_b_l_e and
-    _t_a_b_l_e is extension so check allowance for _s_e_c instead of _f_s_t. Note:
-    if _t_a_b_l_e is NULL then assume allowance is granted. Returns number of
-    found topics.
+    _t_a_b_l_e is extension so check allowance for _s_e_c instead of _f_s_t. In case
+    if _l_a_n_g is "", returned help is in default language ("C"), otherwise
+    language _l_a_n_g is searched for help before searching default language.
+    Note: if _t_a_b_l_e is NULL then assume that allowance is always granted.
+    Returns number of found topics.
+	Reenterability: none
+
+  int GGeett__HHeellpp (const char *_f_s_t, const char *_s_e_c, INTERFACE *_i_f_a_c_e,
+		userflag _g_u_f, userflag _c_u_f, struct bindtable_t *_t_a_b_l_e,
+		char *_p_r_e_f_i_x, int _m_o_d_e);
+    Calls Get_Help_L() for language defined in the setting "locale".
 	Reenterability: none
 
   void ddpprriinntt (int _l_e_v_e_l, const char *_t_e_x_t, _._._.);
@@ -351,7 +359,7 @@ Common API:
 	Cancellation point: no
 
   int mmaattcchh (const char *_m_a_s_k, const char *_s_t_r_i_n_g);
-    Check whether the _s_t_r_i_n_g is matched mask _m_a_s_k. Returns number of
+    Check whether the _s_t_r_i_n_g matches given mask _m_a_s_k. Returns number of
     characters (wildcards are not counted) that matched. Cases "*" in
     _m_a_s_k or in _s_t_r_i_n_g are special: match() returns 0. The mask is shell
     (tcsh, bash, etc.) expansion pattern and may contain:
@@ -369,9 +377,9 @@ Common API:
 	Reenterability: async-safe
 
   int ssiimmppllee__mmaattcchh (const char *_m_a_s_k, const char *_s_t_r_i_n_g);
-    Check whether the _s_t_r_i_n_g is matched mask _m_a_s_k. Returns number of
+    Check whether the _s_t_r_i_n_g matches given mask _m_a_s_k. Returns number of
     characters (wildcards are not counted) that matched. Cases "*" in
-    _m_a_s_k or in _s_t_r_i_n_g are special: match() returns 0. The mask may
+    _m_a_s_k or in _s_t_r_i_n_g are special: simple_match() returns 0. The mask may
     contain:
       *		matched to any number of any characters
       ?		matched to one any character

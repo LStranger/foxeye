@@ -57,9 +57,12 @@ modeflag Inspect_Client (const char *, const char *, const char *,
 int Update_Public (const char *, const char *, modeflag, const char *,
 		   const char *, const char *, time_t);
 int Add_Help (const char *) __attribute__((nonnull(1))); /* help.c */
+int Add_Help_L (const char *, const char *) __attribute__((nonnull(1)));
 void Delete_Help (const char *);
 int Get_Help (const char *, const char *, INTERFACE *, userflag, userflag,
 		struct bindtable_t *, char *, int);
+int Get_Help_L (const char *, const char *, INTERFACE *, userflag, userflag,
+		struct bindtable_t *, char *, int, const char *);
 int Add_Clientrecord (const char *, const uchar *, userflag) /* users.c */
 	__attribute__((warn_unused_result));
 int Add_Alias (const char *, const char *)

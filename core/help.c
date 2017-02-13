@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -34,6 +34,7 @@ static char *EOL (const char *s)
 }
 
 typedef struct HELPGR HELPGR;
+typedef struct HELPLANG HELPLANG;
 
 typedef struct HELP
 {
@@ -43,10 +44,18 @@ typedef struct HELP
   struct HELP *next;		/* in helpfile */
 } HELP;
 
+typedef struct HELPLGR
+{
+  struct HELPLGR *next;
+  HELPLANG *lang;
+  NODE *tree;
+} HELPLGR;
+
 struct HELPGR
 {
   char *key;			/* case-insensitive */
-  NODE *tree;
+  NODE *tree;			/* C lang */
+  HELPLGR *langs;
   HELPGR *next;
 };
 
@@ -58,8 +67,15 @@ typedef struct HELPFILE
   struct HELPFILE *next;
 } HELPFILE;
 
+struct HELPLANG
+{
+  HELPLANG *next;
+  char *lang;			/* matchcase */
+  HELPFILE *files;
+};
+
 static HELPGR *Help = NULL;
-static HELPFILE *HFiles = NULL;
+static HELPLANG *HLangs = NULL;
 
 static HELPGR *_get_helpgr (char *name)
 {
@@ -82,41 +98,63 @@ static HELPGR *_get_helpgr (char *name)
   return gr;
 }
 
-int Add_Help (const char *name)
+int Add_Help_L (const char *name, const char *lang)
 {
   char path[LONG_STRING];
   int fd = -1;
   off_t size;
+  HELPLANG **hl;
   HELPFILE **hf;
   HELP **ht;
+  NODE **tree;
+  HELPLGR **hlgr;
   char *data, *endc = NULL;
   char *key, *gr = NULL;
   register char *c;
   size_t s = 0;				/* compiler lies about uninitialized */
 
-  /* check if file.$locale exist */
-  if (*locale)
+  /* check if lang was already loaded */
+  for (hl = &HLangs; *hl; hl = &(*hl)->next)
+    if (safe_strcmp((*hl)->lang, lang) == 0)
+      break;
+  /* create new lang if it does not exist */
+  if (*hl == NULL)
   {
-    snprintf (path, sizeof(path), "%s/%s.%s", HELPDIR, name, locale);
+    *hl = safe_calloc(1, sizeof(HELPLANG));
+    (*hl)->lang = safe_strdup(lang);
+  }
+  /* check if name was already loaded for lang */
+  for (hf = &(*hl)->files; *hf; hf = &(*hf)->next)
+    if (safe_strcmp((*hf)->name, name) == 0)
+      break;
+  if (*hf)
+    /* already loaded, return success */
+    return 1;
+  /* check if file.$lang exists */
+  if (*lang)
+  {
+    snprintf (path, sizeof(path), "%s/%s.%s", HELPDIR, name, lang);
     fd = open (path, O_RDONLY);
     /* check if file.$lang exists */
     if (fd < 0)
     {
-      snprintf (path, sizeof(path), "%s/%s.%.2s", HELPDIR, name, locale);
+      snprintf (path, sizeof(path), "%s/%s.%.2s", HELPDIR, name, lang);
       fd = open (path, O_RDONLY);
     }
   }
+  else
   /* check for default helpfile */
-  if (fd < 0)
   {
     snprintf (path, sizeof(path), "%s/%s", HELPDIR, name);
     fd = open (path, O_RDONLY);
-  }
-  /* last try: check if file.C exist */
-  if (fd < 0)
-  {
-    snprintf (path, sizeof(path), "%s/%s.C", HELPDIR, name);
-    fd = open (path, O_RDONLY);
+    /* last try: check if file.C exists */
+    if (fd < 0)
+    {
+      snprintf (path, sizeof(path), "%s/%s.C", HELPDIR, name);
+      fd = open (path, O_RDONLY);
+    }
+    //FIXME: adding default lang, flush ALL languages, or else some will be
+    //  missed by on-demand loading, see _help_load_lang() below
   }
   if (fd < 0)
   /* may be it have to print error message? */
@@ -130,7 +168,6 @@ int Add_Help (const char *name)
     return 0;
   }
   lseek (fd, (off_t)0, SEEK_SET);
-  for (hf = &HFiles; *hf; hf = &(*hf)->next);	/* find the tail */
   *hf = safe_calloc (1, sizeof(HELPFILE));
   (*hf)->hfile = safe_malloc ((size_t)size + 1);
   if (read (fd, (*hf)->hfile, (size_t)size) != (ssize_t)size)
@@ -266,12 +303,26 @@ int Add_Help (const char *name)
 	else
 	  (*ht)->helpgr = _get_helpgr (gr);
 	(*ht)->key = key;
-	if (Insert_Key (&((HELPGR *)(*ht)->helpgr)->tree, key, *ht, 1))
-	  WARNING ("help: duplicate entry \"%s\" for set \"%s\" ignored", key,
-		   gr == key ? "" : gr);
+	if (*lang)
+	{
+	  for (hlgr = &(*ht)->helpgr->langs; *hlgr; hlgr = &(*hlgr)->next)
+	    if ((*hlgr)->lang == *hl)
+	      break;
+	  if (*hlgr == NULL)
+	  {
+	    *hlgr = safe_calloc(1, sizeof(HELPLGR));
+	    (*hlgr)->lang = *hl;
+	  }
+	  tree = &(*hlgr)->tree;
+	}
 	else
-	  dprint (2, "help: adding entry for \"%s\" to set \"%s\"", key,
-		  gr == key ? "" : gr);
+	  tree = &(*ht)->helpgr->tree;
+	if (Insert_Key (tree, key, *ht, 1))
+	  WARNING ("help: duplicate entry \"%s\" for set \"%s\" in lang \"%s\" ignored",
+		   key, gr == key ? "" : gr, lang);
+	else
+	  dprint (2, "help: adding entry for \"%s\" to set \"%s\" in lang \"%s\"",
+		  key, gr == key ? "" : gr, lang);
     }
     data = endc;
     if (data && *data == '\r')
@@ -284,37 +335,85 @@ int Add_Help (const char *name)
   return 1;
 }
 
-void Delete_Help (const char *name)
+int Add_Help (const char *name)
 {
-  HELPFILE *h, *hp = NULL;
-  HELP *t, *next = NULL;
+  return Add_Help_L (name, "");
+}
+
+static void _delete_help_lang(HELPLANG *hl, const char *name)
+{
+  HELPFILE *h, **hp;
+  HELP *t, **tp;
+  HELPLGR *lgr;
+  NODE *tree;
 
   /* find the file */
-  for (h = HFiles; h; hp = h, h = h->next)
+  for (hp = &hl->files; (h = *hp); hp = &h->next)
   {
     if (!safe_strcmp (name, h->name))
       break;
   }
   if (!h)
     return;
-  if (hp)
-    hp->next = h->next;
-  else
-    HFiles = h->next;
+  *hp = h->next;
   /* delete keys from groups */
-  for (t = h->help; t; t = next)
+  for (tp = &h->help; (t = *tp); )
   {
-    next = t->next;
-    Delete_Key (((HELPGR *)t->helpgr)->tree, t->key, t);
-    dprint (2, "help: deleting entry for \"%s\" from set \"%s\"", t->key,
-	    NONULL(((HELPGR *)t->helpgr)->key));
+    tp = &t->next;
+    if (hl->lang) {
+      for (lgr = t->helpgr->langs; lgr; lgr = lgr->next)
+	if (lgr->lang == hl)
+	  break;
+      if (lgr == NULL)
+      {
+	/* this should never happen! */
+	ERROR("help: lang \"%s\" not found in set \"%s\"!", hl->lang,
+	      NONULL(t->helpgr->key));
+	continue;
+      }
+      tree = lgr->tree;
+    } else
+      tree = t->helpgr->tree;
+    Delete_Key (tree, t->key, t);
+    dprint (2, "help: deleting entry for \"%s\" from set \"%s\" in lang \"%s\"",
+	    t->key, NONULL(t->helpgr->key), NONULL(hl->lang));
     FREE (&t);
   }
-  Add_Request (I_LOG, "*", F_BOOT, "Unloaded helpfile %s", name);
+  Add_Request (I_LOG, "*", F_BOOT, "Unloaded helpfile %s (lang \"%s\")", name,
+	       NONULL(hl->lang));
   /* free memory */
   FREE (&h->hfile);
   FREE (&h->name);
   FREE (&h);
+}
+
+void Delete_Help (const char *name)
+{
+  HELPLANG *hl;
+
+  /* process in each lang */
+  for (hl = HLangs; hl; hl = hl->next)
+    _delete_help_lang(hl, name);
+}
+
+/* tries to load language */
+static HELPLANG *_help_load_lang(const char *lang)
+{
+  HELPLANG *hl, **hlp;
+  HELPFILE *hf;
+
+  for (hlp = &HLangs; (hl = *hlp); hlp = &hl->next)
+    if (safe_strcmp(hl->lang, lang) == 0)
+      break;
+  if (hl == NULL && HLangs != NULL)
+  {
+    /* if not found then search and load $name.$lang for all added helpfiles */
+    *hlp = hl = safe_calloc(1, sizeof(HELPLANG));
+    hl->lang = safe_strdup(lang);
+    for (hf = HLangs->files; hf; hf = hf->next)
+      Add_Help_L(hf->name, lang);
+  }
+  return hl;
 }
 
 static int _no_such_help (INTERFACE *iface, int mode)
@@ -432,12 +531,15 @@ static int _help_all_topics (HELPGR *what, INTERFACE *iface, userflag gf,
   return r;
 }
 
-int Get_Help (const char *fst, const char *sec, INTERFACE *iface, userflag gf,
-	      userflag cf, struct bindtable_t *table, char *prefix, int mode)
+int Get_Help_L (const char *fst, const char *sec, INTERFACE *iface, userflag gf,
+		userflag cf, struct bindtable_t *table, char *prefix, int mode,
+		const char *lang)
 {
   const char *topic = NONULL(sec);	/* default topic=fst{sec} */
   HELPGR *h = Help;
-  HELP *t;
+  HELP *t = NULL;
+  HELPLANG *hl;
+  HELPLGR *hlgr;
 
   dprint (5, "help:Get_Help: call \"%s %s\"", NONULL(fst), NONULL(sec));
   if (!h)
@@ -477,7 +579,17 @@ int Get_Help (const char *fst, const char *sec, INTERFACE *iface, userflag gf,
   }
   if (table && !strcmp (topic, "*"))		/* if topic is ...{*} */
     return _help_all_topics (h, iface, gf, cf, table, mode);
-  t = Find_Key (h->tree, topic);
+  if (lang && *lang)
+  {
+    hl = _help_load_lang(lang);
+    for (hlgr = h->langs; hlgr; hlgr = hlgr->next)
+      if (hlgr->lang == hl)
+	break;
+    if (hlgr)
+      t = Find_Key (hlgr->tree, topic);
+  }
+  if (t == NULL)
+    t = Find_Key (h->tree, topic);
   if (!t)
   {
     WARNING ("help: topic \"%s\" not found", topic);
@@ -487,4 +599,10 @@ int Get_Help (const char *fst, const char *sec, INTERFACE *iface, userflag gf,
   }
   dprint (4, "help: found entry for \"%s\" in set \"%s\"", topic, NONULL(h->key));
   return _help_one_topic (t->data, iface, NONULL(prefix), h->key, topic, mode);
+}
+
+int Get_Help (const char *fst, const char *sec, INTERFACE *iface, userflag gf,
+	      userflag cf, struct bindtable_t *table, char *prefix, int mode)
+{
+  return Get_Help_L (fst, sec, iface, gf, cf, table, prefix, mode, locale);
 }
