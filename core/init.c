@@ -1923,10 +1923,12 @@ static int dc_chelp(struct peer_t *dcc, char *args)
   if (args == NULL || *args == '\0')	/* should have a parameter */
     return 0;
   /* try if usage found first */
-  if (Get_Help ("function", args, dcc->iface, dcc->uf, 0, NULL, _("Usage: "), 0))
+  if (Get_Help_L ("function", args, dcc->iface, dcc->uf, 0, NULL, _("Usage: "), 0,
+		  dcc->lang[0] ? dcc->lang : locale))
     return 0;
   /* full help */
-  Get_Help ("function", args, dcc->iface, dcc->uf, 0, NULL, NULL, 2);
+  Get_Help_L ("function", args, dcc->iface, dcc->uf, 0, NULL, NULL, 2,
+	      dcc->lang[0] ? dcc->lang : locale);
   return 1;
 }
 

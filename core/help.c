@@ -531,6 +531,9 @@ static int _help_all_topics (HELPGR *what, INTERFACE *iface, userflag gf,
   return r;
 }
 
+#ifndef ENABLE_NLS
+static
+#endif
 int Get_Help_L (const char *fst, const char *sec, INTERFACE *iface, userflag gf,
 		userflag cf, struct bindtable_t *table, char *prefix, int mode,
 		const char *lang)

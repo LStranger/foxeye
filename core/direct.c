@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2016  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -382,7 +382,8 @@ void Dcc_Parse (peer_t *dcc, char *name, char *cmd, userflag gf, userflag cf,
 	res = 0;
       Unset_Iface();
       if (res == 0)
-	Get_Help (NULL, bind->key, dcc->iface, gf, cf, ssbt, _("Usage: "), 0);
+	Get_Help_L (NULL, bind->key, dcc->iface, gf, cf, ssbt, _("Usage: "), 0,
+		    dcc->lang[0] ? dcc->lang : locale);
     }
     else
     {
@@ -406,7 +407,8 @@ void Dcc_Parse (peer_t *dcc, char *name, char *cmd, userflag gf, userflag cf,
       else
 	res = bind->func (dcc, arg);
       if (res == 0)
-	Get_Help (bind->key, NULL, dcc->iface, gf, cf, BT_Dcc, _("Usage: "), 0);
+	Get_Help_L (bind->key, NULL, dcc->iface, gf, cf, BT_Dcc, _("Usage: "), 0,
+		    dcc->lang[0] ? dcc->lang : locale);
     }
 #ifdef ENABLE_NLS
     if (dcc->lang[0])
@@ -2242,16 +2244,19 @@ static int dc_help (peer_t *dcc, char *args)
   else
     ssbt = NULL;
   /* usage - not required if no arguments */
-  if (args && !(ssbt && Get_Help (NULL, fst, dcc->iface,
-				  dcc->uf, df, ssbt, _("Usage: "), -1)) &&
-      !Get_Help (fst, sec, dcc->iface, dcc->uf, df, BT_Dcc,
-		 _("Usage: "), 0))
+  if (args && !(ssbt && Get_Help_L (NULL, fst, dcc->iface,
+				    dcc->uf, df, ssbt, _("Usage: "), -1,
+				    dcc->lang[0] ? dcc->lang : locale)) &&
+      !Get_Help_L (fst, sec, dcc->iface, dcc->uf, df, BT_Dcc,
+		   _("Usage: "), 0, dcc->lang[0] ? dcc->lang : locale))
     return -1;
   /* full help */
   if (ssbt)
-    Get_Help (NULL, fst ? fst : "*", dcc->iface, dcc->uf, df, ssbt, NULL, 2);
+    Get_Help_L (NULL, fst ? fst : "*", dcc->iface, dcc->uf, df, ssbt, NULL, 2,
+		dcc->lang[0] ? dcc->lang : locale);
   if (!ssbt || !fst)
-    Get_Help (fst, sec, dcc->iface, dcc->uf, df, BT_Dcc, NULL, 2);
+    Get_Help_L (fst, sec, dcc->iface, dcc->uf, df, BT_Dcc, NULL, 2,
+		dcc->lang[0] ? dcc->lang : locale);
   if (sec && *sec)
     *args = ' ';
   return 1;			/* return 1 because usage at least displayed */

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -61,8 +61,12 @@ int Add_Help_L (const char *, const char *) __attribute__((nonnull(1)));
 void Delete_Help (const char *);
 int Get_Help (const char *, const char *, INTERFACE *, userflag, userflag,
 		struct bindtable_t *, char *, int);
+#ifdef ENABLE_NLS
 int Get_Help_L (const char *, const char *, INTERFACE *, userflag, userflag,
 		struct bindtable_t *, char *, int, const char *);
+#else
+#define Get_Help_L(a,b,c,d,e,f,g,h,i) Get_Help(a,b,c,d,e,f,g,h)
+#endif
 int Add_Clientrecord (const char *, const uchar *, userflag) /* users.c */
 	__attribute__((warn_unused_result));
 int Add_Alias (const char *, const char *)
