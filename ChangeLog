@@ -14,10 +14,13 @@ TODO:
 	* *: to check Add_Request/New_Request coming to user to be translatable.
 	* modules/ssl: add support for openssl-1.1 if possible.
 	* core/help.*: add support for custom help languages.
+	* modules/ircd: to support command LANG for numerics translation.
 
 --- [0.11.0]
 Sun Feb 12 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: reworked multiconnect diagnostics on SQUIT.
+	* modules/ircd-rusnet/rusnet.*: use "ircd.rmotd" default value for
+	  rusnet-rmotd-file variable.
 
 Sat Feb 11 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.*: added support for language on per-session basis.

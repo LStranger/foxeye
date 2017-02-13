@@ -21,7 +21,7 @@ set rusnet-rmotd-file
 :This variable defines where file containing MOTD for the server lies. It\
  can contain full path to the file or path relative to starting config. If\
  not defined or file is missing then no MOTD will be shown.
- Default: "".
+ Default: "ircd.rmotd".
 
 set rusnet-eline-limit
 :%* <number>

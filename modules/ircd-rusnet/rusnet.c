@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2016-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@
 
 #include "../ircd/ircd.h"
 
-static char _rusnet_rmotd_file[PATH_MAX+1] = "";
+static char _rusnet_rmotd_file[PATH_MAX+1] = "ircd.rmotd";
 static long int _rusnet_eline_limit = 25;
 
 /* This code was taken from original rusnet-ircd */
