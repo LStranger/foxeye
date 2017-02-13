@@ -98,7 +98,7 @@ static HELPGR *_get_helpgr (char *name)
   return gr;
 }
 
-int Add_Help_L (const char *name, const char *lang)
+static int Add_Help_L (const char *name, const char *lang)
 {
   char path[LONG_STRING];
   int fd = -1;
@@ -131,7 +131,7 @@ int Add_Help_L (const char *name, const char *lang)
     /* already loaded, return success */
     return 1;
   /* check if file.$lang exists */
-  if (*lang)
+  if (lang && *lang)
   {
     snprintf (path, sizeof(path), "%s/%s.%s", HELPDIR, name, lang);
     fd = open (path, O_RDONLY);
@@ -145,6 +145,7 @@ int Add_Help_L (const char *name, const char *lang)
   else
   /* check for default helpfile */
   {
+    lang = "";
     snprintf (path, sizeof(path), "%s/%s", HELPDIR, name);
     fd = open (path, O_RDONLY);
     /* last try: check if file.C exists */
@@ -153,8 +154,6 @@ int Add_Help_L (const char *name, const char *lang)
       snprintf (path, sizeof(path), "%s/%s.C", HELPDIR, name);
       fd = open (path, O_RDONLY);
     }
-    //FIXME: adding default lang, flush ALL languages, or else some will be
-    //  missed by on-demand loading, see _help_load_lang() below
   }
   if (fd < 0)
   /* may be it have to print error message? */
@@ -337,7 +336,16 @@ int Add_Help_L (const char *name, const char *lang)
 
 int Add_Help (const char *name)
 {
-  return Add_Help_L (name, "");
+  int ret;
+  HELPLANG *hl;
+
+  if (HLangs == NULL)
+    return Add_Help_L (name, NULL);
+  else for (ret = 0, hl = HLangs; hl; hl = hl->next)
+    /* scan files for all already loaded languages */
+    if (Add_Help_L (name, hl->lang))
+      ret = 1;
+  return ret;
 }
 
 static void _delete_help_lang(HELPLANG *hl, const char *name)
