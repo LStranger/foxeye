@@ -16,6 +16,10 @@ TODO:
 	* modules/ircd: to support command LANG for numerics translation.
 
 --- [0.11.0]
+Tue Feb 14 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/channels.c, modules/ircd/ircd.*, doc/modules.api: added
+	  new bindtable "ircd-eob" to inform modules about channel burst done.
+
 Mon Feb 13 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c: do restart properly: shutdown everything and then
 	  re-exec the process, instead of just restarting the modules.

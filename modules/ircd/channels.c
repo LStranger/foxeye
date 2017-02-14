@@ -46,6 +46,7 @@ static struct bindtable_t *BTIrcdCheckModechange;
 static struct bindtable_t *BTIrcdIsupport;
 //static struct bindtable_t *BTIrcdSetMember;
 //static struct bindtable_t *BTIrcdLostMember;
+static struct bindtable_t *BTIrcdEOB;
 
 ALLOCATABLE_TYPE (CHANNEL, IrcdChan_, users)
 ALLOCATABLE_TYPE (MEMBER, IrcdMemb_, prevnick)
@@ -2882,7 +2883,7 @@ void ircd_channels_flush (IRCD *ircd, char *modestring, size_t s)
       if (t + k + l + s > IRCMSGLEN - 4 || /* reserving mode char and space */\
 	  l >= MAXMODES) \
       { \
-	New_Request (to, 0, "%.*s%s", (int)(t + l), buff, \
+	New_Request (peer->iface, 0, "%.*s%s", (int)(t + l), buff, \
 		     &buff[t + MAXMODES + 1]); \
 	UPDATE_BUFF \
 	l = s = 0; \
@@ -2894,17 +2895,22 @@ void ircd_channels_flush (IRCD *ircd, char *modestring, size_t s)
       s += (k + 1); \
     }
 
-void ircd_burst_channels (INTERFACE *to, NODE *channels, modeflag mf)
+void ircd_burst_channels (struct peer_t *peer, IRCD *ircd, modeflag mf)
 {
-  LEAF *leaf = NULL;
+  LEAF *leaf;
   CHANNEL *ch;
   MEMBER *m;
   MASK *mask;
   size_t s, l, t;
+  struct binding_t *b = NULL;
+#define static register
+  BINDING_TYPE_ircd_eob ((*ff));
+#undef static
   char buff[MB_LEN_MAX*IRCMSGLEN+1];
   char mb[8];
 
-  while ((leaf = Next_Leaf (channels, leaf, NULL)))
+  leaf = Next_Leaf (ircd->channels, NULL, NULL);
+  while (leaf)
   {
     ch = leaf->s.data;
     if (ch->hold_upto && ch->count == 0) /* it's unavailable */
@@ -2932,7 +2938,7 @@ void ircd_burst_channels (INTERFACE *to, NODE *channels, modeflag mf)
 	l += s;
 	m = m->prevnick;
       }
-      New_Request (to, 0, "%s", buff);
+      New_Request (peer->iface, 0, "%s", buff);
     }
     if (ch->name[0] == '+')		/* modeless channel */
       continue;
@@ -2941,10 +2947,10 @@ void ircd_burst_channels (INTERFACE *to, NODE *channels, modeflag mf)
       _ircd_make_cmode (buff, sizeof(buff), ch, 1);
 #if IRCD_MULTICONNECT
       if (mf & A_MULTI)
-	New_Request (to, 0, "IMODE %d %s +%s", ircd_new_id(NULL), ch->name, buff);
+	New_Request (peer->iface, 0, "IMODE %d %s +%s", ircd_new_id(NULL), ch->name, buff);
       else
 #endif
-      New_Request (to, 0, "MODE %s +%s", ch->name, buff);
+      New_Request (peer->iface, 0, "MODE %s +%s", ch->name, buff);
     }
     l = s = 0;				/* do masks */
 #if IRCD_MULTICONNECT
@@ -2958,9 +2964,15 @@ void ircd_burst_channels (INTERFACE *to, NODE *channels, modeflag mf)
     FILL_BUFFER(exempts,'e')
     FILL_BUFFER(invites,'I')
     if (l)
-      New_Request (to, 0, "%.*s%s", (int)(t + l), buff, &buff[t + MAXMODES + 1]);
+      New_Request (peer->iface, 0, "%.*s%s", (int)(t + l), buff, &buff[t + MAXMODES + 1]);
+    leaf = Next_Leaf (ircd->channels, leaf, NULL);
+    while ((b = Check_Bindtable (BTIrcdEOB, ch->name, U_ALL, U_ANYCH, b)))
+      if (!b->name && (ff = (void(*)())b->func)) /* do internal only */
+	ff (ircd->iface, peer, ch->name, ch->mode, (leaf == NULL));
   }
 }
+#undef UPDATE_BUFF
+#undef FILL_BUFFER
 
 void ircd_channels_report (INTERFACE *to)
 {
@@ -3286,6 +3298,7 @@ void ircd_channel_proto_start (IRCD *ircd)
   BTIrcdUmodechange = Add_Bindtable ("ircd-umodechange", B_MATCHCASE);
   BTIrcdCheckModechange = Add_Bindtable ("ircd-check-modechange", B_MASK);
   BTIrcdIsupport = Add_Bindtable ("ircd-isupport", B_MASK);
+  BTIrcdEOB = Add_Bindtable ("ircd-eob", B_MASK);
   Add_Binding ("ircd-whochar", "*", 0, 0, (Function)&iwc_ircd, NULL);
   /* default 4 channel types, see RFC2811 */
   Add_Binding ("ircd-channel", "&", 0, 0, (Function)&ich_normal, NULL);

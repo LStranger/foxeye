@@ -295,8 +295,8 @@
 
 -     "iirrccdd--wwhhooiiss"     MASK
   (int) void func(INTERFACE *_s_r_v, const char *_s_e_n_d_e_r, modeflag _s_u_m_f,
-		  const char *_t_a_r_g_e_t, const char *_t_h_o_s_t, const char *_v_h_o_s_t,
-		  modeflag _t_u_m_f);
+		  const char *_t_a_r_g_e_t, const char *_t_h_o_s_t,
+		  const char *_v_h_o_s_t, modeflag _t_u_m_f);
     Used when server replies to a WHOIS query from some _s_e_n_d_e_r with user
     mode _s_u_m_f for some _t_a_r_g_e_t which has host _t_h_o_s_t and user mode _t_u_m_f.
     Binding can send some numeric reply then to the client using IRCD
@@ -339,3 +339,13 @@
     Used when a local server _p_e_e_r is disconnecting from network. _s_r_v is
     IRCD interface which can be used to send control messages (commands).
       Matching: server name.  (userflags are ignored)
+
+-     "iirrccdd--eeoobb"       MASK
+  (int) void func(INTERFACE *_s_r_v, struct peer_t *_p_e_e_r,
+		  const char *_c_h_n_a_m_e, modeflag _m_f, int _i_s___l_a_s_t);
+    Used when ircd has finished burst of a channel _c_h_n_a_m_e to the server
+    _p_e_e_r after initial handshake. Binding is provided with mode _m_f of the
+    channel. _i_s___l_a_s_t is TRUE if this was a last channel sent (therefore
+    it's end of whole burst). _s_r_v is IRCD interface which can be used to
+    send control messages (commands).
+      Matching: channel name.  (userflags are ignored)
