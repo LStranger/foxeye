@@ -598,7 +598,6 @@ static int _get_current (void)
   /* interface may be unused so lock semaphore */
   if (!Current->a.ift || (Current->a.ift & I_DIED))
     return 0;
-  time (&Time);			/* moved from sheduler to allow cycle */
   if (!Current->a.IFRequest)
     out = REQ_OK;
   else if (curq)

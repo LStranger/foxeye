@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2016  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -158,7 +158,10 @@ void NewShedule (iftype_t ift, const char *name, ifsig_t sig,
     return;
   pthread_mutex_lock (&LockShed);
   if (_SCnum >= MAXTABLESIZE)
+  {
+    pthread_mutex_unlock (&LockShed);
     bot_shutdown ("Internal error in NewShedule()", 8);
+  }
   if (_SCnum >= _SCalloc)
   {
     _SCalloc += 32;
@@ -211,9 +214,8 @@ void KillShedule (iftype_t ift, const char *name, ifsig_t sig,
       if (!ct->min[0] && !ct->min[1] && !ct->hour && !ct->day && !ct->month &&
 	  !ct->weekday)
       {
-	_SCnum--;
-	if (i != _SCnum)
-	  memcpy (ct, &Crontable[_SCnum], sizeof(shedentry_t));
+	/* just mark it, it will be freed on next second iteration */
+	ct->to = NULL;
       }
     }
   }
@@ -291,9 +293,8 @@ void KillTimer (tid_t tid)
   {
     if (Timerstable[i].id == tid)
     {
-      _STnum--;
-      if (i != _STnum)
-	memcpy (&Timerstable[i], &Timerstable[_STnum], sizeof(shedtimerentry_t));
+      /* just mark it, it will be freed on next second iteration */
+      Timerstable[i].to = NULL;
       break;
     }
   }
@@ -302,17 +303,62 @@ void KillTimer (tid_t tid)
 
 static time_t lasttime = 0;
 
-static int Sheduler (INTERFACE *ifc, REQUEST *req)
+static volatile sig_atomic_t running = FALSE;
+static pthread_t pth_sched;
+
+static iftype_t scheduler_signal (INTERFACE *iface, ifsig_t signal)
 {
+  switch (signal)
+  {
+    case S_TERMINATE:
+      if (running)
+      {
+	running = FALSE;
+	pthread_cancel(pth_sched);
+	pthread_join(pth_sched, NULL);
+	Add_Request (I_LOG, "*", F_BOOT, "Scheduler: terminated successfully.");
+      }
+      _SFnum = _STnum = _SCnum = 0;
+      FREE(&Floodtable);
+      FREE(&Timerstable);
+      FREE(&Crontable);
+      iface->ift = I_DIED;
+      break;
+    case S_SHUTDOWN:
+      /* nothing to stop */
+      break;
+    default: ;
+  }
+  return 0;
+}
+
+static void *_scheduler_thread (void *data)
+{
+  INTERFACE *scheduler = data;
   int drift;
   struct tm tm;
   struct tm tm0;
   register unsigned int i, j = 0;
   struct binding_t *bind = NULL;
+  struct timespec abstime;
+  struct timespec req;
 
-  if (lasttime != Time)
+  if (clock_gettime(CLOCK_REALTIME, &abstime) != 0)
+    //FIXME: how can it be?
+    return NULL;
+  FOREVER
   {
+    /* let check if we were killed prior to anything */
+    if (scheduler->ift & (I_FINWAIT | I_DIED))
+      return NULL;
+
+    /* we are awaken so let rock it */
+    pthread_setcancelstate (PTHREAD_CANCEL_DISABLE, &drift);
+    Set_Iface (scheduler);
+
+    Time = abstime.tv_sec;
     drift = Time - lasttime;
+    /* DBG("processing second %ld, drift %d", (long)Time, drift); */
     if (drift < 0 || drift > MAXDRIFT)	/* it seems system time was changed */
     {
       drift--;				/* assume 1 second passed */
@@ -349,10 +395,14 @@ static int Sheduler (INTERFACE *ifc, REQUEST *req)
 	      j, _SFnum, MAXTABLESIZE);
     pthread_mutex_lock (&LockShed);
     /* update time variables */
-    localtime_r (&lasttime, &tm0);
-    lasttime = Time;
     localtime_r (&Time, &tm);
-    if (!ifc || tm.tm_min != tm0.tm_min)	/* ifc == NULL only on start */
+    if (lasttime == 0) {
+      tm0.tm_min = -1;				/* enforce update on start */
+      tm0.tm_mon = tm.tm_mon;			/* don't rotate Wtmp on start */
+    } else
+      localtime_r (&lasttime, &tm0);
+    lasttime = Time;
+    if (tm.tm_min != tm0.tm_min)
     {
       shedentry_t sh;
 
@@ -376,53 +426,79 @@ static int Sheduler (INTERFACE *ifc, REQUEST *req)
       {
 	register shedentry_t *ct = &Crontable[i];
 
+	if (ct->to == NULL)
+	  continue;
 	if (ct->ift && ((ct->min[0] & sh.min[0]) || (ct->min[1] & sh.min[1])) &&
 	    (ct->hour & sh.hour) && (ct->day & sh.day) &&
 	    (ct->month & sh.month) && (ct->weekday & sh.weekday))
 	{
-	  iftype_t ift = ct->ift;
-	  const char *to = ct->to;
-
 	  pthread_mutex_unlock (&LockShed);
-	  Send_Signal (ift, to, ct->signal);
+	  Send_Signal (ct->ift, ct->to, ct->signal);
 	  pthread_mutex_lock (&LockShed);
 	}
+      }
+      /* and now gather garbage, something might be freed */
+      for (i = 0; i < _SCnum; i++)
+      {
+	register shedentry_t *ct = &Crontable[i];
+
+	if (ct->to != NULL)
+	  continue;
+	_SCnum--;
+	if (i != _SCnum)
+	  memcpy (ct, &Crontable[_SCnum], sizeof(shedentry_t));
       }
     }
     /* decrement timers */
     for (i = 0, j = 0; i < _STnum; i++)
     {
-      register shedtimerentry_t *ct = &Timerstable[i-j];
+      register shedtimerentry_t *ct = &Timerstable[i];
 
+      if (ct->to == NULL)
+	continue;
       if (ct->timer > (unsigned int)drift)
 	ct->timer -= drift;
       else
       {
-	iftype_t ift = ct->ift;
-	char to[IFNAMEMAX+1];
-
-	strfcpy (to, ct->to, sizeof(to));
-	_STnum--;
-	if (i != _STnum)			/* move last entry here */
-	  memcpy (ct, &Timerstable[_STnum], sizeof(shedtimerentry_t));
 	pthread_mutex_unlock (&LockShed);
-	Send_Signal (ift, to, ct->signal);
+	Send_Signal (ct->ift, ct->to, ct->signal);
 	pthread_mutex_lock (&LockShed);
+	ct->to = NULL;
 	j++;
       }
     }
+    /* and now gather garbage, something might be freed */
     pthread_mutex_unlock (&LockShed);
+    for (i = 0; i < _STnum; i++)
+    {
+      register shedtimerentry_t *ct = &Timerstable[i];
+
+      if (ct->to != NULL)
+	continue;
+      _STnum--;
+      if (i != _STnum)
+	memcpy (ct, &Timerstable[_STnum], sizeof(shedtimerentry_t));
+    }
     if (j)
       dprint (3, "Sheduler: sent %u timer signal(s), remained %u/%u",
-	      j, i, MAXTABLESIZE);
+	      j, _STnum, MAXTABLESIZE);
     /* check if we need Wtmp rotation and do it */
-    if (ifc && tm.tm_mon != tm0.tm_mon)
+    if (tm.tm_mon != tm0.tm_mon)
     {
       dprint (3, "Sheduler: attempt of rotating Wtmp.");
       RotateWtmp();
     }
+    Unset_Iface();
+    pthread_setcancelstate (PTHREAD_CANCEL_ENABLE, &drift);
+
+    /* and now sleep until next second */
+    while (clock_gettime(CLOCK_REALTIME, &abstime) == 0 && abstime.tv_sec == Time)
+    {
+      req.tv_sec = 0;
+      req.tv_nsec = 1000000001L - abstime.tv_nsec; /* 1 ns after next second */
+      nanosleep(&req, NULL); /* this is where it can be cancelled by a signal */
+    }
   }
-  return REQ_OK;
 }
 
 void Status_Sheduler (INTERFACE *iface)
@@ -459,7 +535,7 @@ char *IFInit_Sheduler (void)
     Crontable = safe_calloc (32, sizeof(shedentry_t));
     _SCalloc = 32;
   }
-  if (_SFnum || _STnum || _SCnum)
+  if (running || _SFnum || _STnum || _SCnum)
   {
     ERROR ("sheduler.c:unclean restart: %uF/%uT/%uP", _SFnum, _STnum, _SCnum);
     _SFnum = _STnum = _SCnum = 0;
@@ -468,9 +544,15 @@ char *IFInit_Sheduler (void)
   BT_TimeShift = Add_Bindtable ("time-shift", B_MASK);
   /* init time */
   time (&Time);
-  Sheduler (NULL, NULL);
   /* create own interface - I_TEMP forever ;) */
   if (!ShedIface)
-    ShedIface = Add_Iface (I_TEMP, NULL, NULL, &Sheduler, NULL);
+    ShedIface = Add_Iface (I_TEMP, NULL, &scheduler_signal, NULL, NULL);
+  if (pthread_create(&pth_sched, NULL, &_scheduler_thread, ShedIface) == 0)
+  {
+    running = TRUE;
+    Add_Request (I_LOG, "*", F_BOOT, "Scheduler: started successfully.");
+  }
+  else
+    ERROR ("sheduler.c:failed to create a thread");
   return NULL;
 }
