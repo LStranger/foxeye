@@ -2913,6 +2913,7 @@ void ircd_burst_channels (struct peer_t *peer, IRCD *ircd, modeflag mf)
   while (leaf)
   {
     ch = leaf->s.data;
+    leaf = Next_Leaf (ircd->channels, leaf, NULL);
     if (ch->hold_upto && ch->count == 0) /* it's unavailable */
       continue;
     if (ch->mode & A_INVISIBLE)		/* local channel */
@@ -2965,7 +2966,6 @@ void ircd_burst_channels (struct peer_t *peer, IRCD *ircd, modeflag mf)
     FILL_BUFFER(invites,'I')
     if (l)
       New_Request (peer->iface, 0, "%.*s%s", (int)(t + l), buff, &buff[t + MAXMODES + 1]);
-    leaf = Next_Leaf (ircd->channels, leaf, NULL);
     while ((b = Check_Bindtable (BTIrcdEOB, ch->name, U_ALL, U_ANYCH, b)))
       if (!b->name && (ff = (void(*)())b->func)) /* do internal only */
 	ff (ircd->iface, peer, ch->name, ch->mode, (leaf == NULL));
