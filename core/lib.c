@@ -846,7 +846,7 @@ static void makeidlestr (printl_t *p)
 	      (p->idle%86400)/3600);
 }
 
-#define LEFT_CHARS (ll ? (ssize_t)(ll - p->i) : nn)
+#define LEFT_CHARS(_a) (ll ? (ssize_t)(ll - p->i) : _a)
 
 /* returns new buffer pointer */
 /* ll - line length, q - need check for '?' */
@@ -895,9 +895,9 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
       nn = &buf[s-1] - c;		/* rest octets in buff */
       if (nn < 0)
         nn = 0;
-      if (fw > nn)			/* how many octets we can put here? */
+      if ((!q || nn) && fw > nn)	/* how many octets we can put here? */
 	fw = nn;
-      _count_chars(t, &fw, LEFT_CHARS); /* fw now contains size that fits */
+      _count_chars(t, &fw, LEFT_CHARS(fw)); /* fw now contains size that fits */
       cc = memchr (t, '%', fw);
       if (!cc)				/* next subst is over */
       {					/* try by words */
@@ -916,13 +916,15 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
 	  while (cc > t && (*(cc-1) == ' ' || *(cc-1) == '\t')) cc--;
 	/* cc now is after last fitting word */
 	fw = cc - t;
+	if (fw > nn)			/* see (!q || nn) above */
+	  fw = nn;
 	if (fw) memcpy (c, t, fw);
 	c += fw;
 	t = cs;				/* first word for next line (or NL?) */
 	break;
       }
       fw = cc - t;			/* octets to subst */
-      n = _count_chars(t, &fw, LEFT_CHARS);
+      n = _count_chars(t, &fw, LEFT_CHARS(fw));
       if (fw) memcpy (c, t, fw);
       nn -= fw;				/* octets left in buff */
       t = cc;				/* we are on '%' now */
@@ -933,7 +935,7 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
       else
 	nmax = nn;				/* rest of buffer */
       fix = &t[1];
-      n = LEFT_CHARS;
+      n = LEFT_CHARS(nn);
       fw = 0;
       if (*fix >= '0' && *fix <= '9')	/* we have fixed field width here */
       {
