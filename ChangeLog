@@ -19,6 +19,9 @@ TODO:
 Thu Feb 16 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/list.c: corrected support saved hostmasks with passwords by
 	  Find_Clientrecord().
+	* modules/ircd/ircd.c: added check for maximum clients on login (it
+	  cannot exceed 10000 due to other limitations), and incoming server
+	  should not stay classless until we verify it's really a server.
 
 Wed Feb 15 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/sheduler.c: process timers in the separate thread with sleeping

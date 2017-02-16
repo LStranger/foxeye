@@ -32,6 +32,10 @@
 #include <wchar.h>
 #include <signal.h>
 
+/* see sheduler.c: we cannot exceed 20000 timers and since each local peer sets a
+   timer on ping timeout check, we cannot reach that limit to prevent shutdown */
+#define IRCD_MAX_LOCAL_CLIENTS 10000
+
 #define __IN_IRCD_C 1
 #include "ircd.h"
 #include "numerics.h"
@@ -174,9 +178,13 @@ static int _ircd_class_in (struct peer_t *peer, char *user, char *host,
   DBG("ircd:ircd.c: trying find %s", uh);
   cl = Find_Clientrecord (uh, &clname, NULL, NULL);
   if (!cl) {				/* do matching by IP too */
-    snprintf (uh, sizeof(uh), "%s@%s", NONULL(user), SocketIP(peer->socket));
-    DBG("ircd:ircd.c: trying find %s", uh);
-    cl = Find_Clientrecord (uh, &clname, NULL, NULL);
+    clname = SocketIP(peer->socket); /* use it temporarily */
+    if (strcmp(host, clname) != 0)
+    {
+      snprintf (uh, sizeof(uh), "%s@%s", NONULL(user), clname);
+      DBG("ircd:ircd.c: trying find %s", uh);
+      cl = Find_Clientrecord (uh, &clname, NULL, NULL);
+    }
   }
   if (cl)
   {
@@ -188,10 +196,9 @@ static int _ircd_class_in (struct peer_t *peer, char *user, char *host,
   else if (cl && clname && (clparms == NULL || clparms[0] == 0) &&
 	   (uf & U_UNSHARED)) /* ok, it's a server */
   {
-    DBG("ircd:ircd.c: user %s is server", clname);
-    Unlock_Clientrecord (cl);
-    Unset_Iface();
-    return 1;				/* it's passed with server class */
+    DBG("ircd:ircd.c: user %s is probably a server", clname);
+    clname = DEFCLASSNAME;		/* pass with <default> class for now */
+    clparms = _ircd_default_class;
   }
   else					/* we cannot detect server from host */
   {
@@ -221,6 +228,13 @@ static int _ircd_class_in (struct peer_t *peer, char *user, char *host,
   {
     Unset_Iface();
     *msg = "too many users";
+    return 0;
+  }
+  if (ME.x.a.uc > IRCD_MAX_LOCAL_CLIENTS && !(uf & U_UNSHARED)) /* server overloaded */
+  {
+    Unset_Iface();
+    //FIXME: check for bounce
+    *msg = "server is full";
     return 0;
   }
   /* check for local and global limits */
