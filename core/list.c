@@ -222,16 +222,28 @@ static struct clrec_t *_findthebest (const char *mask, struct clrec_t *prefer)
   int n, p = 0, matched = 0;
   lid_t lid;
   char lcmask[HOSTMASKLEN+1];
+  char hostmask[HOSTMASKLEN+1];
+  register const char *c;
 
   unistrlower (lcmask, mask, sizeof(lcmask));  
   rw_rdlock (&HLock);
   lid = LID_MIN;
   do {
     if ((u = UList[lid - LID_MIN]) && !(u->flag & (U_SPECIAL|U_ALIAS)))
-    /* pseudo-users hosts are not masks */
       for (hr = u->host; hr; hr = hr->next)
       {
-	n = match (hr->hostmask, lcmask);
+	for (n = 0, c = hr->hostmask; *c && n < (int)sizeof(hostmask)-1; )
+	{
+	  /* special support for masks with password */
+	  if (*c == ':')
+	    while (*c && *c != '@') c++;
+	  if (*c == '@')
+	    while (*c && n < (int)sizeof(hostmask)-1) hostmask[n++] = *c++;
+	  else
+	    hostmask[n++] = *c++;
+	}
+	hostmask[n] = '\0';
+	n = match (hostmask, lcmask);
 	/* find max */
 	if (n > matched)
 	{
