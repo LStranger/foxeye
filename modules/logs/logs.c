@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003-2014  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2003-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -1037,7 +1037,10 @@ static void logrotate_reset (void)
     strcpy (logrotate_hr, "0");
   else if (x > 23)
     strcpy (logrotate_hr, "23");
-  x = atoi (logrotate_time+2);
+  if (logrotate_time[1])
+    x = atoi (logrotate_time+2);
+  else
+    x = 0;
   if (x > 59)
     x = 59;
   snprintf(logrotate_min, 3, "%d", x);

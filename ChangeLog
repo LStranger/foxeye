@@ -22,6 +22,8 @@ Thu Feb 16 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: added check for maximum clients on login (it
 	  cannot exceed 10000 due to other limitations), and incoming server
 	  should not stay classless until we verify it's really a server.
+	* modules/logs/logs.c: added check on "logrotate-time" variable value,
+	  it might crash on too short length.
 
 Wed Feb 15 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/sheduler.c: process timers in the separate thread with sleeping
