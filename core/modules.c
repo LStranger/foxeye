@@ -177,11 +177,11 @@ ScriptFunction (FE_module)
     }
 #endif
 #ifndef STATIC
-    if (!(tmp = Add_Iface (I_TEMP, name, NULL, NULL, modh)))
+    if (!(tmp = Add_Iface (I_MODULE, name, NULL, NULL, modh)))
     {
       dlclose (modh);
 #else
-    if (!(tmp = Add_Iface (I_TEMP, name, NULL, NULL, NULL)))
+    if (!(tmp = Add_Iface (I_MODULE, name, NULL, NULL, NULL)))
     {
 #endif
       ERROR ("module %s: cannot create interface.", name);
@@ -202,7 +202,6 @@ ScriptFunction (FE_module)
     }
     Set_Iface (tmp);				/* just in case */
     tmp->IFSignal = mods;
-    tmp->ift = I_MODULE;
     Unset_Iface();
     if (!BT_Modadd)
       BT_Modadd = Add_Bindtable ("load", B_MASK);

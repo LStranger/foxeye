@@ -31,6 +31,7 @@
 #include "tree.h"
 #include "conversion.h"
 #include "socket.h"
+#include "sheduler.h"
 
 #ifndef STATIC		/* it's simpler to have dlcose() here */
 # ifdef HAVE_DLFCN_H
@@ -754,6 +755,7 @@ static int _delete_iface (unsigned int r)
   register iftype_t rc;
 
   while (delete_request (curifi, curifi->head)); /* no queue for dead! */
+  _stop_timers (todel);
   if (!todel->IFSignal)			/* noone can be resumed from clone */
     ti = NULL;
   else for (ti = todel->prev; ti; ti = ti->prev)

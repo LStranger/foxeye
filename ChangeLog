@@ -19,6 +19,8 @@ TODO:
 Wed Feb 15 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/sheduler.c: process timers in the separate thread with sleeping
 	  to reduce CPU consumed.
+	* core/sheduler.*, core/dispatcher.c, doc/modules.api, core/modules.c, modules/irc-channel/chmanagement.c, modules/irc-channel/irc-channel.c, modules/irc-ctcp/dcc.c:
+	  new APIs: Add_Schedule(), Stop_Schedule(), Add_Timer().
 
 Tue Feb 14 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c, modules/ircd/ircd.*, doc/modules.api: added

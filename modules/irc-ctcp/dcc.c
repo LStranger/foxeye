@@ -1177,8 +1177,8 @@ static void *_dcc_stage_1 (void *input_data)
     dcc->wait_accept = TRUE;		/* let thread know about resume */
     dcc->startptr = 0;
     dcc->state = P_IDLE;		/* interface is still alive! */
-    dcc->tid = NewTimer (I_CONNECT, dcc->l.iface->name, S_TIMEOUT,
-			 ircdcc_resume_timeout, 0, 0, 0); /* timeout for ACCEPT */
+    dcc->tid = Add_Timer (dcc->l.iface, S_TIMEOUT, ircdcc_resume_timeout);
+					/* timeout for ACCEPT */
     Unset_Iface();
     pthread_exit(NULL);
   }
@@ -1856,7 +1856,7 @@ static int ssirc_send (struct peer_t *peer, INTERFACE *w, char *args)
 		 net, ip_local, dcc->size, _ircdcc_dccid);
     snprintf (target, sizeof(target), "irc-ctcp#%u", _ircdcc_dccid++);
     dcc->l.iface = Add_Iface (I_TEMP, target, &_isend_sig_w, NULL, dcc);
-    dcc->tid = NewTimer (I_TEMP, target, S_TIMEOUT, ircdcc_conn_timeout, 0, 0, 0);
+    dcc->tid = Add_Timer (dcc->l.iface, S_TIMEOUT, ircdcc_conn_timeout);
     /* done... we should wait for responce now so we can connect there */
   } else {
     struct dcc_listener_data *dld;

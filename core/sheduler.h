@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2008  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -20,9 +20,17 @@
 
 typedef int tid_t;
 
+/* script-style schedules */
 void NewShedule (iftype_t, const char *, ifsig_t, char *, char *, char *, char *, char *);
 void KillShedule (iftype_t, const char *, ifsig_t, char *, char *, char *, char *, char *);
 tid_t NewTimer (iftype_t, const char *, ifsig_t, unsigned int, unsigned int, unsigned int, unsigned int);
+/* exact interface schedules */
+void Add_Schedule (INTERFACE *, ifsig_t, char *, char *, char *, char *, char *);
+void Stop_Schedule (INTERFACE *, ifsig_t, char *, char *, char *, char *, char *);
+tid_t Add_Timer (INTERFACE *, ifsig_t, time_t);
 void KillTimer (tid_t);
 int CheckFlood (short *, short[2]);
 void NoCheckFlood (short *);
+
+/* should be called from dispatcher on interface freeing */
+void _stop_timers (INTERFACE *iface);

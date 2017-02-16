@@ -26,7 +26,6 @@
 #if IRCD_USES_ICONV == 0 || (defined(HAVE_ICONV) && (IRCD_NEEDS_TRANSLIT == 0 || defined(HAVE_CYRILLIC_TRANSLIT)))
 #include "init.h"
 #include "list.h"
-#include "sheduler.h"
 #include "conversion.h"
 #include "socket.h"
 
@@ -2294,7 +2293,7 @@ static void _ircd_init_uplinks (void)
 {
   if (_uplinks_timer == -1)
     /* start autoconnect each 30 seconds until got some uplink */
-    _uplinks_timer = NewTimer(I_SERVICE, Ircd->iface->name, S_TIMEOUT, 30, 0, 0, 0);
+    _uplinks_timer = Add_Timer(Ircd->iface, S_TIMEOUT, 30);
 }
 
 /* called when timer is expired */

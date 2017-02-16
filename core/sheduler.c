@@ -138,8 +138,7 @@ typedef struct
   uint32_t day;
   uint16_t month;
   uint16_t weekday;
-  iftype_t ift;
-  const char *to;
+  INTERFACE *iface;
   ifsig_t signal;
 } shedentry_t;
 
@@ -151,16 +150,33 @@ static unsigned int _SCnum = 0;
 void NewShedule (iftype_t ift, const char *name, ifsig_t sig,
 		 char *min, char *hr, char *ds, char *mn, char *wk)
 {
+  INTERFACE *iface;
+
+  if (ift == 0 || name == NULL)
+    return;
+  iface = Find_Iface (ift, name);
+  if (iface)
+  {
+    Add_Schedule (iface, sig, min, hr, ds, mn, wk);
+    Unset_Iface();
+  }
+  else
+    WARNING ("NewShedule: interface %#x \"%s\" not found!", (int)ift, name);
+}
+
+void Add_Schedule (INTERFACE *iface, ifsig_t sig,
+		   char *min, char *hr, char *ds, char *mn, char *wk)
+{
   register shedentry_t *ct;
   uint32_t mask[2];
 
-  if (ift == 0 || name == NULL)
+  if (iface == NULL)
     return;
   pthread_mutex_lock (&LockShed);
   if (_SCnum >= MAXTABLESIZE)
   {
     pthread_mutex_unlock (&LockShed);
-    bot_shutdown ("Internal error in NewShedule()", 8);
+    bot_shutdown ("Internal error in Add_Shedule()", 8);
   }
   if (_SCnum >= _SCalloc)
   {
@@ -168,8 +184,7 @@ void NewShedule (iftype_t ift, const char *name, ifsig_t sig,
     safe_realloc ((void **)&Crontable, (_SCalloc) * sizeof(shedentry_t));
   }
   ct = &Crontable[_SCnum];
-  ct->ift = ift;
-  ct->to = name;
+  ct->iface = iface;
   ct->signal = sig;
   _get_mask (min, ct->min, 60);
   _get_mask (hr, mask, 24);
@@ -188,17 +203,32 @@ void NewShedule (iftype_t ift, const char *name, ifsig_t sig,
 void KillShedule (iftype_t ift, const char *name, ifsig_t sig,
 		  char *min, char *hr, char *ds, char *mn, char *wk)
 {
+  INTERFACE *iface;
+
+  if (ift == 0 || name == NULL)
+    return;
+  iface = Find_Iface (ift, name);
+  if (iface)
+  {
+    Stop_Schedule (iface, sig, min, hr, ds, mn, wk);
+    Unset_Iface();
+  }
+  else
+    WARNING ("KillShedule: interface %#x \"%s\" not found!", (int)ift, name);
+}
+
+void Stop_Schedule (INTERFACE *iface, ifsig_t sig,
+		    char *min, char *hr, char *ds, char *mn, char *wk)
+{
   register size_t i;
   register shedentry_t *ct;
   uint32_t mask[2];
 
-  if (ift == 0 || name == NULL)
-    return;
   pthread_mutex_lock (&LockShed);
   for (i = 0; i < _SCnum; i++)
   {
     ct = &Crontable[i];
-    if (ct->ift == ift && ct->to == name)
+    if (ct->iface == iface)
     {
       _get_mask (min, mask, 60);
       ct->min[0] &= ~(mask[0]);
@@ -215,7 +245,7 @@ void KillShedule (iftype_t ift, const char *name, ifsig_t sig,
 	  !ct->weekday)
       {
 	/* just mark it, it will be freed on next second iteration */
-	ct->to = NULL;
+	ct->iface = NULL;
       }
     }
   }
@@ -224,10 +254,9 @@ void KillShedule (iftype_t ift, const char *name, ifsig_t sig,
 
 typedef struct
 {
-  unsigned int timer;
+  time_t timer;
   tid_t id;
-  iftype_t ift;
-  const char *to;
+  INTERFACE *iface;
   ifsig_t signal;
 } shedtimerentry_t;
 
@@ -240,27 +269,47 @@ static tid_t _STid = 0;
 tid_t NewTimer (iftype_t ift, const char *name, ifsig_t sig, unsigned int sec,
 		unsigned int min, unsigned int hr, unsigned int ds)
 {
-  register shedtimerentry_t *ct;
-  tid_t id;
-  register unsigned int i;
-  unsigned int j;
+  INTERFACE *iface;
+  tid_t id = -1;
 
   if (ift == 0 || name == NULL)
+    return id;
+  iface = Find_Iface (ift, name);
+  if (iface)
+  {
+    id = Add_Timer (iface, sig, sec + 60*min + 3600*hr + 86400*ds);
+    Unset_Iface();
+  }
+  else
+    WARNING ("NewTimer: interface %#x \"%s\" not found!", (int)ift, name);
+  return id;
+}
+
+tid_t Add_Timer (INTERFACE *iface, ifsig_t sig, time_t timer)
+{
+  register shedtimerentry_t *ct;
+  tid_t id = -1;
+  register unsigned int i;
+
+  if (iface == NULL)
     return -1;
   pthread_mutex_lock (&LockShed);
-  j = (sec + 60*min + 3600*hr + 86400*ds);
   for (i = 0; i < _STnum; i++)
   {
     ct = &Timerstable[i];
-    if (ct->ift == ift && ct->signal == sig && ct->timer == j &&
-	!strcmp (ct->to, name))		/* duplicate signal, reject it */
+    if (ct->iface == iface && ct->signal == sig && ct->timer == timer)
+    {
+      /* duplicate request, ignore it */
+      id = ct->id;
       break;
+    }
   }
   if (i < _STnum || _STnum >= MAXTABLESIZE)
   {
     pthread_mutex_unlock (&LockShed);
-    WARNING ("NewTimer: failed for %s +%u sec (entry %u)", name, j, i);
-    return -1;
+    WARNING ("Add_Timer: failed for %s +%ld sec (entry %u id %d)", iface->name,
+	     (long)timer, i, id);
+    return id;
   }
   if (_STnum >= _STalloc)
   {
@@ -268,16 +317,16 @@ tid_t NewTimer (iftype_t ift, const char *name, ifsig_t sig, unsigned int sec,
     safe_realloc ((void **)&Timerstable, (_STalloc) * sizeof(shedtimerentry_t));
   }
   ct = &Timerstable[_STnum];
-  ct->ift = ift;
-  ct->to = name;
+  ct->iface = iface;
   ct->signal = sig;
-  ct->timer = j;
+  ct->timer = timer;
   ct->id = id = _STid++;
   if (_STid < 0)
     _STid = 0;				/* never under zero! */
   _STnum++;
   pthread_mutex_unlock (&LockShed);
-  dprint (3, "NewTimer: added for %s +%u sec (id %d)", name, j, id);
+  dprint (3, "NewTimer: added for %s +%ld sec (id %d)", iface->name,
+	  (long)timer, id);
   return id;
 }
 
@@ -294,7 +343,7 @@ void KillTimer (tid_t tid)
     if (Timerstable[i].id == tid)
     {
       /* just mark it, it will be freed on next second iteration */
-      Timerstable[i].to = NULL;
+      Timerstable[i].iface = NULL;
       break;
     }
   }
@@ -405,6 +454,7 @@ static void *_scheduler_thread (void *data)
     if (tm.tm_min != tm0.tm_min)
     {
       shedentry_t sh;
+      register iftype_t rc;
 
       /* update datestamp */
       if (!strftime (TimeString, sizeof(TimeString), "%H:%M %e %b", &tm))
@@ -426,14 +476,16 @@ static void *_scheduler_thread (void *data)
       {
 	register shedentry_t *ct = &Crontable[i];
 
-	if (ct->to == NULL)
+	if (ct->iface == NULL)
 	  continue;
-	if (ct->ift && ((ct->min[0] & sh.min[0]) || (ct->min[1] & sh.min[1])) &&
+	if (((ct->min[0] & sh.min[0]) || (ct->min[1] & sh.min[1])) &&
 	    (ct->hour & sh.hour) && (ct->day & sh.day) &&
 	    (ct->month & sh.month) && (ct->weekday & sh.weekday))
 	{
 	  pthread_mutex_unlock (&LockShed);
-	  Send_Signal (ct->ift, ct->to, ct->signal);
+	  if (!(ct->iface->ift & I_DIED) && ct->iface->IFSignal &&
+	      (rc = ct->iface->IFSignal (ct->iface, ct->signal)))
+	    ct->iface->ift |= rc;
 	  pthread_mutex_lock (&LockShed);
 	}
       }
@@ -442,7 +494,7 @@ static void *_scheduler_thread (void *data)
       {
 	register shedentry_t *ct = &Crontable[i];
 
-	if (ct->to != NULL)
+	if (ct->iface != NULL)
 	  continue;
 	_SCnum--;
 	if (i != _SCnum)
@@ -453,32 +505,35 @@ static void *_scheduler_thread (void *data)
     for (i = 0, j = 0; i < _STnum; i++)
     {
       register shedtimerentry_t *ct = &Timerstable[i];
+      register iftype_t rc;
 
-      if (ct->to == NULL)
+      if (ct->iface == NULL)
 	continue;
-      if (ct->timer > (unsigned int)drift)
+      if (ct->timer > drift)
 	ct->timer -= drift;
       else
       {
 	pthread_mutex_unlock (&LockShed);
-	Send_Signal (ct->ift, ct->to, ct->signal);
+	if (!(ct->iface->ift & I_DIED) && ct->iface->IFSignal &&
+	    (rc = ct->iface->IFSignal (ct->iface, ct->signal)))
+	  ct->iface->ift |= rc;
 	pthread_mutex_lock (&LockShed);
-	ct->to = NULL;
+	ct->iface = NULL;
 	j++;
       }
     }
     /* and now gather garbage, something might be freed */
-    pthread_mutex_unlock (&LockShed);
     for (i = 0; i < _STnum; i++)
     {
       register shedtimerentry_t *ct = &Timerstable[i];
 
-      if (ct->to != NULL)
+      if (ct->iface != NULL)
 	continue;
       _STnum--;
       if (i != _STnum)
 	memcpy (ct, &Timerstable[_STnum], sizeof(shedtimerentry_t));
     }
+    pthread_mutex_unlock (&LockShed);
     if (j)
       dprint (3, "Sheduler: sent %u timer signal(s), remained %u/%u",
 	      j, _STnum, MAXTABLESIZE);
@@ -555,4 +610,27 @@ char *IFInit_Sheduler (void)
   else
     ERROR ("sheduler.c:failed to create a thread");
   return NULL;
+}
+
+/* should be called from dispatcher on interface freeing */
+void _stop_timers (INTERFACE *iface)
+{
+  unsigned int i;
+
+  pthread_mutex_lock (&LockShed);
+  for (i = 0; i < _SCnum; i++)
+  {
+    register shedentry_t *ct = &Crontable[i];
+
+    if (ct->iface == iface)
+      ct->iface = NULL;
+  }
+  for (i = 0; i < _STnum; i++)
+  {
+    register shedtimerentry_t *ct = &Timerstable[i];
+
+    if (ct->iface == iface)
+      ct->iface = NULL;
+  }
+  pthread_mutex_unlock (&LockShed);
 }

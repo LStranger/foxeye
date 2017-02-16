@@ -899,20 +899,36 @@ Scheduler-timer API:
   void NNeewwSShheedduullee (iftype_t _i_f_t, const char *_n_a_m_e, ifsig_t _s_i_g,
 		   char *_m_i_n, char *_h_r, char *_d_s, char *_m_n, char *_w_k);
     Sets new schedule mask for some minutes _m_i_n, hours _h_r, days _d_s of
+    months _m_n on day of week _w_k. Function searches for interface matched
+    _n_a_m_e and type _i_f_t to schedule the job to it, so it should exist prior
+    to this function call. See Add_Schedule() function description for
+    more details.
+	Reenterability: thread-safe
+	Cancellation point: no
+
+  void AAdddd__SScchheedduullee (INTERFACE *_i_f_a_c_e, ifsig_t _s_i_g, char *_m_i_n, char *_h_r,
+		     char *_d_s, char *_m_n, char *_w_k);
+    Sets new schedule mask for some minutes _m_i_n, hours _h_r, days _d_s of
     months _m_n on day of week _w_k. Each of these submasks is comma
     separated list of times: "*[/i]" or "a[-b[/i]]". First format means
     do the job each i, second means do each i in interval a to b, that
     range is inclusive. If i is omitted then assume it's equal 1, if b
     is omitted then assume it's equal to a. Allowed values: _m_i_n 0-59,
     _h_r 0-23, _d_s 1-31, _m_n 1-12, _w_k 0-7, since real time will never reach
-    other. When schedule is matched then signal _s_i_g will be sent to
-    interface _n_a_m_e with type _i_f_t. Returns nothing.
+    other. When schedule is matched then signal _s_i_g will be sent to the
+    interface _i_f_a_c_e. Returns nothing.
 	Reenterability: thread-safe
 	Cancellation point: no
 
   void KKiillllSShheedduullee (iftype_t _i_f_t, const char *_n_a_m_e, ifsig_t _s_i_g,
 		    char *_m_i_n, char *_h_r, char *_d_s, char *_m_n, char *_w_k);
-    Aborts schedule mask. Synopsis equal to NewShedule().
+    Aborts schedule mask. Synopsis is equal to NewShedule().
+	Reenterability: thread-safe
+	Cancellation point: no
+
+  void SSttoopp__SScchheedduullee (INTERFACE *_i_f_a_c_e, ifsig_t _s_i_g, char *_m_i_n, char *_h_r,
+		      char *_d_s, char *_m_n, char *_w_k);
+    Aborts schedule mask. Synopsis is equal to Add_Schedule().
 	Reenterability: thread-safe
 	Cancellation point: no
 
@@ -920,9 +936,20 @@ Scheduler-timer API:
 		  unsigned int _s_e_c, unsigned int _m_i_n, unsigned int _h_r,
 		  unsigned int _d_s);
     Set new schedule job for _s_e_c seconds, _m_i_n minutes, _h_r hours and _d_s
-    days since current time. When job time is reached then signal _s_i_g
-    will be sent to interface _n_a_m_e with type _i_f_t. Returns new schedule
-    job identifier if schedule set successful or -1 otherwise.
+    days since current time. Function searches for interface matched _n_a_m_e
+    and type _i_f_t to schedule the job to it, so it should exist prior to
+    this function call. See Add_Timer() function description for more
+    details.
+	Reenterability: thread-safe
+	Cancellation point: no
+
+  tid_t AAdddd__TTiimmeerr (INTERFACE *_i_f_a_c_e, ifsig_t _s_i_g, time_t _s_e_c);
+    Set new schedule job for _s_e_c seconds since current time. When the job
+    time is reached then signal _s_i_g will be sent to the interface _i_f_a_c_e.
+    Returns new schedule job identifier if schedule set successful or -1
+    otherwise. Note: if a job was previously set on the same second for
+    the same interface with the same signal then function will return an
+    identifier assigned before and don't assing duplicate job to it.
 	Reenterability: thread-safe
 	Cancellation point: no
 

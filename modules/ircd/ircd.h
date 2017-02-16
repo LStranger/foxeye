@@ -21,6 +21,7 @@
 /* these are used in structures below */
 #include <direct.h>
 #include <tree.h>
+#include <sheduler.h>
 
 	/* "modes" for internal usage */
 #define A_ISON		(1<<0)

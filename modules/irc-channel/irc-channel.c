@@ -356,7 +356,7 @@ static CHANNEL *_ircch_get_channel0 (IRC *net, const char *ch, const char *real)
     Unlock_Clientrecord (u);
   }
   chan->tid = -1;
-  NewShedule (I_SERVICE, ch, S_TIMEOUT, "*", "*", "*", "*", "*");
+  Add_Schedule (chan->chi, S_TIMEOUT, "*", "*", "*", "*", "*");
   if (Insert_Key (&net->channels, chan->chi->name, chan, 1))
     ERROR ("_ircch_get_channel: tree error!");
   return chan;
@@ -414,8 +414,7 @@ static void _ircch_destroy_channel (void *cht)
   while (((CHANNEL *)cht)->invites)
     ircch_remove_mask (&((CHANNEL *)cht)->invites, ((CHANNEL *)cht)->invites);
   KillTimer (((CHANNEL *)cht)->tid);
-  KillShedule (I_SERVICE, ((CHANNEL *)cht)->chi->name, S_TIMEOUT,
-	       "*", "*", "*", "*", "*");
+  Stop_Schedule (((CHANNEL *)cht)->chi, S_TIMEOUT, "*", "*", "*", "*", "*");
   FREE (&((CHANNEL *)cht)->key);
   FREE (&((CHANNEL *)cht)->real);
   ((CHANNEL *)cht)->chi->ift = I_DIED;
