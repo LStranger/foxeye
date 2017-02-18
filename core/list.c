@@ -219,27 +219,35 @@ static struct clrec_t *_findthebest (const char *mask, struct clrec_t *prefer)
 {
   struct clrec_t *u, *user = NULL;
   user_hr *hr;
+  char *at_excl;
   int n, p = 0, matched = 0;
   lid_t lid;
   char lcmask[HOSTMASKLEN+1];
   char hostmask[HOSTMASKLEN+1];
   register const char *c;
 
-  unistrlower (lcmask, mask, sizeof(lcmask));  
+  unistrlower (lcmask, mask, sizeof(lcmask));
+  at_excl = strchr(lcmask, '!');
   rw_rdlock (&HLock);
   lid = LID_MIN;
   do {
     if ((u = UList[lid - LID_MIN]) && !(u->flag & (U_SPECIAL|U_ALIAS)))
       for (hr = u->host; hr; hr = hr->next)
       {
-	for (n = 0, c = hr->hostmask; *c && n < (int)sizeof(hostmask)-1; )
+	/* skip xxx! part in hostmask if input does not contain one yet */
+	if (!at_excl && (c = strchr(hr->hostmask, '!')))
+	  c++;
+	else
+	  c = hr->hostmask;
+	for (n = 0; *c && n < (int)sizeof(hostmask)-1; )
 	{
-	  /* special support for masks with password */
+	  /* special support for masks with password and port */
 	  if (*c == ':')
 	    while (*c && *c != '@') c++;
-	  if (*c == '@')
-	    while (*c && n < (int)sizeof(hostmask)-1) hostmask[n++] = *c++;
-	  else
+	  if (*c == '@') {
+	    while (*c && *c != '/' && n < (int)sizeof(hostmask)-1) hostmask[n++] = *c++;
+	    break;
+	  } else
 	    hostmask[n++] = *c++;
 	}
 	hostmask[n] = '\0';
