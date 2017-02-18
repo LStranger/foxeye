@@ -105,7 +105,7 @@ static FILE *lastdebuglog = NULL;
 
 /* lock for shutdown since it can be called any time */
 /* if LockIface is set then _Inum is implicitly locked for reading */
-pthread_mutex_t LockInum = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t LockInum = PTHREAD_MUTEX_INITIALIZER;
 
 static char PID_path[LONG_STRING];
 
@@ -1282,15 +1282,35 @@ static int write_pid (int fd, pid_t pid)
   return 0;
 }
 
+static int sig_pipe[2]; /* pipe for signals delivery */
+
 static pthread_mutex_t SigLock = PTHREAD_MUTEX_INITIALIZER;
 
 static volatile sig_atomic_t _got_signal = 0;
 
+static void *sig_pipe_reader(void *__unused)
+{
+  sigset_t set;
+  int signo;
+
+  sigfillset(&set);
+  pthread_sigmask(SIG_BLOCK, &set, NULL);
+  FOREVER
+  {
+    if (read(sig_pipe[0], &signo, sizeof(int)) == sizeof(int))
+    {
+      pthread_mutex_lock (&SigLock);
+      _got_signal = signo;
+      pthread_mutex_unlock (&SigLock);
+    }
+  }
+  /* never reached */
+  return NULL;
+}
+
 static void normal_handler (int signo)
 {
-  pthread_mutex_lock (&SigLock);
-  _got_signal = signo;
-  pthread_mutex_unlock (&SigLock);
+  write(sig_pipe[1], &signo, sizeof(int));
 }
 
 static void errors_handler (int signo)
@@ -1350,6 +1370,7 @@ int dispatcher (INTERFACE *start_if)
   pid_t pid;
   pthread_mutexattr_t attr;
   char *oldpid;
+  pthread_t sig_pipe_th;
 
   /* check if bot already runs */
   pidfd = set_pid_path();
@@ -1401,6 +1422,10 @@ int dispatcher (INTERFACE *start_if)
   if (freopen ("/dev/null", "w", stderr)) i=i;
   setsid();
   umask(0);
+  /* create a thread for signal pipe */
+  if (pipe (sig_pipe) != 0 ||
+      pthread_create(&sig_pipe_th, NULL, &sig_pipe_reader, NULL) != 0)
+    bot_shutdown (_("Failed to create signals thread."), 3);
   /* catch the signals */
   act.sa_handler = &normal_handler;
   sigemptyset (&act.sa_mask);
