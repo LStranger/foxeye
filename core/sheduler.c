@@ -333,12 +333,12 @@ tid_t Add_Timer (INTERFACE *iface, ifsig_t sig, time_t timer)
 /* delete cell from Timerstable */
 void KillTimer (tid_t tid)
 {
-  size_t i;
+  ssize_t i;
 
   if (tid < 0)
     return;
   pthread_mutex_lock (&LockShed);
-  for (i = 0; i < _STnum; i++)
+  for (i = 0; (size_t)i < _STnum; i++)
   {
     if (Timerstable[i].id == tid)
     {
@@ -347,7 +347,11 @@ void KillTimer (tid_t tid)
       break;
     }
   }
+  if ((size_t)i == _STnum)
+    i = -1;
   pthread_mutex_unlock (&LockShed);
+  if (i >= 0)
+    dprint (3, "KillTimer: removed id %d", tid);
 }
 
 static time_t lasttime = 0;

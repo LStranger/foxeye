@@ -18,6 +18,9 @@
  * This file is part of FoxEye's source: scheduler API.
  */
 
+#ifndef _SCHEDULER_H
+#define _SCHEDULER_H 1
+
 typedef int tid_t;
 
 /* script-style schedules */
@@ -34,3 +37,5 @@ void NoCheckFlood (short *);
 
 /* should be called from dispatcher on interface freeing */
 void _stop_timers (INTERFACE *iface);
+
+#endif /* _SCHEDULER_H */
