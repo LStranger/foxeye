@@ -1386,7 +1386,7 @@ static int _rusnet_call_services(INTERFACE *srv, struct peer_t *peer,
 {
   const char *host = NULL, *ident = NULL;
   char buf[MESSAGEMAX];
-  size_t ptr;
+  size_t ptr = 0;
 
   if (argc < 1 || argv[0][0] == 0)
   {

@@ -22,6 +22,11 @@
  * supports inline directive
  */
 
+#ifdef _INLINES_H
+# error File inlines.h can be included only once!
+#endif
+#define _INLINES_H 1
+
 /* in case it's included into protos.h it has to be declared static */
 #ifdef HAVE_INLINE
 # define INLINE_I static inline

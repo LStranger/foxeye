@@ -2193,6 +2193,7 @@ INTERFACE *init (void)
     ConfigFileIface->ift = I_TEMP;		/* force flags */
     Set_Iface (ConfigFileIface);		/* it's current again */
     _unsharp_var("charset");
+    _unsharp_var("locale");
     /* it's time to write to config so signal to register again */
     Send_Signal (-1, "*", S_REG);
     Set_Iface (Init);				/* flush everything now */

@@ -34,7 +34,11 @@
 
 /* see sheduler.c: we cannot exceed 20000 timers and since each local peer sets a
    timer on ping timeout check, we cannot reach that limit to prevent shutdown */
+#if SOCKETMAX > 10002
 #define IRCD_MAX_LOCAL_CLIENTS 10000
+#else
+#define IRCD_MAX_LOCAL_CLIENTS (SOCKETMAX - 2) /* reserve one for a ident socket */
+#endif
 
 #define __IN_IRCD_C 1
 #include "ircd.h"
@@ -357,7 +361,7 @@ static void _ircd_class_update (void)
     }
   for (clp = &Ircd->users; (cls = *clp); )
   {
-    struct clrec_t *clu;
+    struct clrec_t *clu = NULL;
 
     if (cls == cld)			/* default class */
       clparms = _ircd_default_class;
@@ -579,6 +583,7 @@ static void _ircd_peer_kill (peer_priv *peer, const char *msg)
     }
     DBG("ircd:_ircd_peer_kill: %s (%p) converted to phantom", cl->lcnick, cl);
   }
+  Mark_Iface(peer->p.iface);		/* ask dispatcher to run request part */
   Unset_Iface();
 }
 
@@ -1344,6 +1349,17 @@ static iftype_t _ircd_client_signal (INTERFACE *cli, ifsig_t sig)
       New_Request(tmp, F_REPORT, "%s", buff);
       Unset_Iface();
       break;
+    case S_LOCAL:
+      /* penalty timeout, just mark interface for request */
+      Mark_Iface(cli);
+      break;
+    case S_TIMEOUT:
+      /* login/ping timeout, clear timer and mark interface for request */
+      if (peer->timer >= 0)
+	KillTimer(peer->timer);
+      peer->timer = -1;
+      Mark_Iface(cli);
+      break;
     case S_TERMINATE:
       switch (peer->p.state)
       {
@@ -1442,7 +1458,9 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
       c = (char *)SocketIP(peer->p.socket);
       LOG_CONN("ircd: timeout on connection start from %s", NONULLP(c));
       _ircd_client_signal(cli, S_TERMINATE);
-    }
+    } else if (peer->timer < 0)
+      peer->timer = Add_Timer(cli, S_TIMEOUT,
+			      _ircd_start_timeout + peer->started - Time);
     return REQ_OK;
   }
   if (peer->link == NULL) {	/* it's P_QUIT after timeout or emergency */
@@ -1468,12 +1486,16 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
 	if (strncmp (req->string, "ERROR ", 6) &&
 	    strncmp (NextWord(req->string), "465 ", 4) && /* ERR_YOUREBANNEDCREEP */
 	    strncmp (NextWord(req->string), "KILL ", 5))
+	{
+	  Mark_Iface (cli);
 	  return REQ_OK;	/* skip anything but ERROR or KILL message */
+	}
 	DBG("sending last message to client \"%s\"", cl->nick);
 	sw = strlen (req->string);
 	if (sw && Peer_Put ((&peer->p), req->string, &sw) == 0)
 	  return REQ_REJECTED;	/* try again later */
-	return REQ_OK;		/* let every ERROR/KILL be delivered */
+	if (cli->qsize > 0)
+	  return REQ_OK;	/* let every ERROR/KILL be delivered */
       }
       Rename_Iface(cli, NULL);	/* delete it from everywhere before checks */
 #if IRCD_MULTICONNECT
@@ -1528,7 +1550,10 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
       sw = 0;			/* trying to send what is still left */
       sr = Peer_Put ((&peer->p), NULL, &sw);
       if (sr == 0)
+      {
+	Mark_Iface (cli);	/* mark interface for retry */
 	return REQ_OK;		/* still something left, OK, will try later */
+      }
       //TODO: read 'message of death' from connchain and log it
       Peer_Cleanup (&peer->p);
       cli->data = NULL;		/* disown it */
@@ -1613,12 +1638,17 @@ _sendq_exceeded:
       }
       break;
   }
+  sw = 0;
   if (!(cl->umode & (A_SERVER | A_SERVICE)) &&
       peer->penalty > _ircd_client_recvq[1])
+  {
     sr = 0;				/* apply penalty on flood from clients */
+    Add_Timer(cli, S_LOCAL, peer->penalty - _ircd_client_recvq[1]);
+  }
   else while ((sr = Peer_Get ((&peer->p), buff, sizeof(buff))) > 0)
   {					/* we got a message from peer */
     peer->p.last_input = Time;
+    sw++;
     peer->mr++;				/* do statistics */
     peer->br += sr;
     sr = unistrcut (buff, sr, IRCMSGLEN - 2); /* cut input message */
@@ -1738,6 +1768,7 @@ _sendq_exceeded:
       if (CheckFlood (&peer->penalty, _ircd_client_recvq) > 0) {
 	dprint(4, "ircd: flood from %s, applying penalty on next message",
 	       cl->nick);
+	Add_Timer(cli, S_LOCAL, peer->penalty - _ircd_client_recvq[1]);
 	break;				/* don't accept more messages */
       }
     }
@@ -1760,6 +1791,17 @@ _sendq_exceeded:
     cl->umode |= A_PINGED;		/* ping our peer */
     if (peer->p.state == P_TALK)	/* but don't send while registering */
       New_Request (cli, F_QUICK, "PING %s", MY_NAME);
+    if (peer->timer >= 0)
+      KillTimer(peer->timer);
+    peer->timer = Add_Timer(cli, S_TIMEOUT, i + 1);
+  } else if (sw > 0) {
+    if (peer->timer >= 0)
+      KillTimer(peer->timer);
+    if (peer->penalty <= _ircd_client_recvq[1])
+      peer->timer = Add_Timer(cli, S_TIMEOUT, i);
+    else
+      /* don't set S_TIMEOUT if S_LOCAL was already set */
+      peer->timer = -1;
   }
   if (req)
     return REQ_REJECTED;		/* retry it later */
@@ -1865,6 +1907,7 @@ static void _ircd_prehandler (pthread_t th, void **data, idx_t *as)
   else
     peer->p.iface->conv = NULL;
 #endif
+  peer->timer = Add_Timer(peer->p.iface, S_TIMEOUT, _ircd_start_timeout);
   /* cannot do ircd_do_unumeric so have to handle and send it myself
      while in listening thread yet
      note: listener will wait it, can we handle DDoS here? */
@@ -1932,6 +1975,7 @@ static void _ircd_handler (char *cln, char *ident, const char *host, void *data)
     }
   peer->p.state = P_LOGIN;
   pthread_detach(pthread_self());	/* don't let thread turn into zombie */
+  Mark_Iface (peer->p.iface);		/* run _ircd_client_request() ASAP */
   Unset_Iface();			/* done so unlock bindtable */
   if (msg)				/* not allowed! */
     _ircd_peer_kill (peer, msg);
@@ -2032,6 +2076,7 @@ static void _ircd_uplink_handler (int res, void *id)
     ((CLIENT *)id)->via->p.state = P_LASTWAIT;
   else
     ((CLIENT *)id)->via->p.state = P_INITIAL;
+  Mark_Iface (((CLIENT *)id)->via->p.iface);
 }
 
 /* out-of-thread parts */

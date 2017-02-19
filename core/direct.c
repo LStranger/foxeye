@@ -567,6 +567,7 @@ static int dcc_request (INTERFACE *iface, REQUEST *req)
     WARNING("direct.c:dcc_request: unexpectedly P_INITIAL state for %s",
 	    iface->name);
     dcc->state = P_LOGIN;
+    Mark_Iface (iface);
     return REQ_OK;
   }
   sw = Peer_Get (dcc, buf, sizeof(buf));
@@ -711,6 +712,67 @@ int Check_Passwd (const char *pass, char *encrypted)
   }
   return safe_strcmp (encrypted, upass);
 }
+
+
+/* event-driven listener implementation */
+static pthread_mutex_t ListenMutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t ListenCond = PTHREAD_COND_INITIALIZER;
+
+static void _listen_send_signal(void *data)
+{
+  pthread_mutex_lock(&ListenMutex);
+  *(size_t *)data = 1;
+  pthread_cond_broadcast(&ListenCond);
+  pthread_mutex_unlock(&ListenMutex);
+}
+
+static void _listen_mutex_cleanup(void *__unused)
+{
+  pthread_mutex_unlock(&ListenMutex);
+}
+
+static void _login_wait_cleanup(void *data)
+{
+  pthread_mutex_lock(&ListenMutex);
+  AssociateSocket (*(idx_t *)data, NULL, NULL);
+  pthread_mutex_unlock(&ListenMutex);
+}
+
+static void _listen_wait_socket(size_t *ptr)
+{
+  pthread_cleanup_push(&_listen_mutex_cleanup, NULL);
+  pthread_mutex_lock(&ListenMutex);
+  if (*ptr == 0)
+    pthread_cond_wait(&ListenCond, &ListenMutex);
+  *ptr = 0;
+  pthread_cleanup_pop(1);
+}
+
+static int _login_wait_socket(time_t t, size_t *ptr)
+{
+  struct timespec abstime;
+
+  abstime.tv_nsec = 0L;
+  abstime.tv_sec = t;
+  pthread_cleanup_push(&_listen_mutex_cleanup, NULL);
+  pthread_mutex_lock(&ListenMutex);
+  if (*ptr == 0)
+    pthread_cond_timedwait(&ListenCond, &ListenMutex, &abstime);
+  *ptr = 0;
+  pthread_cleanup_pop(1);
+  return 1;
+}
+
+/* this one is the same as in connchain but since we have
+   another proc for login, we need this here as well */
+static void _connchain_do_mark (void *data)
+{
+  struct peer_t *peer = data;
+
+  if (peer->iface)
+    Mark_Iface (peer->iface);
+}
+
 
 /*
  * Filter 'y' - RFC854 (i.e. telnet) handler.
@@ -1003,12 +1065,12 @@ static int _ccfilter_b_init (peer_t *peer,
 /* called from threads and dispatcher is locked! */
 /* buf is Lname if this is CTCP CHAT answer or empty string */
 BINDING_TYPE_login (get_chat);
-static void get_chat (char *name, char *ident, char *host, peer_t *dcc,
+static void get_chat (char *name, char *ident, const char *host, peer_t *dcc,
 		      char buf[SHORT_STRING], char **msg)
 {
   ssize_t sz, sp, pp;
   time_t t;
-  int telnet = 0;
+  int telnet;
   struct clrec_t *user;
 #ifdef ENABLE_NLS
   register const char *lang;
@@ -1031,6 +1093,9 @@ static void get_chat (char *name, char *ident, char *host, peer_t *dcc,
     *msg = "user has no password yet";
     return;
   }
+  pthread_cleanup_push(&_login_wait_cleanup, &dcc->socket);
+  AssociateSocket (dcc->socket, &_listen_send_signal, &pp);
+  telnet = 0;
   if (buf[0] == 0)
     telnet = 1;
   snprintf (buf, SHORT_STRING, "Password: %s",
@@ -1040,10 +1105,12 @@ static void get_chat (char *name, char *ident, char *host, peer_t *dcc,
   while (sz && time(NULL) < t && (pp = Peer_Put (dcc, &buf[sp], &sz)) >= 0)
     sp += pp;
   /* wait password and check it */
+  pp = 0;
   while (time(NULL) < t)
     if ((sp = Peer_Put (dcc, "", &sz)) < 0 ||	/* push connchain buffers */
-	(sp = Peer_Get (dcc, buf, SHORT_STRING)))
+	(sp = Peer_Get (dcc, buf, SHORT_STRING)) || !_login_wait_socket (t, &pp))
       break;				/* in both cases on error or success */
+  pthread_cleanup_pop(1);
   if (sz != 0 || sp == 0)
   {
     *msg = "login timeout";
@@ -1109,6 +1176,8 @@ static void get_chat (char *name, char *ident, char *host, peer_t *dcc,
 #ifdef HAVE_ICONV
   dcc->iface->conv = Get_Conversion (host);
 #endif
+  /* reassociate socket activity handler to interface oriented one */
+  AssociateSocket(dcc->socket, &_connchain_do_mark, dcc);
   if (telnet)
   {
     dprint (5, "enabling echo for user");
@@ -1118,6 +1187,7 @@ static void get_chat (char *name, char *ident, char *host, peer_t *dcc,
   }
   if (Connchain_Grow (dcc, 'b') <= 0)	/* bindtables filter */
     Add_Request (I_LOG, "*", F_WARN, "direct.c:get_chat: error with filter 'b'.");
+  Mark_Iface (dcc->iface);		/* rest will be done in dcc_request() */
   Unset_Iface();
   FREE (&name);
 #ifdef HAVE_ICONV
@@ -1143,6 +1213,9 @@ static char *session_handler_main (char *ident, const char *host, peer_t *dcc,
   time_t t;
   char *msg;
   struct clrec_t *clr;
+#define static register
+  BINDING_TYPE_login ((*ff));
+#undef static
 
   /* we have no client name at this point */  
   dcc->uf = Match_Client (host, ident, NULL);	/* check ident@domain */
@@ -1171,12 +1244,16 @@ static char *session_handler_main (char *ident, const char *host, peer_t *dcc,
   Set_Iface (NULL);
   Connchain_Grow (dcc, 'x');	/* adding text parser now! */
   Unset_Iface();
+  pthread_cleanup_push(&_login_wait_cleanup, &dcc->socket);
   get = 0;
+  sp = 0;
+  AssociateSocket (dcc->socket, &_listen_send_signal, &sp);
   if (sz == 0)		/* everything sent and sz == 0 */
     while (time(NULL) < t) /* push chain buffer if there is some */
       if ((get = Peer_Put (dcc, "", &sz)) < 0 ||
-	  (get = Peer_Get (dcc, client, LNAMELEN+1)))
+	  (get = Peer_Get (dcc, client, LNAMELEN+1)) || !_login_wait_socket (t, &sp))
 	break;		/* both cases of error and success */
+  pthread_cleanup_pop(1);
   if (get > 0)
     DBG ("direct.c:session_handler: lname=%s", client);
   else
@@ -1198,7 +1275,8 @@ static char *session_handler_main (char *ident, const char *host, peer_t *dcc,
   if (bind && !bind->name && (!botsonly || (dcc->uf & U_SPECIAL))) 
   {
     buf[0] = 0;
-    bind->func (client, ident, host, dcc, buf, &msg); /* it will unlock dispatcher */
+    ff = (void(*)())bind->func;
+    ff (client, ident, host, dcc, buf, &msg); /* it will unlock dispatcher */
   }
   else
   {
@@ -1458,8 +1536,8 @@ static int _direct_listener_callback(const struct sockaddr *sa, void *input_data
 
   if (acptr->cb == NULL)
     return (0);
-  ec = acptr->cb(sa, acptr->data);
   pthread_cleanup_push(&_direct_listener_callback_cleanup, NULL);
+  ec = acptr->cb(sa, acptr->data);
   Set_Iface(NULL);
   b = Check_Bindtable(BT_Listener, "*", U_ALL, U_ANYCH, NULL);
   if ((b != NULL) && (b->name == NULL) && (func = b->func))
@@ -1480,6 +1558,9 @@ static void _listen_port_cleanup (void *input_data)
   /* job's ended so let dispatcher know that we must be finished
      don't do locking and I hope it's still atomic so should be OK */
   acptr->iface->ift = I_LISTEN | I_FINWAIT;
+  pthread_mutex_lock(&ListenMutex);
+  AssociateSocket(acptr->socket, NULL, NULL);
+  pthread_mutex_unlock(&ListenMutex);
   /* everything will be done by dispatcher */
 }
 
@@ -1503,6 +1584,7 @@ static void *_listen_port (void *input_data)
   char *host = acptr->host;
   int n, i, cancelstate;
   unsigned short port;
+  size_t mark = 0;
 
   /* set cleanup for the thread before any cancellation point */
   pthread_cleanup_push (&_listen_port_cleanup, input_data);
@@ -1539,10 +1621,12 @@ static void *_listen_port (void *input_data)
     if (strcmp(acptr->iface->name, buf))
       Rename_Iface(acptr->iface, buf);
   }
+  AssociateSocket(acptr->socket, &_listen_send_signal, &mark);
   /* let it be async-safe as much as possible: it may be killed by shutdown */
   acptr->id = -1;
   while (acptr->socket >= 0)		/* ends by cancellation */
   {
+    _listen_wait_socket(&mark);
     if ((new_idx = AnswerSocket (acptr->socket)) == E_AGAIN)
       continue;
     else if (new_idx < 0) /* listening socket died */
@@ -1579,7 +1663,7 @@ static void *_listen_port (void *input_data)
 	break;
       }
     }
-    pthread_setcancelstate (cancelstate, NULL);
+    pthread_setcancelstate (cancelstate, &i);
   }
   pthread_cleanup_pop(1);
   pthread_exit(NULL);

@@ -449,7 +449,6 @@ static void isend_handler (char *lname, char *ident, const char *host, void *dat
   scd = safe_calloc(1, sizeof(struct send_cleanup));
   scd->socket = dcc->socket;
   scd->buff = buff = safe_malloc (MAXBLOCKSIZE);
-  pthread_cleanup_push(&_send_handler_cleanup, scd);
   Set_Iface (dcc->l.iface);
   if (host)				/* if it's from passive then it's NULL */
   {
@@ -457,6 +456,7 @@ static void isend_handler (char *lname, char *ident, const char *host, void *dat
     snprintf (&dcc->uh[sr], sizeof(dcc->uh) - sr, "!%s@%s", ident ? ident : "*",
 	      host ? host : "*");
   }					/* dcc->uh is nick!user@host now */
+  pthread_cleanup_push(&_send_handler_cleanup, scd);
   dcc->ptr = 0;
   dcc->rate = 0;
   if (dcc->startptr == 1)		/* it was '-flush' flag */

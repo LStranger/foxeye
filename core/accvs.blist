@@ -118,8 +118,9 @@ UNLD  "uunnllooaadd"         MASK
       Script args: mod
 
 -     "llooggiinn"          MASK
-  (int) void func(char *_w_h_o, char *_i_d_e_n_t, char *_h_o_s_t, struct peer_t *_p_e_e_r,
-		  char _b_u_f[SHORT_STRING], char **_m_s_g);
+  (int) void func(char *_w_h_o, char *_i_d_e_n_t, const char *_h_o_s_t,
+		  struct peer_t *_p_e_e_r, char _b_u_f[SHORT_STRING],
+		  char **_m_s_g);
     Used when connection with someone is established and we got their
     Lname _w_h_o. The binding is always called from thread but dispatcher is
     locked so very first thing the binding must do is to make call

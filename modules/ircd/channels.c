@@ -3178,6 +3178,7 @@ void send_isupport(IRCD *ircd, CLIENT *cl)
     if (len > ptr)
       memmove(isupport, &isupport[ptr], len - ptr);
     len -= ptr;
+    isupport[len] = '\0';
     ptr = 0;
     while ((b = Check_Bindtable(BTIrcdIsupport, ircd->iface->name, U_ALL, U_ANYCH, b)))
       if (!b->name)

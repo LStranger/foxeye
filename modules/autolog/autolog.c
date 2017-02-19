@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2014  Andrej N. Gritsenko <andrej@@rep.kiev.ua>
+ * Copyright (C) 2006-2017  Andrej N. Gritsenko <andrej@@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -25,7 +25,8 @@
 #include <errno.h>
 #include <fcntl.h>
 
-#include "init.h"
+#include <init.h>
+#include <sheduler.h>
 
 #define AUTOLOG_LEVELS (F_PUBLIC | F_PRIV | F_JOIN | F_MODES)
 #define AUTOLOG_LEVELS2 (F_WARN | F_END)
@@ -46,6 +47,7 @@ typedef struct
 {
   char *path;
   int fd;
+  tid_t timer;
   time_t timestamp;
   int reccount;
   int day;
@@ -327,7 +329,12 @@ static iftype_t _autolog_name_signal (INTERFACE *iface, ifsig_t sig)
   if (!(iface->ift & I_DIED)) switch (sig)	/* is it terminated already? */
   {
     case S_TIMEOUT:
-      /* log is written immediately so nothing to do with cache_time */
+      log->d->timer = -1;
+      if (Time - log->d->timestamp < autolog_autoclose)
+	/* some spurious call? */
+	return 0;
+      /* timeout: close log if queue is empty */
+      Mark_Iface (iface);
       break;
     case S_FLUSH:
       if (iface->qsize > 0) /* so there is queue... just reopen the log file */
@@ -347,6 +354,8 @@ static iftype_t _autolog_name_signal (INTERFACE *iface, ifsig_t sig)
 	    ERROR ("autolog: time out on closing %s.", log->d->path);
 	    break;
 	  }
+      if (log->d->timer >= 0)
+	KillTimer(log->d->timer);
       if (log->d->fd >= 0)
 	close (log->d->fd);
       FREE (&log->d->path);
@@ -478,6 +487,9 @@ static int _autolog_name_request (INTERFACE *iface, REQUEST *req)
     Get_Request();
   else
     log->d->reccount = 0;
+  if (log->d->timer >= 0)
+    KillTimer(log->d->timer);
+  log->d->timer = Add_Timer (iface, S_TIMEOUT, autolog_autoclose);
   return REQ_OK;
 }
 

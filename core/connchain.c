@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2016  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2008-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -89,6 +89,15 @@ static ssize_t _connchain_recv (struct connchain_i **chain, idx_t idx,
   return i;
 }
 
+/* callback from sockets... be sure peer->iface is alive! */
+static void _connchain_do_mark (void *data)
+{
+  struct peer_t *peer = data;
+
+  if (peer->iface)
+    Mark_Iface (peer->iface);
+}
+
 /* allocate starting link structure */
 static void _connchain_create (struct peer_t *peer)
 {
@@ -101,6 +110,7 @@ static void _connchain_create (struct peer_t *peer)
   peer->connchain->next = NULL;
   peer->connchain->tc = 0;
   peer->connchain->buf = (struct connchain_buffer *)peer;
+  AssociateSocket(peer->socket, &_connchain_do_mark, peer);
   dprint (2, "connchain.c: created initial link %p", peer->connchain);
 }
 

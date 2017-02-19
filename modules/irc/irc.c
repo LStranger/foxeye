@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004-2016  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2004-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -48,6 +48,7 @@ typedef struct irc_server {
   struct irc_await *await;
   time_t last_output;
   int penalty;				/* in messages*2, applied to sendq */
+  tid_t timer;
   char **servlist;
   char *mynick;
   INTERFACE *pmsgout;			/* with lname */
@@ -106,6 +107,7 @@ static void _irc_connection_ready (int result, void *id)
   if (result < 0)
     ((irc_await *)id)->serv->p.socket = result;
   ((irc_await *)id)->ready = 1;
+  Mark_Iface(((irc_await *)id)->serv->p.iface);
   /* return to the core/direct.c:_connect_host() */
 }
 
@@ -258,11 +260,10 @@ static char *_irc_getnext_server (irc_server *serv, const char *add,
     /* load servers list from userrecord */
     i = Get_Hostlist (tmp, FindLID (&serv->pmsgout->name[1]));
     dprint (5, "_irc_getnext_server: got %d", i);
-    if (i)
+    if (i > 0)
     {
       Set_Iface (tmp);
-      for (; i; i--)
-	Get_Request();
+      while (Get_Request());
       Unset_Iface();
     }
     /* form serv->servlist */
@@ -410,7 +411,19 @@ static int _irc_try_server (irc_server *serv, const char *tohost, int banned,
   {
     serv->p.state = P_DISCONNECTED;
     if (*name == 0)
+    {
+      /* needs a retry - either on next run, or after timeout */
+      if (banned < 0)
+	Mark_Iface (serv->p.iface);
+      else
+      {
+	if (serv->timer >= 0)
+	  KillTimer (serv->timer);
+	serv->timer = Add_Timer (serv->p.iface, S_TIMEOUT,
+				 serv->last_output + irc_retry_timeout - Time);
+      }
       return 1; /* try later again */
+    }
     /* OK, let's give it a try... */
     if (IrcAwaits == NULL)
       IrcAwaits = await = safe_calloc (1, sizeof(irc_await));
@@ -442,6 +455,7 @@ static int _irc_try_server (irc_server *serv, const char *tohost, int banned,
     if (await->th != 0)
     {
       serv->p.state = P_INITIAL;
+      Mark_Iface (serv->p.iface);
       return 1;
     }
     await->ready = 1;	/* to destroy await struct */
@@ -698,6 +712,11 @@ static iftype_t _irc_signal (INTERFACE *iface, ifsig_t sig)
       tmp = Set_Iface (iface);
       New_Request (tmp, F_REPORT, "%s", report);
       Unset_Iface();
+    case S_TIMEOUT:
+      DBG("irc: got S_TIMEOUT, drop timer %d", serv->timer);
+      serv->timer = -1;
+      Mark_Iface (iface);
+      break;
     default: ; /* ignore others */
   }
   return 0;
@@ -712,6 +731,7 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
   int i, isregistered = 0, reject = 1;
   ssize_t sw = 0;		/* we don't need that 0 but to exclude warning... */
 
+  /* DBG("_irc_request_main for '%s' with '%s'", iface->name, req ? req->string : ""); */
   /* there may be still an await structure, we cannot touch socket then! */
   if (serv->await)
   {
@@ -845,11 +865,17 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
 	return _irc_try_server (serv, NULL, 0, _("connection timeout"));
       }
       /* delay request for now since we aren't ready */
+      else if (serv->timer < 0)
+	serv->timer = Add_Timer(iface, S_TIMEOUT,
+				serv->p.last_input + irc_connect_timeout + 1 - Time);
       break;
     case P_IDLE:
       /* check for timeout */
       if (Time - serv->p.last_input > 2 * irc_timeout)
 	return _irc_try_server (serv, NULL, 0, NULL);
+      else if (serv->timer < 0)
+	serv->timer = Add_Timer(iface, S_TIMEOUT,
+				serv->p.last_input + 2 * irc_timeout + 1 - Time);
     case P_QUIT:
     case P_TALK:
       if (_irc_send (serv, NULL) < 0)	/* flush output to server */
@@ -861,9 +887,15 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
       if (req)				/* we still have message to send */
         _irc_send (serv, req->string);	/* ignoring result... */
       serv->p.state = P_LASTWAIT;
+      if (serv->timer >= 0)
+	KillTimer (serv->timer);
+      serv->timer = -1;
     case P_LASTWAIT:
       if (_irc_send (serv, NULL) == 0)	/* still not ready */
+      {
+	Mark_Iface (iface);
 	return 1;
+      }
       /* it was just sent quit message so run bindings and go off */
       _irc_disconnected (serv);
       LOG_CONN (_("Disconnected from %s."), iface->name);
@@ -903,11 +935,13 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
     char *prefix, *p, *uh;
     struct binding_t *bind;
     register int ec;
+    int count = 0;
 
     /* connection established, we may send data */
     if ((sw = _irc_send (serv, req ? req->string : NULL)) == 1)
       reject = 0; /* nice, we sent it */
     /* check for input (sw includes '\0') */
+_retry_input:
     sw = Peer_Get ((&serv->p), inbuf, sizeof(inbuf));
     if (sw < 0)	/* error, close it */
       return _irc_try_server (serv, NULL, 0, NULL);
@@ -919,6 +953,9 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
 	{
 	  New_Request (iface, F_QUICK, "PING :%s", serv->mynick);
 	  serv->p.state = P_IDLE;
+	  if (serv->timer < 0)
+	    serv->timer = Add_Timer(iface, S_TIMEOUT,
+				    serv->p.last_input + 2 * irc_timeout + 1 - Time);
 	}
 	else if (serv->p.state != P_IDLE ||
 		 Time - serv->p.last_input > 2 * irc_timeout)
@@ -928,7 +965,13 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
 	  serv->p.state = P_DISCONNECTED;
 	  reject = 1;
 	}
+	else if (serv->timer < 0)
+	  serv->timer = Add_Timer(iface, S_TIMEOUT,
+				  serv->p.last_input + 2 * irc_timeout + 1 - Time);
       }
+      else if (serv->timer < 0)
+	serv->timer = Add_Timer(iface, S_TIMEOUT,
+				serv->p.last_input + irc_timeout + 1 - Time);
     }
     else	/* congratulations, we got the input! */
     {
@@ -945,6 +988,9 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
       if (serv->p.state == P_IDLE)
 	serv->p.state = P_TALK;
       serv->p.last_input = Time;
+      if (serv->timer >= 0)
+	KillTimer(serv->timer);
+      serv->timer = Add_Timer(iface, S_TIMEOUT, irc_timeout + 1);
       params[0] = iface->name; /* network name (server id) */
       if (p[0] == ':')	/* there is a prefix */
       {
@@ -1011,6 +1057,11 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
       if (serv->p.state != P_LOGIN && serv->p.state != P_TALK &&
 	  serv->p.state != P_IDLE)
 	reject = 1;	/* bindings might reset connection */
+      else if (++count < 5)
+	goto _retry_input; /* try to consume up to 5 messages from server */
+      else
+	/* we may have something in connchain buffers so mark to retry */
+	Mark_Iface (iface);
     }
   }
   /* accept (any?) request if ready for it (SendQ checked by _irc_send) */
@@ -1025,7 +1076,8 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
 
 static int _irc_request (INTERFACE *iface, REQUEST *req)
 {
-  if (_irc_request_main (iface, req) != 2 && req != NULL)
+  if (_irc_request_main (iface, req) != 2 && req != NULL &&
+      ((irc_server *)iface->data)->p.socket >= 0)
     return REQ_REJECTED;
   return REQ_OK;
 }
@@ -1676,6 +1728,7 @@ static int connect_irc (const char *link, char *args)
   serv->p.socket = -1;
   serv->p.priv = (void *)1; /* it's unused but we should not wait on socket */
   serv->lc = &unistrlower;
+  serv->timer = -1;
   serv->p.iface = Add_Iface (I_SERVICE | I_CONNECT, link, &_irc_signal,
 			     &_irc_request, serv);
   return _irc_try_server (serv, args, -1, NULL); /* shedule a connection */

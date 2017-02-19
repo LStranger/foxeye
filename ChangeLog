@@ -19,6 +19,32 @@ TODO:
 Fri Feb 17 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c: never lock mutex in signal handler, use pipe to
 	  deliver signal number to the dispatcher.
+	* core/init.c: enforced saving "locale" in the generated config: when
+	  started by cron it may have another value in environment.
+	* modules/ircd-rusnet/rusnet.c: fixed unitialized value on service call.
+	* modules/ircd/channels.c: fixed invalid formatting on RPL_ISUPPORT.
+	* core/dispatcher.c, core/socket.*, core/foxeye.h, core/protos.h, core/connchain.c, core/direct.c, core/main.c, core/sheduler.c, modules/autolog/autolog.c, modules/irc-channel/irc-channel.c, modules/irc/irc.c, modules/ircd/ircd.*:
+	  reworked interfaces requests. Instead of querying each interface in
+	  each cycle and do cycles each 200 ms at most, dispatcher now will be
+	  put into sleep if there is no job for any interface. Polling will be
+	  also done in a separate thread and will also sleep until some event
+	  happens, then it will call a callback bound to the appropriate socket
+	  (using AssociateSocket() API) which will wake up the thread waiting
+	  for the event. If interface wants to be waked up, it may ask the
+	  dispatcher using Mark_Iface() API, that will work either from the
+	  request or signal handler, or even from any thread which is sure that
+	  the interface is alive while the call is processed. If request handler
+	  returns REQ_REJECTED, next try may be done due in half of second, or
+	  faster, depending if some other interface is ready to accept requests.
+	  That possible delay is added in regard of modules such as "irc" which
+	  may forcibly suspend delivery of messages, so will not accept request
+	  right away anyway. So far, there will be at least 5 threads sleeping
+	  now: dispatcher, scheduler, UNIX signals receiver, poll, and the poll
+	  controller, more threads may be added by modules (such as listener
+	  threads, including those that are usually added by "port" command in
+	  config).
+	* doc/modules.api: documented changes in connchain behavior (due to
+	  changes in socket events processing), and new APIs.
 
 Thu Feb 16 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/list.c: corrected support saved hostmasks with passwords by

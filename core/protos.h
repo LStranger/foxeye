@@ -18,6 +18,9 @@
  * This file is part of FoxEye's source: common declarations.
  */
 
+#ifndef _PROTOS_H
+#define _PROTOS_H 1
+
 #define uchar unsigned char
 
 /* ----------------------------------------------------------------------------
@@ -30,6 +33,7 @@ INTERFACE *Find_Iface (iftype_t, const char *) __attribute__((warn_unused_result
 INTERFACE *Set_Iface (INTERFACE *);
 int Unset_Iface (void);
 int Rename_Iface (INTERFACE *, const char *);
+void Mark_Iface (INTERFACE *);
 void Add_Request (iftype_t, const char *, flag_t, const char *, ...)
 	__attribute__((format(printf, 4, 5)));
 void New_Request (INTERFACE *, flag_t, const char *, ...)
@@ -302,3 +306,4 @@ static inline int clock_gettime(int clk_id, struct timespec* t)
     return 0;
 }
 #endif
+#endif /* _PROTOS_H */

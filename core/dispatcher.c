@@ -211,6 +211,7 @@ void bot_shutdown (char *message, int e)
  */
 
 static pthread_mutex_t LockIface;
+static pthread_cond_t CondIface = PTHREAD_COND_INITIALIZER;
 
 ALLOCATABLE_TYPE (queue_i, _Q, next) /* alloc_queue_i(), free_queue_i() */
 
@@ -599,6 +600,8 @@ static int _get_current (void)
   /* interface may be unused so lock semaphore */
   if (!Current->a.ift || (Current->a.ift & I_DIED))
     return 0;
+  Current->a.marked = FALSE;			/* drop mark right away */
+  Current->a.ift &= ~I_SLEEPING;
   if (!Current->a.IFRequest)
     out = REQ_OK;
   else if (curq)
@@ -624,6 +627,12 @@ static int _get_current (void)
 
   if (out == REQ_RELAYED && relay_request (curq->request))
     out = REQ_OK;
+
+  if (out == REQ_REJECTED)
+  {
+    Current->a.marked = TRUE;			/* run it again next time */
+    Current->a.ift |= I_SLEEPING;		/* but with delay */
+  }
 
   if (out == REQ_OK)
     return delete_request (Current, curq);	/* else it was rejected */
@@ -900,10 +909,11 @@ static void iface_run (unsigned int i)
   }
   else if (!(Interface[i]->a.ift & I_LOCKED))
   {
-    register int gc;
+    register int gc = 0;
 
     stack_iface (&Interface[i]->a, 1);
-    gc = _get_current();		/* run with LockIface only */
+    if (Interface[i]->a.qsize > 0 || (Interface[i]->a.marked))
+      gc = _get_current();		/* run with LockIface only */
     while (gc > 0 && Interface[i]->a.qsize > 0)
       gc = _get_current();		/* try to empty queue at once */
     if (unstack_iface())
@@ -1150,6 +1160,16 @@ int Rename_Iface (INTERFACE *iface, const char *newname)
   return 1;
 }
 
+/* locks on enter: none
+   should be called only when interface is guaranteed to stay still! */
+void Mark_Iface (INTERFACE *iface)
+{
+  if (unknown_iface (iface))
+    return;
+  iface->marked = TRUE;
+  pthread_cond_broadcast (&CondIface);		/* wake up dispatcher */
+}
+
 void Status_Interfaces (INTERFACE *iface)
 {
   register unsigned int i;
@@ -1301,6 +1321,7 @@ static void *sig_pipe_reader(void *__unused)
     {
       pthread_mutex_lock (&SigLock);
       _got_signal = signo;
+      pthread_cond_broadcast (&CondIface);	/* wake up dispatcher */
       pthread_mutex_unlock (&SigLock);
     }
   }
@@ -1310,7 +1331,7 @@ static void *sig_pipe_reader(void *__unused)
 
 static void normal_handler (int signo)
 {
-  write(sig_pipe[1], &signo, sizeof(int));
+  while (write(sig_pipe[1], &signo, sizeof(int)) == 0);
 }
 
 static void errors_handler (int signo)
@@ -1364,7 +1385,7 @@ static void errors_handler (int signo)
 int dispatcher (INTERFACE *start_if)
 {
   struct sigaction act;
-  unsigned int i = 0, max = 0;
+  unsigned int i = 0;
   int limit = 0;
   int pidfd;
   pid_t pid;
@@ -1551,15 +1572,35 @@ int dispatcher (INTERFACE *start_if)
       _got_signal = 0;				/* reset state now */
       Unset_Iface();				/* continue if alive yet */
     }
-    pthread_mutex_lock (&LockIface);
-    max = _Inum;
-    pthread_mutex_unlock (&LockIface);
-    if (i >= max)
+    if (i >= _Inum)
     {
+      register int activity = 0; /* 0 - inactive, 1 - run, -1 - sleep&run */
+
+      pthread_mutex_lock (&LockIface);
       for (i = 0; i < _Inum; i++)
-	if (Interface[i]->a.qsize > 0)
-	  break;
-      PollSockets((i < _Inum) ? 1 : 0); /* sleep up to 200 ms */
+	if (Interface[i]->a.qsize > 0 || (Interface[i]->a.marked))
+	{					/* some interface needs care */
+	  if (activity <= 0 && (Interface[i]->a.ift & I_SLEEPING))
+	    activity = -1;
+	  else
+	    activity = 1;
+	}
+      pthread_mutex_unlock (&LockIface);
+      pthread_mutex_lock (&SigLock);		/* ensure _got_signal value */
+      if (_got_signal || activity > 0) ;	/* don't sleep */
+      else if (activity) {
+	struct timespec ts;
+
+	clock_gettime (CLOCK_REALTIME, &ts);
+	ts.tv_nsec += 500000000;		/* sleep for 0.5 second */
+	if (ts.tv_nsec >= 1000000000) {
+	  ts.tv_nsec -= 1000000000;
+	  ts.tv_sec++;
+	}
+	pthread_cond_timedwait (&CondIface, &SigLock, &ts);
+      } else
+	pthread_cond_wait (&CondIface, &SigLock); /* sleep for a while */
+      pthread_mutex_unlock (&SigLock);
       /* some cleanup stuff */
       i = 0;
     }

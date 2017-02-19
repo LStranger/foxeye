@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2010  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -38,8 +38,6 @@
 //#define E_NOCONNECT	-9
 #define E_ERRNO		-10L
 
-#define POLL_TIMEOUT	200	/* in milliseconds - M_POLL from threads */
-
 /* this is required for struct sockaddr */
 #include <sys/socket.h>
 
@@ -56,7 +54,7 @@ const char *SocketDomain (idx_t, unsigned short *); /* returns nonull value! */
 const char *SocketIP (idx_t);			/* the same but text IP */
 const char *SocketMyIP (idx_t, char *, size_t);
 char *SocketError (int, char *, size_t);
-void PollSockets (int);				/* sleep for dispatcher */
+void AssociateSocket (idx_t, void (*)(void *), void *);
 
 int _fe_init_sockets (void);
 

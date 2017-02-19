@@ -129,7 +129,7 @@ static void _get_mask (char *mask, uint32_t *bitmap, long max)
   }
 }
 
-static pthread_mutex_t LockShed = PTHREAD_MUTEX_INITIALIZER;
+//static pthread_mutex_t LockShed = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct
 {
@@ -172,10 +172,10 @@ void Add_Schedule (INTERFACE *iface, ifsig_t sig,
 
   if (iface == NULL)
     return;
-  pthread_mutex_lock (&LockShed);
+//  pthread_mutex_lock (&LockShed);
   if (_SCnum >= MAXTABLESIZE)
   {
-    pthread_mutex_unlock (&LockShed);
+//    pthread_mutex_unlock (&LockShed);
     bot_shutdown ("Internal error in Add_Shedule()", 8);
   }
   if (_SCnum >= _SCalloc)
@@ -196,7 +196,7 @@ void Add_Schedule (INTERFACE *iface, ifsig_t sig,
   _get_mask (wk, mask, 7);
   ct->weekday = (uint16_t)mask[0];
   _SCnum++;
-  pthread_mutex_unlock (&LockShed);
+//  pthread_mutex_unlock (&LockShed);
 }
 
 /* delete cell from Crontable */
@@ -224,7 +224,7 @@ void Stop_Schedule (INTERFACE *iface, ifsig_t sig,
   register shedentry_t *ct;
   uint32_t mask[2];
 
-  pthread_mutex_lock (&LockShed);
+//  pthread_mutex_lock (&LockShed);
   for (i = 0; i < _SCnum; i++)
   {
     ct = &Crontable[i];
@@ -249,7 +249,7 @@ void Stop_Schedule (INTERFACE *iface, ifsig_t sig,
       }
     }
   }
-  pthread_mutex_unlock (&LockShed);
+//  pthread_mutex_unlock (&LockShed);
 }
 
 typedef struct
@@ -293,7 +293,7 @@ tid_t Add_Timer (INTERFACE *iface, ifsig_t sig, time_t timer)
 
   if (iface == NULL)
     return -1;
-  pthread_mutex_lock (&LockShed);
+//  pthread_mutex_lock (&LockShed);
   for (i = 0; i < _STnum; i++)
   {
     ct = &Timerstable[i];
@@ -306,7 +306,7 @@ tid_t Add_Timer (INTERFACE *iface, ifsig_t sig, time_t timer)
   }
   if (i < _STnum || _STnum >= MAXTABLESIZE)
   {
-    pthread_mutex_unlock (&LockShed);
+//    pthread_mutex_unlock (&LockShed);
     WARNING ("Add_Timer: failed for %s +%ld sec (entry %u id %d)", iface->name,
 	     (long)timer, i, id);
     return id;
@@ -324,7 +324,7 @@ tid_t Add_Timer (INTERFACE *iface, ifsig_t sig, time_t timer)
   if (_STid < 0)
     _STid = 0;				/* never under zero! */
   _STnum++;
-  pthread_mutex_unlock (&LockShed);
+//  pthread_mutex_unlock (&LockShed);
   dprint (3, "NewTimer: added for %s +%ld sec (id %d)", iface->name,
 	  (long)timer, id);
   return id;
@@ -337,7 +337,8 @@ void KillTimer (tid_t tid)
 
   if (tid < 0)
     return;
-  pthread_mutex_lock (&LockShed);
+//  pthread_mutex_lock (&LockShed);
+  Set_Iface (NULL);
   for (i = 0; (size_t)i < _STnum; i++)
   {
     if (Timerstable[i].id == tid)
@@ -349,7 +350,8 @@ void KillTimer (tid_t tid)
   }
   if ((size_t)i == _STnum)
     i = -1;
-  pthread_mutex_unlock (&LockShed);
+//  pthread_mutex_unlock (&LockShed);
+  Unset_Iface();
   if (i >= 0)
     dprint (3, "KillTimer: removed id %d", tid);
 }
@@ -405,6 +407,10 @@ static void *_scheduler_thread (void *data)
     if (scheduler->ift & (I_FINWAIT | I_DIED))
       return NULL;
 
+    /* if Init isn't finished yet, sleep */
+    if (scheduler->ift & I_LOCKED)
+      goto _do_sleep;
+
     /* we are awaken so let rock it */
     pthread_setcancelstate (PTHREAD_CANCEL_DISABLE, &drift);
     Set_Iface (scheduler);
@@ -446,7 +452,7 @@ static void *_scheduler_thread (void *data)
     if (j)
       dprint (3, "Sheduler: removed %u flood timer(s), remained %u/%u",
 	      j, _SFnum, MAXTABLESIZE);
-    pthread_mutex_lock (&LockShed);
+//    pthread_mutex_lock (&LockShed);
     /* update time variables */
     localtime_r (&Time, &tm);
     if (lasttime == 0) {
@@ -486,11 +492,11 @@ static void *_scheduler_thread (void *data)
 	    (ct->hour & sh.hour) && (ct->day & sh.day) &&
 	    (ct->month & sh.month) && (ct->weekday & sh.weekday))
 	{
-	  pthread_mutex_unlock (&LockShed);
+//	  pthread_mutex_unlock (&LockShed);
 	  if (!(ct->iface->ift & I_DIED) && ct->iface->IFSignal &&
 	      (rc = ct->iface->IFSignal (ct->iface, ct->signal)))
 	    ct->iface->ift |= rc;
-	  pthread_mutex_lock (&LockShed);
+//	  pthread_mutex_lock (&LockShed);
 	}
       }
       /* and now gather garbage, something might be freed */
@@ -517,11 +523,11 @@ static void *_scheduler_thread (void *data)
 	ct->timer -= drift;
       else
       {
-	pthread_mutex_unlock (&LockShed);
+//	pthread_mutex_unlock (&LockShed);
 	if (!(ct->iface->ift & I_DIED) && ct->iface->IFSignal &&
 	    (rc = ct->iface->IFSignal (ct->iface, ct->signal)))
 	  ct->iface->ift |= rc;
-	pthread_mutex_lock (&LockShed);
+//	pthread_mutex_lock (&LockShed);
 	ct->iface = NULL;
 	j++;
       }
@@ -537,7 +543,7 @@ static void *_scheduler_thread (void *data)
       if (i != _STnum)
 	memcpy (ct, &Timerstable[_STnum], sizeof(shedtimerentry_t));
     }
-    pthread_mutex_unlock (&LockShed);
+//    pthread_mutex_unlock (&LockShed);
     if (j)
       dprint (3, "Sheduler: sent %u timer signal(s), remained %u/%u",
 	      j, _STnum, MAXTABLESIZE);
@@ -550,6 +556,7 @@ static void *_scheduler_thread (void *data)
     Unset_Iface();
     pthread_setcancelstate (PTHREAD_CANCEL_ENABLE, &drift);
 
+_do_sleep:
     /* and now sleep until next second */
     while (clock_gettime(CLOCK_REALTIME, &abstime) == 0 && abstime.tv_sec == Time)
     {
@@ -564,10 +571,10 @@ void Status_Sheduler (INTERFACE *iface)
 {
   register unsigned int a, b;
 
-  pthread_mutex_lock (&LockShed);
+//  pthread_mutex_lock (&LockShed);
   b = _SCnum;
   a = _STnum;
-  pthread_mutex_unlock (&LockShed);
+//  pthread_mutex_unlock (&LockShed);
   New_Request (iface, 0, _("Timers: flood %u, once %u, periodic %u."),
 	       _SFnum, a, b);
 }
@@ -621,7 +628,7 @@ void _stop_timers (INTERFACE *iface)
 {
   unsigned int i;
 
-  pthread_mutex_lock (&LockShed);
+//  pthread_mutex_lock (&LockShed);
   for (i = 0; i < _SCnum; i++)
   {
     register shedentry_t *ct = &Crontable[i];
@@ -636,5 +643,5 @@ void _stop_timers (INTERFACE *iface)
     if (ct->iface == iface)
       ct->iface = NULL;
   }
-  pthread_mutex_unlock (&LockShed);
+//  pthread_mutex_unlock (&LockShed);
 }

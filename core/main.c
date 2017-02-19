@@ -235,6 +235,7 @@ static int _request (INTERFACE *iface, REQUEST *req)
   sw = _read_pipe (buff, sizeof(buff));
   if (sw < 0)			/* error, kill the pipe... */
     return _kill_pipe (iface);
+  Mark_Iface (iface);		/* return to it again */
   if (!(iface->ift & I_DCCALIAS) && buff[0])	/* return to config anyway */
     Add_Request (I_INIT, "*", 0, "%s", buff);
   else if (!sw)

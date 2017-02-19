@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2014  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -17,6 +17,11 @@
  *
  * This file is part of FoxEye's source: common includes and definitions.
  */
+
+#ifdef _FOXEYE_H
+# error File foxeye.h can be included only once!
+#endif
+#define _FOXEYE_H 1
 
 /* strict POSIX.2 */
 /* #define _POSIX2_SOURCE 1 */
@@ -213,7 +218,8 @@ typedef enum
   I_FINWAIT	= (1<<17),	/* from thread for dispatcher: terminate me */
   I_LOCKED	= (1<<18),	/* this interface temporary unavailable */
   I_AUTHPASS	= (1<<19),	/* client is authenticated */
-  I_DIED	= (1<<20)	/* this interface now died */	/* 0x100000 */
+  I_DIED	= (1<<20),	/* this interface now died */	/* 0x100000 */
+  I_SLEEPING	= (1<<21)	/* marked by dispatcher to wait */
 } iftype_t;
 
 /* logging/request flags */
@@ -314,6 +320,7 @@ struct _if_t
 #endif
   iftype_t ift;			/* flagged type of interface */
   int qsize;			/* queue FIFO size */
+  volatile sig_atomic_t marked;	/* marked to do NULL request */
 };
 
 typedef enum

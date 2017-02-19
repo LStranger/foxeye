@@ -285,6 +285,7 @@ struct peer_priv
   ACK *acks;		/* server: list of waiting acks */
 #endif
   pthread_t th;		/* thread ID if p.state == P_DISCONNECTED */
+  tid_t timer;		/* login or ping timeout timer id */
 };
 
 /*
