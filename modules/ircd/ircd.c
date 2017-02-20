@@ -922,9 +922,10 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
   register CLIENT *c2;
   int t;
   bool is_nickchange;
-#if IRCD_MULTICONNECT
-  ACK *ack;
-#endif
+#define static register
+  BINDING_TYPE_ircd_client_cmd ((*fc));
+  BINDING_TYPE_ircd_server_cmd ((*fs));
+#undef static
 
   if (Ircd->iface)
   {
@@ -959,14 +960,17 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
 #if IRCD_MULTICONNECT
       if (peer != NULL && (peer->link->cl->umode & A_MULTI))
       {
-	if (strcasecmp (argv[1], "QUIT") == 0 ||
-	    strcasecmp (argv[1], "SQUIT") == 0 ||
-	    (argc == 3 && strcasecmp (argv[1], "NICK") == 0))
+	if (strcasecmp (argv[1], "SQUIT") == 0)
+	  /* delayed SQUIT message may need special care, sender isn't
+	     online for us anymore but we still should return ACK */
+	  New_Request(peer->p.iface, 0, "ACK SQUIT %s", argv[2]);
+	else if (strcasecmp (argv[1], "QUIT") == 0 ||
+		 (argc == 3 && strcasecmp (argv[1], "NICK") == 0))
 	  /* delayed QUIT or NICK message may need special care, client isn't
 	     online for us anymore but we still should return ACK */
 	  New_Request(peer->p.iface, 0, "ACK %s %s", argv[1], argv[0]);
-	dprint(3, "ircd: message %s from %s seems to be delayed by %s", argv[1],
-	       argv[0], peer->p.dname);
+	dprint(3, "ircd: message %s from gone %s seems to be delayed by %s",
+	       argv[1], argv[0], peer->p.dname);
 	return (1);
       }
 #endif
@@ -979,19 +983,6 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
     }
     is_nickchange = (c->hold_upto && !(CLIENT_IS_SERVER(c)) && argc == 3 &&
 		     strcmp(argv[1], "NICK") == 0);
-#if IRCD_MULTICONNECT
-    //TODO: rewrite acks check for QUIT and NICK here!
-    if (peer && !is_nickchange &&	/* ircd_nick_sb handles this case */
-	(ack = ircd_check_ack(peer, c, NULL))) /* sender has quited/renamed */
-    {
-      /* some backfired messages need special care right now */
-      if (!strcasecmp (argv[1], "QUIT") || !strcasecmp (argv[1], "SQUIT"))
-	New_Request(peer->p.iface, 0, "ACK %s %s", argv[1], argv[0]);
-      dprint(3, "ircd: message %s from %s seems to be delayed by %s", argv[1],
-	     argv[0], peer->p.dname);
-      return (1);
-    }
-#endif
     /* we might send a nickchange and party still sends us messages
        from the old nick, let handle that case and follow it now */
     c2 = c;
@@ -1002,10 +993,12 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
 	     argv[1]);
 #if IRCD_MULTICONNECT
       /* handle remote ":killed NICK :someone" message as well */
-      if (peer != NULL && (peer->link->cl->umode & A_MULTI))
-	if (is_nickchange || strcasecmp (argv[1], "QUIT") == 0 ||
-	    strcasecmp (argv[1], "SQUIT") == 0)
+      if (peer != NULL && (peer->link->cl->umode & A_MULTI)) {
+	if (is_nickchange || strcasecmp (argv[1], "QUIT") == 0)
 	  New_Request(peer->p.iface, 0, "ACK %s %s", argv[1], argv[0]);
+	else if (strcasecmp (argv[1], "SQUIT") == 0)
+	  New_Request(peer->p.iface, 0, "ACK %s %s", argv[1], argv[2]);
+      }
 #endif
       return (1);		/* just ignore it then */
     } else if (!is_nickchange)	/* ircd_nick_sb needs original sender */
@@ -1016,8 +1009,8 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
       /* internal call - client message simulation */
       if ((b = Check_Bindtable (BTIrcdClientCmd, argv[1], U_ALL, U_ANYCH, NULL)))
 	if (!b->name)
-	  return b->func (Ircd->iface, c->via, c->lcnick, c->user, c->host,
-			  c->vhost, A_SERVER, argc - 2, &argv[2]);
+	  return (fc = b->func) (Ircd->iface, &c->via->p, c->lcnick, c->user,
+				 c->host, c->vhost, A_SERVER, argc - 2, &argv[2]);
       return 0;
     }
     if ((CLIENT_IS_ME(c) ||
@@ -1031,8 +1024,8 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
     t = client2token (c);
     while ((b = Check_Bindtable (BTIrcdServerCmd, argv[1], U_ALL, U_ANYCH, b)))
       if (!b->name)
-	i |= b->func (Ircd->iface, peer ? &peer->p : NULL, t, c2->nick,
-		      c2->lcnick, argc - 2, &argv[2]);
+	i |= (fs = (void *)b->func) (Ircd->iface, &peer->p, t, c2->nick,
+				     c2->lcnick, argc - 2, &argv[2]);
     return i;
   }
   return 0;
@@ -1471,6 +1464,10 @@ static int _ircd_client_request (INTERFACE *cli, REQUEST *req)
   char sbuff[MB_LEN_MAX*IRCMSGLEN+1];
 #endif
   register LINK **ll;
+#define static register
+  BINDING_TYPE_ircd_register_cmd ((*fr));
+  BINDING_TYPE_ircd_client_cmd ((*fc));
+#undef static
 
 //  dprint(5, "ircd:ircd.c:_ircd_client_request: name=%s state=%d req=%p",
 //	 cli->name, peer ? (int)peer->p.state : -1, req);
@@ -1737,7 +1734,7 @@ _sendq_exceeded:
 	b = Check_Bindtable (BTIrcdRegisterCmd, argv[1], U_ALL, U_ANYCH, NULL);
       if (b)
 	if (!b->name)
-	  i = b->func (Ircd->iface, &peer->p, argc - 2, &argv[2]);
+	  i = (fr = b->func) (Ircd->iface, &peer->p, argc - 2, &argv[2]);
     } else if (!*argv[0])
       WARNING("ircd: invalid prefix from peer \"%s\"", peer->p.dname);
     else if (CLIENT_IS_SERVER (cl))	/* got server protocol input */
@@ -1770,8 +1767,8 @@ _sendq_exceeded:
 	if ((b = Check_Bindtable (BTIrcdClientCmd, argv[1], peer->p.uf, U_ANYCH,
 				  NULL)))
 	  if (!b->name)			/* passed thru filter and found cmd */
-	    i = b->func (Ircd->iface, &peer->p, cl->lcnick, cl->user, cl->host,
-			 cl->vhost, cl->umode, argc - 2, &argv[2]);
+	    i = (fc = b->func) (Ircd->iface, &peer->p, cl->lcnick, cl->user,
+				cl->host, cl->vhost, cl->umode, argc - 2, &argv[2]);
     }
     cl = peer->link->cl;		/* binding might change it! */
     if (i == 0)				/* protocol failed */
