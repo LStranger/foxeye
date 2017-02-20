@@ -600,11 +600,11 @@ static inline void _ircd_recalculate_hops (void)
     {
       if (t->via != NULL && t->via->link == NULL) {
 	ERROR ("ircd: server %s has no valid link!", t->lcnick);
-	t->hops = Ircd->s;
+	t->hops = Ircd->s + 1;
       } else if (!CLIENT_IS_LOCAL(t)) {
 	t->via = NULL; /* don't reset local connects! */
-	t->hops = Ircd->s;
-      } else if (t->via != NULL && t->via->p.state == P_QUIT)
+	t->hops = Ircd->s + 1;
+      } else if (t->via->p.state == P_QUIT)
 	DBG("ircd:ircd.c:_ircd_recalculate_hops: server %s is dying", t->lcnick);
       else
 	DBG("ircd:ircd.c:_ircd_recalculate_hops: server %s is local (%hu)",
@@ -620,12 +620,27 @@ static inline void _ircd_recalculate_hops (void)
       {
 	register LINK *l;
 
-	for (l = t->c.lients; l; l = l->prev) /* scan it's links */
+	if (t->via == NULL)
+	  ERROR("ircd:ircd.c:_ircd_recalculate_hops: no valid path for server %s!",
+		t->lcnick);
+	else if (CLIENT_IS_LOCAL(t) && t->via->p.state == P_QUIT && t->c.lients)
+	  /* skip dying link */
+	  ERROR("ircd:ircd.c:_ircd_recalculate_hops: dying server %s has clients!",
+		t->lcnick);
+	else for (l = t->c.lients; l; l = l->prev) /* scan its links */
 	  if (CLIENT_IS_SERVER(l->cl)) /* check linked servers */
 	  {
 	    hassubs = 1; /* mark for next iteration */
-	    if (l->cl->via == NULL || /* it's shortest, yes */
-		l->cl->via->p.state == P_QUIT) /* or ->via is dead */
+	    if (CLIENT_IS_LOCAL(l->cl) && l->cl->via->p.state == P_QUIT)
+	    {
+	      ERROR("ircd:ircd.c:_ircd_recalculate_hops: dying server %s is available via %s!",
+		    l->cl->lcnick, t->lcnick);
+	      /* let hope it's not too late to unphantom it yet */
+	      l->cl->hold_upto = 0;
+	      l->cl->cs = l->cl;
+	      l->cl->via = NULL;
+	    }
+	    if (l->cl->via == NULL) /* it's shortest path, yes */
 	    {
 	      l->cl->hops = hops + 1;
 	      l->cl->via = t->via;
@@ -633,7 +648,7 @@ static inline void _ircd_recalculate_hops (void)
 	      DBG("ircd:ircd.c:_ircd_recalculate_hops: server %s seen via %s",
 		  l->cl->lcnick, t->lcnick);
 	    }
-	    else if (l->cl->alt == NULL && t->via != l->cl->via)
+	    else if (l->cl->alt == NULL)
 	    {
 	      DBG("ircd:ircd.c:_ircd_recalculate_hops: server %s alt path via %s",
 		  l->cl->lcnick, t->lcnick);
@@ -641,13 +656,21 @@ static inline void _ircd_recalculate_hops (void)
 		ERROR("server %s has diplicate link while connected via RFC server %s",
 		      l->cl->lcnick, l->cl->via->link->cl->lcnick);
 	      else if (t->via->link->cl->umode & A_MULTI)
-		l->cl->alt = t->via; /* don't set alt the same as via */
+	      {
+		if (l->cl->via != t->via)
+		  l->cl->alt = t->via; /* don't set alt the same as via */
+		else if (t->alt)
+		  l->cl->alt = t->alt;
+		else
+		  WARNING("ircd:ircd.c:_ircd_recalculate_hops: server %s has no alternate path, cannot set one for %s",
+			  t->lcnick, l->cl->lcnick);
+	      }
 	      else
 		ERROR("server %s has duplicate link to RFC server %s",
 		      l->cl->lcnick, t->lcnick);
 	    }
 	  }
-	  else if (l->cl->hops == Ircd->s)
+	  else
 	    l->cl->hops = hops + 1; /* reset hops for users */
       }
     hops++; /* do next iteration */
