@@ -676,15 +676,35 @@ static inline void _ircd_recalculate_hops (void)
     hops++; /* do next iteration */
   } while (hassubs);
   /* TODO: in case of errors check ->via ??? */
-  /* some servers don't get alternate paths but servers that we see them via
-     can have alternates so let set alternates with those alternates */
-  for (i = 1; i < Ircd->s; i++) /* iteration: scan whole servers list */
-    if ((t = Ircd->token[i]) != NULL && t->alt == NULL && t->via != NULL)
-    {
-      t->alt = t->via->link->cl->alt;
-      DBG("ircd:ircd.c:_ircd_recalculate_hops: server %s backup path via %s",
-	  t->lcnick, t->alt ? t->alt->link->cl->lcnick : NULL);
-    }
+  /* we might discover alternate paths for local servers via some servers deeper
+     in the tree while already scanned them, let fill them in backward order */
+  while (--hops > 0)
+  {
+    for (i = 1; i < Ircd->s; i++) /* iteration: scan whole servers list */
+      if ((t = Ircd->token[i]) != NULL && t->hops == hops && t->via != NULL &&
+	  t->alt == NULL)
+      {
+	register LINK *l;
+
+	if (CLIENT_IS_LOCAL(t) && t->via->p.state == P_QUIT)
+	  /* a dying client */
+	  continue;
+	if (!(t->umode & A_MULTI))
+	  /* RFC server cannot get alternate path if still does not have one */
+	  continue;
+	for (l = t->c.lients; l && t->alt == NULL; l = l->prev)
+	  if (CLIENT_IS_SERVER(l->cl))
+	  {
+	    if (l->cl->via != t->via)
+	      t->alt = l->cl->via;
+	    else
+	      t->alt = l->cl->alt;
+	    if (t->alt)
+	      DBG("ircd:ircd.c:_ircd_recalculate_hops: found alt path for server %s via %s",
+		  t->lcnick, l->cl->lcnick);
+	  }
+      }
+  }
 }
 #endif
 
