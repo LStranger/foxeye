@@ -1679,7 +1679,6 @@ _sendq_exceeded:
       peer->penalty > _ircd_client_recvq[1])
   {
     sr = 0;				/* apply penalty on flood from clients */
-    Add_Timer(cli, S_WAKEUP, peer->penalty - _ircd_client_recvq[1]);
   }
   else while ((sr = Peer_Get ((&peer->p), buff, sizeof(buff))) > 0)
   {					/* we got a message from peer */
