@@ -144,7 +144,7 @@ static int __flush_autolog (autolog_t *log, int quiet)
              log->d->path, str);
 #else
       if (strerror_r(x, log->d->buf, sizeof(log->d->buf)) != 0)
-        snprint(log->d->buf, sizeof(log->d->buf), "(failed to decode err=%d)", x);
+        snprintf(log->d->buf, sizeof(log->d->buf), "(failed to decode err=%d)", x);
       ERROR ("Couldn't write to logfile %s (%s), abort logging to it.",
 	     log->d->path, log->d->buf);
 #endif

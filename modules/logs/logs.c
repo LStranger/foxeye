@@ -217,7 +217,7 @@ static ssize_t textlog_add_buf (logfile_t *log, char *text, size_t sz,
 	       log->path, str);
 #else
 	if (strerror_r(x, log->buf, sizeof(log->buf)) != 0)
-	  snprint(log->buf, sizeof(log->buf), "(failed to decode err=%d)", x);
+	  snprintf(log->buf, sizeof(log->buf), "(failed to decode err=%d)", x);
 	ERROR ("Couldn't sync logfile %s (%s), abort logging to it.",
 	       log->path, log->buf);
 #endif
@@ -684,7 +684,7 @@ static void do_rotate (logfile_t *log)
     ERROR ("Couldn't rotate %s: %s", log->path, str);
 #else
     if (strerror_r(x, path, sizeof(path)) != 0)
-      snprint(path, sizeof(path), "(failed to decode err=%d)", x);
+      snprintf(path, sizeof(path), "(failed to decode err=%d)", x);
     ERROR ("Couldn't rotate %s: %s", log->path, path);
 #endif
     return;
