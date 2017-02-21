@@ -1927,6 +1927,9 @@ static void _ircd_prehandler (pthread_t th, void **data, idx_t *as)
   while (__ircd_have_started == 0) sleep(1); /* wait for main thread */
   /* lock dispatcher and create connchain */
   Set_Iface (NULL);
+  /* create interface */
+  peer->p.iface = Add_Iface (I_CLIENT | I_CONNECT, NULL, &_ircd_client_signal,
+			     &_ircd_client_request, peer);
   if ((pn = strchr (pn, '%')))		/* do custom connchains for SSL etc. */
     while (*++pn)
       if (*pn != 'x' && !Connchain_Grow (&peer->p, *pn))
@@ -1934,9 +1937,6 @@ static void _ircd_prehandler (pthread_t th, void **data, idx_t *as)
   Connchain_Grow (&peer->p, 'x');	/* text parser is mandatory */
   peer->p.last_input = peer->started = Time;
   peer->i.nvited = NULL;
-  /* create interface */
-  peer->p.iface = Add_Iface (I_CLIENT | I_CONNECT, NULL, &_ircd_client_signal,
-			     &_ircd_client_request, peer);
 #if IRCD_USES_ICONV
   if (*charset)
     peer->p.iface->conv = Get_Conversion (charset);
@@ -2315,10 +2315,10 @@ static inline void _ircd_start_uplink2 (const char *name, char *host,
   strfcpy (uplink->away, port, sizeof(uplink->away)); /* remember port string */
   strfcpy (uplink->host, host, sizeof(uplink->host)); /* remember host name */
   uplink->vhost[0] = 0;
-  Connchain_Grow (&uplink->via->p, 0); /* init empty connchain */
   uplink->via->p.iface = Add_Iface (I_CONNECT, uplink->lcnick,
 				    &_ircd_uplink_sig, &_ircd_uplink_req,
 				    uplink->via);
+  Connchain_Grow (&uplink->via->p, 0); /* init empty connchain */
   uplink->lcnick[0] = '\0';		/* don't need it anymore */
   if (Connect_Host (host, atoi(port), &uplink->via->th,
 		    &uplink->via->p.socket, &_ircd_uplink_handler, uplink))

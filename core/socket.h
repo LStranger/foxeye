@@ -22,7 +22,7 @@
 #define _SOCKET_H 1
 
 #define M_RAW		0
-#define M_POLL		2
+#define M_POLL		M_RAW
 #define M_LIST		3
 #define M_LINP		4
 #define M_UNIX		5

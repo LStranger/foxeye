@@ -19,6 +19,8 @@ TODO:
 Tue Feb 21 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/foxeye.h, core/sheduler.c, doc/modules.api, modules/irc-channel/irc-channel.c, modules/ircd/channels.c, modules/ircd/ircd.c:
 	  added new signal S_WAKEUP for purpose of waking up interface by timer.
+	* doc/modules.api: documented changes in connchain behavior (due to
+	  changes in socket events processing), and new APIs.
 
 Fri Feb 17 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c: never lock mutex in signal handler, use pipe to
@@ -47,8 +49,6 @@ Fri Feb 17 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  controller, more threads may be added by modules (such as listener
 	  threads, including those that are usually added by "port" command in
 	  config).
-	* doc/modules.api: documented changes in connchain behavior (due to
-	  changes in socket events processing), and new APIs.
 
 Thu Feb 16 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/list.c: corrected support saved hostmasks with passwords by

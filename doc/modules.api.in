@@ -277,6 +277,12 @@ Common API:
 	Reenterability: reenterable
 	Cancellation point: no
 
+  void MMaarrkk__IIffaaccee (INTERFACE *_i_f_a_c_e);
+    Marks interface _i_f_a_c_e to be ran on the next dispatcher cycle even if
+    there is no requests pending for it and wakes up the dispatcher if it
+    is sleeping.
+	Reenterability: none
+
   void AAdddd__RReeqquueesstt (iftype_t _t_y_p_e, const char *_t_o, flag_t _f_l,
 		    const char *_t_e_x_t, _._._.);
     Adds request for interfaces matched mask _t_o and flags _t_y_p_e. Request
@@ -291,7 +297,6 @@ Common API:
     Macro, defined as Add_Request(_t_y_p_e, _t_o, F_SIGNAL, (char *)_s_i_g)
     Used for sending signals instead of text messages.
 	Reenterability: none
-	Cancellation point: no
 
   void NNeeww__RReeqquueesstt (INTERFACE *_i_f_a_c_e, flag_t _f_l, const char *_t_e_x_t, _._._.);
     Adds request for interface _i_f_a_c_e. Request has mode flags _f_l. Data of
@@ -1153,22 +1158,32 @@ Sockets API:
 
   ssize_t RReeaaddSSoocckkeett (char *_b_u_f, idx_t _i_d_x, size_t _s_z);
     Reads raw data from socket _i_d_x to buffer _b_u_f of max size _s_z and then
-    returns size of read data. If called from threads then may wait up to
-    200 milliseconds. If there was an error on socket then returns error
-    code and if socket was died unexpectedly then returns E_NOSOCKET.
+    returns size of read data. If there was an error on the socket then
+    returns error code and if socket was died unexpectedly then returns
+    E_NOSOCKET.
     Also may return E_AGAIN if socket is waiting for a connection.
 	Reenterability: thread-safe
 	Cancellation point: maybe
 
   ssize_t WWrriitteeSSoocckkeett (idx_t _i_d_x, const char *_b_u_f, size_t *_p_t_r,
 		       size_t *_s_z);
-    Writes raw data of size _s_z to socket _i_d_x from buffer _b_u_f at _p_t_r. If
-    called from threads then may wait up to 200 milliseconds. Returns
-    number of bytes written and changes counters _p_t_r and _s_z. If there was
-    an error on socket then returns error code and if socket was died
-    unexpectedly then returns E_NOSOCKET.
+    Writes raw data of size _s_z to socket _i_d_x from buffer _b_u_f at _p_t_r.
+    Returns number of bytes written and changes counters _p_t_r and _s_z. If
+    there was an error on socket then returns error code and if socket
+    was died unexpectedly then returns E_NOSOCKET.
 	Reenterability: thread-safe
 	Cancellation point: maybe
+
+  void AAssssoocciiaatteeSSoocckkeett (idx_t _i_d_x, void (*_c_a_l_l_b_a_c_k)(void *_c_a_l_l_b_a_c_k___d_a_t_a),
+			void *_c_a_l_l_b_a_c_k___d_a_t_a);
+    Adds a hook onto valid socket _i_d_x. When socket state is changed (so
+    either new data came, connection closed, etc.) the _c_a_l_l_b_a_c_k will be
+    called with a parameter _c_a_l_l_b_a_c_k___d_a_t_a. At the moment of call sockets
+    are locked therefore callback should be async-safe or otherwise it is
+    possible to get a deadlock. Note on reenterability: the function does
+    not change any other data so should be safe to call from a thread if
+    that thread ensures the socket is owned by a calling thread.
+	Reenterability: none
 
 Direct client's connections API:
 --------------------------------
@@ -1304,7 +1319,10 @@ Connection chain API:
     connection chain with Connchain_Grow(). Note: adding filters 'x' or
     'y' that are implemented in core will never return 0. Note2: there is
     a completely legal way to reset all connection chain by binding which
-    setups that new filter so be careful.
+    setups that new filter so be careful. Note3: on very first filter add
+    this function will add a hook on the socket to wake up the associated
+    interface so both should already exist at that moment, and interface
+    should be never freed or replaced until socket is killed.
     * Filter 'x' : on send adds CR+LF to end of line, accepts line with
       at most MB_LEN_MAX*MESSAGEMAX-1 chars including terminating null
       byte; on receive accepts raw stream, selects lines that are ended
