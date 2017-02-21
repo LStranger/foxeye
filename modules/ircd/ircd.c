@@ -2390,6 +2390,7 @@ static void _ircd_start_uplink (char *name, char *host)
 /* called when uplink is invalid (absent or died) */
 static void _ircd_init_uplinks (void)
 {
+  DBG("ircd:_ircd_init_uplinks");
   if (_uplinks_timer == -1)
     /* start autoconnect each 30 seconds until got some uplink */
     _uplinks_timer = Add_Timer(Ircd->iface, S_TIMEOUT, 30);
@@ -2403,6 +2404,7 @@ static void _ircd_do_init_uplinks (void)
   int i;
   char buff[MESSAGEMAX];
 
+  DBG("ircd:_ircd_do_init_uplinks: current uplink: %p", _ircd_uplink);
   if (_ircd_uplink)			/* got RFC2813 server autoconnected*/
     return;				/* so nothing to do */
   tmp = Add_Iface (I_TEMP, NULL, NULL, &_ircd_sublist_receiver, NULL);
@@ -4707,7 +4709,6 @@ static int _ircd_request (INTERFACE *cli, REQUEST *req)
 {
   const char *argv[IRCDMAXARGS+3];	/* sender, command, args, NULL */
   char *c;
-  static unsigned char chreop;
   int argc, i;
 
 #if IRCD_MULTICONNECT
@@ -4716,8 +4717,8 @@ static int _ircd_request (INTERFACE *cli, REQUEST *req)
   if (_ircd_uplink == NULL)
 #endif
     _ircd_init_uplinks();		/* try our uplink proc */
-  if (chreop++ == 0)
-    ircd_channels_chreop(Ircd, &ME);
+  /* run reop procedure, let hope it will be not too often */
+  ircd_channels_chreop(Ircd, &ME);
   if (!req)				/* it's idle call */
     return REQ_OK;
   c = req->string;
@@ -4839,6 +4840,9 @@ static iftype_t _ircd_signal (INTERFACE *iface, ifsig_t sig)
 	iface->data = NULL; /* module owns it */
       } else
 	WARNING("ircd:cannot find main interface for termination!");
+      break;
+    case S_LOCAL:
+      Mark_Iface (iface);
       break;
     case S_TIMEOUT:
       _ircd_do_init_uplinks();
@@ -5674,6 +5678,7 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
       if (gettoken (_ircd_sublist_buffer, NULL)) /* take one name from list */
       Ircd->iface = Add_Iface (I_SERVICE, _ircd_sublist_buffer, &_ircd_signal,
 			       &_ircd_request, Ircd);
+      Add_Timer (Ircd->iface, S_LOCAL, 1);
       /* also make name@network messages collector */
       snprintf (buff, sizeof(buff), "@%s", Ircd->iface->name);
       Ircd->sub = Add_Iface (I_CLIENT, buff, NULL, &_ircd_sub_request, NULL);
