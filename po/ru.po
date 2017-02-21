@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: foxeye 0.10\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2017-01-20 22:46+0200\n"
+"POT-Creation-Date: 2017-02-21 17:33+0200\n"
 "PO-Revision-Date: 2011-11-22 19:21+0200\n"
 "Last-Translator: Andriy Grytsenko <andrej@rep.kiev.ua>\n"
 "Language-Team: Russian <ru@li.org>\n"
@@ -35,217 +35,221 @@ msgstr "вышел с этого канала."
 msgid "no reason."
 msgstr ""
 
-#: core/direct.c:379 core/direct.c:396 core/direct.c:2182 core/direct.c:2184
+#: core/direct.c:385 core/direct.c:410 core/direct.c:2332 core/direct.c:2335
 #: core/init.c:1926
 msgid "Usage: "
 msgstr "Использование: "
 
-#: core/direct.c:388
+#: core/direct.c:395
 #, c-format
 msgid "Nothing appropriated to: %s"
 msgstr "Нет подходящей команды: %s"
 
-#: core/direct.c:458
+#: core/direct.c:480
 #, c-format
 msgid "Logged in: %s."
 msgstr "Зашёл: %s."
 
-#: core/direct.c:531 core/direct.c:553
+#: core/direct.c:553 core/direct.c:576
 msgid "session lost"
 msgstr ""
 
-#: core/direct.c:1208
+#: core/direct.c:1321
 #, c-format
 msgid "listening on port %hu"
 msgstr ""
 
-#: core/direct.c:1244
+#: core/direct.c:1357
 #, c-format
 msgid "Listening socket on port %hu terminated."
 msgstr ""
 
-#: core/direct.c:1402
+#: core/direct.c:1515
 msgid "((unknown))"
 msgstr ""
 
-#: core/direct.c:1687
+#: core/direct.c:1806
 #, c-format
 msgid "Now: %s"
 msgstr ""
 
-#: core/direct.c:1707
+#: core/direct.c:1826
 #, c-format
 msgid "now away: %s"
 msgstr ""
 
-#: core/direct.c:1709
+#: core/direct.c:1828
 msgid "returned to life."
 msgstr ""
 
-#: core/direct.c:1759
+#: core/direct.c:1878
 msgid "No such person at the botnet!"
 msgstr ""
 
-#: core/direct.c:1761
+#: core/direct.c:1880
 msgid "Cannot boot the bot owner!"
 msgstr ""
 
-#: core/direct.c:1763
+#: core/direct.c:1882
 msgid "You not permitted to boot a bot master!"
 msgstr ""
 
-#: core/direct.c:1765
+#: core/direct.c:1884
 msgid "I don't know how to boot it!"
 msgstr ""
 
-#: core/direct.c:1773
+#: core/direct.c:1892
 #, c-format
 msgid "%s booted by %s."
 msgstr ""
 
-#: core/direct.c:1997
+#: core/direct.c:2147
 #, c-format
 msgid "No such active service found: %s"
 msgstr ""
 
-#: core/direct.c:2046
+#: core/direct.c:2196
 msgid "messages"
 msgstr "сообщения"
 
-#: core/direct.c:2049
+#: core/direct.c:2199
 msgid "commands"
 msgstr "команды"
 
-#: core/direct.c:2052
+#: core/direct.c:2202
 msgid "connections/shares"
 msgstr ""
 
-#: core/direct.c:2055
+#: core/direct.c:2205
 msgid "server messages"
 msgstr ""
 
-#: core/direct.c:2058
+#: core/direct.c:2208
 msgid "wallops"
 msgstr ""
 
-#: core/direct.c:2061
+#: core/direct.c:2211
 msgid "userfile changes"
 msgstr ""
 
-#: core/direct.c:2064
+#: core/direct.c:2214
 msgid "debug"
 msgstr "отладка"
 
-#: core/direct.c:2067
+#: core/direct.c:2217
 msgid "boot diagnostics"
 msgstr "запуск"
 
-#: core/direct.c:2070
+#: core/direct.c:2220
 msgid "errors"
 msgstr "ошибки"
 
-#: core/direct.c:2073
+#: core/direct.c:2223
 msgid "warnings"
 msgstr "предупреждения"
 
-#: core/direct.c:2076
+#: core/direct.c:2226
 msgid "public"
 msgstr ""
 
-#: core/direct.c:2079
+#: core/direct.c:2229
 msgid "joins/parts"
 msgstr ""
 
-#: core/direct.c:2082
+#: core/direct.c:2232
 msgid "mode changes"
 msgstr ""
 
-#: core/direct.c:2099 core/direct.c:2103
+#: core/direct.c:2249 core/direct.c:2253
 msgid "Your console logs"
 msgstr "Консольный лог"
 
-#: core/direct.c:2100
+#: core/direct.c:2250
 msgid ", and "
 msgstr ""
 
-#: core/direct.c:2101
+#: core/direct.c:2251
 msgid "on the channel"
 msgstr ""
 
-#: core/direct.c:2243
+#: core/direct.c:2396
 msgid "No such client on DCC now"
 msgstr ""
 
-#: core/direct.c:2256
+#: core/direct.c:2409
 msgid "You can simulate only local DCC clients, sorry"
 msgstr ""
 
-#: core/direct.c:2353
+#: core/direct.c:2506
 #, c-format
 msgid "I don't know how to connect to %s."
 msgstr ""
 
-#: core/direct.c:2378
+#: core/direct.c:2531
 #, c-format
 msgid "I don't know how disconnect %s."
 msgstr ""
 
-#: core/direct.c:2753
+#: core/direct.c:2909
 #, c-format
 msgid "Connection from %s terminated: %s"
 msgstr ""
 
-#: core/direct.c:2817
+#: core/direct.c:2973
 #, c-format
 msgid "Could not open listening port %hu%s, retrying in 10 seconds."
 msgstr ""
 
-#: core/direct.c:2818 core/direct.c:2827 core/direct.c:2837 core/direct.c:2912
+#: core/direct.c:2974 core/direct.c:2983 core/direct.c:2993 core/direct.c:3068
 msgid " for bots"
 msgstr ""
 
-#: core/direct.c:2826
+#: core/direct.c:2982
 #, c-format
 msgid "Cannot open listening port on %hu%s!"
 msgstr ""
 
-#: core/direct.c:2836
+#: core/direct.c:2992
 #, c-format
 msgid "Listening on port %hu%s."
 msgstr ""
 
-#: core/direct.c:2884
+#: core/direct.c:3040
 #, c-format
 msgid "Already listening on port %hu!"
 msgstr ""
 
-#: core/direct.c:2911
+#: core/direct.c:3067
 #, c-format
 msgid "Could not create listening thread for port on %hu%s!"
 msgstr ""
 
-#: core/dispatcher.c:1361
+#: core/dispatcher.c:1404
 msgid "kill PID file"
 msgstr ""
 
-#: core/dispatcher.c:1371
+#: core/dispatcher.c:1414
 #, c-format
 msgid "The bot already running!\n"
 msgstr ""
 
-#: core/dispatcher.c:1382
+#: core/dispatcher.c:1425
 msgid "fork dispatcher"
 msgstr ""
 
-#: core/dispatcher.c:1391
+#: core/dispatcher.c:1434
 msgid "write PID file"
 msgstr ""
 
-#: core/dispatcher.c:1459
+#: core/dispatcher.c:1449
+msgid "Failed to create signals thread."
+msgstr ""
+
+#: core/dispatcher.c:1506
 msgid "Cannot run without a nick!"
 msgstr ""
 
-#: core/dispatcher.c:1469
+#: core/dispatcher.c:1516
 msgid "Cannot write a PID file!"
 msgstr ""
 
@@ -261,11 +265,11 @@ msgstr ""
 msgid "Input connection from %@:%P, ident %*."
 msgstr ""
 
-#: core/help.c:321
+#: core/help.c:430
 msgid "No help on this."
 msgstr "Нет сведений об этом."
 
-#: core/help.c:403
+#: core/help.c:512
 #, c-format
 msgid "Available topics for \"help%s%s\":"
 msgstr ""
@@ -363,11 +367,11 @@ msgstr "Неудачно"
 msgid "Terminated by %s%c %s"
 msgstr ""
 
-#: core/init.c:2115
+#: core/init.c:2149
 msgid "Invalid configuration file!"
 msgstr ""
 
-#: core/init.c:2155
+#: core/init.c:2189
 msgid "Cannot create configuration file."
 msgstr ""
 
@@ -375,7 +379,7 @@ msgstr ""
 msgid "Out of memory!"
 msgstr ""
 
-#: core/main.c:384
+#: core/main.c:385
 msgid ""
 "Usage:\tfoxeye [-n nick] [-cqdmt] <file>\t\t- normal run\n"
 "\tfoxeye -cr [-n nick] [-dm] [-g <file>]\t- run with defaults\n"
@@ -395,7 +399,7 @@ msgid ""
 "   <file>\tconfig file name\n"
 msgstr ""
 
-#: core/main.c:409
+#: core/main.c:410
 #, fuzzy, c-format
 msgid ""
 "Copyright (C) 1999-2017 Andriy Gritsenko.\n"
@@ -406,291 +410,291 @@ msgstr ""
 "\n"
 "Операционная система: %s %s на %s.\n"
 
-#: core/main.c:509
+#: core/main.c:510
 #, c-format
 msgid "Incorrect options. Type 'foxeye -h' for more help.\n"
 msgstr ""
 
-#: core/list.c:364
+#: core/list.c:388
 #, c-format
 msgid "Added hostmask %s for name %s."
 msgstr ""
 
-#: core/list.c:398
+#: core/list.c:422
 #, c-format
 msgid "Deleted hostmask %s from name %s."
 msgstr ""
 
-#: core/list.c:769
+#: core/list.c:793
 #, c-format
 msgid "Added name %s with flag(s) %s."
 msgstr ""
 
-#: core/list.c:773
+#: core/list.c:797
 #, c-format
 msgid "Added name %s."
 msgstr ""
 
-#: core/list.c:795
+#: core/list.c:819
 #, c-format
 msgid "Added alias %s for %s."
 msgstr ""
 
-#: core/list.c:814 core/list.c:2982
+#: core/list.c:838 core/list.c:3005
 #, c-format
 msgid "Deleted name %s."
 msgstr ""
 
-#: core/list.c:2618
+#: core/list.c:2642
 #, c-format
 msgid "No user with login name %s found."
 msgstr ""
 
-#: core/list.c:2644
+#: core/list.c:2668
 #, c-format
 msgid "No such service '%s'."
 msgstr ""
 
-#: core/list.c:2681 core/list.c:3104 modules/irc-channel/chmanagement.c:1265
-#: modules/irc-channel/chmanagement.c:1336
-#: modules/irc-channel/chmanagement.c:1546
-#: modules/irc-channel/chmanagement.c:1613 modules/modes/modes.c:582
+#: core/list.c:2705 core/list.c:3127 modules/irc-channel/chmanagement.c:1264
+#: modules/irc-channel/chmanagement.c:1335
+#: modules/irc-channel/chmanagement.c:1545
+#: modules/irc-channel/chmanagement.c:1612 modules/modes/modes.c:582
 msgid "Permission denied."
 msgstr "Нет прав."
 
-#: core/list.c:2687
+#: core/list.c:2711
 msgid "You set no default service yet."
 msgstr ""
 
-#: core/list.c:2710 core/list.c:2723 core/list.c:2796 core/list.c:2809
+#: core/list.c:2734 core/list.c:2747 core/list.c:2820 core/list.c:2833
 msgid "owner"
 msgstr "владелец"
 
-#: core/list.c:2712 core/list.c:2725 core/list.c:2798 core/list.c:2811
+#: core/list.c:2736 core/list.c:2749 core/list.c:2822 core/list.c:2835
 msgid "master"
 msgstr "администратор"
 
-#: core/list.c:2714 core/list.c:2727 core/list.c:2800 core/list.c:2813
+#: core/list.c:2738 core/list.c:2751 core/list.c:2824 core/list.c:2837
 msgid "operator"
 msgstr "оператор"
 
-#: core/list.c:2716 core/list.c:2729 core/list.c:2802 core/list.c:2815
+#: core/list.c:2740 core/list.c:2753 core/list.c:2826 core/list.c:2839
 msgid "half op"
 msgstr "полуоператор"
 
-#: core/list.c:2721
+#: core/list.c:2745
 #, c-format
 msgid "OOPS, you are not %s anymore..."
 msgstr ""
 
-#: core/list.c:2734
+#: core/list.c:2758
 #, c-format
 msgid "WOW, you are %s now..."
 msgstr ""
 
-#: core/list.c:2739
+#: core/list.c:2763
 #, c-format
 msgid "Global attributes for %s are now: %s."
 msgstr ""
 
-#: core/list.c:2807
+#: core/list.c:2831
 #, c-format
 msgid "OOPS, you are not %s on %s anymore..."
 msgstr ""
 
-#: core/list.c:2820
+#: core/list.c:2844
 #, c-format
 msgid "WOW, you are %s on %s now..."
 msgstr ""
 
-#: core/list.c:2838
+#: core/list.c:2862
 #, c-format
 msgid "Channel attributes for %s on %s are now: %s."
 msgstr ""
 
-#: core/list.c:2933
+#: core/list.c:2956
 msgid "Cannot add name: network does not exist."
 msgstr ""
 
-#: core/list.c:2960
+#: core/list.c:2983
 msgid "Cannot add user: invalid or already exist."
 msgstr ""
 
-#: core/list.c:2977
+#: core/list.c:3000
 #, c-format
 msgid "Name %s does not exist."
 msgstr ""
 
-#: core/list.c:3075
+#: core/list.c:3098
 #, c-format
 msgid "Password for %s erased."
 msgstr ""
 
-#: core/list.c:3123 core/list.c:3183
+#: core/list.c:3146 core/list.c:3206
 msgid "Cannot load userfile!"
 msgstr ""
 
-#: core/list.c:3132
+#: core/list.c:3155
 msgid "Cannot save userfile!"
 msgstr ""
 
-#: core/sheduler.c:436
+#: core/sheduler.c:584
 #, c-format
 msgid "Timers: flood %u, once %u, periodic %u."
 msgstr ""
 
-#: modules/autolog/autolog.c:767
+#: modules/autolog/autolog.c:779
 #, c-format
 msgid "Auto log #%d: file \"%s\" for client %s."
 msgstr ""
 
-#: modules/autolog/autolog.c:770
+#: modules/autolog/autolog.c:782
 msgid "Module autolog: no opened logs."
 msgstr ""
 
-#: modules/autolog/autolog.c:787
+#: modules/autolog/autolog.c:799
 #, c-format
 msgid "IRC log started %c"
 msgstr ""
 
-#: modules/autolog/autolog.c:788
+#: modules/autolog/autolog.c:800
 #, c-format
 msgid "IRC log ended %c"
 msgstr ""
 
-#: modules/autolog/autolog.c:789
+#: modules/autolog/autolog.c:801
 #, c-format
 msgid "Day changed: %a %x"
 msgstr ""
 
-#: modules/irc-channel/irc-channel.c:1516
+#: modules/irc-channel/irc-channel.c:1523
 msgid "is in netsplit"
 msgstr ""
 
-#: modules/irc-channel/irc-channel.c:1705
+#: modules/irc-channel/irc-channel.c:1712
 #, c-format
 msgid "%s invited you to %s. Would you like to join"
 msgstr ""
 
-#: modules/irc-channel/irc-channel.c:2778
+#: modules/irc-channel/irc-channel.c:2786
 #, c-format
 msgid "%s: %d nicks [%d ops, %d halfops, %d voices, %d normal]"
 msgstr ""
 
-#: modules/irc-channel/irc-channel.c:2897
+#: modules/irc-channel/irc-channel.c:2905
 #, c-format
 msgid "*** cannot send to channel %s"
 msgstr ""
 
-#: modules/irc-channel/irc-channel.c:2915
+#: modules/irc-channel/irc-channel.c:2923
 #, c-format
 msgid "cannot join to channel %s: %s"
 msgstr ""
 
-#: modules/irc-channel/irc-channel.c:3543
+#: modules/irc-channel/irc-channel.c:3551
 #, c-format
 msgid "I don't know anyone with name %s."
 msgstr ""
 
-#: modules/irc-channel/irc-channel.c:3552
+#: modules/irc-channel/irc-channel.c:3560
 msgid "Sorry, you aren't on any channel I'm on too."
 msgstr ""
 
-#: modules/irc-channel/irc-channel.c:3562
+#: modules/irc-channel/irc-channel.c:3570
 msgid "Password incorrect."
 msgstr ""
 
-#: modules/irc-channel/irc-channel.c:3565
+#: modules/irc-channel/irc-channel.c:3573
 #, c-format
 msgid "You're recognized as %s."
 msgstr ""
 
-#: modules/irc-channel/irc-channel.c:3818
+#: modules/irc-channel/irc-channel.c:3826
 msgid "%y%N%n(%@) has joined %#"
 msgstr ""
 
-#: modules/irc-channel/irc-channel.c:3820
+#: modules/irc-channel/irc-channel.c:3828
 msgid "%^%N%^(%@) has left %# (%*)"
 msgstr ""
 
-#: modules/irc-channel/irc-channel.c:3822
+#: modules/irc-channel/irc-channel.c:3830
 msgid "%^%N%^ is now known as %y%*%n"
 msgstr ""
 
-#: modules/irc-channel/irc-channel.c:3824
+#: modules/irc-channel/irc-channel.c:3832
 msgid "%^%N%^(%@) has quit %# (%*)"
 msgstr ""
 
-#: modules/irc-channel/irc-channel.c:3826
+#: modules/irc-channel/irc-channel.c:3834
 msgid "%^%N%^ has lost in netsplit (%*)"
 msgstr ""
 
-#: modules/irc-channel/irc-channel.c:3828
+#: modules/irc-channel/irc-channel.c:3836
 msgid "%^%N%^ has kicked %L from %# (%*)"
 msgstr ""
 
-#: modules/irc-channel/irc-channel.c:3830
+#: modules/irc-channel/irc-channel.c:3838
 msgid "mode/%# (%*) by %^%N%^"
 msgstr ""
 
-#: modules/irc-channel/irc-channel.c:3832
+#: modules/irc-channel/irc-channel.c:3840
 msgid "netsplit (%*), quits: %N"
 msgstr ""
 
-#: modules/irc-channel/irc-channel.c:3834
+#: modules/irc-channel/irc-channel.c:3842
 msgid "netsplit of %* is over, joins: %N"
 msgstr ""
 
-#: modules/irc-channel/irc-channel.c:3836
+#: modules/irc-channel/irc-channel.c:3844
 msgid "%N %?*changed?unset? the topic of %#%?* to: %*??"
 msgstr ""
 
-#: modules/irc-channel/irc-channel.c:3838
+#: modules/irc-channel/irc-channel.c:3846
 msgid "Topic on %# is: %*"
 msgstr ""
 
-#: modules/irc-channel/irc-channel.c:3840
+#: modules/irc-channel/irc-channel.c:3848
 msgid "Topic for %# is set %@ by %N"
 msgstr ""
 
-#: modules/irc-channel/chmanagement.c:1233
+#: modules/irc-channel/chmanagement.c:1232
 #, c-format
 msgid "adduser: %s is already known as %s."
 msgstr ""
 
-#: modules/irc-channel/chmanagement.c:1241
-#: modules/irc-channel/chmanagement.c:1319
+#: modules/irc-channel/chmanagement.c:1240
+#: modules/irc-channel/chmanagement.c:1318
 #, c-format
 msgid "Could not find host of %s."
 msgstr ""
 
-#: modules/irc-channel/chmanagement.c:1309
+#: modules/irc-channel/chmanagement.c:1308
 #, c-format
 msgid "Could not find nick %s."
 msgstr ""
 
-#: modules/irc-channel/chmanagement.c:1314
+#: modules/irc-channel/chmanagement.c:1313
 #, c-format
 msgid "deluser: %s isn't registered."
 msgstr ""
 
-#: modules/irc-channel/chmanagement.c:1488
+#: modules/irc-channel/chmanagement.c:1487
 #, c-format
 msgid "%s isn't IRC channel!"
 msgstr ""
 
-#: modules/irc-channel/chmanagement.c:1514
-#: modules/irc-channel/chmanagement.c:1578
-#: modules/irc-channel/chmanagement.c:1650
-#: modules/irc-channel/chmanagement.c:1746
-#: modules/irc-channel/chmanagement.c:1785
+#: modules/irc-channel/chmanagement.c:1513
+#: modules/irc-channel/chmanagement.c:1577
+#: modules/irc-channel/chmanagement.c:1649
+#: modules/irc-channel/chmanagement.c:1745
+#: modules/irc-channel/chmanagement.c:1784
 #, c-format
 msgid "No operator privileges on %s."
 msgstr ""
 
-#: modules/irc-channel/chmanagement.c:1529
-#: modules/irc-channel/chmanagement.c:1596
-#: modules/irc-channel/chmanagement.c:1664
+#: modules/irc-channel/chmanagement.c:1528
+#: modules/irc-channel/chmanagement.c:1595
+#: modules/irc-channel/chmanagement.c:1663
 #, c-format
 msgid "%s isn't on IRC channel %s for me!"
 msgstr ""
@@ -821,102 +825,102 @@ msgstr ""
 msgid "DCC connection request for \"%*\" from %N(%@) to %I:%P"
 msgstr ""
 
-#: modules/irc/irc.c:404
+#: modules/irc/irc.c:405
 #, c-format
 msgid "Connection with network %s lost%s%s%s."
 msgstr ""
 
-#: modules/irc/irc.c:405
+#: modules/irc/irc.c:406
 msgid ": denied"
 msgstr ": запрещено"
 
-#: modules/irc/irc.c:406
+#: modules/irc/irc.c:407
 msgid ", retrying.."
 msgstr ", новая попытка..."
 
-#: modules/irc/irc.c:432
+#: modules/irc/irc.c:445
 #, c-format
 msgid "Connecting to %s, port %ld..."
 msgstr ""
 
-#: modules/irc/irc.c:452
+#: modules/irc/irc.c:466
 #, c-format
 msgid "Could not find a server for network %s"
 msgstr ""
 
-#: modules/irc/irc.c:672
+#: modules/irc/irc.c:686
 msgid "reconnecting IRC server"
 msgstr ""
 
-#: modules/irc/irc.c:675
+#: modules/irc/irc.c:689
 msgid "connecting IRC server"
 msgstr ""
 
-#: modules/irc/irc.c:678
+#: modules/irc/irc.c:692
 msgid "registering at IRC server"
 msgstr ""
 
-#: modules/irc/irc.c:682
+#: modules/irc/irc.c:696
 msgid "IRC server connected"
 msgstr ""
 
-#: modules/irc/irc.c:685
+#: modules/irc/irc.c:699
 msgid "disconnecting IRC server"
 msgstr ""
 
-#: modules/irc/irc.c:768
+#: modules/irc/irc.c:788
 #, c-format
 msgid "Connected to %s, registering..."
 msgstr ""
 
-#: modules/irc/irc.c:776
+#: modules/irc/irc.c:796
 #, c-format
 msgid "Disconnected from %s: unknown error."
 msgstr ""
 
-#: modules/irc/irc.c:845
+#: modules/irc/irc.c:865
 msgid "connection timeout"
 msgstr ""
 
-#: modules/irc/irc.c:869
+#: modules/irc/irc.c:901
 #, c-format
 msgid "Disconnected from %s."
 msgstr ""
 
-#: modules/irc/irc.c:926
+#: modules/irc/irc.c:963
 #, c-format
 msgid "Timeout for IRC server %s (%d seconds)..."
 msgstr ""
 
-#: modules/irc/irc.c:1113
+#: modules/irc/irc.c:1165
 msgid "bounced"
 msgstr ""
 
-#: modules/irc/irc.c:1144
+#: modules/irc/irc.c:1196
 #, c-format
 msgid "Registered on %s."
 msgstr ""
 
-#: modules/irc/irc.c:1160
+#: modules/irc/irc.c:1212
 #, c-format
 msgid "Got version from %s: %s"
 msgstr ""
 
-#: modules/irc/irc.c:1238
+#: modules/irc/irc.c:1290
 #, c-format
 msgid "%s quits: %s"
 msgstr ""
 
-#: modules/irc/irc.c:1287
+#: modules/irc/irc.c:1339
 msgid "killed"
 msgstr ""
 
-#: modules/irc/irc.c:1330
+#: modules/irc/irc.c:1382
 #, c-format
 msgid "*** no such nick %s"
 msgstr ""
 
-#: modules/irc/irc.c:1809
+#: modules/irc/irc.c:1862
 msgid "Waiting for IRC servers for terminating connection..."
 msgstr ""
 

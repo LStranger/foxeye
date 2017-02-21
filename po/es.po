@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2017-01-20 22:46+0200\n"
+"POT-Creation-Date: 2017-02-21 17:33+0200\n"
 "PO-Revision-Date: 2014-10-11 22:22+0200\n"
 "Last-Translator: jcsl <trcs@gmx.com>\n"
 "Language-Team: Spanish <opensuse-translation-es@opensuse.org>\n"
@@ -33,220 +33,224 @@ msgstr "ha dejado este canal botnet."
 msgid "no reason."
 msgstr "ninguna razón."
 
-#: core/direct.c:379 core/direct.c:396 core/direct.c:2182 core/direct.c:2184
+#: core/direct.c:385 core/direct.c:410 core/direct.c:2332 core/direct.c:2335
 #: core/init.c:1926
 msgid "Usage: "
 msgstr "Uso: "
 
-#: core/direct.c:388
+#: core/direct.c:395
 #, c-format
 msgid "Nothing appropriated to: %s"
 msgstr "Nada apropiado para: %s"
 
-#: core/direct.c:458
+#: core/direct.c:480
 #, c-format
 msgid "Logged in: %s."
 msgstr "Conectado: %s."
 
-#: core/direct.c:531 core/direct.c:553
+#: core/direct.c:553 core/direct.c:576
 msgid "session lost"
 msgstr "sesión perdida"
 
-#: core/direct.c:1208
+#: core/direct.c:1321
 #, c-format
 msgid "listening on port %hu"
 msgstr "escuchando en el puerto %hu"
 
-#: core/direct.c:1244
+#: core/direct.c:1357
 #, c-format
 msgid "Listening socket on port %hu terminated."
 msgstr "Socket de escucha en el puerto %hu terminado."
 
-#: core/direct.c:1402
+#: core/direct.c:1515
 msgid "((unknown))"
 msgstr "((desconocido))"
 
-#: core/direct.c:1687
+#: core/direct.c:1806
 #, c-format
 msgid "Now: %s"
 msgstr "Ahora: %s"
 
-#: core/direct.c:1707
+#: core/direct.c:1826
 #, c-format
 msgid "now away: %s"
 msgstr "ahora ausente: %s"
 
-#: core/direct.c:1709
+#: core/direct.c:1828
 msgid "returned to life."
 msgstr "vuelto a la vida."
 
-#: core/direct.c:1759
+#: core/direct.c:1878
 msgid "No such person at the botnet!"
 msgstr "¡No existe esa persona en el botnet!"
 
-#: core/direct.c:1761
+#: core/direct.c:1880
 msgid "Cannot boot the bot owner!"
 msgstr "¡No se puede iniciar el propietario del bot!"
 
-#: core/direct.c:1763
+#: core/direct.c:1882
 msgid "You not permitted to boot a bot master!"
 msgstr "¡No se le permite iniciar un bot maestro!"
 
-#: core/direct.c:1765
+#: core/direct.c:1884
 msgid "I don't know how to boot it!"
 msgstr "¡No sé cómo iniciarlo!"
 
-#: core/direct.c:1773
+#: core/direct.c:1892
 #, c-format
 msgid "%s booted by %s."
 msgstr "%s iniciado por %s."
 
-#: core/direct.c:1997
+#: core/direct.c:2147
 #, c-format
 msgid "No such active service found: %s"
 msgstr "No se encuentra el servicio activo: %s"
 
-#: core/direct.c:2046
+#: core/direct.c:2196
 msgid "messages"
 msgstr "mensajes"
 
-#: core/direct.c:2049
+#: core/direct.c:2199
 msgid "commands"
 msgstr "órdenes"
 
-#: core/direct.c:2052
+#: core/direct.c:2202
 msgid "connections/shares"
 msgstr "conexiones/comparticiones"
 
-#: core/direct.c:2055
+#: core/direct.c:2205
 msgid "server messages"
 msgstr "mensajes del servidor"
 
-#: core/direct.c:2058
+#: core/direct.c:2208
 msgid "wallops"
 msgstr "wallops"
 
-#: core/direct.c:2061
+#: core/direct.c:2211
 msgid "userfile changes"
 msgstr "cambios en el fichero de usuario"
 
-#: core/direct.c:2064
+#: core/direct.c:2214
 msgid "debug"
 msgstr "depuración"
 
-#: core/direct.c:2067
+#: core/direct.c:2217
 msgid "boot diagnostics"
 msgstr "diagnóstico del arranque"
 
-#: core/direct.c:2070
+#: core/direct.c:2220
 msgid "errors"
 msgstr "errores"
 
-#: core/direct.c:2073
+#: core/direct.c:2223
 msgid "warnings"
 msgstr "avisos"
 
-#: core/direct.c:2076
+#: core/direct.c:2226
 msgid "public"
 msgstr "público"
 
-#: core/direct.c:2079
+#: core/direct.c:2229
 msgid "joins/parts"
 msgstr "uniones/partes"
 
-#: core/direct.c:2082
+#: core/direct.c:2232
 msgid "mode changes"
 msgstr "cambios de modo"
 
-#: core/direct.c:2099 core/direct.c:2103
+#: core/direct.c:2249 core/direct.c:2253
 msgid "Your console logs"
 msgstr "Sus registros de la consola"
 
-#: core/direct.c:2100
+#: core/direct.c:2250
 msgid ", and "
 msgstr ", y "
 
-#: core/direct.c:2101
+#: core/direct.c:2251
 msgid "on the channel"
 msgstr "en el canal"
 
-#: core/direct.c:2243
+#: core/direct.c:2396
 msgid "No such client on DCC now"
 msgstr "No existe el cliente en el DDC ahora"
 
-#: core/direct.c:2256
+#: core/direct.c:2409
 msgid "You can simulate only local DCC clients, sorry"
 msgstr "Solo puede simular clientes DDC locales, lo siento"
 
-#: core/direct.c:2353
+#: core/direct.c:2506
 #, c-format
 msgid "I don't know how to connect to %s."
 msgstr "No sé cómo conectar con %s."
 
-#: core/direct.c:2378
+#: core/direct.c:2531
 #, c-format
 msgid "I don't know how disconnect %s."
 msgstr "No sé cómo desconectar %s."
 
-#: core/direct.c:2753
+#: core/direct.c:2909
 #, c-format
 msgid "Connection from %s terminated: %s"
 msgstr "La conexión desde %s ha terminado: %s"
 
-#: core/direct.c:2817
+#: core/direct.c:2973
 #, c-format
 msgid "Could not open listening port %hu%s, retrying in 10 seconds."
 msgstr ""
 "No se ha podido abrir el puerto de escucha %hu%s, se volverá a intentar en "
 "10 segundos."
 
-#: core/direct.c:2818 core/direct.c:2827 core/direct.c:2837 core/direct.c:2912
+#: core/direct.c:2974 core/direct.c:2983 core/direct.c:2993 core/direct.c:3068
 msgid " for bots"
 msgstr " para los bot"
 
-#: core/direct.c:2826
+#: core/direct.c:2982
 #, c-format
 msgid "Cannot open listening port on %hu%s!"
 msgstr "¡No se puede abrir el puerto de escucha en %hu%s!"
 
-#: core/direct.c:2836
+#: core/direct.c:2992
 #, c-format
 msgid "Listening on port %hu%s."
 msgstr "Escuchando en el puerto %hu%s."
 
-#: core/direct.c:2884
+#: core/direct.c:3040
 #, c-format
 msgid "Already listening on port %hu!"
 msgstr "¡Ya se está escuchando en el puerto %hu!"
 
-#: core/direct.c:2911
+#: core/direct.c:3067
 #, c-format
 msgid "Could not create listening thread for port on %hu%s!"
 msgstr "¡No se puede crear una tarea de escucha para el puerto en %hu%s!"
 
 # File will have another name, it contains PID of process under check. It's a daemon so reasonably there is some XXXX.pid file.
-#: core/dispatcher.c:1361
+#: core/dispatcher.c:1404
 msgid "kill PID file"
 msgstr "matar el fichero PID"
 
-#: core/dispatcher.c:1371
+#: core/dispatcher.c:1414
 #, c-format
 msgid "The bot already running!\n"
 msgstr "¡El bot ya se está ejecutando!\n"
 
-#: core/dispatcher.c:1382
+#: core/dispatcher.c:1425
 msgid "fork dispatcher"
 msgstr "despachador de forks"
 
-#: core/dispatcher.c:1391
+#: core/dispatcher.c:1434
 msgid "write PID file"
 msgstr "escribir el archivo PID"
 
-#: core/dispatcher.c:1459
+#: core/dispatcher.c:1449
+msgid "Failed to create signals thread."
+msgstr ""
+
+#: core/dispatcher.c:1506
 msgid "Cannot run without a nick!"
 msgstr "¡No se puede ejecutar sin un apodo (nick)!"
 
-#: core/dispatcher.c:1469
+#: core/dispatcher.c:1516
 msgid "Cannot write a PID file!"
 msgstr "¡No se puede escribir un archivo PID!"
 
@@ -262,11 +266,11 @@ msgstr "Chat DDC con %L cerrado: %*."
 msgid "Input connection from %@:%P, ident %*."
 msgstr "Conexión de entrada desde %@:%P, código %*."
 
-#: core/help.c:321
+#: core/help.c:430
 msgid "No help on this."
 msgstr "No hay ayuda sobre esto."
 
-#: core/help.c:403
+#: core/help.c:512
 #, c-format
 msgid "Available topics for \"help%s%s\":"
 msgstr "Temas disponibles para \"ayuda%s%s\":"
@@ -365,11 +369,11 @@ msgstr "Fallo"
 msgid "Terminated by %s%c %s"
 msgstr "Terminado por %s%c %s"
 
-#: core/init.c:2115
+#: core/init.c:2149
 msgid "Invalid configuration file!"
 msgstr "¡Fichero de configuración no válido!"
 
-#: core/init.c:2155
+#: core/init.c:2189
 msgid "Cannot create configuration file."
 msgstr "No se puede crear el archivo de configuración."
 
@@ -377,7 +381,7 @@ msgstr "No se puede crear el archivo de configuración."
 msgid "Out of memory!"
 msgstr "¡Memoria agotada!"
 
-#: core/main.c:384
+#: core/main.c:385
 msgid ""
 "Usage:\tfoxeye [-n nick] [-cqdmt] <file>\t\t- normal run\n"
 "\tfoxeye -cr [-n nick] [-dm] [-g <file>]\t- run with defaults\n"
@@ -415,7 +419,7 @@ msgstr ""
 "  -v\t\tinformación de la versión\n"
 "   <fichero>\tnombre del archivo de configuración\n"
 
-#: core/main.c:409
+#: core/main.c:410
 #, c-format
 msgid ""
 "Copyright (C) 1999-2017 Andriy Gritsenko.\n"
@@ -426,293 +430,293 @@ msgstr ""
 "\n"
 "S.O.: %s %s en %s.\n"
 
-#: core/main.c:509
+#: core/main.c:510
 #, c-format
 msgid "Incorrect options. Type 'foxeye -h' for more help.\n"
 msgstr "Opciones incorrectas. Escriba 'foxeye -h' para obtener más ayuda.\n"
 
-#: core/list.c:364
+#: core/list.c:388
 #, c-format
 msgid "Added hostmask %s for name %s."
 msgstr "Añadida máscara de host %s para el nombre %s."
 
-#: core/list.c:398
+#: core/list.c:422
 #, c-format
 msgid "Deleted hostmask %s from name %s."
 msgstr "Borrada máscara de host %s para el nombre %s."
 
-#: core/list.c:769
+#: core/list.c:793
 #, c-format
 msgid "Added name %s with flag(s) %s."
 msgstr "Añadido el nombre %s con indicador(es) %s."
 
-#: core/list.c:773
+#: core/list.c:797
 #, c-format
 msgid "Added name %s."
 msgstr "Añadido el nombre %s."
 
-#: core/list.c:795
+#: core/list.c:819
 #, c-format
 msgid "Added alias %s for %s."
 msgstr "Añadido el alias %s para %s."
 
-#: core/list.c:814 core/list.c:2982
+#: core/list.c:838 core/list.c:3005
 #, c-format
 msgid "Deleted name %s."
 msgstr "Borrado el nombre %s."
 
-#: core/list.c:2618
+#: core/list.c:2642
 #, c-format
 msgid "No user with login name %s found."
 msgstr "No se ha encontrado ningún usuario conectado con el nombre %s."
 
-#: core/list.c:2644
+#: core/list.c:2668
 #, c-format
 msgid "No such service '%s'."
 msgstr "No existe el servicio '%s'."
 
-#: core/list.c:2681 core/list.c:3104 modules/irc-channel/chmanagement.c:1265
-#: modules/irc-channel/chmanagement.c:1336
-#: modules/irc-channel/chmanagement.c:1546
-#: modules/irc-channel/chmanagement.c:1613 modules/modes/modes.c:582
+#: core/list.c:2705 core/list.c:3127 modules/irc-channel/chmanagement.c:1264
+#: modules/irc-channel/chmanagement.c:1335
+#: modules/irc-channel/chmanagement.c:1545
+#: modules/irc-channel/chmanagement.c:1612 modules/modes/modes.c:582
 msgid "Permission denied."
 msgstr "Permiso denegado."
 
-#: core/list.c:2687
+#: core/list.c:2711
 msgid "You set no default service yet."
 msgstr "No ha establecido ningún servicio predeterminado aún."
 
-#: core/list.c:2710 core/list.c:2723 core/list.c:2796 core/list.c:2809
+#: core/list.c:2734 core/list.c:2747 core/list.c:2820 core/list.c:2833
 msgid "owner"
 msgstr "propietario"
 
-#: core/list.c:2712 core/list.c:2725 core/list.c:2798 core/list.c:2811
+#: core/list.c:2736 core/list.c:2749 core/list.c:2822 core/list.c:2835
 msgid "master"
 msgstr "maestro"
 
-#: core/list.c:2714 core/list.c:2727 core/list.c:2800 core/list.c:2813
+#: core/list.c:2738 core/list.c:2751 core/list.c:2824 core/list.c:2837
 msgid "operator"
 msgstr "operador"
 
 # "half op" is op with restricted privileges, like +o and +h in IRC - those are shown as @ and % nick prefixes.
-#: core/list.c:2716 core/list.c:2729 core/list.c:2802 core/list.c:2815
+#: core/list.c:2740 core/list.c:2753 core/list.c:2826 core/list.c:2839
 msgid "half op"
 msgstr "moderador"
 
-#: core/list.c:2721
+#: core/list.c:2745
 #, c-format
 msgid "OOPS, you are not %s anymore..."
 msgstr "Huy, ha dejado de ser %s..."
 
-#: core/list.c:2734
+#: core/list.c:2758
 #, c-format
 msgid "WOW, you are %s now..."
 msgstr "Guau, ahora es %s..."
 
-#: core/list.c:2739
+#: core/list.c:2763
 #, c-format
 msgid "Global attributes for %s are now: %s."
 msgstr "Los atributos globales para %s son ahora: %s."
 
-#: core/list.c:2807
+#: core/list.c:2831
 #, c-format
 msgid "OOPS, you are not %s on %s anymore..."
 msgstr "Huy, ha dejado de ser %s en %s..."
 
-#: core/list.c:2820
+#: core/list.c:2844
 #, c-format
 msgid "WOW, you are %s on %s now..."
 msgstr "Guau, ahora es %s en %s..."
 
-#: core/list.c:2838
+#: core/list.c:2862
 #, c-format
 msgid "Channel attributes for %s on %s are now: %s."
 msgstr "Los atributos del canal para %s en %s son ahora: %s."
 
-#: core/list.c:2933
+#: core/list.c:2956
 msgid "Cannot add name: network does not exist."
 msgstr "No se puede añadir el nombre: la red no existe."
 
-#: core/list.c:2960
+#: core/list.c:2983
 msgid "Cannot add user: invalid or already exist."
 msgstr "No se puede añadir el usuario: no es válido o existe ya."
 
-#: core/list.c:2977
+#: core/list.c:3000
 #, c-format
 msgid "Name %s does not exist."
 msgstr "El nombre %s no existe."
 
-#: core/list.c:3075
+#: core/list.c:3098
 #, c-format
 msgid "Password for %s erased."
 msgstr "La contraseña para %s se ha borrado."
 
-#: core/list.c:3123 core/list.c:3183
+#: core/list.c:3146 core/list.c:3206
 msgid "Cannot load userfile!"
 msgstr "¡No se puede cargar el fichero del usuario!"
 
-#: core/list.c:3132
+#: core/list.c:3155
 msgid "Cannot save userfile!"
 msgstr "¡No se puede guardar el archivo del usuario!"
 
-#: core/sheduler.c:436
+#: core/sheduler.c:584
 #, c-format
 msgid "Timers: flood %u, once %u, periodic %u."
 msgstr "Temporizadores: de desbordamiento %u, de un uso %u, periódicos %u."
 
-#: modules/autolog/autolog.c:767
+#: modules/autolog/autolog.c:779
 #, c-format
 msgid "Auto log #%d: file \"%s\" for client %s."
 msgstr "Registro automático #%d: fichero \"%s\" para el cliente %s."
 
-#: modules/autolog/autolog.c:770
+#: modules/autolog/autolog.c:782
 msgid "Module autolog: no opened logs."
 msgstr "Registro automático del módulo: no hay registros abiertos."
 
-#: modules/autolog/autolog.c:787
+#: modules/autolog/autolog.c:799
 #, c-format
 msgid "IRC log started %c"
 msgstr "El registro del IRC se ha iniciado %c"
 
-#: modules/autolog/autolog.c:788
+#: modules/autolog/autolog.c:800
 #, c-format
 msgid "IRC log ended %c"
 msgstr "El registro del IRC ha terminado %c"
 
-#: modules/autolog/autolog.c:789
+#: modules/autolog/autolog.c:801
 #, c-format
 msgid "Day changed: %a %x"
 msgstr "Cambio de día: %a %x"
 
-#: modules/irc-channel/irc-channel.c:1516
+#: modules/irc-channel/irc-channel.c:1523
 msgid "is in netsplit"
 msgstr "está en netsplit"
 
-#: modules/irc-channel/irc-channel.c:1705
+#: modules/irc-channel/irc-channel.c:1712
 #, c-format
 msgid "%s invited you to %s. Would you like to join"
 msgstr "%s le invita a %s. ¿Le gustaría unirse?"
 
-#: modules/irc-channel/irc-channel.c:2778
+#: modules/irc-channel/irc-channel.c:2786
 #, c-format
 msgid "%s: %d nicks [%d ops, %d halfops, %d voices, %d normal]"
 msgstr ""
 "%s: %d apodos (nicks) [%d operadores, %d moderadores, %d voces, %d normal]"
 
-#: modules/irc-channel/irc-channel.c:2897
+#: modules/irc-channel/irc-channel.c:2905
 #, c-format
 msgid "*** cannot send to channel %s"
 msgstr "*** no se puede enviar al canal %s"
 
-#: modules/irc-channel/irc-channel.c:2915
+#: modules/irc-channel/irc-channel.c:2923
 #, c-format
 msgid "cannot join to channel %s: %s"
 msgstr "no se puede unir al canal %s: %s"
 
-#: modules/irc-channel/irc-channel.c:3543
+#: modules/irc-channel/irc-channel.c:3551
 #, c-format
 msgid "I don't know anyone with name %s."
 msgstr "No conozco a nadie llamado %s."
 
-#: modules/irc-channel/irc-channel.c:3552
+#: modules/irc-channel/irc-channel.c:3560
 msgid "Sorry, you aren't on any channel I'm on too."
 msgstr "Lo siento, no está en ningún canal en el que esté yo."
 
-#: modules/irc-channel/irc-channel.c:3562
+#: modules/irc-channel/irc-channel.c:3570
 msgid "Password incorrect."
 msgstr "Contraseña incorrecta."
 
-#: modules/irc-channel/irc-channel.c:3565
+#: modules/irc-channel/irc-channel.c:3573
 #, c-format
 msgid "You're recognized as %s."
 msgstr "Se le conoce por %s."
 
-#: modules/irc-channel/irc-channel.c:3818
+#: modules/irc-channel/irc-channel.c:3826
 msgid "%y%N%n(%@) has joined %#"
 msgstr "%y%N%n(%@) se ha unido a %#"
 
-#: modules/irc-channel/irc-channel.c:3820
+#: modules/irc-channel/irc-channel.c:3828
 msgid "%^%N%^(%@) has left %# (%*)"
 msgstr "%^%N%^(%@) ha abandonado %# (%*)"
 
-#: modules/irc-channel/irc-channel.c:3822
+#: modules/irc-channel/irc-channel.c:3830
 msgid "%^%N%^ is now known as %y%*%n"
 msgstr "%^%N%^ se conoce ahora como %y%*%n"
 
-#: modules/irc-channel/irc-channel.c:3824
+#: modules/irc-channel/irc-channel.c:3832
 msgid "%^%N%^(%@) has quit %# (%*)"
 msgstr "%^%N%^(%@) ha dejado %# (%*)"
 
-#: modules/irc-channel/irc-channel.c:3826
+#: modules/irc-channel/irc-channel.c:3834
 msgid "%^%N%^ has lost in netsplit (%*)"
 msgstr "%^%N%^ ha perdido en netsplit (%*)"
 
-#: modules/irc-channel/irc-channel.c:3828
+#: modules/irc-channel/irc-channel.c:3836
 msgid "%^%N%^ has kicked %L from %# (%*)"
 msgstr "%^%N%^ ha expulsado a %L de %# (%*)"
 
-#: modules/irc-channel/irc-channel.c:3830
+#: modules/irc-channel/irc-channel.c:3838
 msgid "mode/%# (%*) by %^%N%^"
 msgstr "modo/%# (%*) by %^%N%^"
 
-#: modules/irc-channel/irc-channel.c:3832
+#: modules/irc-channel/irc-channel.c:3840
 msgid "netsplit (%*), quits: %N"
 msgstr "netsplit (%*), se marcha: %N"
 
-#: modules/irc-channel/irc-channel.c:3834
+#: modules/irc-channel/irc-channel.c:3842
 msgid "netsplit of %* is over, joins: %N"
 msgstr "netsplit de %* ha acabado, uniones: %N"
 
-#: modules/irc-channel/irc-channel.c:3836
+#: modules/irc-channel/irc-channel.c:3844
 msgid "%N %?*changed?unset? the topic of %#%?* to: %*??"
 msgstr "%N %?*cambiado?no establecido? el tema de %#%?* a: %*??"
 
-#: modules/irc-channel/irc-channel.c:3838
+#: modules/irc-channel/irc-channel.c:3846
 msgid "Topic on %# is: %*"
 msgstr "El tema en %# es: %*"
 
-#: modules/irc-channel/irc-channel.c:3840
+#: modules/irc-channel/irc-channel.c:3848
 msgid "Topic for %# is set %@ by %N"
 msgstr "El tema para %# se hado establecido a %@ por %N"
 
-#: modules/irc-channel/chmanagement.c:1233
+#: modules/irc-channel/chmanagement.c:1232
 #, c-format
 msgid "adduser: %s is already known as %s."
 msgstr "adduser: %s ya es conocido como %s."
 
-#: modules/irc-channel/chmanagement.c:1241
-#: modules/irc-channel/chmanagement.c:1319
+#: modules/irc-channel/chmanagement.c:1240
+#: modules/irc-channel/chmanagement.c:1318
 #, c-format
 msgid "Could not find host of %s."
 msgstr "No se encuentra el host de %s."
 
-#: modules/irc-channel/chmanagement.c:1309
+#: modules/irc-channel/chmanagement.c:1308
 #, c-format
 msgid "Could not find nick %s."
 msgstr "No se encuentra el apodo (nick) %s."
 
-#: modules/irc-channel/chmanagement.c:1314
+#: modules/irc-channel/chmanagement.c:1313
 #, c-format
 msgid "deluser: %s isn't registered."
 msgstr "deluser: %s no está registrado."
 
-#: modules/irc-channel/chmanagement.c:1488
+#: modules/irc-channel/chmanagement.c:1487
 #, c-format
 msgid "%s isn't IRC channel!"
 msgstr "¡%s no es un canal IRC!"
 
-#: modules/irc-channel/chmanagement.c:1514
-#: modules/irc-channel/chmanagement.c:1578
-#: modules/irc-channel/chmanagement.c:1650
-#: modules/irc-channel/chmanagement.c:1746
-#: modules/irc-channel/chmanagement.c:1785
+#: modules/irc-channel/chmanagement.c:1513
+#: modules/irc-channel/chmanagement.c:1577
+#: modules/irc-channel/chmanagement.c:1649
+#: modules/irc-channel/chmanagement.c:1745
+#: modules/irc-channel/chmanagement.c:1784
 #, c-format
 msgid "No operator privileges on %s."
 msgstr "Sin privilegios de operador en %s."
 
-#: modules/irc-channel/chmanagement.c:1529
-#: modules/irc-channel/chmanagement.c:1596
-#: modules/irc-channel/chmanagement.c:1664
+#: modules/irc-channel/chmanagement.c:1528
+#: modules/irc-channel/chmanagement.c:1595
+#: modules/irc-channel/chmanagement.c:1663
 #, c-format
 msgid "%s isn't on IRC channel %s for me!"
 msgstr "¡%s no está en el canal %s por mí!"
@@ -843,102 +847,102 @@ msgstr "DCC GET de %* desde %N establecido."
 msgid "DCC connection request for \"%*\" from %N(%@) to %I:%P"
 msgstr "Petición de conexión DCC para \"%*\" desde %N(%@) a %I:%P"
 
-#: modules/irc/irc.c:404
+#: modules/irc/irc.c:405
 #, c-format
 msgid "Connection with network %s lost%s%s%s."
 msgstr "Conexión con la red %s perdida%s%s%s."
 
-#: modules/irc/irc.c:405
+#: modules/irc/irc.c:406
 msgid ": denied"
 msgstr ": denegado"
 
-#: modules/irc/irc.c:406
+#: modules/irc/irc.c:407
 msgid ", retrying.."
 msgstr ", reintentando.."
 
-#: modules/irc/irc.c:432
+#: modules/irc/irc.c:445
 #, c-format
 msgid "Connecting to %s, port %ld..."
 msgstr "Conectando con %s, puerto %ld..."
 
-#: modules/irc/irc.c:452
+#: modules/irc/irc.c:466
 #, c-format
 msgid "Could not find a server for network %s"
 msgstr "No se encuentra ningún servidor para la red %s"
 
-#: modules/irc/irc.c:672
+#: modules/irc/irc.c:686
 msgid "reconnecting IRC server"
 msgstr "reconectando con el servidor IRC"
 
-#: modules/irc/irc.c:675
+#: modules/irc/irc.c:689
 msgid "connecting IRC server"
 msgstr "conectando con el servidor IRC"
 
-#: modules/irc/irc.c:678
+#: modules/irc/irc.c:692
 msgid "registering at IRC server"
 msgstr "en proceso de registro en el servidor IRC"
 
-#: modules/irc/irc.c:682
+#: modules/irc/irc.c:696
 msgid "IRC server connected"
 msgstr "Servidor IRC conectado"
 
-#: modules/irc/irc.c:685
+#: modules/irc/irc.c:699
 msgid "disconnecting IRC server"
 msgstr "desconectando el servidor IRC"
 
-#: modules/irc/irc.c:768
+#: modules/irc/irc.c:788
 #, c-format
 msgid "Connected to %s, registering..."
 msgstr "Conectado a %s, registro en proceso..."
 
-#: modules/irc/irc.c:776
+#: modules/irc/irc.c:796
 #, c-format
 msgid "Disconnected from %s: unknown error."
 msgstr "Desconectado de %s: error desconocido."
 
-#: modules/irc/irc.c:845
+#: modules/irc/irc.c:865
 msgid "connection timeout"
 msgstr "tiempo de espera de la conexión"
 
-#: modules/irc/irc.c:869
+#: modules/irc/irc.c:901
 #, c-format
 msgid "Disconnected from %s."
 msgstr "Desconectado de %s."
 
-#: modules/irc/irc.c:926
+#: modules/irc/irc.c:963
 #, c-format
 msgid "Timeout for IRC server %s (%d seconds)..."
 msgstr "Tiempo de espera para el servidor IRC %s (%d segundos)..."
 
-#: modules/irc/irc.c:1113
+#: modules/irc/irc.c:1165
 msgid "bounced"
 msgstr "rechazado"
 
-#: modules/irc/irc.c:1144
+#: modules/irc/irc.c:1196
 #, c-format
 msgid "Registered on %s."
 msgstr "Registrado en %s."
 
-#: modules/irc/irc.c:1160
+#: modules/irc/irc.c:1212
 #, c-format
 msgid "Got version from %s: %s"
 msgstr "Obtenida la versión desde %s: %s"
 
-#: modules/irc/irc.c:1238
+#: modules/irc/irc.c:1290
 #, c-format
 msgid "%s quits: %s"
 msgstr "%s termina: %s"
 
-#: modules/irc/irc.c:1287
+#: modules/irc/irc.c:1339
 msgid "killed"
 msgstr "matado"
 
-#: modules/irc/irc.c:1330
+#: modules/irc/irc.c:1382
 #, c-format
 msgid "*** no such nick %s"
 msgstr "*** no existe el apodo (nick) %s"
 
-#: modules/irc/irc.c:1809
+#: modules/irc/irc.c:1862
 msgid "Waiting for IRC servers for terminating connection..."
 msgstr "A la espera de los servidores IRC para finalizar la conexión..."
 
