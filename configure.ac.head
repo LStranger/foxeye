@@ -16,6 +16,24 @@ AC_PATH_PROG(BASENAME, basename)
 AC_PATH_PROG(BASH, bash)
 AC_PATH_PROGS(XGETTEXT, [gxgettext xgettext])
 
+dnl Define systems for some code specifics
+case "$host_os" in
+    linux* | kfreebsd* | gnu)
+	AC_DEFINE(_LINUX, 1, [Define to 1 if on Linux.])
+	;;
+    freebsd*)
+	AC_DEFINE(_FREEBSD, 1, [Define to 1 if on FreeBSD.])
+	;;
+    openbsd* | netbsd*)
+	AC_DEFINE(_OPENBSD, 1, [Define to 1 if on OpenBSD.])
+	;;
+    hpux)
+	AC_DEFINE(_HPUX, 1, [Define to 1 if on HP-UX.])
+	;;
+    *)
+	;;
+esac
+
 dnl Some non-standard compiler defaults
 if test "x$CC" = x; then
     case "$host_os" in
@@ -187,12 +205,10 @@ if test "$fe_cv_static" = no; then
 	freebsd*)
 	    CCLIB="${CCLIB} -shared"
 	    CPPFLAGS="-fpic ${CPPFLAGS}"
-	    AC_DEFINE(_FREEBSD, 1, [Define to 1 if on FreeBSD.])
 	    ;;
 	openbsd* | netbsd*)
 	    CCLIB="${CCLIB} -Wl,-x -Wl,-Bshareable"
 	    CPPFLAGS="-fpic ${CPPFLAGS}"
-	    AC_DEFINE(_OPENBSD, 1, [Define to 1 if on OpenBSD.])
 	    ;;
 	bsd*)
 	    if test ! "${host_os}" = bsdi2; then
@@ -221,7 +237,6 @@ if test "$fe_cv_static" = no; then
 	hpux)
 	    CCLIB="${CCLIB} -Wl,-b, -Wl,-E"
 	    CPPFLAGS="-fPIC ${CPPFLAGS}"
-	    AC_DEFINE(_HPUX, 1, [Define to 1 if on HP-UX.])
 	    ;;
 	*)
 	    ;;

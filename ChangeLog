@@ -23,6 +23,8 @@ Tue Feb 21 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  changes in socket events processing), and new APIs.
 	* modules/logs/logs.c, modules/autolog/autolog.c: fixed build failure
 	  on non-GNU systems.
+	* core/foxeye.h, configure: define _GNU_SOURCE only on Linux, it is
+	  required for struct ucred, and undef on other platforms.
 
 Fri Feb 17 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c: never lock mutex in signal handler, use pipe to
