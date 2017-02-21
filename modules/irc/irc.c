@@ -182,6 +182,8 @@ static int _irc_servlist (INTERFACE *iface, REQUEST *req)
 {
   size_t l = safe_strlen ((char *)iface->data);
 
+  if (!req)
+    return REQ_OK;
   if (l)
     ((char *)iface->data)[l++] = ' ';
   safe_realloc (&iface->data, l + strlen (req->string) + 1);
@@ -853,6 +855,8 @@ static int _irc_request_main (INTERFACE *iface, REQUEST *req)
 			     thebuf, sizeof(thebuf)));
 	return _irc_try_server (serv, NULL, 0, NULL);
       }
+      else /* E_AGAIN */
+	Mark_Iface (iface);
     case P_LOGIN:
       if (serv->p.state == P_LOGIN &&
 	  _irc_send (serv, NULL) < 0)	/* it might reset connection? */

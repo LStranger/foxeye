@@ -325,7 +325,7 @@ tid_t Add_Timer (INTERFACE *iface, ifsig_t sig, time_t timer)
     _STid = 0;				/* never under zero! */
   _STnum++;
 //  pthread_mutex_unlock (&LockShed);
-  dprint (3, "NewTimer: added for %s +%ld sec (id %d)", iface->name,
+  dprint (3, "Add_Timer: added for %s +%ld sec (id %d)", iface->name,
 	  (long)timer, id);
   return id;
 }
