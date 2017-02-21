@@ -493,8 +493,11 @@ static void *_scheduler_thread (void *data)
 	    (ct->month & sh.month) && (ct->weekday & sh.weekday))
 	{
 //	  pthread_mutex_unlock (&LockShed);
-	  if (!(ct->iface->ift & I_DIED) && ct->iface->IFSignal &&
-	      (rc = ct->iface->IFSignal (ct->iface, ct->signal)))
+	  if (ct->iface->ift & I_DIED) ;	/* skip deads */
+	  else if (ct->signal == S_WAKEUP)	/* special handling */
+	    Mark_Iface (ct->iface);
+	  else if (ct->iface->IFSignal &&
+		   (rc = ct->iface->IFSignal (ct->iface, ct->signal)))
 	    ct->iface->ift |= rc;
 //	  pthread_mutex_lock (&LockShed);
 	}
@@ -524,8 +527,11 @@ static void *_scheduler_thread (void *data)
       else
       {
 //	pthread_mutex_unlock (&LockShed);
-	if (!(ct->iface->ift & I_DIED) && ct->iface->IFSignal &&
-	    (rc = ct->iface->IFSignal (ct->iface, ct->signal)))
+	if (ct->iface->ift & I_DIED) ;		/* skip deads */
+	else if (ct->signal == S_WAKEUP)	/* special handling */
+	  Mark_Iface (ct->iface);
+	else if (ct->iface->IFSignal &&
+		 (rc = ct->iface->IFSignal (ct->iface, ct->signal)))
 	  ct->iface->ift |= rc;
 //	pthread_mutex_lock (&LockShed);
 	ct->iface = NULL;

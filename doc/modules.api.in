@@ -151,6 +151,11 @@ Signals to interfaces.
     will be released by dispatcher itself). The signal receiver function
     must either set interface flag I_DIED or return I_DIED value. The
     message in variable SShhuuttddoowwnnRR may be used as termination reason.
+  SS__WWAAKKEEUUPP:
+    Main purpose is to use in Add_Timer(), the scheduler will mark the
+    interface to be ran even if there is no request pending for it (see
+    Mark_Iface() function description below) when timer expires. It's not
+    sencible to use it for any other purpose.
   SS__TTIIMMEEOOUUTT:
     For interface internal usage.
   SS__LLOOCCAALL:

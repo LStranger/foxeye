@@ -1247,7 +1247,7 @@ static int ircd_mode_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 	      if (op)
 	      {
 		ch->noop_since = Time;
-		Add_Timer (srv, S_LOCAL, REOP_DELAY); // FIXME: add a random?
+		Add_Timer (srv, S_WAKEUP, REOP_DELAY); // FIXME: add a random?
 	      }
 	    }
 	  } else if (ma) {		/* it has a parameter */
@@ -1979,7 +1979,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	      if (op)
 	      {
 		ch->noop_since = Time;
-		Add_Timer (srv, S_LOCAL, REOP_DELAY); // FIXME: add a random?
+		Add_Timer (srv, S_WAKEUP, REOP_DELAY); // FIXME: add a random?
 	      }
 	    }
 	  } else if (ma) {		/* it has a parameter */
@@ -2600,7 +2600,7 @@ void ircd_del_from_channel (IRCD *ircd, MEMBER *memb, int tohold)
       if (op == NULL)
       {
 	memb->chan->noop_since = Time;
-	Add_Timer (ircd->iface, S_LOCAL, REOP_DELAY); // FIXME: add a random?
+	Add_Timer (ircd->iface, S_WAKEUP, REOP_DELAY); // FIXME: add a random?
       }
     }
     if (tohold) {			/* it's split, mark it now! */

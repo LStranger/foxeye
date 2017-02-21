@@ -295,7 +295,8 @@ typedef enum
   S_STOP,			/* pause job on interface */
   S_CONTINUE,			/* continue stopped job */
   S_SHUTDOWN,			/* flush and terminate interface (quick) */
-  S_TERMINATE			/* terminate interface and release resources */
+  S_TERMINATE,			/* terminate interface and release resources */
+  S_WAKEUP			/* mark interace to run in any case */
 } __attribute__ ((packed)) ifsig_t;
 
 /* return values for _if_t::IFRequest */

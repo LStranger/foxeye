@@ -1385,10 +1385,6 @@ static iftype_t _ircd_client_signal (INTERFACE *cli, ifsig_t sig)
       New_Request(tmp, F_REPORT, "%s", buff);
       Unset_Iface();
       break;
-    case S_LOCAL:
-      /* penalty timeout, just mark interface for request */
-      Mark_Iface(cli);
-      break;
     case S_TIMEOUT:
       /* login/ping timeout, clear timer and mark interface for request */
       if (peer->timer >= 0)
@@ -1683,7 +1679,7 @@ _sendq_exceeded:
       peer->penalty > _ircd_client_recvq[1])
   {
     sr = 0;				/* apply penalty on flood from clients */
-    Add_Timer(cli, S_LOCAL, peer->penalty - _ircd_client_recvq[1]);
+    Add_Timer(cli, S_WAKEUP, peer->penalty - _ircd_client_recvq[1]);
   }
   else while ((sr = Peer_Get ((&peer->p), buff, sizeof(buff))) > 0)
   {					/* we got a message from peer */
@@ -1808,7 +1804,7 @@ _sendq_exceeded:
       if (CheckFlood (&peer->penalty, _ircd_client_recvq) > 0) {
 	dprint(4, "ircd: flood from %s, applying penalty on next message",
 	       cl->nick);
-	Add_Timer(cli, S_LOCAL, peer->penalty - _ircd_client_recvq[1]);
+	Add_Timer(cli, S_WAKEUP, peer->penalty - _ircd_client_recvq[1]);
 	break;				/* don't accept more messages */
       }
     }
@@ -1840,7 +1836,7 @@ _sendq_exceeded:
     if (peer->penalty <= _ircd_client_recvq[1])
       peer->timer = Add_Timer(cli, S_TIMEOUT, i);
     else
-      /* don't set S_TIMEOUT if S_LOCAL was already set */
+      /* don't set S_TIMEOUT if S_WAKEUP was already set */
       peer->timer = -1;
   }
   if (req)
@@ -4841,9 +4837,6 @@ static iftype_t _ircd_signal (INTERFACE *iface, ifsig_t sig)
       } else
 	WARNING("ircd:cannot find main interface for termination!");
       break;
-    case S_LOCAL:
-      Mark_Iface (iface);
-      break;
     case S_TIMEOUT:
       _ircd_do_init_uplinks();
       _uplinks_timer = -1;
@@ -5678,7 +5671,7 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
       if (gettoken (_ircd_sublist_buffer, NULL)) /* take one name from list */
       Ircd->iface = Add_Iface (I_SERVICE, _ircd_sublist_buffer, &_ircd_signal,
 			       &_ircd_request, Ircd);
-      Add_Timer (Ircd->iface, S_LOCAL, 1);
+      Add_Timer (Ircd->iface, S_WAKEUP, 1);
       /* also make name@network messages collector */
       snprintf (buff, sizeof(buff), "@%s", Ircd->iface->name);
       Ircd->sub = Add_Iface (I_CLIENT, buff, NULL, &_ircd_sub_request, NULL);

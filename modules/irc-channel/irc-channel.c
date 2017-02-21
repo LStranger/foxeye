@@ -1141,10 +1141,8 @@ static void _ircch_netsplit_add (IRC *net, char *servers, NICK *nick)
   split->njlastact = Time;
   if (nick->channels)
   {
-    /* fire and forget timeouts, they will also run expire although it's
-       so rare event so it should not burn CPU in any case */
-    Add_Timer (nick->channels->chan->chi, S_TIMEOUT, ircch_netsplit_log);
-    Add_Timer (nick->channels->chan->chi, S_TIMEOUT, ircch_netsplit_keep);
+    Add_Timer (nick->channels->chan->chi, S_WAKEUP, ircch_netsplit_log);
+    Add_Timer (nick->channels->chan->chi, S_WAKEUP, ircch_netsplit_keep);
   }
   else
     ERROR ("_ircch_netsplit_add: %s is not any channel for me!", nick->name);
@@ -1175,9 +1173,7 @@ static void _ircch_netjoin_add (IRC *net, LINK *link)
     _ircch_netjoin_report (net, split, split->njlast->member->chan);
   split->njlast = sm;
   split->njlastact = Time;
-  /* fire and forget timeout, it will also run expire although it's
-     so rare event so it should not burn CPU in any case */
-  Add_Timer (link->chan->chi, S_TIMEOUT, ircch_netjoin_log);
+  Add_Timer (link->chan->chi, S_WAKEUP, ircch_netjoin_log);
 }
 
 /* !!! _irrch_net_got_activity() have to be called before calling this function
@@ -1539,7 +1535,6 @@ static iftype_t _ircch_sig (INTERFACE *iface, ifsig_t sig)
       break;
     case S_TIMEOUT:
       net = _ircch_get_network2 (strrchr (iface->name, '@'));
-      Mark_Iface (iface);
       ircch_expire (net, (CHANNEL *)iface->data);
       break;
     case S_FLUSH:
@@ -1852,7 +1847,7 @@ static int irc_join (INTERFACE *iface, char *svname, char *me, unsigned char *pr
       NewEvent (W_START, chan->id, ID_ME, 0);
     lname = r = NULL;
     uf = cf = 0;
-    Add_Timer (chan->chi, S_TIMEOUT, 12); /* see _ircch_req for CYCLE feature */
+    Add_Timer (chan->chi, S_WAKEUP, 12); /* see _ircch_req for CYCLE feature */
   }
   else
   {
