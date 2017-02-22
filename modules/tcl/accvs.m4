@@ -150,11 +150,11 @@ if test "$have_tcl" != no; then
     LDFLAGS=
     LIBS="$fe_tcl_libs $LIBS"
     try_lib=`echo $fe_tcl_libs | sed -e 's/^.*-ltcl/tcl/' -e 's/ .*//'`
-    AC_CHECK_LIB([$try_lib], Tcl_CreateObjCommand, [
+    AC_SEARCH_LIBS(Tcl_CreateObjCommand, [$try_lib], [
 	AC_DEFINE(HAVE_TCL8X, 1, [Define to 1 if you have the Tcl version 8.0 or above.])
     ])
     dnl check for multithreaded tcl
-    AC_CHECK_LIB([$try_lib], Tcl_MutexFinalize, [
+    AC_SEARCH_LIBS(Tcl_MutexFinalize, [$try_lib], [
 	AC_DEFINE(HAVE_TCL_MULTITHREAD, 1, [Define to 1 if your Tcl interpreter supports mutexes.])
     ])
     dnl check for some functions (8.1+)

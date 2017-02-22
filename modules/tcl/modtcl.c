@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2000-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2000-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -112,9 +112,9 @@ static inline void ResultString (Tcl_Interp *tcl, const char *res, size_t sz)
   char var[TCL_RESULT_SIZE];
 #ifndef HAVE_TCL8X
 
-  if (sz > sizeof(var))
-    sz = sizeof(var);
-  strfcpy (var, res, sz);
+  if (sz >= sizeof(var))
+    sz = sizeof(var) - 1;
+  strfcpy (var, res, sz + 1);
   Tcl_SetResult (tcl, var, TCL_VOLATILE);
 #else
   char *ptr;
