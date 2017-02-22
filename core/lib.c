@@ -1021,6 +1021,7 @@ static char *_try_printl (char *buf, size_t s, printl_t *p, size_t ll, int q)
 	  break;
 	case '?':
 	  p->t = &fix[2];			/* skip "%?x" */
+	  n = 0;
 	  switch (fix[1])
 	  {
 	    case 'N':
