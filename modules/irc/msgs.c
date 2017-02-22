@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2011  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2005-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -295,6 +295,8 @@ int irc_privmsgout_default (INTERFACE *pmsgout, REQUEST *req)
 {
   INTERFACE *client;
   char *dog;
+  register pmsgout_stack *stack;
+  int i;
 
   if (!req)
     return REQ_OK;
@@ -310,6 +312,16 @@ int irc_privmsgout_default (INTERFACE *pmsgout, REQUEST *req)
   }
   /* it's to one so let's create client queue interface */
   client = _pmsgout_stack_insert ((pmsgout_stack **)&pmsgout->data, req->to);
+  /* check if it should be ran immediately and unblock */
+  i = 0;
+  stack = pmsgout->data;
+  do {
+    if (stack->client != NULL)		/* check if it's cleared already */
+      i += stack->client->qsize;
+    stack = stack->next;
+  } while (stack != pmsgout->data);
+  if (i == 0)				/* stack was ran out */
+    ((pmsgout_stack *)client->data)->run = 1;
   return Relay_Request (I_CLIENT, client->name, req);
 }
 

@@ -1071,6 +1071,7 @@ _retry_input:
   /* accept (any?) request if ready for it (SendQ checked by _irc_send) */
   if (!reject && req)
   {
+    irc_privmsgout(serv->pmsgout, irc_pmsg_keep);
     return 2;
   }
   else if (isregistered && !reject && !req)	/* all sent already */
