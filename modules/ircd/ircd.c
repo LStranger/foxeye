@@ -959,12 +959,21 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
       is_nickchange = (argc == 3 && strcmp(argv[1], "NICK") == 0);
 #if IRCD_MULTICONNECT
       if (is_nickchange && (peer->link->cl->umode & A_MULTI) && c &&
-	  ircd_check_ack(peer, c, NULL) && _ircd_find_client(argv[2]) == c->x.rto)
+	  (c2 = _ircd_find_client(argv[2])) == c->x.rto)
       {
-	/* we know that change already so let send ACK and be done with it */
-	DBG("ircd: backup nickchange %s => %s", argv[0], argv[2]);
-	New_Request(peer->p.iface, 0, "ACK NICK %s", argv[0]);
-	return (1);
+	if (ircd_check_ack(peer, c, NULL))
+	  goto _send_ack;
+	else while (c2 != NULL && c2->hold_upto)
+	  c2 = c->x.rto;	/* it may be origin server, find current nick */
+	if (c2 != NULL && c2->cs == peer->link->cl)
+	{
+_send_ack:
+	  /* we know that change already so let send ACK and be done with it */
+	  DBG("ircd: backup nickchange %s => %s", argv[0], argv[2]);
+	  New_Request(peer->p.iface, 0, "ACK NICK %s", argv[0]);
+	  return (1);
+	}
+	WARNING("ircd: spurious nickchange via %s!", peer->link->cl->lcnick);
       }
       /* otherwise it's a nick change collision, ircd_nick_sb will handle it */
 #endif
