@@ -941,7 +941,7 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
   CLIENT *c;
   register CLIENT *c2;
   int t;
-  bool is_nickchange;
+  bool is_nickchange = FALSE;
 #define static register
   BINDING_TYPE_ircd_client_cmd ((*fc));
   BINDING_TYPE_ircd_server_cmd ((*fs));
@@ -953,10 +953,22 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
     c = _ircd_find_client (argv[0]);
     /* check if this link have phantom instead of real client on nick */
     if (c == NULL || peer == NULL) ; /* skip check for internal call */
-    else if (c->hold_upto != 0)
+    else if (c->hold_upto != 0) {
       /* link haven't got our NICK or KILL so track it */
       c = _ircd_find_phantom(c, peer);
-    else if (c->rfr != NULL && c->rfr->cs == c && /* it's nick holder */
+      is_nickchange = (argc == 3 && strcmp(argv[1], "NICK") == 0);
+#if IRCD_MULTICONNECT
+      if (is_nickchange && (peer->link->cl->umode & A_MULTI) && c &&
+	  ircd_check_ack(peer, c, NULL) && _ircd_find_client(argv[2]) == c->x.rto)
+      {
+	/* we know that change already so let send ACK and be done with it */
+	DBG("ircd: backup nickchange %s => %s", argv[0], argv[2]);
+	New_Request(peer->p.iface, 0, "ACK NICK %s", argv[0]);
+	return (1);
+      }
+      /* otherwise it's a nick change collision, ircd_nick_sb will handle it */
+#endif
+    } else if (c->rfr != NULL && c->rfr->cs == c && /* it's nick holder */
 	     (c2 = _ircd_find_phantom(c->rfr, peer)) != NULL &&
 	     c2->away[0] != '\0')
       c = c2;			/* found collision originated from this link */
@@ -1001,8 +1013,6 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
 	ircd_do_squit(peer->link, peer, "invalid source");
       return (0);
     }
-    is_nickchange = (c->hold_upto && !(CLIENT_IS_SERVER(c)) && argc == 3 &&
-		     strcmp(argv[1], "NICK") == 0);
     /* we might send a nickchange and party still sends us messages
        from the old nick, let handle that case and follow it now */
     c2 = c;
@@ -3989,7 +3999,7 @@ static int _ircd_remote_nickchange(CLIENT *tgt, peer_priv *pp,
        phantom which client is changed from so cannot to tail collided there */
     _ircd_force_drop_collision(&collision);
   } /* else nick change is non-colliding and just accepted */
-  collision = _ircd_do_nickchange(tgt, pp, token, checknick, 0);
+  _ircd_do_nickchange(tgt, pp, token, checknick, 0);
   return 1;
 }
 

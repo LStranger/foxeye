@@ -16,6 +16,10 @@ TODO:
 	* modules/ircd: to support command LANG for numerics translation.
 
 --- [0.11.0]
+Thu Feb 23 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/ircd.c: fixed nickchange testing, it should be tested
+	  early and never tried to send to neighbours again.
+
 Wed Feb 22 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc/irc.c, modules/irc/msgs.c: fixed privmsgout processing.
 	* modules/tcl/modtcl.c, configure: fixed detect of Tcl 8.x version and
