@@ -78,7 +78,7 @@ set ircd-flags-post
  apply to each line of IRC protocol. You have to include here any filter\
  that makes some network-specific protocol conversions to make difference\
  and compatibility with other servers in network.
- Default: "IPU".
+ Default: "CIPU".
 
 set ircd-description-string
 :%* <string>
