@@ -5440,7 +5440,10 @@ int ircd_show_trace (CLIENT *rq, CLIENT *tgt)
     tgt = rq;				/* mark it for full listing */
   pthread_mutex_lock (&IrcdLock);
   for (t = IrcdPeers; t; t = t->p.priv)
-    if (tgt || (t->link->cl->umode & (A_SERVER | A_SERVICE | A_OP | A_HALFOP)))
+    if (t->link == NULL) {		/* it might be incomplete connection */
+      if (tgt)
+	ircd_do_unumeric (rq, RPL_TRACEUNKNOWN, &ME, 0, SocketIP(t->p.socket));
+    } else if (tgt || (t->link->cl->umode & (A_SERVER | A_SERVICE | A_OP | A_HALFOP)))
       ircd_show_trace (rq, t->link->cl);
   if (_ircd_trace_users && CLIENT_IS_REMOTE(rq) && (rq->umode & A_OP))
     /* for remote opers only */

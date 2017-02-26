@@ -11,7 +11,7 @@
 #define RPL_TRACELINK		200, "Link %V%?P.d%P?? %# %*"
 #define RPL_TRACECONNECTING	201, "Try. %* %#"
 #define RPL_TRACEHANDSHAKE	202, "H.S. %* %#"
-#define RPL_TRACEUNKNOWN	203, "???? %* %?I%I??"
+#define RPL_TRACEUNKNOWN	203, "???? - %*"
 #define RPL_TRACEOPERATOR	204, "Oper %* %#"
 #define RPL_TRACEUSER		205, "User %* %#"
 #define RPL_TRACESERVER		206, "Serv %*"
