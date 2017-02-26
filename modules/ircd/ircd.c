@@ -3319,6 +3319,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
     strfcpy (clt->user, cl->user, sizeof(clt->user));
     strfcpy (clt->host, cl->host, sizeof(clt->host));
     strfcpy (clt->vhost, cl->vhost, sizeof(clt->vhost));
+    strfcpy (clt->away, cl->away, sizeof(clt->away));
     pthread_mutex_lock (&IrcdLock);
     free_CLIENT (cl);
     pthread_mutex_unlock (&IrcdLock);
@@ -5418,6 +5419,7 @@ int ircd_show_trace (CLIENT *rq, CLIENT *tgt)
 		if (!CLIENT_IS_SERVER(l->cl))
 		  sc++;
 	  snprintf (buf, sizeof(buf), "- %dS %dC %s *!*@%s V%c%s", ss, sc,
+		    // FIXME instead of *!*@%s should be who initiated connect
 		    tgt->nick, tgt->host, tgt->away[3], flags);
 	  return ircd_do_unumeric (rq, RPL_TRACESERVER, tgt, 0, buf);
 #ifdef USE_SERVICES
