@@ -110,6 +110,7 @@ static void _ircd_validate_channel_name (char *chname)
   char namebuf[CHANNAMELEN+1];
 #endif
 
+  dprint(5, "ircd:channels.c:_ircd_validate_channel_name: %s", chname);
   sz = safe_strlen (chname);
   if (sz == 0)				/* oops! */
     return;
@@ -236,6 +237,8 @@ static void _ircd_del_from_invited (MEMBER *memb)
 {
   register MEMBER **m;
 
+  dprint(5, "ircd:channels.c:_ircd_del_from_invited: %s on %s", memb->who->nick,
+	 memb->chan->name);
   for (m = &memb->who->via->i.nvited; *m && *m != memb; m = &(*m)->prevchan);
   if (*m)				/* remove channel from user */
     *m = memb->prevchan;
@@ -627,6 +630,7 @@ static int _imch_add_mask (MASK **list, const char **ptr, MASK **cancel,
   MASK *nm;
   long int cnt;
 
+  dprint(5, "ircd:channels.c:_imch_add_mask: '%c' %s", mchar, txt);
   nm = alloc_MASK();
   if ((ex = strchr(mask, '!')) == NULL &&
       (at = strchr(mask, '@')) == NULL) { /* it's just nick */
@@ -699,6 +703,7 @@ static int _imch_del_mask (MASK **list, const char **mask)
   register MASK *mm;
   char what[HOSTMASKLEN+1];
 
+  dprint(5, "ircd:channels.c:_imch_del_mask: %s", *mask);
   unistrlower (what, *mask, sizeof(what));
   while ((mm = *list))
     if (!strcmp (mm->what, what))
@@ -1052,6 +1057,8 @@ bool ircd_check_modechange(INTERFACE *u, modeflag umode, const char *chname,
   BINDING_TYPE_ircd_check_modechange ((*ff));
 #undef static
 
+  dprint(5, "ircd:channels.c:ircd_check_modechange: %c%#x %s on %s", add ? '+' : '-',
+	 (int)chg, tgt, chname);
   while ((b = Check_Bindtable(BTIrcdCheckModechange, chname, U_ALL, U_ANYCH, b)))
     if (b->name == NULL)
     {
@@ -1493,6 +1500,7 @@ static inline MEMBER *_ircd_do_join(IRCD *ircd, CLIENT *cl, CHANNEL *ch, modefla
   MEMBER *r;
   register MEMBER *mm;
 
+  dprint(5, "ircd:channels.c:_ircd_do_join: %s to %s", cl->nick, ch->name);
   for (mm = ch->invited; mm; mm = mm->prevnick)
     if (mm->who == cl)
       break;
@@ -1722,7 +1730,7 @@ static int ircd_join_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 	ch = _ircd_new_channel ((IRCD *)srv->data, nchn, lcchname);
       mm = _ircd_do_join ((IRCD *)srv->data, cl, ch, mf);
       if (mm == NULL) {
-	DBG("refused to add %s into %s", cl->nick, ch->name);
+	dprint(3, "refused to add %s into %s", cl->nick, ch->name);
       } else if (!(ch->mode & A_INVISIBLE)) { /* it is not a local channel */
 	char smode[sizeof(Ircd_modechar_list)+1];
 
@@ -2367,7 +2375,7 @@ static void _ircd_log_channel (IRCD *ircd, const char *name, const char *topic,
   register __ircd_logger *log;
 
   /* create channel and add ME to it */
-  DBG("adding system channel %s", name);
+  dprint(5, "ircd:channels.c:_ircd_log_channel: adding system channel %s", name);
   memb = ircd_new_to_channel (ircd, NULL, name, &ME,
 			      A_INVISIBLE | A_MODERATED | A_TOPICLOCK |
 			      A_QUIET | A_ANONYMOUS | A_NOOUTSIDE);
@@ -2435,9 +2443,10 @@ MEMBER *ircd_add_to_channel (IRCD *ircd, struct peer_priv *bysrv, CHANNEL *ch,
 
   if (!ch || !cl)
   {
-    DBG ("ircd:ircd_add_to_channel: %p to %p: NULL!", cl, ch);
+    dprint(3, "ircd:ircd_add_to_channel: %p to %p: NULL!", cl, ch);
     return NULL;
   }
+  dprint(5, "ircd:channels.c:ircd_add_to_channel: %s to %s", cl->nick, ch->name);
 #if IRCD_MULTICONNECT
   if (bysrv && ircd_check_ack(bysrv, cl, ch))
     return NULL;			/* duplicate, ignoring */
@@ -2446,7 +2455,7 @@ MEMBER *ircd_add_to_channel (IRCD *ircd, struct peer_priv *bysrv, CHANNEL *ch,
 #endif
   if (_ircd_is_on_channel (cl, ch))
   {
-    DBG ("ircd:ircd_add_to_channel: %s already is on %s!", cl->nick, ch->name);
+    dprint(4, "ircd:ircd_add_to_channel: %s already is on %s!", cl->nick, ch->name);
     return NULL;
   }
   if ((mf & A_ADMIN) && ch->creator)	/* another creator? abort it */
@@ -2544,6 +2553,7 @@ MEMBER *ircd_new_to_channel (IRCD *ircd, struct peer_priv *bysrv, const char *na
   CHANNEL *ch;
   register MEMBER *memb;
 
+  dprint(5, "ircd:channels.c:ircd_new_to_channel: %s to %s", cl->nick, name);
   unistrlower (lcname, name, sizeof(lcname));
   _ircd_validate_channel_name (lcname);
   ch = _ircd_find_channel_lc (ircd, lcname);
@@ -2576,6 +2586,7 @@ void ircd_del_from_channel (IRCD *ircd, MEMBER *memb, int tohold)
   BINDING_TYPE_ircd_channel ((*f));
 #undef static
 
+  dprint(5, "ircd:channels.c:ircd_del_from_channel");
   if (memb == memb->chan->creator)	/* support for ! channels */
     memb->chan->creator = NULL;
   for (m = &memb->who->c.hannels; *m && *m != memb; m = &(*m)->prevchan);

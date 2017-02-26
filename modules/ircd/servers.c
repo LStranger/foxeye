@@ -62,7 +62,7 @@ void ircd_add_ack (struct peer_priv *link, CLIENT *who, CHANNEL *where)
   ack->contrary = 0;
   if (where != NULL && where != CHANNEL0)
     where->on_ack++;
-  dprint(3, "ircd:serverc.s: new ack: who=%p where=%p", who, where);
+  dprint(2, "ircd:serverc.s: new ack: who=%p where=%p", who, where);
 }
 
 /* removes first ack from link */
@@ -70,7 +70,7 @@ void ircd_drop_ack (IRCD *ircd, struct peer_priv *link)
 {
   register ACK *ack = link->acks;
 
-  dprint(3, "ircd:serverc.s: del ack: who=%p where=%p", ack->who, ack->where);
+  dprint(2, "ircd:serverc.s: del ack: who=%p where=%p", ack->who, ack->where);
   link->acks = ack->next;
   if (ack->who) {
     ack->who->on_ack--;			/* unlock one more */
@@ -670,8 +670,8 @@ static int ircd_part_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 #if IRCD_MULTICONNECT
       /* for multiconnected server don't set error */
       if (pp->link->cl->umode & A_MULTI) {
-	DBG("ircd:got PART from %s for %s on nonexistent channel %s",
-	    peer->dname, sender, chname);
+	dprint(4, "ircd:got PART from %s for %s on nonexistent channel %s",
+	       peer->dname, sender, chname);
 	continue;
       }
 #endif

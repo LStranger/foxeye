@@ -1482,6 +1482,7 @@ static void _icchg_ww(INTERFACE *srv, const char *from, const char *lcnick,
     return;
   if (nick == NULL)
     return;
+  dprint(5, "ircd:queries.c:_icchg_ww: %s (%s@%s)", nick, user, host);
   /* check if we are at end of array and want to grow it */
   if (IrcdWhowasPtr == IrcdWhowasSize && left < (INT_MAX / 2 - SOCKETMAX) &&
       left<<1 > (unsigned int)IrcdWhowasSize) {
