@@ -1535,6 +1535,7 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
       Delete_Binding("ircd-client-cmd", &rusnet_chanserv_cb, NULL);
       Delete_Binding("ircd-client-cmd", &rusnet_memoserv_cb, NULL);
       Delete_Binding("ircd-client-cmd", &rusnet_operserv_cb, NULL);
+      Delete_Help("ircd-rusnet");
       Send_Signal(I_MODULE, "ircd*", S_FLUSH); /* inform modules about changes */
       FREE(&IrcdRMotd);
       IrcdRMotdSize = 0;
@@ -1672,6 +1673,7 @@ SigFunction ModuleInit (char *args)
   Add_Binding("ircd-client-cmd", "chanserv", 0, 0, &rusnet_chanserv_cb, NULL);
   Add_Binding("ircd-client-cmd", "memoserv", 0, 0, &rusnet_memoserv_cb, NULL);
   Add_Binding("ircd-client-cmd", "operserv", 0, 0, &rusnet_operserv_cb, NULL);
+  Add_Help("ircd-rusnet");
   Send_Signal(I_MODULE, "ircd*", S_FLUSH); /* inform modules about changes */
   return (&module_signal);
 }

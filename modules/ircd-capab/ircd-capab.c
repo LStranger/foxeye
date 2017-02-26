@@ -172,6 +172,7 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
       Delete_Binding("ircd-got-server", (Function)&_ircd_got_server_capab, NULL);
       Delete_Binding("ircd-lost-server", (Function)&_ircd_lost_server_capab, NULL);
       Delete_Binding("ircd-server-cmd", (Function)&ircd_capab, NULL);
+      Delete_Help("ircd-capab");
       _forget_(IrcdCapabServ);
       _known_servers = NULL;
       return I_DIED;
@@ -199,5 +200,6 @@ SigFunction ModuleInit (char *args)
   Add_Binding("ircd-got-server", "*", 0, 0, (Function)&_ircd_got_server_capab, NULL);
   Add_Binding("ircd-lost-server", "*", 0, 0, (Function)&_ircd_lost_server_capab, NULL);
   Add_Binding("ircd-server-cmd", "capab", 0, 0, (Function)&ircd_capab, NULL);
+  Add_Help("ircd-capab");
   return (&module_signal);
 }
