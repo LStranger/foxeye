@@ -63,12 +63,12 @@ int Update_Public (const char *, const char *, modeflag, const char *,
 int Add_Help (const char *) __attribute__((nonnull(1))); /* help.c */
 void Delete_Help (const char *);
 int Get_Help (const char *, const char *, INTERFACE *, userflag, userflag,
-		struct bindtable_t *, char *, int);
+		struct bindtable_t *, const char *, int);
 #ifdef ENABLE_NLS
 int Get_Help_L (const char *, const char *, INTERFACE *, userflag, userflag,
-		struct bindtable_t *, char *, int, const char *);
+		struct bindtable_t *, const char *, int, int, const char *);
 #else
-#define Get_Help_L(a,b,c,d,e,f,g,h,i) Get_Help(a,b,c,d,e,f,g,h)
+#define Get_Help_L(a,b,c,d,e,f,g,h,i,j) Get_Help(a,b,c,d,e,f,g,i)
 #endif
 int Add_Clientrecord (const char *, const uchar *, userflag) /* users.c */
 	__attribute__((warn_unused_result));

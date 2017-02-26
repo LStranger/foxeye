@@ -424,17 +424,20 @@ static HELPLANG *_help_load_lang(const char *lang)
   return hl;
 }
 
-static int _no_such_help (INTERFACE *iface, int mode)
+static int _no_such_help (INTERFACE *iface, const char *prefix, int each, int mode)
 {
-  if (mode >= 0)
+  if (mode < 0 || each < 0) ;
+  else if (each && prefix)
+    New_Request (iface, 0, "%s%s", prefix, _("No help on this."));
+  else
     New_Request (iface, 0, _("No help on this."));
   return 0;
 }
 
 #define HELP_LINE_SIZE 72
 
-static int _help_one_topic (char *text, INTERFACE *iface, char *prefix,
-			    const char *gr, const char *topic, int mode)
+static int _help_one_topic (char *text, INTERFACE *iface, const char *prefix,
+			    int each, const char *gr, const char *topic, int mode)
 {
   char buff[HUGE_STRING];
   char *c, *end;
@@ -448,7 +451,7 @@ static int _help_one_topic (char *text, INTERFACE *iface, char *prefix,
     if (text)
       text++;
     else
-      return _no_such_help (iface, mode);
+      return _no_such_help (iface, prefix, each, mode);
     if (*text == ':')
       mode--;
   }
@@ -484,13 +487,15 @@ static int _help_one_topic (char *text, INTERFACE *iface, char *prefix,
       *end++ = 0;
     /* may be, align all text with spaces here? :) */
     New_Request (iface, 0, "%s%s", prefix, c);
-    prefix = "  ";			/* indent next line :) */
+    if (!each)
+      prefix = "  ";			/* indent next line :) */
   }
   return 1;
 }
 
 static int _help_all_topics (HELPGR *what, INTERFACE *iface, userflag gf,
-			     userflag cf, struct bindtable_t *table, int mode)
+			     userflag cf, struct bindtable_t *table, int mode,
+			     const char *prefix, int each)
 {
   const char *key;
   LEAF *leaf = NULL;
@@ -506,7 +511,7 @@ static int _help_all_topics (HELPGR *what, INTERFACE *iface, userflag gf,
       if (strcmp(key, b->key))		/* it's matched but just similar */
 	continue;
       /* is this first? */
-      if (!r)
+      if (!r && each == 0)
       {
 	/* mode dependent message? */
 	New_Request (iface, 0, _("Available topics for \"help%s%s\":"),
@@ -519,12 +524,12 @@ static int _help_all_topics (HELPGR *what, INTERFACE *iface, userflag gf,
       {
 	if (s)
 	{
-	  New_Request (iface, 0, "%s", buf);
+	  New_Request (iface, 0, "%s%s", (each && prefix) ? prefix : "", buf);
 	  s = 0;
 	}
 	if (ns >= HELP_LINE_SIZE)
 	{
-	  New_Request (iface, 0, "%s", key);
+	  New_Request (iface, 0, "%s%s", (each && prefix) ? prefix : "", key);
 	  continue;
 	}
       }
@@ -535,7 +540,7 @@ static int _help_all_topics (HELPGR *what, INTERFACE *iface, userflag gf,
     }
   }
   if (s)
-    New_Request (iface, 0, "%s", buf);
+    New_Request (iface, 0, "%s%s", (each && prefix) ? prefix : "", buf);
   return r;
 }
 
@@ -543,8 +548,8 @@ static int _help_all_topics (HELPGR *what, INTERFACE *iface, userflag gf,
 static
 #endif
 int Get_Help_L (const char *fst, const char *sec, INTERFACE *iface, userflag gf,
-		userflag cf, struct bindtable_t *table, char *prefix, int mode,
-		const char *lang)
+		userflag cf, struct bindtable_t *table, const char *prefix,
+		int each, int mode, const char *lang)
 {
   const char *topic = NONULL(sec);	/* default topic=fst{sec} */
   HELPGR *h = Help;
@@ -554,23 +559,28 @@ int Get_Help_L (const char *fst, const char *sec, INTERFACE *iface, userflag gf,
 
   dprint (5, "help:Get_Help: call \"%s %s\"", NONULL(fst), NONULL(sec));
   if (!h)
-    return _no_such_help (iface, mode);		/* no help loaded */
+    return _no_such_help (iface, prefix, each, mode);	/* no help loaded */
   else if (!table)
   {
     if (!fst)
-      return _no_such_help (iface, mode);	/* NULL/smth : no table */
+      return _no_such_help (iface, prefix, each, mode);	/* NULL/smth : no table */
   }
   else if (!fst && *topic)					/* NULL smth */
   {
     if (strcmp (topic, "*") &&					/* NULL !"*" */
 	Check_Bindtable (table, sec, gf, cf, NULL) == NULL)
-      return _no_such_help (iface, mode);	/* NULL/name : not found */
+      return _no_such_help (iface, prefix, each, mode);	/* NULL/name : not found */
     fst = Bindtable_Name (table);		/* -> table/name */
   }
   else if (!fst || !*fst || !strcmp (fst, "*"))			/* "*" NULL */
-    return _help_all_topics (Help, iface, gf, cf, table, mode);
+    return _help_all_topics (Help, iface, gf, cf, table, mode, prefix, each);
+  else if (*fst == '=')
+  {
+    if (Check_Bindtable (table, topic, gf, cf, NULL) == NULL)
+      return _no_such_help (iface, prefix, each, mode);
+  }
   else if (Check_Bindtable (table, fst, gf, cf, NULL) == NULL)	/* smth "*" */
-    return _no_such_help (iface, mode);		/* no fst in table */
+    return _no_such_help (iface, prefix, each, mode);	/* no fst in table */
   /* check for group first - if is second parameter! */
   if (!*topic)					/* if fst/NULL */
     topic = fst;			/* then topic=fst{fst} */
@@ -582,14 +592,14 @@ int Get_Help_L (const char *fst, const char *sec, INTERFACE *iface, userflag gf,
   /* no such group? */
   if (!h)
   {
-    WARNING ("help: set \"%s\" not found", fst);
+    dprint (4, "help: set \"%s\" not found", fst);
     if (sec && *sec)
-      return _no_such_help (iface, mode);	/* BAD/smth */
+      return _no_such_help (iface, prefix, each, mode);	/* BAD/smth */
     /* find common help */
     h = Help;					/* if smth/NULL */
   }
   if (table && !strcmp (topic, "*"))		/* if topic is ...{*} */
-    return _help_all_topics (h, iface, gf, cf, table, mode);
+    return _help_all_topics (h, iface, gf, cf, table, mode, prefix, each);
   if (lang && *lang)
   {
     hl = _help_load_lang(lang);
@@ -603,17 +613,17 @@ int Get_Help_L (const char *fst, const char *sec, INTERFACE *iface, userflag gf,
     t = Find_Key (h->tree, topic);
   if (!t)
   {
-    WARNING ("help: topic \"%s\" not found", topic);
+    dprint (4, "help: topic \"%s\" not found", topic);
     if (table && h != Help && !sec)		/* table/NULL */
-      return _help_all_topics (h, iface, gf, cf, table, mode);
-    return _no_such_help (iface, mode);
+      return _help_all_topics (h, iface, gf, cf, table, mode, prefix, each);
+    return _no_such_help (iface, prefix, each, mode);
   }
   dprint (4, "help: found entry for \"%s\" in set \"%s\"", topic, NONULL(h->key));
-  return _help_one_topic (t->data, iface, NONULL(prefix), h->key, topic, mode);
+  return _help_one_topic (t->data, iface, NONULL(prefix), each, h->key, topic, mode);
 }
 
 int Get_Help (const char *fst, const char *sec, INTERFACE *iface, userflag gf,
-	      userflag cf, struct bindtable_t *table, char *prefix, int mode)
+	      userflag cf, struct bindtable_t *table, const char *prefix, int mode)
 {
-  return Get_Help_L (fst, sec, iface, gf, cf, table, prefix, mode, locale);
+  return Get_Help_L (fst, sec, iface, gf, cf, table, prefix, 0, mode, locale);
 }

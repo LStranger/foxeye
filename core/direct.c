@@ -383,7 +383,7 @@ void Dcc_Parse (peer_t *dcc, char *name, char *cmd, userflag gf, userflag cf,
       Unset_Iface();
       if (res == 0)
 	Get_Help_L (NULL, bind->key, dcc->iface, gf, cf, ssbt, _("Usage: "), 0,
-		    dcc->lang[0] ? dcc->lang : locale);
+		    0, dcc->lang[0] ? dcc->lang : locale);
     }
     else
     {
@@ -407,8 +407,8 @@ void Dcc_Parse (peer_t *dcc, char *name, char *cmd, userflag gf, userflag cf,
       else
 	res = bind->func (dcc, arg);
       if (res == 0)
-	Get_Help_L (bind->key, NULL, dcc->iface, gf, cf, BT_Dcc, _("Usage: "), 0,
-		    dcc->lang[0] ? dcc->lang : locale);
+	Get_Help_L (bind->key, NULL, dcc->iface, gf, cf, BT_Dcc, _("Usage: "),
+		    0, 0, dcc->lang[0] ? dcc->lang : locale);
     }
 #ifdef ENABLE_NLS
     if (dcc->lang[0])
@@ -2329,17 +2329,17 @@ static int dc_help (peer_t *dcc, char *args)
     ssbt = NULL;
   /* usage - not required if no arguments */
   if (args && !(ssbt && Get_Help_L (NULL, fst, dcc->iface,
-				    dcc->uf, df, ssbt, _("Usage: "), -1,
+				    dcc->uf, df, ssbt, _("Usage: "), 0, -1,
 				    dcc->lang[0] ? dcc->lang : locale)) &&
       !Get_Help_L (fst, sec, dcc->iface, dcc->uf, df, BT_Dcc,
-		   _("Usage: "), 0, dcc->lang[0] ? dcc->lang : locale))
+		   _("Usage: "), 0, 0, dcc->lang[0] ? dcc->lang : locale))
     return -1;
   /* full help */
   if (ssbt)
-    Get_Help_L (NULL, fst ? fst : "*", dcc->iface, dcc->uf, df, ssbt, NULL, 2,
+    Get_Help_L (NULL, fst ? fst : "*", dcc->iface, dcc->uf, df, ssbt, NULL, 0, 2,
 		dcc->lang[0] ? dcc->lang : locale);
   if (!ssbt || !fst)
-    Get_Help_L (fst, sec, dcc->iface, dcc->uf, df, BT_Dcc, NULL, 2,
+    Get_Help_L (fst, sec, dcc->iface, dcc->uf, df, BT_Dcc, NULL, 0, 2,
 		dcc->lang[0] ? dcc->lang : locale);
   if (sec && *sec)
     *args = ' ';
