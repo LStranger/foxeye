@@ -59,7 +59,7 @@
     are also provided. _s_r_v is IRCD interface which can be used to send
     control messages (commands). Value -1 returned by binding means this
     command should not reset idle time calculation.
-      Matching: command.  (channel userflags are ignored)
+      Matching: command.  (channel userflags are ignored, used by HELP)
 
 -     "iirrccdd--sseerrvveerr--ccmmdd" KEYWORD
   int func(INTERFACE *_s_r_v, struct peer_t *_p_e_e_r, unsigned short _t_o_k_e_n,

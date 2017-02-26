@@ -21,6 +21,8 @@ Sat Feb 25 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  sent, not just first one.
 	* core/init.c: use U_NEGATE in Check_Bindtable() parameter as a
 	  "never match" flag.
+	* modules/ircd/clients.c, modules/ircd/ircd.help, modules/ircd/numerics.h:
+	  implemented a client command "HELP".
 
 Thu Feb 23 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed nickchange testing, it should be tested

@@ -1782,7 +1782,7 @@ void ircd_queries_proto_start (void)
   Add_Binding ("ircd-client-cmd", "stats", 0, 0, &ircd_stats_cb, NULL);
   Add_Binding ("ircd-client-cmd", "links", 0, 0, &ircd_links_cb, NULL);
   Add_Binding ("ircd-client-cmd", "time", 0, 0, &ircd_time_cb, NULL);
-  Add_Binding ("ircd-client-cmd", "connect", 0, 0, &ircd_connect_cb, NULL);
+  Add_Binding ("ircd-client-cmd", "connect", 0, U_HALFOP, &ircd_connect_cb, NULL);
   Add_Binding ("ircd-client-cmd", "trace", 0, 0, &ircd_trace_cb, NULL);
   Add_Binding ("ircd-client-cmd", "admin", 0, 0, &ircd_admin_cb, NULL);
   Add_Binding ("ircd-client-cmd", "info", 0, 0, &ircd_info_cb, NULL);

@@ -30,6 +30,8 @@
 
 extern bool _ircd_public_topic; /* in ircd.c */
 
+static struct bindtable_t *BTIrcdClientCmd; /* copy of pointer in ircd.c */
+
 /* ---------------------------------------------------------------------------
  * Common internal functions.
  */
@@ -928,6 +930,52 @@ static int ircd_charset_cb(INTERFACE *srv, struct peer_t *peer, const char *lcni
 }
 #endif
 
+BINDING_TYPE_ircd_client_cmd(ircd_help_cb);
+static int ircd_help_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
+			const char *user, const char *host, const char *vhost,
+			modeflag eum, int argc, const char **argv)
+{ /* args: [<command>] */
+  CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl, *me;
+  userflag uf = 0;
+  struct binding_t *b;
+  char prefix[SHORT_STRING];
+
+  /* convert modeflag to userflag */
+  if (cl->umode & A_ADMIN)
+    uf = (U_HALFOP | U_OP | U_MASTER);
+  else if (cl->umode & A_OP)
+    uf = (U_HALFOP | U_OP);
+  else if (cl->umode & A_HALFOP)
+    uf = U_HALFOP;
+  if (cl->umode & A_REGISTERED)
+    uf |= U_FRIEND;
+  me = ircd_find_client(NULL, NULL);
+  /* return help */
+  if (argc > 0) {
+    snprintf(prefix, sizeof(prefix), ":%s 705 %s %s :", me->lcnick, peer->dname,
+	     argv[0]); /* RPL_HELPTXT */
+    b = Check_Bindtable (BTIrcdClientCmd, argv[0], uf, U_ANYCH, NULL);
+    if (b)
+      Get_Help_L("=ircd", b->key, peer->iface, U_NEGATE, uf, BTIrcdClientCmd,
+		 prefix, 1, -1, ""); //FIXME: LANG support
+    ircd_do_unumeric(cl, RPL_HELPTXT, cl, 0, argv[0]);
+    Get_Help_L("=ircd", b ? b->key : argv[0], peer->iface, U_NEGATE, uf,
+	       BTIrcdClientCmd, prefix, 1, 2, ""); //FIXME: LANG support
+    // RPL_HELPTXT empty line ?
+    return ircd_do_unumeric(cl, RPL_ENDOFHELP, cl, 0, argv[0]);
+  } else {
+    // RPL_HELPSTART ?
+    snprintf(prefix, sizeof(prefix), ":%s 705 %s index :", me->lcnick, peer->dname);
+    b = NULL;
+    while ((b = Check_Bindtable (BTIrcdClientCmd, NULL, uf, U_ANYCH, b)))
+    {
+      Get_Help_L("=ircd", b->key, peer->iface, U_NEGATE, uf, BTIrcdClientCmd,
+		 prefix, -1, 1, ""); //FIXME: LANG support
+    }
+    return ircd_do_unumeric(cl, RPL_ENDOFHELP, cl, 0, "index");
+  }
+}
+
 
 /* ---------------------------------------------------------------------------
  * Common external functions.
@@ -965,6 +1013,7 @@ void ircd_client_proto_end (void)
 #if IRCD_USES_ICONV
   Delete_Binding ("ircd-client-cmd", &ircd_charset_cb, NULL);
 #endif
+  Delete_Binding ("ircd-client-cmd", &ircd_help_cb, NULL);
 }
 
 void ircd_client_proto_start (void)
@@ -972,7 +1021,7 @@ void ircd_client_proto_start (void)
   Add_Binding ("ircd-check-message", "*", 0, 0, &ichmsg_ircd, NULL);
   Add_Binding ("ircd-client-cmd", "oper", 0, 0, &ircd_oper_cb, NULL);
   Add_Binding ("ircd-client-cmd", "quit", 0, 0, &ircd_quit_cb, NULL);
-  Add_Binding ("ircd-client-cmd", "squit", 0, 0, &ircd_squit_cb, NULL);
+  Add_Binding ("ircd-client-cmd", "squit", 0, U_HALFOP, &ircd_squit_cb, NULL);
   Add_Binding ("ircd-client-cmd", "part", 0, 0, &ircd_part_cb, NULL);
   Add_Binding ("ircd-client-cmd", "topic", 0, 0, &ircd_topic_cb, NULL);
   Add_Binding ("ircd-client-cmd", "invite", 0, 0, &ircd_invite_cb, NULL);
@@ -980,22 +1029,24 @@ void ircd_client_proto_start (void)
   Add_Binding ("ircd-client-cmd", "servlist", 0, 0, &ircd_servlist_cb, NULL);
   Add_Binding ("ircd-client-cmd", "who", 0, 0, &ircd_who_cb, NULL);
 #ifdef IRCD_ENABLE_KILL
-  Add_Binding ("ircd-client-cmd", "kill", 0, 0, &ircd_kill_cb, NULL);
+  Add_Binding ("ircd-client-cmd", "kill", 0, U_HALFOP, &ircd_kill_cb, NULL);
 #endif
   Add_Binding ("ircd-client-cmd", "away", 0, 0, &ircd_away_cb, NULL);
 #ifdef IRCD_ENABLE_REHASH
-  Add_Binding ("ircd-client-cmd", "rehash", 0, 0, &ircd_rehash_cb, NULL);
+  Add_Binding ("ircd-client-cmd", "rehash", 0, U_HALFOP, &ircd_rehash_cb, NULL);
 #endif
 #ifdef IRCD_ENABLE_DIE
-  Add_Binding ("ircd-client-cmd", "die", U_HALFOP, 0, &ircd_die_cb, NULL);
+  Add_Binding ("ircd-client-cmd", "die", U_HALFOP, U_HALFOP, &ircd_die_cb, NULL);
 #endif
 #ifdef IRCD_ENABLE_RESTART
-  Add_Binding ("ircd-client-cmd", "restart", U_HALFOP, 0, &ircd_restart_cb, NULL);
+  Add_Binding ("ircd-client-cmd", "restart", U_HALFOP, U_HALFOP, &ircd_restart_cb, NULL);
 #endif
   Add_Binding ("ircd-client-cmd", "userhost", 0, 0, &ircd_userhost_cb, NULL);
   Add_Binding ("ircd-client-cmd", "ison", 0, 0, &ircd_ison_cb, NULL);
 #if IRCD_USES_ICONV
   Add_Binding ("ircd-client-cmd", "charset", 0, 0, &ircd_charset_cb, NULL);
 #endif
+  BTIrcdClientCmd = Add_Bindtable ("ircd-client-cmd", B_UNIQ);
+  Add_Binding ("ircd-client-cmd", "help", 0, 0, &ircd_help_cb, NULL);
 }
 #endif

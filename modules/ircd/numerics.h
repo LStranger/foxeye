@@ -188,3 +188,5 @@
 /* 499-500 reserved */
 #define ERR_UMODEUNKNOWNFLAG	501, ":Unknown MODE flag"
 #define ERR_USERSDONTMATCH	502, ":Cannot change mode for other users"
+#define RPL_HELPTXT		705, "%*"
+#define RPL_ENDOFHELP		706, "%* :End of /HELP."
