@@ -1579,15 +1579,15 @@ SigFunction ModuleInit (char *args)
   Add_Binding("ircd-server-cmd", "rline", 0, 0, (Function)&rusnet_rline_sb, NULL);
   Add_Binding("ircd-server-cmd", "rcpage", 0, 0, (Function)&rusnet_rcpage_sb, NULL);
 #if OPER_TLINE
-  Add_Binding("ircd-client-cmd", "kline", 0, 0, &rusnet_kline_cb, NULL);
-  Add_Binding("ircd-client-cmd", "eline", 0, 0, &rusnet_eline_cb, NULL);
-  Add_Binding("ircd-client-cmd", "rline", 0, 0, &rusnet_rline_cb, NULL);
-  Add_Binding("ircd-client-cmd", "unkline", 0, 0, &rusnet_unkline_cb, NULL);
-  Add_Binding("ircd-client-cmd", "uneline", 0, 0, &rusnet_uneline_cb, NULL);
-  Add_Binding("ircd-client-cmd", "unrline", 0, 0, &rusnet_unrline_cb, NULL);
+  Add_Binding("ircd-client-cmd", "kline", 0, U_OP, &rusnet_kline_cb, NULL);
+  Add_Binding("ircd-client-cmd", "eline", 0, U_OP, &rusnet_eline_cb, NULL);
+  Add_Binding("ircd-client-cmd", "rline", 0, U_OP, &rusnet_rline_cb, NULL);
+  Add_Binding("ircd-client-cmd", "unkline", 0, U_OP, &rusnet_unkline_cb, NULL);
+  Add_Binding("ircd-client-cmd", "uneline", 0, U_OP, &rusnet_uneline_cb, NULL);
+  Add_Binding("ircd-client-cmd", "unrline", 0, U_OP, &rusnet_unrline_cb, NULL);
 #endif
 #if OPER_RCPAGE
-  Add_Binding("ircd-client-cmd", "rcpage", 0, 0, &rusnet_rcpage_cb, NULL);
+  Add_Binding("ircd-client-cmd", "rcpage", 0, U_OP, &rusnet_rcpage_cb, NULL);
 #endif
   /* support VHOST feature (+x usermode) */
   Add_Binding("ircd-umodechange", "x", 0, 0, (Function)&rusnet_umch_x, NULL);

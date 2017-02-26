@@ -30,3 +30,58 @@ set rusnet-eline-limit
  exception set by ELINE command) before exception will cease to work, the same\
  way as a class overall limit works.
  Default: 25.
+
+=ircd kline
+:KLINE <nick!user@host> <hours> [reason]
+:KLINE    - add a K-line (auto-kill mask).
+:
+
+=ircd eline
+:ELINE <nick!user@host> <hours> [reason]
+:ELINE    - add a E-line (exception from auto-kill mask).
+:
+
+=ircd rline
+:RLINE <nick!user@host> <hours> [reason]
+:RLINE    - add a R-line (restricted user mask).
+:
+
+=ircd unkline
+:UNKLINE <nick!user@host>
+:UNKLINE  - remove K-line from server database.
+:
+
+=ircd uneline
+:UNELINE <nick!user@host>
+:UNELINE  - remove E-line from server database.
+:
+
+=ircd unrline
+:UNRLINE <nick!user@host>
+:UNRLINE  - remove R-line from server database.
+:
+
+=ircd rcpage
+:RCPAGE <nick> <charset>
+:RCPAGE   - change character set for another user.
+:
+
+=ircd nickserv
+:NICKSERV <command ...>
+:NICKSERV - forward a request to nicks service.
+:
+
+=ircd chanserv
+:CHANSERV <command ...>
+:CHANSERV - forward a request to channels service.
+:
+
+=ircd operserv
+:OPERSERV <command ...>
+:OPERSERV - forward a request to operators service.
+:
+
+=ircd memoserv
+:MEMOSERV <command ...>
+:MEMOSERV - forward a request to memos service.
+:
