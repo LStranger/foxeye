@@ -370,6 +370,7 @@ typedef enum
 			/*'global AND channel' instead of default OR behavior */
 #define U_EQUAL	U_ALIAS	/* channel flag, for Check_Bintable() only, means */
 			/*all flags and mask are matched when they are equal */
+	/* U_NEGATE for Check_Bintable() has special meaning: to never match */
 
 #define U_NONE  (~(U_NEGATE | U_ALIAS))	/* for Add_Binding() */
 #define U_ALL	(~U_NEGATE)		/* global for Check_Bindtable() */

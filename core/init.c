@@ -406,7 +406,7 @@ struct binding_t *Check_Bindtable (struct bindtable_t *bt, const char *str,
       l = Find_Leaf (bt->list.tree, "", 0);
     return (l == NULL) ? NULL : l->s.data;
   }
-  cf = (scf & ~U_EQUAL);		/* drop the flag to matching */
+  cf = (scf & ~(U_EQUAL | U_NEGATE));	/* drop the flag to matching */
   if (bt->type == B_MASK || bt->type == B_UNIQMASK)
     cc = 0;
   else if (bt->type == B_MATCHCASE)
@@ -450,11 +450,15 @@ struct binding_t *Check_Bindtable (struct bindtable_t *bt, const char *str,
     }
     else if (b)
     {
-      if (b->gl_uf & U_NEGATE)				/* -a */
+      if (gf & U_NEGATE)				/* !a */
+	tgf = ~b->gl_uf;
+      else if (b->gl_uf & U_NEGATE)			/* -a */
 	tgf = (b->gl_uf & ~gf);
       else						/* a */
 	tgf = (b->gl_uf & gf);
-      if (b->ch_uf & U_NEGATE)				/* -b */
+      if (scf & U_NEGATE)				/* !b */
+	tcf = ~b->ch_uf;
+      else if (b->ch_uf & U_NEGATE)			/* -b */
 	tcf = (b->ch_uf & ~cf);
       else						/* b */
 	tcf = (b->ch_uf & cf);
@@ -480,11 +484,15 @@ struct binding_t *Check_Bindtable (struct bindtable_t *bt, const char *str,
     }
     else while (b)
     {
-      if (b->gl_uf & U_NEGATE)				/* -a */
+      if (gf & U_NEGATE)				/* !a */
+	tgf = ~b->gl_uf;
+      else if (b->gl_uf & U_NEGATE)			/* -a */
 	tgf = (b->gl_uf & ~gf);
       else						/* a */
 	tgf = (b->gl_uf & gf);
-      if (b->ch_uf & U_NEGATE)				/* -b */
+      if (scf & U_NEGATE)				/* !b */
+	tcf = ~b->ch_uf;
+      else if (b->ch_uf & U_NEGATE)			/* -b */
 	tcf = (b->ch_uf & ~cf);
       else						/* b */
 	tcf = (b->ch_uf & cf);
@@ -518,11 +526,15 @@ struct binding_t *Check_Bindtable (struct bindtable_t *bt, const char *str,
 	i = 1;				/* support for U_COMPL type */
 	break;				/* found! */
       }
-      if (b->gl_uf & U_NEGATE)				/* -a */
+      if (gf & U_NEGATE)				/* !a */
+	tgf = ~b->gl_uf;
+      else if (b->gl_uf & U_NEGATE)			/* -a */
 	tgf = (b->gl_uf & ~gf);
       else						/* a */
 	tgf = (b->gl_uf & gf);
-      if (b->ch_uf & U_NEGATE)				/* -b */
+      if (scf & U_NEGATE)				/* !b */
+	tcf = ~b->ch_uf;
+      else if (b->ch_uf & U_NEGATE)			/* -b */
 	tcf = (b->ch_uf & ~cf);
       else						/* b */
 	tcf = (b->ch_uf & cf);

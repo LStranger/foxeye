@@ -19,6 +19,8 @@ Sat Feb 25 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/help.c, core/protos.h, doc/modules.api, core/direct.c, core/init.c:
 	  added possibility for Get_Help_L to include prefix to each message
 	  sent, not just first one.
+	* core/init.c: use U_NEGATE in Check_Bindtable() parameter as a
+	  "never match" flag.
 
 Thu Feb 23 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed nickchange testing, it should be tested
