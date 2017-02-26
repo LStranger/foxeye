@@ -24,6 +24,7 @@
 #include <list.h>
 #include <init.h>
 #include <conversion.h>
+#include <socket.h>
 
 #include "ircd.h"
 #include "numerics.h"
@@ -865,7 +866,10 @@ static int ircd_userhost_cb(INTERFACE *srv, struct peer_t *peer, const char *lcn
 	buf[s++] = '+';
       s += strfcpy(&buf[s], tgt->user, sizeof(buf) - s);
       buf[s++] = '@';
-      s += strfcpy(&buf[s], tgt->vhost, sizeof(buf) - s);
+      if (tgt == cl)
+	s += strfcpy(&buf[s], SocketIP(peer->socket), sizeof(buf) - s);
+      else
+	s += strfcpy(&buf[s], tgt->vhost, sizeof(buf) - s);
     }
   }
   if (s)

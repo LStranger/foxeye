@@ -23,6 +23,8 @@ Sat Feb 25 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  "never match" flag.
 	* modules/ircd/clients.c, modules/ircd/ircd.help, modules/ircd/numerics.h:
 	  implemented a client command "HELP".
+	* modules/ircd/clients.c: send IP in USERHOST reply to client themself.
+	  Some clients may rely on that to retrieve own IP for DCC commands.
 
 Thu Feb 23 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed nickchange testing, it should be tested
