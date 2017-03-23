@@ -27,6 +27,11 @@ auto)
 	# Found in default paths
 	USE_OPENSSL=yes
     ], [
+      AC_LINK_IFELSE([AC_LANG_CALL([], [OPENSSL_init_ssl])], [
+	AC_MSG_RESULT(found)
+	# Found OpenSSL 1.1 in default paths
+	USE_OPENSSL=yes
+      ], [
 	AC_MSG_RESULT(no)
 	# Search for it
 	for tryssl_dir in	/usr/local/ssl /usr /usr/local /usr/local/share \
@@ -53,11 +58,16 @@ auto)
 		USE_OPENSSL=yes
 		break
 	    ], [
+	      AC_LINK_IFELSE([AC_LANG_CALL([], [OPENSSL_init_ssl])], [
+		AC_MSG_RESULT(found)
+		USE_OPENSSL=yes
+		break
+	      ], [
 		AC_MSG_RESULT(no)
 		openssl_include=
-	    ])
+	    ])])
 	done
-    ])
+    ])])
     dnl at this point if $USE_OPENSSL isn't "yes" then it's not found
     if test x$USE_OPENSSL != xyes; then
 	AC_MSG_WARN(could not find OpenSSL libcrypto: see config.log for details)
@@ -72,9 +82,13 @@ yes)
 	AC_MSG_RESULT(found)
 	USE_OPENSSL=yes
     ], [
+      AC_LINK_IFELSE([AC_LANG_CALL([], [OPENSSL_init_ssl])], [
+	AC_MSG_RESULT(found)
+	USE_OPENSSL=yes
+      ], [
 	AC_MSG_RESULT(no)
 	AC_MSG_FAILURE(couldn't find OpenSSL)
-    ])
+    ])])
     ;;
 
 *)
@@ -103,9 +117,13 @@ yes)
 	AC_MSG_RESULT(found)
 	USE_OPENSSL=yes
     ], [
+      AC_LINK_IFELSE([AC_LANG_CALL([], [OPENSSL_init_ssl])], [
+	AC_MSG_RESULT(found)
+	USE_OPENSSL=yes
+      ], [
 	AC_MSG_RESULT(no)
 	AC_MSG_FAILURE(couldn't find OpenSSL)
-    ])
+    ])])
     ;;
 esac
 dnl -- end of OpenSSL search
@@ -141,7 +159,7 @@ int main(void) {
         fd = fopen(DATA,"w");
         if(fd == NULL)
                 exit(1);
-        if ((rc = fprintf(fd ,"%x (%s)\n", OPENSSL_VERSION_NUMBER, OPENSSL_VERSION_TEXT)) <0)
+        if ((rc = fprintf(fd ,"%lx (%s)\n", OPENSSL_VERSION_NUMBER, OPENSSL_VERSION_TEXT)) <0)
                 exit(1);
         exit(0);
 }
@@ -172,7 +190,7 @@ int main(void) {
         if(fd == NULL)
                 exit(1);
 
-        if ((rc = fprintf(fd ,"%x (%s)\n", SSLeay(), SSLeay_version(SSLEAY_VERSION))) <0)
+        if ((rc = fprintf(fd ,"%lx (%s)\n", SSLeay(), SSLeay_version(SSLEAY_VERSION))) <0)
                 exit(1);
 
         exit(0);
@@ -193,6 +211,7 @@ int main(void) {
 	AC_LANG_SOURCE([[
 #include <string.h>
 #include <openssl/opensslv.h>
+#include <openssl/crypto.h>
 int main(void) { exit(SSLeay() == OPENSSL_VERSION_NUMBER ? 0 : 1); }
     ]])], [
 	AC_MSG_RESULT(yes)

@@ -435,7 +435,11 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
     SSL_CTX_free(ctx);
     ctx = NULL;
     /* deinit library */
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
     ERR_remove_state(0);
+#else
+    FIPS_mode_set(0);
+#endif
     ENGINE_cleanup();
     CONF_modules_unload(1);
     ERR_free_strings();
@@ -510,7 +514,11 @@ SigFunction ModuleInit (char *args)
 {
   CheckVersion;
   /* lib init */
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
   SSL_library_init();
+#else
+  OPENSSL_init_ssl(0, NULL);
+#endif
   SSL_load_error_strings();
   ERR_load_BIO_strings();
   OpenSSL_add_all_algorithms();

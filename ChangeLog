@@ -19,6 +19,10 @@ Wed May 31 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/lib.c: fixed infinite loop on substitution text containing just
 	  garbage.
 
+Thu Mar 23 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ssl/openssl.c, modules/ssl/accvs.m4: added support for libssl
+	  version 1.1.
+
 Sun Feb 26 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed crash on TRACE reply on unknown connection.
 
