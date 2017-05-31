@@ -787,7 +787,9 @@ static int _count_chars (const char *line, size_t *len, int max)
 
 /* bs is max space available if text doesn't fit in linelen s
  * bs >= s if no wrapping
- * bs == 0 if wrapping enabled */
+ * bs == 0 if wrapping enabled
+ * returns: -1 if there is no text to print, 0 if text should be wrapped,
+ *          or byte size of the text to print */
 static ssize_t _try_subst (char *buf, size_t bs, const char *text, size_t s, int max)
 {
   size_t n = safe_strlen (text);
@@ -800,11 +802,13 @@ static ssize_t _try_subst (char *buf, size_t bs, const char *text, size_t s, int
       return 0;
     bs = n;
     _count_chars (text, &bs, max);
-    if (bs < n)				/* no so much space available */
+    if (bs && bs < n)			/* no so much space available */
       return 0;
   }
   else					/* correct size if needed */
     _count_chars (text, &bs, n);
+  if (!bs)				/* text appears to be just garbage */
+    return -1;
   memcpy (buf, text, bs);
   return bs;
 }

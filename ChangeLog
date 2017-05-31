@@ -15,6 +15,10 @@ TODO:
 	* modules/ircd: to support command LANG for numerics translation.
 
 --- [0.11.0]
+Wed May 31 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* core/lib.c: fixed infinite loop on substitution text containing just
+	  garbage.
+
 Sun Feb 26 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed crash on TRACE reply on unknown connection.
 

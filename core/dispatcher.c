@@ -630,6 +630,7 @@ static int _get_current (void)
 
   if (out == REQ_REJECTED)
   {
+    DBG ("dispatcher:_get_current: interface %p suspended", &Current->a);
     Current->a.marked = TRUE;			/* run it again next time */
     Current->a.ift |= I_SLEEPING;		/* but with delay */
   }
