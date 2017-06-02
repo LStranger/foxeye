@@ -17,6 +17,8 @@ TODO:
 --- [0.11.0]
 Fri Jun  2 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c: added check for deadlock in dprint().
+	* core/connchain.c, modules/ziplink/ziplink.c, modules/ssl/openssl.c:
+	  disassociate connchain on its termination from the socket.
 
 Wed May 31 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/lib.c: fixed infinite loop on substitution text containing just

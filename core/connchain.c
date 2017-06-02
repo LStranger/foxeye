@@ -83,7 +83,11 @@ static ssize_t _connchain_recv (struct connchain_i **chain, idx_t idx,
   else
     i = ReadSocket (data, idx, sz);
   if (i < 0)
+  {
     DBG ("connchain: recv: socket error %d", (int)i);
+    /* socket is dead, disassociate it from the connchain ASAP */
+    AssociateSocket(idx, NULL, NULL);
+  }
   else if (i)
     dprint (6, "got from peer %d:[%-*.*s]", (int)idx, (int)i, (int)i, data);
   return i;

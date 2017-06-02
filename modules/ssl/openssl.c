@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2016-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -108,7 +108,7 @@ static void _s_check_saved_buffer(idx_t id, struct connchain_buffer *buf)
   o = 0;
   o = Connchain_Put(&buf->saved_chain, id, NULL, &o);
   /* kill chain when done */
-  if (i < 0 && o < 0 && Connchain_Get(&buf->saved_chain, id, NULL, 0))
+  if (i < 0 && o < 0 && Connchain_Get(&buf->saved_chain, -1, NULL, 0))
     buf->saved_chain = NULL;
   DBG("ssl: cleared old chain");
 }
@@ -310,7 +310,7 @@ static ssize_t _ccfilter_S_recv(struct connchain_i **ch, idx_t id, char *str,
     return (i);
   ERROR("ssl: got %zd from connection chain, terminating", i);
 finish_filter:
-  if (buf->saved_chain != NULL && Connchain_Get(&buf->saved_chain, id, NULL, 0))
+  if (buf->saved_chain != NULL && Connchain_Get(&buf->saved_chain, -1, NULL, 0))
     buf->saved_chain = NULL;
   i = (*b)->error;
   if (i == 0)
