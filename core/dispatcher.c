@@ -1053,11 +1053,27 @@ void dprint (int level, const char *text, ...)
   /* make pseudo "async-safe" connchain's debug when writing to socket */
   if (level <= O_DLEVEL && level < 9 && Interface && is_in_shutdown <= 0)
   {
-    pthread_mutex_lock (&LockIface);
-    vsadd_request (NULL, I_LOG, "*",
-		   F_DEBUG | (level < 1 ? F_ERROR : level == 1 ? F_WARN : 0),
-		   text, ap);
-    pthread_mutex_unlock (&LockIface);
+    int tries;
+
+    for (tries = 0; tries < 5; tries++)
+    {
+      /* since it might be called from a thread, safeguard on deadlock here */
+      if (pthread_mutex_trylock (&LockIface) == 0)
+      {
+	vsadd_request (NULL, I_LOG, "*",
+		       F_DEBUG | (level < 1 ? F_ERROR : level == 1 ? F_WARN : 0),
+		       text, ap);
+	pthread_mutex_unlock (&LockIface);
+	break;
+      }
+      else
+      {
+	struct timespec ts;
+	ts.tv_sec = 0;
+	ts.tv_nsec = 1000; /* sleep a microsecond */
+	nanosleep (&ts, NULL);
+      }
+    }
   }
   pthread_setcancelstate(cancelstate, NULL);
   va_end (ap);
