@@ -133,7 +133,9 @@ static ssize_t _ssl_try_send_buffers(struct connchain_i **ch, idx_t id,
   /* DBG("ssl: tried to send data, size=%zu sent=%zd", so, i); */
   if (i < 0)
     return (i);
-  if (i > 0 && buf->out.inbuf > 0)
+  if (buf->out.inbuf == buf->out.bufptr) /* Connchain_Put() returns 1 in this case */
+    i = 0;
+  if (i > 0)
     dprint(6, "ssl: sent encrypted data, size=%zd", i);
   if (so == 0)			/* done */
     buf->out.bufptr = buf->out.inbuf = 0;
@@ -220,6 +222,7 @@ static ssize_t _ccfilter_S_send(struct connchain_i **ch, idx_t id, const char *s
       return (0);
     return Connchain_Put (ch, id, str, sz); /* ask next link to flush then */
   }
+retry:
   i = _ssl_try_send_buffers(ch, id, buf, TRUE); /* try to push buffers now */
   if (i < 0)
     return (i);
@@ -234,8 +237,12 @@ static ssize_t _ccfilter_S_send(struct connchain_i **ch, idx_t id, const char *s
     if (!_ssl_check_input_from_chain(ch, id, b)) /* SSL may wait for data */
       return Connchain_Put (ch, id, str, sz); /* if not SSL then bypass data */
     DBG("ssl: handshake is in progress");
-    if (!SSL_is_init_finished(buf->ssl))
+    if ((*b)->error < 0)
       return ((*b)->error);	/* there might be an error from connchain */
+    if (i > 0)
+      goto retry;		/* we have send something to socket so retry */
+    if (!buf->check_done)
+      return (0);
   }
   /* ready to process input data */
   i = SSL_write(buf->ssl, str, *sz);
@@ -247,11 +254,10 @@ static ssize_t _ccfilter_S_send(struct connchain_i **ch, idx_t id, const char *s
     i = 0;
   }
   so = i;
-  if (buf->out.inbuf != 0) {	/* trying to push buffer again */
-    i = _ssl_try_send_buffers(ch, id, buf, TRUE);
-    if (i < 0)
-      return (i);
-  }
+  /* trying to push buffer again */
+  i = _ssl_try_send_buffers(ch, id, buf, TRUE);
+  if (i < 0)
+    return (i);
   return (so);
 }
 
@@ -283,6 +289,7 @@ static ssize_t _ccfilter_S_recv(struct connchain_i **ch, idx_t id, char *str,
       buf->in.bufptr += i;
     return (i);
   }
+retry:
   if (!_ssl_check_input_from_chain(ch, id, b)) { /* not a SSL data */
     i = (buf->in.inbuf - buf->in.bufptr);
     if (i > (ssize_t)sz)
@@ -299,6 +306,8 @@ static ssize_t _ccfilter_S_recv(struct connchain_i **ch, idx_t id, char *str,
     i = _ssl_try_send_buffers(ch, id, buf, TRUE); /* SSL may have data to send */
     if (i < 0)
       return (i);
+    if (i > 0)
+      goto retry;		/* we have send something to socket so retry */
   }
   i = SSL_read(buf->ssl, str, sz);
   if (i <= 0) {			/* some error in SSL_read */
