@@ -83,11 +83,7 @@ static ssize_t _connchain_recv (struct connchain_i **chain, idx_t idx,
   else
     i = ReadSocket (data, idx, sz);
   if (i < 0)
-  {
     DBG ("connchain: recv: socket error %d", (int)i);
-    /* socket is dead, disassociate it from the connchain ASAP */
-    AssociateSocket(idx, NULL, NULL);
-  }
   else if (i)
     dprint (6, "got from peer %d:[%-*.*s]", (int)idx, (int)i, (int)i, data);
   return i;
@@ -250,6 +246,9 @@ ssize_t Connchain_Get (connchain_i **chain, idx_t idx, char *buf, size_t sz)
     return i;
   if(Connchain_Get (&(*chain)->next, idx, NULL, 0))i=i; /* it's dead, kill next */
   dprint (2, "connchain.c: destroying link %p", *chain);
+  /* connchain is dead, disassociate it from the socket ASAP */
+  if ((*chain)->tc == 0)
+    AssociateSocket(idx, NULL, NULL);
   pthread_mutex_lock(&CC_Mutex);
   free_connchain_i (*chain);
   pthread_mutex_unlock(&CC_Mutex);
