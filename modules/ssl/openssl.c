@@ -235,7 +235,7 @@ static ssize_t _ccfilter_S_send(struct connchain_i **ch, idx_t id, const char *s
       return Connchain_Put (ch, id, str, sz); /* if not SSL then bypass data */
     DBG("ssl: handshake is in progress");
     if (!SSL_is_init_finished(buf->ssl))
-      return (0);
+      return ((*b)->error);	/* there might be an error from connchain */
   }
   /* ready to process input data */
   i = SSL_write(buf->ssl, str, *sz);

@@ -15,6 +15,11 @@ TODO:
 	* modules/ircd: to support command LANG for numerics translation.
 
 --- [0.11.0]
+Sat Jun  3 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ssl/openssl.c: return error on sending data if previous read
+	  from socket failed, that will drop connection immediately instead of
+	  waiting for a timeout in case of EOF.
+
 Fri Jun  2 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c: added check for deadlock in dprint().
 	* core/connchain.c, modules/ziplink/ziplink.c, modules/ssl/openssl.c:
