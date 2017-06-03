@@ -37,7 +37,7 @@
 #if SOCKETMAX > 10002
 #define IRCD_MAX_LOCAL_CLIENTS 10000
 #else
-#define IRCD_MAX_LOCAL_CLIENTS (SOCKETMAX - 2) /* reserve one for a ident socket */
+#define IRCD_MAX_LOCAL_CLIENTS (SOCKETMAX - 2) /* reserve one for an ident socket */
 #endif
 
 #define __IN_IRCD_C 1
@@ -1972,8 +1972,8 @@ static void _ircd_prehandler (pthread_t th, void **data, idx_t *as)
      note: listener will wait it, can we handle DDoS here? */
   sw = _ircd_make_hello_msg(charset, sizeof(charset), RPL_HELLO);
   Unset_Iface();
-  if (Peer_Put((&peer->p), charset, &sw) > 0) /* connchain should eat it */
-    while (Peer_Put((&peer->p), NULL, &sw) == 0); /* wait until data sent */
+  if (Peer_Put((&peer->p), charset, &sw) <= 0) /* connchain should eat it */
+    ERROR("ircd:_ircd_prehandler: failed to send RPL_HELLO to client");
 }
 
 #define peer ((peer_priv *)data)
