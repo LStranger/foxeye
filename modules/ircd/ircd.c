@@ -1429,6 +1429,8 @@ static iftype_t _ircd_client_signal (INTERFACE *cli, ifsig_t sig)
 					/* no peer->link yet if P_DISCONNECTED */
 	  if (ShutdownR)
 	    _ircd_peer_kill (peer, ShutdownR);
+	  else if (peer->p.last_input < 0)
+	    _ircd_peer_kill (peer, SocketError(peer->p.last_input, buff, sizeof(buff)));
 	  else
 	    _ircd_peer_kill (peer, "Connection timeout");
 	  if (sw)			/* couldn't connect uplink, retry */
