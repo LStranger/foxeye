@@ -32,32 +32,32 @@ set rusnet-eline-limit
  Default: 25.
 
 =ircd kline
-:KLINE <nick!user@host> <hours> [reason]
+:KLINE <[nick!]user@host> <hours> [reason]
 :KLINE    - add a K-line (auto-kill mask).
 :
 
 =ircd eline
-:ELINE <nick!user@host> <hours> [reason]
-:ELINE    - add a E-line (exception from auto-kill mask).
+:ELINE <[*!]user@host> <hours> [reason]
+:ELINE    - add an E-line (exception from auto-kill mask).
 :
 
 =ircd rline
-:RLINE <nick!user@host> <hours> [reason]
-:RLINE    - add a R-line (restricted user mask).
+:RLINE <[*!]user@host> <hours> [reason]
+:RLINE    - add an R-line (restricted user mask).
 :
 
 =ircd unkline
-:UNKLINE <nick!user@host>
+:UNKLINE <[nick!]user@host>
 :UNKLINE  - remove K-line from server database.
 :
 
 =ircd uneline
-:UNELINE <nick!user@host>
+:UNELINE <[*!]user@host>
 :UNELINE  - remove E-line from server database.
 :
 
 =ircd unrline
-:UNRLINE <nick!user@host>
+:UNRLINE <[*!]user@host>
 :UNRLINE  - remove R-line from server database.
 :
 

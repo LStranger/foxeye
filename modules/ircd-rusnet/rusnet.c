@@ -237,8 +237,15 @@ static bool _rusnet_untline(INTERFACE *srv, struct peer_t *peer, const char *mas
   /* find client and remove mask from it */
   const char *lname;
   userflag rf;
-  struct clrec_t *clr = Find_Clientrecord(mask, &lname, &rf, srv->name);
+  struct clrec_t *clr;
 
+  /* validate mask first */
+  if (mask[0] == '*' && mask[1] == '!')
+    mask += 2;
+  if (mask[0] == '!')
+    mask++;
+  /* find and process a record */
+  clr = Find_Clientrecord(mask, &lname, &rf, srv->name);
   if (!clr || lname || (rf & uf) != uf) /* found something else */
   {
     Unlock_Clientrecord(clr);
