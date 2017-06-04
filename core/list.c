@@ -972,7 +972,7 @@ int Get_Clientlist (INTERFACE *iface, userflag uf, const char *fn,
   canbenonamed = uf & U_NONAMED;
   fnisservice = safe_strchr ((char *)fn, '@');	/* isn't NULL if service name */
   gf = uf & U_GLOBALS;
-  unistrlower (lcmask, mask, sizeof(lcmask));  
+  unistrlower (lcmask, mask, sizeof(lcmask));
   n = 0;
   len = 0;
   lid = LID_MIN;
@@ -983,7 +983,7 @@ int Get_Clientlist (INTERFACE *iface, userflag uf, const char *fn,
       if (canbenonamed ||		/* if it's check for ban/invite/etc. */
 	  fn == NULL)			/* NULL means check lname and host */
       {
-	if (match (lcmask, u->lclname) >= 0)	/* Lname matched to it */
+	if (u->lname && match (lcmask, u->lclname) >= 0) /* Lname matches */
 	  n += _add_to_list (iface, buf, &len, u->lname);
 	else for (h = u->host; h; h = h->next)
 	  if (match (lcmask, h->hostmask) > 0)	/* hostmask matched to it */
