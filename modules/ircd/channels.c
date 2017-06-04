@@ -3162,7 +3162,7 @@ void send_isupport(IRCD *ircd, CLIENT *cl)
 			       " MAXLIST=beI:%ld NETWORK=%s EXCEPTS=e INVEX=I"
 			       " CASEMAPPING=utf-8 TOPICLEN=" STR(TOPICLEN)
 			       " CHANNELLEN=" STR(CHANNAMELEN)
-			       " IDCHAN=!:" STR(CHIDLEN) " RFC2812",
+			       " IDCHAN=!:" STR(CHIDLEN) " RFC2812 SAFELIST",
 	   _ircd_isupport_modestring, _ircd_max_channels, _ircd_nicklen,
 #if IRCD_STRICT_NAMES
 	   CHARSET_8BIT,
