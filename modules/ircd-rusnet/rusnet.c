@@ -1305,8 +1305,14 @@ static int _rusnet_qlist_r(INTERFACE *tmp, REQUEST *r)
 	if (r)
 	  m = r+1;
 	if (in == 0) /* permament */
-	  New_Request(rcvr->srv, 0, "%03d %s %c %s * * 0 :%s", rcvr->numeric,
-		      rcvr->rq, rcvr->letter, c, m);
+	{
+	  if (strchr(c, '!'))
+	    New_Request(rcvr->srv, 0, "%03d %s %c %s * * 0 :%s", rcvr->numeric,
+			rcvr->rq, rcvr->letter, c, m);
+	  else
+	    New_Request(rcvr->srv, 0, "%03d %s %c *!%s * * 0 :%s", rcvr->numeric,
+			rcvr->rq, rcvr->letter, c, m);
+	}
 	else if (in > Time)
 	{
 	  time_t times;
@@ -1328,8 +1334,12 @@ static int _rusnet_qlist_r(INTERFACE *tmp, REQUEST *r)
 	      }
 	    }
 	  }
-	  New_Request(rcvr->srv, 0, "%03d %s %c %s * %+d%c 0 :%s", rcvr->numeric,
-		      rcvr->rq, rcvr->letter, c, (int)times, tch, m);
+	  if (strchr(c, '!'))
+	    New_Request(rcvr->srv, 0, "%03d %s %c %s * %+d%c 0 :%s", rcvr->numeric,
+			rcvr->rq, rcvr->letter, c, (int)times, tch, m);
+	  else
+	    New_Request(rcvr->srv, 0, "%03d %s %c *!%s * %+d%c 0 :%s", rcvr->numeric,
+			rcvr->rq, rcvr->letter, c, (int)times, tch, m);
 	}
 	FREE(&msg);
       }
@@ -1357,11 +1367,15 @@ static void _rusnet_stats(INTERFACE *srv, const char *rq, userflag uf,
   strfcpy (&n[1], srv->name, sizeof(n)-1);
   tmp = Add_Iface(I_TEMP, NULL, NULL, &_rusnet_qlist_r, &rcvr);
   Set_Iface(tmp);
-  if (Get_Clientlist(tmp, uf, n, "*"))
+  if (Get_Clientlist(tmp, uf, n, "*@*"))
     Get_Request(); /* it will do recurse itself */
   Unset_Iface();
   tmp->data = NULL;
   tmp->ift = I_DIED;
+  /* a hack to get messages ahead of EndOfStats - flush data that were sent */
+  Set_Iface(srv);
+  while (Get_Request());
+  Unset_Iface();
 }
 
 BINDING_TYPE_ircd_stats_reply(rusnet_stats_k);

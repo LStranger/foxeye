@@ -28,6 +28,7 @@ Sun Jun  4 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  to have '@'.
 	* modules/ircd-rusnet/rusnet.c: allowed optional *! or ! prefix to the
 	  mask for UNKLINE, etc.
+	* modules/ircd-rusnet/rusnet.c: fixed STATS K, etc.
 
 Sat Jun  3 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ssl/openssl.c: return error on sending data if previous read
