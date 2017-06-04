@@ -255,9 +255,10 @@ typedef enum
   F_ASK		= (1<<24),	/*     required answer to that message */
   F_SIGNAL	= (1<<25),	/*     generate signal instead of request */
   F_END		= (1<<26),	/*     client going to down */
-  F_ECHO	= (1<<27),	/*     session only: echo on     --- session -*/
-  F_COLOR	= (1<<28),	/*     session only: enable color */
-  F_COLORCONV	= (1<<29)	/*     session only: convert color to ansi/mono */
+  F_RAW		= (1<<27),	/*     don't use charset conversions on this */
+  F_ECHO	= (1<<28),	/*     session only: echo on     --- session -*/
+  F_COLOR	= (1<<29),	/*     session only: enable color */
+  F_COLORCONV	= (1<<30)	/*     session only: convert color to ansi/mono */
 } flag_t;
 
 #define FLAG_T		"pmnucbseodijkw"

@@ -438,7 +438,7 @@ static void vsadd_request (ifi_t *to, iftype_t ift, const char *mask,
     if (Interface[i]->pq && Interface[i]->pq->request == cur)
     {
 #ifdef HAVE_ICONV
-      if (Interface[i]->a.conv)		/* if no conversion then skip it */
+      if (!(flag & F_RAW) && Interface[i]->a.conv) /* if no conversion then skip it */
       {
 	if (!conv)
 	{
