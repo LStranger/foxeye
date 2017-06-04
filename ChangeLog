@@ -21,6 +21,9 @@ Sun Jun  4 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/clients.c: added missing send NICK to client on charset
 	  change if new nick appearance is different from old one.
 	* core/list.c: fixed crash in Get_Clientlist() on a ban record.
+	* modules/ircd-rusnet/rusnet.c: fixed KLINE, etc. - it should create
+	  records of U_DEOP to work properly, said U_DEOP anyway will not affect
+	  direct connect being unnamed.
 
 Sat Jun  3 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ssl/openssl.c: return error on sending data if previous read

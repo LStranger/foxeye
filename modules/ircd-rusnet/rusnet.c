@@ -211,7 +211,7 @@ static bool _rusnet_tline(INTERFACE *srv, struct peer_t *peer, const char *mask,
       /* replace each ':' in reason with ',' to comply with rusnet-ircd */
       *((char *)c) = ',';
   /* try to add client to listfile */
-  if (Add_Clientrecord(NULL, mask, 0))
+  if (Add_Clientrecord(NULL, mask, U_DEOP) == 0)
   {
     ERROR("ircd-rusnet: failed to add record for %s", mask);
     return FALSE;
