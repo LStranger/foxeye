@@ -413,6 +413,11 @@ static int _rusnet_tline_cb(INTERFACE *srv, struct peer_t *peer, const char *lcn
   }
   if (argc < 2)
     return _rusnet_needmoreparam(srv, peer->dname, cmd);
+  if (!strchr(argv[0], '@'))
+  {
+    New_Request(srv, 0, "415 %s %s :Bad host mask", peer->dname, cmd);
+    return (1);
+  }
   if (!_rusnet_tline(srv, peer, argv[0], uf, NULL, argv[1],
 		     argc > 2 ? argv[2] : "No reason"))
   {
