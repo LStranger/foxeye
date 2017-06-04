@@ -921,11 +921,28 @@ static int ircd_charset_cb(INTERFACE *srv, struct peer_t *peer, const char *lcni
 { /* args: [<charset>] */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl;
   struct conversion_t *conv;
+  char u_nick[MB_LEN_MAX*NICKLEN+1];
+  char n_nick[MB_LEN_MAX*NICKLEN+1];
+  char *u_nick_ptr = u_nick;
+  char *n_nick_ptr = n_nick;
+  size_t s;
 
   if (argc > 0) {
     conv = Get_Conversion(argv[0]);
     if (conv == NULL && strcasecmp(Conversion_Charset(conv), argv[0]))
       return ircd_do_unumeric(cl, ERR_NOCODEPAGE, cl, 0, argv[0]);
+    /* prepare :<old charset nick> NICK <new charset nick> and send with F_RAW */
+    s = strlen(peer->dname);
+    s = Undo_Conversion(peer->iface->conv, &u_nick_ptr, sizeof(u_nick) - 1,
+			peer->dname, &s);
+    if (u_nick_ptr == u_nick)
+      u_nick[s] = 0;
+    s = strlen(peer->dname);
+    s = Undo_Conversion(conv, &n_nick_ptr, sizeof(n_nick) - 1, peer->dname, &s);
+    if (n_nick_ptr == n_nick)
+      n_nick[s] = 0;
+    if (strcmp(u_nick_ptr, n_nick_ptr) != 0)
+      New_Request(peer->iface, F_RAW, ":%s NICK %s", u_nick_ptr, n_nick_ptr);
     Free_Conversion(peer->iface->conv);
     peer->iface->conv = conv;
   }

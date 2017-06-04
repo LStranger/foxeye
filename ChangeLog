@@ -18,6 +18,8 @@ TODO:
 Sun Jun  4 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/foxeye.h, core/dispatcher.c: new F_RAW message flag to don't do
 	  any message conversions.
+	* modules/ircd/clients.c: added missing send NICK to client on charset
+	  change if new nick appearance is different from old one.
 
 Sat Jun  3 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ssl/openssl.c: return error on sending data if previous read
