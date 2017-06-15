@@ -114,3 +114,4 @@
 #00114	23.05.2013		after ConnResetByPeer on uplink _ircd_uplinks==3
 #00115	05.10.2014  12.10.2014	old FSF address everywhere
 #00116	30.06.2015		ircd input isn't cut at 512 chars
+#00117	12.06.2017  15.06.2017	no irc servers reachable: should retry in few mins

@@ -464,6 +464,7 @@ static int _irc_try_server (irc_server *serv, const char *tohost, int banned,
   }
   /* cannot find working server, give up... voila */
   serv->p.state = P_LASTWAIT;
+  Mark_Iface (serv->p.iface);
   Add_Request (I_LOG, "*", F_CONN | F_ERROR,
 	       _("Could not find a server for network %s"), serv->p.iface->name);
   return 0;
