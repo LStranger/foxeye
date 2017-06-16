@@ -16,6 +16,7 @@ TODO:
 --- [0.11.0]
 Fri Jun 16 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: make PASS/SERVER message in a single place.
+	* modules/ircd/ircd.c: added new bindtable "ircd-drop-unknown".
 
 Thu Jun 15 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/irc/irc.c: fixed never occuring restart of connect list (as

@@ -109,6 +109,7 @@ static struct bindtable_t *BTIrcdCollision;
 static struct bindtable_t *BTIrcdCheckSend;
 static struct bindtable_t *BTIrcdGotServer;
 static struct bindtable_t *BTIrcdLostServer;
+static struct bindtable_t *BTIrcdDropUnknown;
 
 /* access to IrcdPeers and allocators should be locked with this */
 static pthread_mutex_t IrcdLock = PTHREAD_MUTEX_INITIALIZER;
@@ -501,6 +502,19 @@ static inline void _ircd_bt_client(CLIENT *cl, const char *on, const char *nn,
 	      cl->fname, cl->umode, IrcdCli_num);
 }
 
+static inline void _ircd_unknown_disconnected (peer_priv *peer)
+{
+  /* query bindings if any module wants it */
+  struct binding_t *b = NULL;
+#define static register
+  BINDING_TYPE_ircd_drop_unknown ((*f));
+#undef static
+
+  while ((b = Check_Bindtable(BTIrcdDropUnknown, peer->link->cl->host, U_ALL, U_ANYCH, b)))
+    if (b->name == NULL && (f = (void *)b->func) != NULL)
+      f(Ircd->iface, &peer->p, peer->link->cl->user, peer->link->cl->host);
+}
+
 /* it's defined below */
 static inline void _ircd_lserver_out (LINK *);
 
@@ -537,6 +551,8 @@ static void _ircd_peer_kill (peer_priv *peer, const char *msg)
       _ircd_lserver_out (peer->link);
     else if (peer->p.state != P_IDLE)	/* no class on broken uplink attempt */
       _ircd_class_out (peer->link);
+    if (peer->p.state == P_LOGIN || peer->p.state == P_IDLE)
+      _ircd_unknown_disconnected (peer);
   }
   if (peer->p.state == P_TALK) {
     if (CLIENT_IS_SERVER(cl)) {
@@ -5768,6 +5784,7 @@ SigFunction ModuleInit (char *args)
   BTIrcdClientFilter = Add_Bindtable ("ircd-client-filter", B_KEYWORD);
   BTIrcdDoNumeric = Add_Bindtable ("ircd-do-numeric", B_UNIQ);
   BTIrcdCheckSend = Add_Bindtable ("ircd-check-send", B_MATCHCASE);
+  BTIrcdDropUnknown = Add_Bindtable ("ircd-drop-unknown", B_MASK);
   /* add every binding into them */
   Add_Binding ("ircd-auth", "*", 0, 0, &_ircd_class_in, NULL);
   Add_Binding ("ircd-register-cmd", "pass", 0, 0, &ircd_pass, NULL);

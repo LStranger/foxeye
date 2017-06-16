@@ -349,3 +349,10 @@
     it's end of whole burst). _s_r_v is IRCD interface which can be used to
     send control messages (commands).
       Matching: channel name.  (userflags are ignored)
+
+-     "iirrccdd--ddrroopp--uunnkknnoowwnn" MASK
+  (int) void func(INTERFACE *_s_r_v, struct peer_t *_p_e_e_r, const char *_u_s_e_r,
+		  const char *_h_o_s_t);
+    Used when some not registered yet client _p_e_e_r which had connection
+    parameters _u_s_e_r and _h_o_s_t disconnects from the server.
+      Matching: client's host.  (userflags are ignored)
