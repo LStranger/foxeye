@@ -2125,6 +2125,19 @@ ScriptFunction (func_ircd)
   return (IrcdLnum);
 }
 
+/* prepares server handshake message into buffer
+   "PASS passwd" should be there already */
+static inline size_t _ircd_prep_handshake(peer_priv *pp, char *bptr, size_t bsz,
+					  const char *cf)
+{
+  //TODO: run HS bindtable: BTIrcdServerHS
+
+  return snprintf (bptr, bsz, " %s IRC|%s|" PACKAGE " %s\r\n"
+			      "SERVER %s 1 1 :%s",	/* own token is always 1 */
+			      _ircd_version_string, ircd_version_flags, cf,
+			      MY_NAME, _ircd_description_string);
+}
+
 
 /* -- uplink init interface -----------------------------------------------
    states: P_DISCONNECTED, P_INITIAL, P_LASTWAIT
@@ -2260,17 +2273,15 @@ static int _ircd_uplink_req (INTERFACE *uli, REQUEST *req)
 	if (Connchain_Check (&_uplink->p, *c) > 0)
 	  *opt++ = *c;
       *opt = '\0';			/* terminate options */
-      sz = snprintf (buff, sizeof(buff), /* send PASS+SERVER to peer */
-		     "PASS %s %s IRC|" PACKAGE " %s\r\n"
-		     "SERVER %s 1 1 :%s", /* own token is always 1 */
-		     *ul->fname ? ul->fname : "*",
-		     _ircd_version_string, ul->away, MY_NAME,
-		     _ircd_description_string);
+      pthread_join (_uplink->th, NULL);
+      sz = snprintf (buff, sizeof(buff), "PASS %s", *ul->fname ? ul->fname : "*");
+      sz += _ircd_prep_handshake(_uplink, &buff[sz], sizeof(buff) - sz, ul->away);
+      if (sz >= sizeof(buff))
+	sz = sizeof(buff) - 1;		/* recover from snprintf */
       _uplink->bs = sz - 2;
       _uplink->ms = 2;
       if (Peer_Put ((&_uplink->p), buff, &sz) <= 0) /* something went bad */
 	return _ircd_stop_uplink (uli);
-      pthread_join (_uplink->th, NULL);
       *ul->away = '\0';			/* clear what we filled before */
       *ul->fname = '\0';
       _uplink->br = _uplink->mr = 0;
@@ -3230,11 +3241,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
     memmove (&buff[5], ourpass, sz);
     memcpy (buff, "PASS ", 5);
     sz += 5;
-    sz += snprintf (&buff[sz], sizeof(buff) - sz,
-		   " %s IRC|%s|" PACKAGE " %s\r\n"
-		   "SERVER %s 1 1 :%s",	/* own token is always 0 */
-		   _ircd_version_string, ircd_version_flags, ftbf, MY_NAME,
-		   _ircd_description_string);
+    sz += _ircd_prep_handshake(cl->via, &buff[sz], sizeof(buff) - sz, ftbf);
     if (sz >= sizeof(buff))
       sz = sizeof(buff) - 1;		/* recover from snprintf */
     if (Peer_Put (peer, buff, &sz) <= 0) /* put it into connchain buffers */
@@ -3242,6 +3249,8 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
       _kill_bad_server (cl, "handshake error");
       return 1;
     }
+    cl->via->ms += 2;
+    cl->via->bs += sz - 2;
   }
   if (cc != ftbf)			/* ok, we can redo connchain now */
   {
