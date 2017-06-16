@@ -110,6 +110,7 @@ static struct bindtable_t *BTIrcdCheckSend;
 static struct bindtable_t *BTIrcdGotServer;
 static struct bindtable_t *BTIrcdLostServer;
 static struct bindtable_t *BTIrcdDropUnknown;
+static struct bindtable_t *BTIrcdServerHS;
 
 /* access to IrcdPeers and allocators should be locked with this */
 static pthread_mutex_t IrcdLock = PTHREAD_MUTEX_INITIALIZER;
@@ -2146,7 +2147,20 @@ ScriptFunction (func_ircd)
 static inline size_t _ircd_prep_handshake(peer_priv *pp, char *bptr, size_t bsz,
 					  const char *cf)
 {
-  //TODO: run HS bindtable: BTIrcdServerHS
+  struct binding_t *b = NULL;
+#define static register
+  BINDING_TYPE_ircd_server_handshake ((*f));
+#undef static
+  int sent_size;
+
+  /* run bindings on bindtable BTIrcdServerHS */
+  while ((b = Check_Bindtable(BTIrcdServerHS, pp->link->cl->host, U_ALL, U_ANYCH, b)))
+    if (b->name == NULL && (f = b->func) != NULL)
+      if ((sent_size = f(Ircd->iface, &pp->p, pp->link->cl->host)) > 0)
+      {
+	pp->ms++;
+	pp->bs += sent_size;
+      }
 
   return snprintf (bptr, bsz, " %s IRC|%s|" PACKAGE " %s\r\n"
 			      "SERVER %s 1 1 :%s",	/* own token is always 1 */
@@ -5784,6 +5798,7 @@ SigFunction ModuleInit (char *args)
   BTIrcdClientFilter = Add_Bindtable ("ircd-client-filter", B_KEYWORD);
   BTIrcdDoNumeric = Add_Bindtable ("ircd-do-numeric", B_UNIQ);
   BTIrcdCheckSend = Add_Bindtable ("ircd-check-send", B_MATCHCASE);
+  BTIrcdServerHS = Add_Bindtable ("ircd-server-handshake", B_MASK);
   BTIrcdDropUnknown = Add_Bindtable ("ircd-drop-unknown", B_MASK);
   /* add every binding into them */
   Add_Binding ("ircd-auth", "*", 0, 0, &_ircd_class_in, NULL);
