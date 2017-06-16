@@ -190,6 +190,7 @@ void free ();
 #define HOSTMASKLEN	NAMEMAX+IDENTLEN+HOSTLEN+2 /* n!i@h or :p@h/n%f */
 #define RESTRICTEDCHARS	" ,\007\r\n" /* cannot be in names */
 #define MESSAGEMAX	1024	/* including '\0' at end */
+#define MBMESSAGEMAX	MB_LEN_MAX*MESSAGEMAX /* with NLS in mind */
 #define FORMATMAX	120	/* max lenght of format string */
 
 /* common Tcl/internal function prototypes */

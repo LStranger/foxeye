@@ -264,7 +264,7 @@ typedef struct				/* one side buffer for filter 'x' */
 {
   ssize_t inbuf;			/* how much bytes are in buf */
   size_t bufpos;			/* where is first char */
-  char buf[2*MB_LEN_MAX*MESSAGEMAX];	/* message buffer */
+  char buf[2*MBMESSAGEMAX];		/* message buffer */
 } connchain_b;
 
 struct connchain_buffer			/* local buffer type for filter 'x' */

@@ -101,7 +101,7 @@ static void _pmsgout_send (char *to, char *msg, flag_t flag, char *dog)
 {
   register unsigned int i;
   unsigned char *c;
-  char buff[2*MESSAGEMAX];		/* should be enough for any message */
+  char buff[MBMESSAGEMAX];		/* should be enough for any message */
 
   StrTrim (msg);			/* remove ending spaces, CR, LF */
   if (dog && msg[0])			/* don't send empty messages */
@@ -498,7 +498,7 @@ int irc_privmsgin (INTERFACE *pmsgout, char *from, char *to,
   /* parse destination (*to) - i hope it is just one but really may be not */
   do
   {
-    char tomask[NAMEMAX+MESSAGEMAX+1];
+    char tomask[NAMEMAX+MBMESSAGEMAX+1];
     char *chmask;
     INTERFACE *tmp;
 

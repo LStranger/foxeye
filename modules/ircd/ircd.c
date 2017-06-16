@@ -3039,7 +3039,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
   LINK **lnk;
   struct binding_t *b = NULL;
   long token = 0;
-  char buff[MB_LEN_MAX*MESSAGEMAX-1];
+  char buff[MBMESSAGEMAX];
   register char *c;
 
   if (cl->nick[0] || cl->fname[0])	/* got either NICK or USER already */

@@ -48,7 +48,9 @@ static int _kill_pipe (INTERFACE *iface)
   return REQ_OK;
 }
 
-static char _inp_buf[2*MESSAGEMAX];
+#define INPMESSAGEMAX MESSAGEMAX
+
+static char _inp_buf[2*INPMESSAGEMAX];
 static int _bufpos = 0;
 static int _inbuf = 0;
 
@@ -63,10 +65,10 @@ static void _pipe_get_line (char *buf, size_t l)
     l++;
   _bufpos += l;
   _inbuf -= l;
-  if (_bufpos < MESSAGEMAX && _inbuf)
+  if (_bufpos < INPMESSAGEMAX && _inbuf)
     return;
   if (_inbuf)
-    memcpy (_inp_buf, &c[l], _inbuf);
+    memmove (_inp_buf, &c[l], _inbuf);
   _bufpos = 0;
 }
 
@@ -153,14 +155,14 @@ static ssize_t _write_pipe (char *buf, size_t *sw)
 
 typedef struct {
   struct peer_t s;
-  char buf[MESSAGEMAX];
+  char buf[MBMESSAGEMAX];
 } console_peer;
 
 static int _request (INTERFACE *iface, REQUEST *req)
 {
   console_peer *dcc = (console_peer *)iface->data;
   ssize_t sw;
-  char buff[MESSAGEMAX];
+  char buff[INPMESSAGEMAX];
 
   /* first time? */
   if (!dcc->s.iface)

@@ -49,7 +49,7 @@
 struct sslbuff {
   BIO *bio;
   size_t bufptr, inbuf;
-  char buf[2*MB_LEN_MAX*MESSAGEMAX];
+  char buf[2*MBMESSAGEMAX];
 };
 
 struct connchain_buffer {
