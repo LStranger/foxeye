@@ -282,10 +282,12 @@ static ssize_t _ccfilter_x_push (connchain_i **ch, idx_t id, connchain_b *bb)
 
   DBG("connchain.c:_ccfilter_x_send: sending buffer =%zu +%zd", bb->bufpos, bb->inbuf);
   i = Connchain_Put (ch, id, &bb->buf[bb->bufpos], &bb->inbuf);
-  if (i < 0)				/* some error, end us */
+  if (i < 0)				/* some error, end it */
     bb->inbuf = i;			/* forget the buffer */
   else if (bb->inbuf != 0)		/* trying to send line by line */
     bb->bufpos += i;			/* there is something left */
+  else
+    bb->bufpos = 0;			/* nothing left, reset head */
   return bb->inbuf;
 }
 
@@ -304,8 +306,18 @@ static ssize_t _ccfilter_x_send (connchain_i **ch, idx_t id, const char *str,
   if (bb->inbuf > 0)			/* there is something to send */
   {
     i = _ccfilter_x_push(ch, id, bb);
-    if (i != 0)				/* either not empty yet or error */
-      return ((i > 0) ? 0 : i);
+    if (i < 0)				/* either not empty yet or error */
+      return i;
+    else if (i > 0)
+    {
+      if (*sz > sizeof(bb->buf) - i - 2)
+	return 0;			/* no room for the line */
+      if (bb->bufpos > 0 && *sz > sizeof(bb->buf) - bb->bufpos - i - 2)
+      {
+	memmove(bb->buf, &bb->buf[bb->bufpos], i);
+	bb->bufpos = 0;
+      }
+    }
   }
   if (str == NULL)			/* got flush request */
     i = 0;
@@ -315,13 +327,13 @@ static ssize_t _ccfilter_x_send (connchain_i **ch, idx_t id, const char *str,
     return Connchain_Put (ch, id, str, sz); /* bounce test to next link */
   if (i > (ssize_t)sizeof(bb->buf) - 2)	/* line + CR/LF */
     i = sizeof(bb->buf) - 2;
-  memcpy (bb->buf, str, i);
+  memcpy (&bb->buf[bb->bufpos], str, i);
   DBG("connchain.c:_ccfilter_x_send: added to buffer +%zd", i);
   *sz -= i;
+  i += bb->inbuf;
   bb->buf[i] = '\r';			/* CR */
   bb->buf[i+1] = '\n';			/* LF */
   bb->inbuf = i + 2;
-  bb->bufpos = 0;
   _ccfilter_x_push(ch, id, bb);		/* try to send, ignoring errors now */
   return i;
 }
