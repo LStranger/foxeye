@@ -26,7 +26,10 @@
 typedef struct IrcdCapabServ {
   struct IrcdCapabServ *prev;
   struct peer_t *peer;
+  char capab[400];
 } IrcdCapabServ;
+
+static char ircd_capab_blacklist[LONG_STRING] = "";
 
 ALLOCATABLE_TYPE(IrcdCapabServ, ircd_capab_serv_, prev)
 
@@ -44,61 +47,23 @@ static inline IrcdCapabServ *_find_server(struct peer_t *peer)
   return NULL;
 }
 
-/* --- dummy connchain filter --- */
-struct connchain_buffer { char c; };
-
-static ssize_t _ircd_ccfilter_stub_send(struct connchain_i **c, idx_t i, const char *b,
-					size_t *s, struct connchain_buffer **x)
+/* phase 1: before PASS - send our list and receive other */
+BINDING_TYPE_ircd_server_handshake(_ircd_server_handshake_capab);
+static int _ircd_server_handshake_capab(INTERFACE *srv, struct peer_t *peer,
+					const char *host)
 {
-  return Connchain_Put(c, i, b, s);
-}
-
-static ssize_t _ircd_ccfilter_stub_recv(struct connchain_i **c, idx_t i, char *b,
-					size_t s, struct connchain_buffer **x)
-{
-  return Connchain_Get(c, i, b, s);
-}
-
-BINDING_TYPE_connchain_grow(_ccfilter_C_init);
-static int _ccfilter_C_init(struct peer_t *peer,
-			    ssize_t (**recv)(struct connchain_i **, idx_t, char *, size_t, struct connchain_buffer **),
-			    ssize_t (**send)(struct connchain_i **, idx_t, const char *, size_t *, struct connchain_buffer **),
-			    struct connchain_buffer **buf)
-{
-  if (buf == NULL)                      /* that's a check */
-    return 1;
-  /* do nothing, everything will be done on ircd-got-server */
-  *recv = &_ircd_ccfilter_stub_recv;
-  *send = &_ircd_ccfilter_stub_send;
-  return 1;
-}
-
-BINDING_TYPE_ircd_got_server(_ircd_got_server_capab);
-static void _ircd_got_server_capab(INTERFACE *srv, struct peer_t *peer,
-				   modeflag um, unsigned short token,
-				   const char *flags)
-{
-  IrcdCapabServ *serv;
   struct binding_t *b = NULL;
   char message[400];
   int ptr = 0;
+  size_t sz;
 
-  if (_find_server(peer))
-  {
-    WARNING("ircd-capab: peer %s already registered for CAPAB", peer->dname);
-    return;
-  }
-  if (strchr(flags, 'C') == NULL) /* not our target */
-    return;
-  serv = alloc_IrcdCapabServ();
-  serv->prev = _known_servers;
-  _known_servers = serv;
-  serv->peer = peer;
-  DBG("ircd-capab: peer %s is registered", peer->dname);
   /* sending our CAPAB list */
+  DBG("ircd-capab: advertise CAPAB to %s (%s)", peer->iface->name, host);
+  strcpy(message, "CAPAB :");
+  sz = strlen(message);
   while ((b = Check_Bindtable(BtIrcdCapab, NULL, U_ALL, U_ANYCH, b)))
   {
-    if (ptr + strlen(b->key) >= sizeof(message) - 1)
+    if (sz + ptr + strlen(b->key) >= sizeof(message) - 1)
     {
       ERROR("ircd-capab: CAPAB list is too long (%d), truncating",
 	    ptr + (int)strlen(b->key) + 1);
@@ -106,13 +71,79 @@ static void _ircd_got_server_capab(INTERFACE *srv, struct peer_t *peer,
     }
     if (ptr > 0)
       message[ptr++] = ' ';
-    strfcpy(&message[ptr], b->key, sizeof(message) - ptr);
+    strfcpy(&message[sz + ptr], b->key, sizeof(message) - sz - ptr);
     ptr += strlen(b->key);
   }
-  if (ptr > 0)
-    New_Request(peer->iface, 0, "CAPAB :%.*s", ptr, message);
+  sz += ptr;
+  if (ptr > 0 && Peer_Put(peer, message, &sz) <= 0) /* failed! */
+    return 0;
+  return ptr;
 }
 
+BINDING_TYPE_ircd_register_cmd(ircd_capab);
+static int ircd_capab(INTERFACE *srv, struct peer_t *peer, int argc, const char **argv)
+{ /* args: <list> */
+  IrcdCapabServ *serv = _find_server(peer);
+
+  if (serv != NULL || argc < 1) /* invalid server or number of arguments */
+    return 0;
+
+  serv = alloc_IrcdCapabServ();
+  serv->prev = _known_servers;
+  _known_servers = serv;
+  serv->peer = peer;
+  strfcpy(serv->capab, argv[0], sizeof(serv->capab));
+  DBG("ircd-capab: got CAPAB from peer %s", peer->dname);
+  return 1;
+}
+
+BINDING_TYPE_ircd_drop_unknown(_ircd_drop_unknown_capab);
+static void _ircd_drop_unknown_capab(INTERFACE *srv, struct peer_t *peer,
+				     const char *user, const char *host)
+{
+  IrcdCapabServ *serv;
+  IrcdCapabServ **ptr;
+
+  for (ptr = &_known_servers; (serv = *ptr) != NULL; ptr = &serv->prev)
+    if (serv->peer == peer)
+    {
+      DBG("ircd-capab: dropping peer %s", peer->dname);
+      *ptr = serv->prev;
+      free_IrcdCapabServ(serv);
+      break;
+    }
+}
+
+/* phase 2 -- server registered, activate bindings */
+BINDING_TYPE_ircd_got_server(_ircd_got_server_capab);
+static void _ircd_got_server_capab(INTERFACE *srv, struct peer_t *peer,
+				   modeflag um, unsigned short token,
+				   const char *flags)
+{
+  IrcdCapabServ *serv = _find_server(peer);
+  char *c, *next, *end;
+  struct binding_t *b = NULL;
+
+  if (serv == NULL)
+  {
+    DBG("ircd-capab: unknown peer %s", peer->dname);
+    return;
+  }
+  c = serv->capab;
+  while (*c)
+  {
+    next = gettoken(c, &end);
+    b = Check_Bindtable(BtIrcdCapab, c, U_ALL, U_ANYCH, NULL);
+    if (b && !b->name)
+      b->func(srv, peer, b->key);
+    c = next;
+    if (*c)
+      *end = ' '; /* restore the string */
+  }
+  DBG("ircd-capab: peer %s is registered", peer->dname);
+}
+
+/* phase 3 -- server disconnected, deactivate bindings */
 BINDING_TYPE_ircd_lost_server(_ircd_lost_server_capab);
 static void _ircd_lost_server_capab(INTERFACE *srv, struct peer_t *peer)
 {
@@ -133,29 +164,6 @@ static void _ircd_lost_server_capab(INTERFACE *srv, struct peer_t *peer)
     }
 }
 
-BINDING_TYPE_ircd_server_cmd(ircd_capab);
-static int ircd_capab(INTERFACE *srv, struct peer_t *peer, unsigned short token,
-		      const char *sender, const char *lcsender, int argc, const char **argv)
-{ /* args: <list> */
-  IrcdCapabServ *serv = _find_server(peer);
-  char *c, *next, *end;
-  struct binding_t *b = NULL;
-
-  if (serv == NULL || argc < 1) /* invalid server or number of arguments */
-    return 0;
-  c = (char *)argv[0];
-  while (*c)
-  {
-    next = gettoken(c, &end);
-    b = Check_Bindtable(BtIrcdCapab, c, U_ALL, U_ANYCH, NULL);
-    if (b && !b->name)
-      b->func(srv, peer, b->key);
-    c = next;
-    if (*c)
-      *end = ' '; /* restore the string */
-  }
-  return 1;
-}
 
 /*
  * this function must receive signals:
@@ -168,10 +176,12 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
   switch (sig)
   {
     case S_TERMINATE:
-      Delete_Binding("connchain-grow", &_ccfilter_C_init, NULL);
+      Delete_Binding("ircd-server-handshake", &_ircd_server_handshake_capab, NULL);
+      Delete_Binding("ircd-drop-unknown", (Function)&_ircd_drop_unknown_capab, NULL);
       Delete_Binding("ircd-got-server", (Function)&_ircd_got_server_capab, NULL);
       Delete_Binding("ircd-lost-server", (Function)&_ircd_lost_server_capab, NULL);
       Delete_Binding("ircd-server-cmd", (Function)&ircd_capab, NULL);
+      UnregisterVariable("ircd-capab-blacklist");
       Delete_Help("ircd-capab");
       _forget_(IrcdCapabServ);
       _known_servers = NULL;
@@ -181,6 +191,8 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
       break;
     case S_REG:
       Add_Request(I_INIT, "*", F_REPORT, "module ircd-capab");
+      RegisterString("ircd-capab-blacklist", ircd_capab_blacklist,
+		     sizeof(ircd_capab_blacklist), 0);
       break;
     default: ;
   }
@@ -196,10 +208,13 @@ SigFunction ModuleInit (char *args)
 {
   CheckVersion;
   BtIrcdCapab = Add_Bindtable("ircd-capab", B_UNIQ);
-  Add_Binding("connchain-grow", "C", 0, 0, &_ccfilter_C_init, NULL);
+  Add_Binding("ircd-server-handshake", "*", 0, 0, &_ircd_server_handshake_capab, NULL);
+  Add_Binding("ircd-drop-unknown", "*", 0, 0, (Function)&_ircd_drop_unknown_capab, NULL);
   Add_Binding("ircd-got-server", "*", 0, 0, (Function)&_ircd_got_server_capab, NULL);
   Add_Binding("ircd-lost-server", "*", 0, 0, (Function)&_ircd_lost_server_capab, NULL);
-  Add_Binding("ircd-server-cmd", "capab", 0, 0, (Function)&ircd_capab, NULL);
+  Add_Binding("ircd-register-cmd", "capab", 0, 0, (Function)&ircd_capab, NULL);
+  RegisterString("ircd-capab-blacklist", ircd_capab_blacklist,
+		 sizeof(ircd_capab_blacklist), 0);
   Add_Help("ircd-capab");
   return (&module_signal);
 }

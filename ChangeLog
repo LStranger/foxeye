@@ -21,6 +21,10 @@ Sat Jun 17 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  of "ircd-server-handshake" bindings.
 	* modules/ircd/ircd.c: report unsupported PASS options as warnings, not
 	  errors.
+	* modules/ircd-capab/ircd-capab.c: rewritten CAPAB message processing,
+	  it should go before PASS message so it'll be taken into consideration
+	  in the burst. Added "ircd-capab-blacklist" variable to exclude servers
+	  from sending them CAPAB message.
 
 Fri Jun 16 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: make PASS/SERVER message in a single place.

@@ -8,3 +8,10 @@ module ircd-capab
 :This module provides an extension for RFC IRC server protocol: %_CAPAB%_\
  command which allows other ircd-related modules to control own protocol\
  extensions to be sent to other servers.
+
+set ircd-capab-blacklist
+:%* <servers list>
+:
+:This variable contains space separated list of servers which should not\
+ be sent CAPAB advertisement on connect.
+ Default: ""
