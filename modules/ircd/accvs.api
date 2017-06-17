@@ -358,11 +358,11 @@
       Matching: client's host.  (userflags are ignored)
 
 -     "iirrccdd--sseerrvveerr--hhaannddsshhaakkee" MASK
-  int func(INTERFACE *_s_r_v, struct peer_t *_p_e_e_r, const char *_h_o_s_t);
+  int func(INTERFACE *_s_r_v, struct peer_t *_p_e_e_r, const char *_n_a_m_e);
     Used before server sends a handshake message (PASS) to some _p_e_e_r
     which presumably will be registered as a server (either uplink or
     downlink). _p_e_e_r is fully functional and may be used to send messages.
     Be aware that may disrupt IRC protocol and peer buffers may not have
-    enough space. Client _h_o_s_t and server interface _s_r_v are provided for
+    enough space. Client _n_a_m_e and server interface _s_r_v are provided for
     convenience. Returns length of message if any was sent.
       Matching: peer's host.  (userflags are ignored)
