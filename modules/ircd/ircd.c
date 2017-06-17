@@ -3296,7 +3296,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
 	_kill_bad_server (cl, buff);
 	return 1;
 #else
-	ERROR("server %s sent unsupported option: %c", cl->lcnick, *ccur);
+	WARNING("server %s sent unsupported option: %c", cl->lcnick, *ccur);
 #endif
       }
       ccur++;
@@ -3312,7 +3312,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
       _kill_bad_server (cl, buff);
       return 1;
 #else
-      ERROR("server %s sent unsupported option: %c", cl->lcnick, *cc);
+      WARNING("server %s sent unsupported option: %c", cl->lcnick, *cc);
 #endif
     }
     cc++;

@@ -19,6 +19,8 @@ Sat Jun 17 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	  most of ircd implementations do.
 	* modules/ircd/ircd.c: use server name instead of host in the arguments
 	  of "ircd-server-handshake" bindings.
+	* modules/ircd/ircd.c: report unsupported PASS options as warnings, not
+	  errors.
 
 Fri Jun 16 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: make PASS/SERVER message in a single place.
