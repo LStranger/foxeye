@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2014  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2001-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -404,7 +404,8 @@ void RotateWtmp (void)
       {
 	k /= sizeof(struct wtmp_t);
 	for (j = 0; j < k; j++)
-	  GoneBitmap[buff[j].uid] |= (uint32_t)1 << (buff[j].event);
+	  if (buff[j].uid >= 0)
+	    GoneBitmap[buff[j].uid] |= (uint32_t)1 << (buff[j].event);
       }
       close (fd);
       update = 1;
@@ -440,7 +441,7 @@ void RotateWtmp (void)
 	for (j = 0; j < k; )
 	{
 	  bits = (uint32_t)1 << (buff[j].event);
-	  if (GoneBitmap[buff[j].uid] & bits)	/* event expired */
+	  if (buff[j].uid < 0 || (GoneBitmap[buff[j].uid] & bits)) /* event expired */
 	    memmove (&buff[j], &buff[j+1], (--k - j) * sizeof(struct wtmp_t));
 	  else					/* still actual */
 	    j++;
@@ -481,7 +482,8 @@ void RotateWtmp (void)
 	{
 	  k /= sizeof(struct wtmp_t);
 	  for (j = 0; j < k; j++)
-	    GoneBitmap[buff[j].uid] &= ~((uint32_t)1 << (buff[j].event));
+	    if (buff[j].uid >= 0)
+	      GoneBitmap[buff[j].uid] &= ~((uint32_t)1 << (buff[j].event));
 	}
 	close (fd);
       }
@@ -492,7 +494,8 @@ void RotateWtmp (void)
       {
 	k /= sizeof(struct wtmp_t);
 	for (j = 0; j < k; j++)
-	  GoneBitmap[buff[j].uid] &= ~((uint32_t)1 << (buff[j].event));
+	  if (buff[j].uid >= 0)
+	    GoneBitmap[buff[j].uid] &= ~((uint32_t)1 << (buff[j].event));
       }
       close (fd);
     }
@@ -533,7 +536,7 @@ void RotateWtmp (void)
 	  {
 	    j--;
 	    bits = (uint32_t)1 << (buff[j].event);
-	    if (GoneBitmap[buff[j].uid] & bits)
+	    if (buff[j].uid >= 0 && (GoneBitmap[buff[j].uid] & bits))
 	    {
 	      memcpy (&buff2[k++], &buff[j], sizeof(struct wtmp_t));
 	      GoneBitmap[buff[j].uid] &= ~bits;
