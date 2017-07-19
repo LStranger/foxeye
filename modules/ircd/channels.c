@@ -443,7 +443,7 @@ static modeflag imch_a(modeflag rchmode, modeflag rmode, const char *target,
     return A_ANONYMOUS;
   if (chtype != '!')			/* wrong mode */
     return 0;
-  if ((rchmode && A_ADMIN) && add)	/* creator on ! channel */
+  if ((rchmode & A_ADMIN) && add)	/* creator on ! channel */
     return A_ANONYMOUS;
   return A_PINGED; /* mark of ERR_UNIQOPPRIVSNEEDED */
 }

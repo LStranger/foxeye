@@ -439,7 +439,7 @@ static void *_scheduler_thread (void *data)
     {
       register int change = Floodtable[i].count * drift;
 
-      DBG("decrementing flood counter by %hd from %hd", change, *Floodtable[i].ptr);
+      DBG("decrementing flood counter by %d from %hd", change, *Floodtable[i].ptr);
       if (*Floodtable[i].ptr <= change)
       {
 	_SFnum--;

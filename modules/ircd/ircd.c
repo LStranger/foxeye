@@ -2641,7 +2641,7 @@ static int _ircd_got_local_user (CLIENT *cl)
   if ((uf & U_DENY) || (cl->via->p.uf & U_DENY))
   {
     /* there might be some non-comment data in the field */
-    c = cl->lcnick ? strchr (cl->lcnick, ':') : NULL;
+    c = cl->lcnick[0] ? strchr (cl->lcnick, ':') : NULL;
     ircd_do_unumeric (cl, ERR_YOUREBANNEDCREEP, cl, 0, c ? c : cl->lcnick);
     _ircd_peer_kill (cl->via, "Bye!");
     return 1;
@@ -3000,14 +3000,15 @@ static inline void _ircd_burst_servers(INTERFACE *cl, const char *sn, LINK *l,
 	cmd = "ISERVER";		/* protocol extension */
       if (tst || l->cl->pcl == l->where)
 	/* for A_MULTI send backup paths as well as main paths */
-	New_Request (cl, 0, ":%s %s %s %hu %hu :%s", sn, cmd, l->cl->nick,
-		     l->cl->hops + 1, l->cl->x.a.token + 1, l->cl->fname);
+	New_Request (cl, 0, ":%s %s %s %u %u :%s", sn, cmd, l->cl->nick,
+		     (int)l->cl->hops + 1, (int)l->cl->x.a.token + 1,
+		     l->cl->fname);
       if (l->cl->pcl == l->where)
 	/* do recursion only for main path, backup can be 1 link at most */
 	_ircd_burst_servers(cl, l->cl->nick, l->cl->c.lients, tst, tgt);
 #else
-      New_Request (cl, 0, ":%s SERVER %s %hu %hu :%s", sn, l->cl->nick,
-		   l->cl->hops + 1, l->cl->x.a.token + 1, l->cl->fname);
+      New_Request (cl, 0, ":%s SERVER %s %u %u :%s", sn, l->cl->nick,
+		   (int)l->cl->hops + 1, (int)l->cl->x.a.token + 1, l->cl->fname);
       _ircd_burst_servers(cl, l->cl->nick, l->cl->c.lients, tgt); /* recursion */
 #endif
     }
@@ -3420,8 +3421,8 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
 #ifdef USE_SERVICES
 # if IRCD_MULTICONNECT
   /* notify services */
-  ircd_sendto_services_all (Ircd, SERVICE_WANT_SERVER, "SERVER %s 2 %hu :%s",
-			    argv[0], cl->x.a.token + 1, cl->fname);
+  ircd_sendto_services_all (Ircd, SERVICE_WANT_SERVER, "SERVER %s 2 %u :%s",
+			    argv[0], (int)cl->x.a.token + 1, cl->fname);
 # else
   /* mark services and send along with servers, see below */
   ircd_sendto_services_mark_all (Ircd, SERVICE_WANT_SERVER);
@@ -3430,17 +3431,17 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
 #if IRCD_MULTICONNECT
   /* propagate new server over network now */
   if (cl->umode & A_MULTI)		/* it's updated already */
-    ircd_sendto_servers_new (Ircd, cl->via, "ISERVER %s 2 %hu :%s", argv[0],
-			     cl->x.a.token + 1, cl->fname); //!
+    ircd_sendto_servers_new (Ircd, cl->via, "ISERVER %s 2 %u :%s", argv[0],
+			     (int)cl->x.a.token + 1, cl->fname); //!
   else
-    ircd_sendto_servers_new (Ircd, cl->via, "SERVER %s 2 %hu :%s", argv[0],
-			     cl->x.a.token + 1, cl->fname); //!
+    ircd_sendto_servers_new (Ircd, cl->via, "SERVER %s 2 %u :%s", argv[0],
+			     (int)cl->x.a.token + 1, cl->fname); //!
   if (clt != NULL)			/* cyclic, our map is changed! */
     _ircd_recalculate_hops(); /* we got better path so recalculate hops map */
   else					/* don't send duplicates to RFC2813 */
 #endif
-  ircd_sendto_servers_old (Ircd, cl->via, "SERVER %s 2 %hu :%s", argv[0],
-			   cl->x.a.token + 1, cl->fname); //!
+  ircd_sendto_servers_old (Ircd, cl->via, "SERVER %s 2 %u :%s", argv[0],
+			   (int)cl->x.a.token + 1, cl->fname); //!
   Add_Request(I_LOG, "*", F_SERV, "Received SERVER %s from %s (1 %s)", argv[0],
 	      cl->lcnick, cl->fname);
   /* tell other modules about connected server */
@@ -3731,8 +3732,8 @@ static int ircd_server_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
   if ((pp->link->cl->umode & A_MULTI) && pp->link->cl != src)
     peer->iface->ift |= I_PENDING;
 #endif
-  ircd_sendto_servers_all (Ircd, src->via, ":%s SERVER %s %hd %hd :%s", sender,
-			   argv[0], cl->hops + 1, cl->x.a.token + 1, info);
+  ircd_sendto_servers_all (Ircd, src->via, ":%s SERVER %s %d %d :%s", sender,
+			   argv[0], (int)cl->hops + 1, (int)cl->x.a.token + 1, info);
   Add_Request(I_LOG, "*", F_SERV, "Received SERVER %s from %s (%hd %s)",
 	      argv[0], sender, cl->hops, cl->fname);
   return 1;
@@ -3869,15 +3870,15 @@ static int ircd_iserver(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     dprint(3, "ircd: hops count for %s from %s: got %s, have %hd", argv[0],
 	   cl->lcnick, argv[1], cl->hops);
   /* don't send to the target so set token appropriately */
-  token = cl->x.a.token;
+  token = cl->x.a.token + 1;
   if (clo == NULL)		/* don't send duplicate to RFC2813 servers */
-    ircd_sendto_servers_old (Ircd, pp, ":%s SERVER %s %hd %hd :%s", sender,
-			     argv[0], cl->hops + 1, token + 1, argv[3]);
+    ircd_sendto_servers_old (Ircd, pp, ":%s SERVER %s %d %hd :%s", sender,
+			     argv[0], (int)cl->hops + 1, token, argv[3]);
   /* for multiconnected server also send it back, we may need that to
      introduce some new user or service so sender should know our token,
      but don't send back sender's own link, that would be an error */
-  ircd_sendto_servers_new (Ircd, src->local, ":%s ISERVER %s %hd %hd :%s",
-			   sender, argv[0], cl->hops + 1, token + 1, argv[3]);
+  ircd_sendto_servers_new (Ircd, src->local, ":%s ISERVER %s %d %hd :%s",
+			   sender, argv[0], (int)cl->hops + 1, token, argv[3]);
   Add_Request(I_LOG, "*", F_SERV, "Received ISERVER %s from %s (%hd %s)",
 	      argv[0], sender, cl->hops, cl->fname);
   return 1;
@@ -4098,7 +4099,7 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   if (ct <= 0 || ct > (int)pp->t || (on = pp->i.token[ct-1]) == NULL)
   {
     New_Request(peer->iface, 0, ":%s KILL %s :Invalid server", MY_NAME, argv[0]);
-    Add_Request(I_LOG, "*", F_MODES, "KILL %s :Invalid server %hu", argv[0], ct);
+    Add_Request(I_LOG, "*", F_MODES, "KILL %s :Invalid server %d", argv[0], ct);
 #if IRCD_MULTICONNECT
     if (pp->link->cl->umode & A_MULTI)
       ircd_add_ack(pp, _get_null_phantom(argv[0], NULL, on), NULL);
@@ -4240,9 +4241,9 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 	(SERVICE_FLAGS(link->cl) & SERVICE_WANT_TOKEN))
       link->cl->via->p.iface->ift |= I_PENDING;
 #endif
-  ircd_sendto_servers_all_but(Ircd, pp, on->via, "NICK %s %hu %s %s %hu %s :%s",
+  ircd_sendto_servers_all_but(Ircd, pp, on->via, "NICK %s %hu %s %s %u %s :%s",
 			      tgt->nick, tgt->hops, argv[2], argv[3],
-			      on->x.a.token + 1, argv[5], argv[6]);
+			      (int)on->x.a.token + 1, argv[5], argv[6]);
   _ircd_bt_client(tgt, NULL, tgt->nick, on->lcnick);
   return 1;
 }
@@ -4291,7 +4292,7 @@ static int ircd_service_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
   {
     ERROR("ircd:invalid SERVICE token %s via %s", argv[1], peer->dname);
     New_Request(peer->iface, 0, ":%s KILL %s :Invalid server", MY_NAME, argv[0]);
-    Add_Request(I_LOG, "*", F_MODES, "KILL %s :Invalid server %hu", argv[0], ct);
+    Add_Request(I_LOG, "*", F_MODES, "KILL %s :Invalid server %d", argv[0], ct);
 #if IRCD_MULTICONNECT
     if (pp->link->cl->umode & A_MULTI)
       ircd_add_ack(pp, _get_null_phantom(argv[0], NULL, on), NULL);
@@ -4384,8 +4385,8 @@ static int ircd_service_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
     //TODO: isn't it fatal?
   else
     dprint(2, "ircd:CLIENT: new remote service name %s: %p", tgt->lcnick, tgt);
-  ircd_sendto_servers_mask_but(Ircd, pp, on->via, argv[2], ":%s SERVICE %s %hu %s %s %hu :%s",
-			       sender, tgt->nick, on->x.a.token + 1, argv[2],
+  ircd_sendto_servers_mask_but(Ircd, pp, on->via, argv[2], ":%s SERVICE %s %u %s %s %hu :%s",
+			       sender, tgt->nick, (int)on->x.a.token + 1, argv[2],
 			       argv[3], tgt->hops, argv[5]);
 #ifdef USE_SERVICES
   /* notify services about new service, using server name instead of token */

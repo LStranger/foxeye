@@ -1847,6 +1847,7 @@ static int irc_join (INTERFACE *iface, char *svname, char *me, unsigned char *pr
       NewEvent (W_START, chan->id, ID_ME, 0);
     lname = r = NULL;
     uf = cf = 0;
+    id = ID_ME;
     Add_Timer (chan->chi, S_WAKEUP, 12); /* see _ircch_req for CYCLE feature */
   }
   else
@@ -2098,7 +2099,7 @@ static int irc_mode (INTERFACE *iface, char *svname, char *me, unsigned char *pr
   LINK *origin;
   char *c;
   CHANNEL *ch;
-  userflag uf, cf;
+  userflag uf = 0, cf = 0;
   lid_t id;
 
   if (parc < 2 || !(net = _ircch_get_network (iface->name, 0, lc)))
@@ -2134,7 +2135,10 @@ static int irc_mode (INTERFACE *iface, char *svname, char *me, unsigned char *pr
     if (origin)
     {
       if (origin->nick == net->me)
+      {
 	lname = r = NULL;
+	id = ID_ME;
+      }
       else
 	lname = _ircch_get_lname (prefix, &uf, &cf, &id, iface->name,
 				  ch->chi->name, &r, origin->nick);
@@ -2214,7 +2218,11 @@ static int irc_part (INTERFACE *iface, char *svname, char *me, unsigned char *pr
   if (c)
     *c = '!';
   if (link->nick == net->me)
+  {
     lname = r = NULL;
+    uf = cf = 0;
+    id = ID_ME;
+  }
   else
     lname = _ircch_get_lname (prefix, &uf, &cf, &id, iface->name, ch->chi->name,
 			      &r, link->nick);
@@ -2315,7 +2323,11 @@ static int irc_topic (INTERFACE *iface, char *svname, char *me, unsigned char *p
   if (c)
     *c = '!';
   if (link->nick == net->me)
+  {
     lname = r = NULL;
+    uf = cf = 0;
+    id = ID_ME;
+  }
   else
     lname = _ircch_get_lname (prefix, &uf, &cf, &id, iface->name, ch->chi->name,
 			      &r, link->nick);

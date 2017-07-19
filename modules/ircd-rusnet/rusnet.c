@@ -1284,7 +1284,7 @@ static int _rusnet_qlist_r(INTERFACE *tmp, REQUEST *r)
       else
       {
 	const char *msg = NULL, *m, *r;
-	time_t in;
+	time_t in = 0;
 
 	if (!rcvr->host) {
 	  clr = Find_Clientrecord(c, NULL, NULL, NULL);

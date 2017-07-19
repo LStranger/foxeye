@@ -590,7 +590,7 @@ struct binding_t *Check_Bindtable (struct bindtable_t *bt, const char *str,
 
 const char *Bindtable_Name (struct bindtable_t *bt)
 {
-  if (!bt)
+  if (bt == NULL)
     return NULL;
   return bt->name;
 }
