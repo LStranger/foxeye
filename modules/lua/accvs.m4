@@ -10,7 +10,7 @@ dnl    AC_HAVE_LIBRARY(lua)
 	])
     else
 	AC_MSG_CHECKING(for lua config)
-	for lualibver in lua lua51 lua50 lua5.1 lua5.0 lua-5.1 lua-5.0; do
+	for lualibver in lua lua53 lua5.3 lua-5.3 lua52 lua5.2 lua-5.2 lua51 lua5.1 lua-5.1 lua50 lua5.0 lua-5.0; do
 		if $ac_have_pkgconfig --exists $lualibver 2>/dev/null; then
 		    LUA_INCLUDES="`$ac_have_pkgconfig --cflags $lualibver`"
 		    if test "$fe_cv_static" = yes; then
