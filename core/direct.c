@@ -726,7 +726,7 @@ static void _listen_send_signal(void *data)
   pthread_mutex_unlock(&ListenMutex);
 }
 
-static void _listen_mutex_cleanup(void *__unused)
+static void _listen_mutex_cleanup(void __attribute__((unused)) *data)
 {
   pthread_mutex_unlock(&ListenMutex);
 }

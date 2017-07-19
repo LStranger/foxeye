@@ -1325,7 +1325,7 @@ static pthread_mutex_t SigLock = PTHREAD_MUTEX_INITIALIZER;
 
 static volatile sig_atomic_t _got_signal = 0;
 
-static void *sig_pipe_reader(void *__unused)
+static void *sig_pipe_reader(void __attribute__((unused)) *data)
 {
   sigset_t set;
   int signo;

@@ -933,7 +933,7 @@ static void *_poll_subthread(void *pdata)
 
 /* this function is called from dispatcher instead of nanosleep */
 /* poll thread is here... */
-static void *_poll_thread(void *__unused)
+static void *_poll_thread(void __attribute__((unused)) *data)
 {
   register idx_t i;
   idx_t _pfdnum;
