@@ -2018,7 +2018,14 @@ static void _ircd_handler (char *cln, char *ident, const char *host, void *data)
   cl->x.class = NULL;
   peer->p.state = P_INITIAL;
   pthread_mutex_unlock (&IrcdLock);
-  unistrlower (cl->user, NONULL(ident), sizeof(cl->user));
+  /* treat too long ident as OTHER type */
+  if (safe_strlen(ident) >= sizeof(cl->user))
+  {
+    cl->user[0] = '=';
+    unistrlower(cl->user + 1, ident, sizeof(cl->user) - 1);
+  }
+  else
+    unistrlower (cl->user, NONULL(ident), sizeof(cl->user));
   unistrlower (cl->host, host, sizeof(cl->host));
   cl->vhost[0] = 0;
   cl->pcl = NULL;
