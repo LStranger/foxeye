@@ -1,7 +1,7 @@
-Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: foxeye
 Upstream-Contact: andrej@rep.kiev.ua
-Source: http://sourceforge.net/p/foxeye/code/ci/master/tree/
+Source: https://sourceforge.net/p/foxeye/code/ci/master/tree/
 
 Files: *
 Copyright: 1999-2017 Andriy Grytsenko (LStranger) <andrej@rep.kiev.ua>
