@@ -239,7 +239,7 @@ ssize_t ReadSocket (char *buf, idx_t idx, size_t sr)
   if (!rev && (sock->ready == FALSE))	/* check for incomplete connection */
     return (E_AGAIN);			/* still waiting for connection */
   sock->ready = TRUE;			/* connection established or failed */
-  if (rev & (POLLIN | POLLPRI)) {	/* even dead socket can contain data */
+  /*if (rev & (POLLIN | POLLPRI))*/ {	/* even dead socket can contain data */
     DBG ("trying read socket %hd", idx);
     if ((sg = read (Pollfd[idx].fd, buf, sr)) > 0)
       DBG ("got from socket %hd:[%-*.*s]", idx, (int)sg, (int)sg, buf);
@@ -255,12 +255,12 @@ ssize_t ReadSocket (char *buf, idx_t idx, size_t sr)
       Pollfd[idx].revents |= POLLIN;
       pthread_mutex_unlock(&LockPoll);
     }
-  } else if (rev & POLLHUP)
-    sg = E_EOF;
-  else if (rev & (POLLNVAL | POLLERR))
-    sg = E_NOSOCKET;			/* cannot test errno variable ATM */
-  else
-    sg = 0;
+  }// else if (rev & POLLHUP)
+    //sg = E_EOF;
+  //else if (rev & (POLLNVAL | POLLERR))
+    //sg = E_NOSOCKET;			/* cannot test errno variable ATM */
+  //else
+    //sg = 0;
   return (sg);
 }
 

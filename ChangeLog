@@ -17,6 +17,8 @@ TODO:
 Wed Nov 22 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* configure: added summary block after running.
 	* core/direct.c: fixed support for non-channel service in console cmd.
+	* core/socket.c: simplified processing in ReadSocket() function, it may
+	  not check for POLLIN event, read() will handle everything correctly.
 
 Fri Jul 21 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: treat too long ident as OTHER type ident.
