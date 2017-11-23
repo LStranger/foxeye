@@ -7,9 +7,9 @@ Build-Depends:
  liblua5.1-dev | liblua5.2-dev, gettext, libssl-dev | libssl1.0-dev,
  libidn11-dev, zlib1g-dev, locales-all | language-pack-uk-base
 Standards-Version: 3.9.8
-Homepage: http://foxeye.sf.net
-Vcs-Git: git://git.code.sf.net/p/foxeye/code
-Vcs-Browser: http://sourceforge.net/p/foxeye/code/ci/master/tree/
+Homepage: https://sourceforge.net/projects/foxeye/
+Vcs-Git: https://git.code.sf.net/p/foxeye/code
+Vcs-Browser: https://sourceforge.net/p/foxeye/code/ci/master/tree/
 
 Package: foxeye
 Architecture: any
