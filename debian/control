@@ -44,7 +44,7 @@ Description: Universal modular network agent - development package
 
 Package: foxeye-dbg
 Section: debug
-Priority: extra
+Priority: optional
 Architecture: any
 Depends: ${misc:Depends}, foxeye (= ${binary:Version})
 Description: Universal modular network agent - debugging symbols
