@@ -2136,9 +2136,21 @@ static int dc_console (peer_t *dcc, char *args)
     return 0;
   if (args)
   {
-    if (*args == '#' || *args == '&')
+    if (*args == '#' || *args == '&' || *args == '@')
     {
       cc = gettoken(args, &ch);
+      if (*args == '@') /* service name may be not lowercased */
+      {
+	args++;
+	if (Find_Iface(I_SERVICE, args))
+	{
+	  Unset_Iface();
+	  strfcpy(msg, args, sizeof(msg));
+	  if (*cc)
+	    *ch = ' ';
+	  goto found;
+	}
+      }
       unistrlower (msg, args, sizeof(msg)); /* make it lowercase */
       if (*cc)
 	*ch = ' ';
@@ -2148,6 +2160,7 @@ static int dc_console (peer_t *dcc, char *args)
 		     msg);
 	return -1;
       }
+found:
       args = cc;
       cc = msg;
     }
