@@ -938,6 +938,11 @@ static inline int _ircd_is_server_name (const char *lcc)
   if (!strchr (lcc, '.'))		/* it should have at least one dot */
     return 0;
   for ( ; *lcc; lcc++)
+#if IRCD_TRUST_SERVER_NAME
+    /* check only for bogus chars */
+    if (*lcc <= ' ' || *lcc > '~')
+      return 0;
+#else
     switch (*lcc)
     {
       case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g':
@@ -950,6 +955,7 @@ static inline int _ircd_is_server_name (const char *lcc)
       default:
 	return 0;
     }
+#endif
   return 1;
 }
 

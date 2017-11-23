@@ -19,6 +19,8 @@ Wed Nov 22 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* core/direct.c: fixed support for non-channel service in console cmd.
 	* core/socket.c: simplified processing in ReadSocket() function, it may
 	  not check for POLLIN event, read() will handle everything correctly.
+	* modules/ircd: added IRCD_TRUST_SERVER_NAME define to skip validation
+	  of server name coming from another server against RFC1035.
 
 Fri Jul 21 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: treat too long ident as OTHER type ident.
