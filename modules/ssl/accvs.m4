@@ -243,4 +243,5 @@ LDFLAGS="$fe_save_LDFLAGS"
 if test -n "$OPENSSL_CFLAGS"; then
     CPPFLAGS="$OPENSSL_CFLAGS $CPPFLAGS"
 fi
+AC_MSG_CACHE_ADD([OpenSSL support], [$USE_OPENSSL])
 # End of OpenSSL

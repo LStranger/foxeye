@@ -65,6 +65,7 @@ fi])
 fi
 if test "$no_zlib" = yes; then
   AC_MSG_RESULT(no)
+  AC_MSG_CACHE_ADD([ZLib support], [no])
 else
   AC_DEFINE([HAVE_ZLIB], [1], [Define if zlib package must be used for compilation/linking.])
   if test "x$fe_zlib_library" = x; then
@@ -92,5 +93,6 @@ else
   AC_MSG_RESULT([])
   AC_MSG_RESULT([  library $fe_zlib_library_message])
   AC_MSG_RESULT([  header $fe_zlib_include_message])
+  AC_MSG_CACHE_ADD([ZLib support], [yes])
 fi
 

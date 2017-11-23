@@ -25,12 +25,15 @@ dnl    AC_HAVE_LIBRARY(lua)
 	done
 	if test -z "$LUA_LIBS"; then
 	    AC_MSG_RESULT(none found)
+	else
+	    ac_cv_lib_lua=yes
 	fi
     fi
 else
     AC_DEFINE([HAVE_LIBLUA], 1, [Define to 1 if you have the `lua' library.])
     LUA_INCLUDES="`$ac_have_luaconfig --include`"
     LUA_LIBS="`$ac_have_luaconfig --libs`"
+    ac_cv_lib_lua=yes
 fi
 
 if test -n "${LUA_INCLUDES}"; then
@@ -60,4 +63,5 @@ if test x$ac_cv_lib_lua != xno; then
 	[AC_DEFINE(HAVE_LIBLUA51, 1, [Define to 1 if you have the Lua version 5.1 or above.])
 	AC_MSG_RESULT(yes)], [AC_MSG_RESULT(no)])
 fi
+AC_MSG_CACHE_ADD([Lua language support], [${ac_cv_lib_lua:-no}])
 

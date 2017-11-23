@@ -85,6 +85,9 @@ fi
 dnl Default linker for the modules
 CCLIB="\$(CC)"
 
+dnl Prepare summary
+AC_MSG_CACHE_INIT([$PACKAGE_NAME])
+
 dnl Checks for options to CFLAGS
 AC_CHECK_LDFLAG(fe_cv_add_wnotrigraphs, -Wno-trigraphs, CPPFLAGS)
 AC_CHECK_LDFLAG(fe_cv_add_wnolonglong, -Wno-long-long, CPPFLAGS)
@@ -142,6 +145,7 @@ void **v = (void **)&a;
 	    ;;
     esac
 fi
+AC_MSG_CACHE_ADD([Debug support], [$fe_enable_debug])
 
 dnl Need to make static code?
 AC_ARG_ENABLE(static,
@@ -283,6 +287,7 @@ if test "$fe_cv_static" = no; then
 	fe_cv_static=yes
     ])
 fi
+AC_MSG_CACHE_ADD([Static compiling], [$fe_enable_static])
 
 dnl Checks for threads.
 AC_SEARCH_LIBS(pthread_cancel, [c_r pthread], [fe_cv_have_pthreads=yes],

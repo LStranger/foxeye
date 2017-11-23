@@ -52,6 +52,37 @@ AC_DEFUN([AC_CHECK_LDFLAG],
 if test x${$1} = xyes; then $3="$2 ${$3}"; fi
 ])
 
+AC_DEFUN([AC_MSG_CACHE_INIT],[
+  ac_msg_cache_idx=0
+  ac_msg_cache_package="$1"
+])
+
+AC_DEFUN([AC_MSG_CACHE_ADD],[
+  eval "ac_msg_cache_text$ac_msg_cache_idx=\"$1\""
+  eval "ac_msg_cache_result$ac_msg_cache_idx=\"$2\""
+  ac_msg_cache_idx=$(($ac_msg_cache_idx + 1))
+])
+
+AC_DEFUN([AC_MSG_CACHE_DISPLAY],[
+  echo "---------------------------------------------------------"
+  echo "    ${ac_msg_cache_package:-$PACKAGE_NAME} configuration summary:"
+  echo ""
+  idx=0 textlen=0
+  while test $idx -lt $ac_msg_cache_idx; do
+    len=$(eval echo \${#ac_msg_cache_text$idx})
+    test ${len:-0} -gt $textlen && textlen=$len
+    idx=$(($idx + 1))
+  done
+  len=$(($len + 4))
+  test $len -ge 40 || len=40
+  idx=0
+  while test $idx -lt $ac_msg_cache_idx; do
+    eval "printf '%-${len}s%s\n' \"\$ac_msg_cache_text$idx\" \"\$ac_msg_cache_result$idx\""
+    idx=$(($idx + 1))
+  done
+  echo ""
+])
+
 AC_DEFUN([AC_CHECK_ICONV],
 [AC_MSG_CHECKING(for iconv paths)
 ac_iconv_libpath=
@@ -211,16 +242,21 @@ yes
     case $fe_cv_v6type in
     unknown)
 	AC_MSG_WARN([Cannot support IPv6 on this system, disabling it.])
+	AC_MSG_CACHE_ADD([IPv6 support enabled], [no])
 	;;
     linux)
 	LIBS="-L/usr/inet6/lib -linet6 $LIBS"
 	CFLAGS="$CFLAGS -I/usr/inet6/include"
 	AC_DEFINE([ENABLE_IPV6], [1])
+	AC_MSG_CACHE_ADD([IPv6 support enabled], [yes])
 	;;
     *)
 	AC_DEFINE([ENABLE_IPV6], [1], [Define to enable IPv6 support.])
+	AC_MSG_CACHE_ADD([IPv6 support enabled], [yes])
 	;;
     esac
+else
+    AC_MSG_CACHE_ADD([IPv6 support enabled], [no])
 fi
 ])
 
@@ -260,6 +296,7 @@ AC_DEFUN([AC_CHECK_LIBIDN],
     fi
     AC_MSG_CHECKING([if Libidn should be used])
     AC_MSG_RESULT($libidn)
+    AC_MSG_CACHE_ADD([Libidn support enabled], [$libidn])
 ])
 
 dnl autoconf prior to 2.60 doesn't have this macro

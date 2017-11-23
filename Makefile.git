@@ -29,6 +29,7 @@ dist:
 	  fi; \
 	done
 	@echo "*** Getting local copy of gettext files"
+	@mkdir -p m4
 	@autopoint > /dev/null
 	@echo "*** Retrieving configure tests needed by configure.in"
 	@aclocal -I m4

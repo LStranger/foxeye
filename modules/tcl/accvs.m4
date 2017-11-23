@@ -163,4 +163,5 @@ if test "$have_tcl" != no; then
     LIBS="${fe_tcl_save_LIBS}"
     LDFLAGS="${fe_tcl_save_LDFLAGS}"
 fi
+AC_MSG_CACHE_ADD([Tcl language support], [${have_tcl:-failed}])
 
