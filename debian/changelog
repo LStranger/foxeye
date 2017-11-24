@@ -1,3 +1,14 @@
+foxeye (0.12.0-1) unstable; urgency=high
+
+  * Updated to upstream version 0.12.0 (Closes: #858435, #860373).
+  * Use https for VCS fields in debian/control file.
+  * Replace http with https in debian/copyright file.
+  * Bump Standards-Version to 4.1.1.
+  * Replace liblua5.1-dev with liblua5.3-dev in Build-Requires.
+  * Update foxeye.lintian-overrides for Lua capitalization.
+
+ -- Andriy Grytsenko <andrej@rep.kiev.ua>  Fri, 24 Nov 2017 01:35:00 +0200
+
 foxeye (0.11.0-1) unstable; urgency=medium
 
   * Updated to upstream version 0.11.0 (Closes: #835833).
