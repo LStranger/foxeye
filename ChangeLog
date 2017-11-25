@@ -13,6 +13,9 @@ TODO:
 	* *: to check Add_Request/New_Request coming to user to be translatable.
 	* modules/ircd: to support command LANG for numerics translation.
 
+Sat Nov 25 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* configure: added largefile support macros.
+
 --- [0.11.0 end] (released 0.12.0)
 Wed Nov 22 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* configure: added summary block after running.

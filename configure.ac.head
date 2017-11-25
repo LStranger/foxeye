@@ -266,6 +266,10 @@ AC_CHECK_ICONV
 
 AC_CHECK_IPV6
 
+dnl Be a LFS compatible
+AC_SYS_LARGEFILE
+AC_MSG_CACHE_ADD([Largefile support], [${enable_largefile:-yes}])
+
 dnl Checks for multithreaded heap managers
 AC_SEARCH_LIBS(mallocctl, mtmalloc) dnl Sun's MTmalloc
 AC_HAVE_LIBRARY(hoard) dnl Not sure if it works that way
