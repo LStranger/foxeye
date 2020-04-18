@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2014  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2006-2020  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -39,6 +39,10 @@
 
 #if LUA_VERSION_NUM > 501
 # define lua_equal(L,idx1,idx2) lua_compare(L,(idx1),(idx2),LUA_OPEQ)
+#endif
+
+#if LUA_VERSION_NUM > 502
+# define luaL_checklong luaL_checkinteger
 #endif
 
 #include "init.h"
@@ -1042,7 +1046,7 @@ static int lua_set_fevar (lua_State *L) /* T k v -> T (T[k]=v) : a[b] = c */
   else switch (data->s)
   {
     case 0: /* long int */
-      *(long int *)data->ptr = luaL_checklong (L, n);
+      *(long int *)data->ptr = (long int)luaL_checklong (L, n);
       break;
     case 1: /* bool */
       luaL_checktype (L, n, LUA_TBOOLEAN);
