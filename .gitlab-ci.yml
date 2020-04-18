@@ -1,0 +1,9 @@
+before_script:
+  - apt-get update -y
+  - apt-get install -y autoconf autopoint pkg-config tcl-dev liblua5.3-dev gettext libssl-dev libidn11-dev zlib1g-dev
+
+build:
+  script:
+    - ./Makefile.git dist
+    - ./configure --enable-debug=info --enable-ipv6 --prefix=$(pwd)/.install
+    - make install
