@@ -483,6 +483,6 @@ void ircd_management_proto_start (void);
 void ircd_management_proto_end (void);
 
 	/* from queries.c */
-const char *ircd_version_flags;
+extern const char *ircd_version_flags;
 
 #include "sendto.h"

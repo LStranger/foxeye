@@ -13,6 +13,12 @@ TODO:
 	* *: to check Add_Request/New_Request coming to user to be translatable.
 	* modules/ircd: to support command LANG for numerics translation.
 
+Sun Mar 19 2020 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/ircd.h: fixed build with -fno-common (default in gcc-10).
+
+Sat Mar 18 2020 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/lua/lua.c: fixed build with Lua 5.3.
+
 Sat Nov 25 2017 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* configure: added largefile support macros.
 
