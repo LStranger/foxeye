@@ -15,6 +15,7 @@ TODO:
 
 Sun Mar 19 2020 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.h: fixed build with -fno-common (default in gcc-10).
+	* modules/ircd/queries.c: fixed invalid processing of whowas list.
 
 Sat Mar 18 2020 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/lua/lua.c: fixed build with Lua 5.3.

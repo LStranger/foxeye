@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2010-2020  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -1190,11 +1190,12 @@ typedef struct whowas_t {
   char fromsrv[HOSTLEN+1];		/* server name of user */
 } whowas_t;
 
+ALLOCATABLE_TYPE (whowas_t, WW_, next) /* alloc_whowas_t, free_whowas_t */
+
 static NODE *IrcdWhowasTree = NULL;
-static whowas_t *IrcdWhowasArray = NULL;
-static int IrcdWhowasSize = 0;
-static int IrcdWhowasUsed = 0;
-static int IrcdWhowasPtr = 0;
+static whowas_t **IrcdWhowasArray = NULL; /* array of whowas_t * */
+static unsigned int IrcdWhowasSize = 0;
+static unsigned int IrcdWhowasPtr = 0;
 
 static inline int _ircd_query_whowas (IRCD *ircd, CLIENT *cl, struct peer_priv *via,
 				      int argc, const char **argv)
@@ -1485,9 +1486,9 @@ static void _icchg_ww(INTERFACE *srv, const char *from, const char *lcnick,
   dprint(5, "ircd:queries.c:_icchg_ww: %s (%s@%s)", nick, user, host);
   /* check if we are at end of array and want to grow it */
   if (IrcdWhowasPtr == IrcdWhowasSize && left < (INT_MAX / 2 - SOCKETMAX) &&
-      left<<1 > (unsigned int)IrcdWhowasSize) {
+      left<<1 > IrcdWhowasSize) {
     IrcdWhowasSize += 2 * SOCKETMAX;
-    safe_realloc((void **)&IrcdWhowasArray, IrcdWhowasSize * sizeof(whowas_t));
+    safe_realloc((void **)&IrcdWhowasArray, IrcdWhowasSize * sizeof(whowas_t *));
   }
   if (IrcdWhowasSize == 0) {		/* some bug catched, cannot continue! */
     ERROR("ircd:_ilostc_ww: internal error!");
@@ -1495,21 +1496,21 @@ static void _icchg_ww(INTERFACE *srv, const char *from, const char *lcnick,
   }
   if (IrcdWhowasPtr == IrcdWhowasSize)	/* start over */
     IrcdWhowasPtr = 0;
-  ww = &IrcdWhowasArray[IrcdWhowasPtr];
-  if (IrcdWhowasPtr < IrcdWhowasUsed) { /* unset this element */
+  if (IrcdWhowasPtr < WW_num)		{ /* unset this element */
+    ww = IrcdWhowasArray[IrcdWhowasPtr];
     if (ww->next != NULL)
       ww->next->prev = NULL;
     else if (Delete_Key(IrcdWhowasTree, ww->lcnick, ww))
       ERROR("ircd:_ilostc_ww: tree error on removing %s from whowas list",
 	    ww->lcnick);
       //TODO: isn't it fatal?
-    IrcdWhowasUsed = IrcdWhowasPtr;
-  }
-  IrcdWhowasPtr++;
-  if (IrcdWhowasUsed < IrcdWhowasPtr)
-    IrcdWhowasUsed = IrcdWhowasPtr;
+    if (ww->prev != NULL)
+      ERROR("ircd:_ilostc_ww: %s has previous data but it's tail", ww->lcnick);
+  } else				/* new allocation needed */
+    IrcdWhowasArray[IrcdWhowasPtr] = ww = alloc_whowas_t(); /* WW_num++ */
+  IrcdWhowasPtr++;			/* advance in list */
   wwp = Find_Key(IrcdWhowasTree, lcnick);
-  if (wwp != NULL) {
+  if (wwp != NULL) {			/* it's last one in chain */
     if (Delete_Key(IrcdWhowasTree, wwp->lcnick, wwp))
       ERROR("ircd:_ilostc_ww: tree error on removing %s from whowas list",
 	    wwp->lcnick);
@@ -1518,7 +1519,8 @@ static void _icchg_ww(INTERFACE *srv, const char *from, const char *lcnick,
   }
   ww->next = NULL;
   ww->prev = wwp;
-  DBG("ircd:_ilostc_ww: adding %s: %p after %p, %d of %d", nick, ww, ww->prev, IrcdWhowasPtr, IrcdWhowasUsed);
+  DBG("ircd:_ilostc_ww: adding %s: %p after %p, %u of %u", nick, ww, ww->prev,
+      IrcdWhowasPtr, WW_num);
   strfcpy(ww->nick, nick, sizeof(ww->nick));
   strfcpy(ww->lcnick, lcnick, sizeof(ww->lcnick));
   if (Insert_Key(&IrcdWhowasTree, ww->lcnick, ww, 1))
@@ -1755,6 +1757,7 @@ void ircd_queries_proto_end (void)
   Delete_Binding ("ircd-stats-reply", (Function)&_istats_h, NULL);
   Destroy_Tree (&IrcdWhowasTree, NULL);
   FREE (&IrcdWhowasArray);
+  _forget_(whowas_t);
 }
 
 void ircd_queries_register (void)
