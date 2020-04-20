@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2010-2020  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -688,10 +688,13 @@ static int _imch_add_mask (MASK **list, const char **ptr, MASK **cancel,
     }
   /* we are ready to add it, let test if it's not too much */
   if (cnt >= _ircd_max_bans) {
-    if (!CLIENT_IS_SERVER(_imch_client))
+    if (!CLIENT_IS_SERVER(_imch_client)) {
       ircd_do_cnumeric(_imch_client, ERR_BANLISTFULL, _imch_channel, 0, nm->what);
-    free_MASK (nm);
-    return 0;
+      free_MASK (nm);
+      return 0;
+    } else
+      WARNING("ircd:_imch_add_mask: too many bans on %s: %ld >= %ld",
+	      _imch_channel->name, cnt, _ircd_max_bans);
   }
   *list = nm;
   nm->next = NULL;
@@ -955,6 +958,8 @@ static inline void _ircd_mode_broadcast (IRCD *ircd, int id, CLIENT *sender,
   ircd_sendto_services_mark_prefix (ircd, SERVICE_WANT_MODE);
 #endif
   if (ch->mode & A_QUIET) ;
+  else if (!sender)
+    ircd_sendto_chan_local (ch, "MODE %s %s%s", ch->name, modepass, buff);
   else if (CLIENT_IS_SERVER (sender))
     ircd_sendto_chan_local (ch, ":%s MODE %s %s%s", sender->lcnick, ch->name,
 			    modepass, buff);
@@ -977,7 +982,7 @@ static inline void _ircd_mode_broadcast (IRCD *ircd, int id, CLIENT *sender,
       ch->name[0] == '+')	/* nor mode +t for modeless channel */
     return;
 #if IRCD_MULTICONNECT
-  if (id < 0 && !CLIENT_IS_LOCAL(sender))
+  if (id < 0 && sender && !CLIENT_IS_LOCAL(sender))
     id = ircd_new_id(sender->cs); /* allocate id for IMODE */
   else if (id < 0)
     id = ircd_new_id(NULL);	/* make new id if it's local client */
@@ -989,17 +994,30 @@ static inline void _ircd_mode_broadcast (IRCD *ircd, int id, CLIENT *sender,
   if (imp)
   {
     imp++;
-    ircd_sendto_servers_mask_old(ircd, pp, imp, ":%s MODE %s %s%s",
-				 sender->nick, ch->name, modepass, buff);
-    ircd_sendto_servers_mask_new(ircd, pp, imp, ":%s IMODE %d %s %s%s",
-				 sender->nick, id, ch->name, modepass, buff);
+    if (sender) {
+      ircd_sendto_servers_mask_old(ircd, pp, imp, ":%s MODE %s %s%s",
+				   sender->nick, ch->name, modepass, buff);
+      ircd_sendto_servers_mask_new(ircd, pp, imp, ":%s IMODE %d %s %s%s",
+				   sender->nick, id, ch->name, modepass, buff);
+    } else {
+      ircd_sendto_servers_mask_old(ircd, pp, imp, "MODE %s %s%s",
+				   ch->name, modepass, buff);
+      ircd_sendto_servers_mask_new(ircd, pp, imp, "IMODE %d %s %s%s",
+				   id, ch->name, modepass, buff);
+    }
   }
-  else
+  else if (sender)
   {
     ircd_sendto_servers_old(ircd, pp, ":%s MODE %s %s%s",
 			    sender->nick, ch->name, modepass, buff);
     ircd_sendto_servers_new(ircd, pp, ":%s IMODE %d %s %s%s",
 			    sender->nick, id, ch->name, modepass, buff);
+  }
+  else
+  {
+    ircd_sendto_servers_old(ircd, pp, "MODE %s %s%s", ch->name, modepass, buff);
+    ircd_sendto_servers_new(ircd, pp, "IMODE %d %s %s%s",
+			    id, ch->name, modepass, buff);
   }
 }
 #undef __TRANSIT__
@@ -2030,7 +2048,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
       register MASK *mm;
 
       if (x == MAXMODES) {
-	_ircd_mode_broadcast((IRCD *)srv->data, -1, src, ch, imp, NULL, 0,
+	_ircd_mode_broadcast((IRCD *)srv->data, -1, NULL, ch, imp, NULL, 0,
 			     modepass, passed, x);
 	imp = modepass;
 	x = 0;
@@ -2053,7 +2071,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
       register MASK *mm;
 
       if (x == MAXMODES) {
-	_ircd_mode_broadcast((IRCD *)srv->data, -1, src, ch, imp, NULL, 0,
+	_ircd_mode_broadcast((IRCD *)srv->data, -1, NULL, ch, imp, NULL, 0,
 			     modepass, passed, x);
 	imp = modepass;
 	x = 0;
@@ -2076,7 +2094,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
       register MASK *mm;
 
       if (x == MAXMODES) {
-	_ircd_mode_broadcast((IRCD *)srv->data, -1, src, ch, imp, NULL, 0,
+	_ircd_mode_broadcast((IRCD *)srv->data, -1, NULL, ch, imp, NULL, 0,
 			     modepass, passed, x);
 	imp = modepass;
 	x = 0;
@@ -2096,7 +2114,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
       free_MASK(mm);
     }
     if (x > 0)
-      _ircd_mode_broadcast((IRCD *)srv->data, id, src, ch, imp, NULL, 0,
+      _ircd_mode_broadcast((IRCD *)srv->data, -1, NULL, ch, imp, NULL, 0,
 			   modepass, passed, x);
 #if IRCD_MULTICONNECT
     if (errors < 0)
