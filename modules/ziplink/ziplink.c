@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2011-2020  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -193,7 +193,7 @@ static ssize_t _ccfilter_Z_recv(struct connchain_i **ch, idx_t id, char *str,
     if ((*b)->error)
       i = (*b)->error;
     else if (buf->in.inbuf < sizeof(buf->in.buf)) {
-      if ((i = Connchain_Get(ch, id, &buf->in.buf[buf->in.bufptr],
+      if ((i = Connchain_Get(ch, id, &buf->in.buf[buf->in.inbuf],
 			     (sizeof(buf->in.buf) - buf->in.inbuf))) < 0)
 	(*b)->error = i;
     } else

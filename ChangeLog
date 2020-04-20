@@ -16,6 +16,8 @@ TODO:
 Mon Mar 20 2020 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: don't report invalid token if RFC1459 'SERVER'
 	  message was received.
+	* modules/ziplink/ziplink.c: fixed invalid input stream processing in
+	  case if inflate() left something in buffer unprocessed.
 
 Sun Mar 19 2020 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.h: fixed build with -fno-common (default in gcc-10).
