@@ -13,6 +13,10 @@ TODO:
 	* *: to check Add_Request/New_Request coming to user to be translatable.
 	* modules/ircd: to support command LANG for numerics translation.
 
+Mon Mar 20 2020 Andriy Gritsenko <andrej@rep.kiev.ua>
+	* modules/ircd/ircd.c: don't report invalid token if RFC1459 'SERVER'
+	  message was received.
+
 Sun Mar 19 2020 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.h: fixed build with -fno-common (default in gcc-10).
 	* modules/ircd/queries.c: fixed invalid processing of whowas list.

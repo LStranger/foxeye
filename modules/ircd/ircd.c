@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2010-2020  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -3108,8 +3108,9 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
   cc = "";
   if (argc < 4 || (token = strtol (argv[2], &cc, 10)) <= 0 || *cc)
   {
-    Add_Request(I_LOG, "*", F_WARN, "ircd: invalid token %ld%s in SERVER %s",
-		token, cc, argv[0]);
+    if (argc >= 4)
+      Add_Request(I_LOG, "*", F_WARN, "ircd: invalid token %ld%s in SERVER %s",
+		  token, cc, argv[0]);
     strfcpy (cl->fname, argv[2], sizeof(cl->fname));
     token = 1;
   }
@@ -4213,7 +4214,8 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
       continue;
     mf = ircd_char2umode(srv, peer->dname, *c, tgt);
     if (mf == 0)
-      ERROR("ircd:unknown umode char %c for NICK from %s", *c, peer->dname);
+      ERROR("ircd:unknown umode char %c for NICK on %s from %s", *c,
+	    argv[0], peer->dname);
     else
       tgt->umode |= mf;
   }
