@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2011-2020  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -582,7 +582,8 @@ static int ircd_njoin(INTERFACE *srv, struct peer_t *peer, unsigned short token,
     clname[i] = '\0';
     cl = ircd_find_client_nt(clname, pp);
     if (cl == NULL) {
-      ERROR("ircd:invalid NJOIN member from %s: %s", peer->dname, clname);
+      ERROR("ircd:invalid NJOIN member from %s for %s: %s", peer->dname,
+	    argv[0], clname);
       if (!ircd_recover_done(pp, "invalid NJOIN member"))
 	return (0);
       continue;
@@ -591,8 +592,8 @@ static int ircd_njoin(INTERFACE *srv, struct peer_t *peer, unsigned short token,
       cl = cl->x.rto;
     if (cl == NULL) {		/* seems we killed him already */
       Add_Request(I_LOG, "*", F_WARN,
-		  "ircd: got NJOIN member from %s which is dead yet: %s",
-		  peer->dname, clname);
+		  "ircd: got NJOIN member from %s for %s which is dead yet: %s",
+		  peer->dname, argv[0], clname);
       continue;
     }
     amf = 0;
