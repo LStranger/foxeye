@@ -88,6 +88,7 @@ static void _z_check_saved_buffer(idx_t id, struct connchain_buffer *buf)
   o = 0;
   o = Connchain_Put(&buf->saved_chain, id, NULL, &o);
   /* kill chain when done */
+  dprint(6, "ziplink: _z_check_saved_buffer: in=%zd out=%zd", i, o);
   if (i < 0 && o < 0 && Connchain_Get(&buf->saved_chain, -1, NULL, 0))
     buf->saved_chain = NULL;
 }
@@ -212,10 +213,13 @@ static ssize_t _ccfilter_Z_recv(struct connchain_i **ch, idx_t id, char *str,
   i = inflate(&buf->in.z, flush); /* decompress buf->in.buf into str */
   if (i == Z_OK ||		/* some decompression was done */
       i == Z_BUF_ERROR) {	/* but might be insuffitient space to out */
+    i = buf->in.inbuf - buf->in.bufptr;
     if (buf->in.z.avail_in == 0) /* all input consumed */
       buf->in.bufptr = buf->in.inbuf = 0;
     else			/* still some data left in buffer */
       buf->in.bufptr = buf->in.inbuf - buf->in.z.avail_in;
+    dprint(6, "ziplink: compressed data taken: %zd of %zd, buf fill %zd",
+	   i - buf->in.z.avail_in, i, buf->in.inbuf);
     i = (char *)buf->in.z.next_out - str;
     if (i > 0)
       dprint(6, "ziplink: decompressed data: [%-*.*s]", (int)i, (int)i, str);

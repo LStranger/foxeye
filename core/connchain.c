@@ -424,17 +424,20 @@ static ssize_t _ccfilter_x_recv (connchain_i **ch, idx_t id, char *str,
     if (bb->inbuf > 0) {
       register size_t x;
 
-      x = sizeof(bb->buf) - bb->bufpos;
-      if ((ssize_t)x > bb->inbuf)
+      if (bb->inbuf + bb->bufpos > sizeof(bb->buf))
+	x = sizeof(bb->buf) - bb->bufpos; /* tail of buffer */
+      else
 	x = bb->inbuf;
       if (x > sz)
 	x = sz;
       i = x;
       memcpy(str, &bb->buf[bb->bufpos], x);
+      bb->bufpos += i;
       bb->inbuf -= i;
-      if (bb->inbuf == 0 || sz == (size_t)i)
-	return (i);
       sz -= i;
+      if (bb->inbuf == 0 || sz == 0)
+	return (i);
+      /* buffer wrapped and there is place to get head */
       str += i;
       x = bb->inbuf;
       if (x > sz)
