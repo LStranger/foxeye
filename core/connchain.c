@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2008-2020  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -386,12 +386,13 @@ static ssize_t _ccfx_get_line (connchain_b *bb, ssize_t i, char *str, size_t sz)
     bb->bufpos = d;
     return x;
   }
+  bb->inbuf -= (i + 1);				/* take full string out */
   d = sizeof(bb->buf) - bb->bufpos;		/* piece at end */
   i -= d;					/* left at start */
-  bb->inbuf -= (i + 1);				/* prepare now */
   if (d >= (ssize_t)sz)				/* we don't care! */
-    d = sz - 1;
+    d = sz > 0 ? sz - 1 : 0;
   memcpy (str, &bb->buf[bb->bufpos], d);
+  str += d;					/* next ptr for rest of line */
   sz -= d;					/* how many left in buf */
   if (i && bb->buf[i - 1] == '\r')		/* check for CR */
     x = i;					/* \0 instead of CR */
