@@ -3906,7 +3906,7 @@ static inline void _ircd_transform_invalid_nick(char *buf, const char *nick,
     if (*nick == '-' ||
 	(*nick >= 'A' && *nick <= '~') ||
 	(*nick >= '0' && *nick <= '9')) {
-      *buf++ = *nick;
+      *buf++ = *nick++;
       bs--;
     } else
       nick++; /* skip non-ASCII and invalid chars so we never get rename back */
@@ -4032,9 +4032,13 @@ static int _ircd_remote_nickchange(CLIENT *tgt, peer_priv *pp,
   }
   if (!_ircd_validate_nickname(checknick, nn, sizeof(checknick))) {
     _ircd_transform_invalid_nick(checknick, nn, sizeof(checknick));
-    ERROR("ircd:invalid NICK %s via %s => %s", nn, pp->p.dname, checknick);
-    changed = -1;			/* should be corrected */
-    ircd_recover_done(pp, "Invalid nick");
+#if IRCD_KILL_INVALID_NICK
+    if (strcmp(checknick, nn) != 0) {
+      ERROR("ircd:invalid NICK %s via %s => %s", nn, pp->p.dname, checknick);
+      changed = -1;			/* should be corrected */
+      ircd_recover_done(pp, "Invalid nick");
+    }
+#endif
   }
   collision = _ircd_find_nick_collision(checknick,
 					tgt->cs ? tgt->cs->lcnick : pp->p.dname);
