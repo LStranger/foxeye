@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2010-2020  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -79,7 +79,7 @@ static int _message_iterator(INTERFACE *serv, const char *mask,
 	  return (0);			/* no matches */
 	for (link = ircd->servers; link; link = link->prev)
 	  if (!(link->cl->via->p.iface->ift & I_PENDING) &&
-	      match(mask, link->cl->lcnick))
+	      match(mask, link->cl->lcnick) > 0)
 	    break;
 	if (link == NULL)
 	  return (0);			/* no matches */
@@ -176,7 +176,7 @@ job_done:
     } else {				/* mask iteration */
       for (link = i->link->prev; link; link = link->prev)
 	if (!(link->cl->via->p.iface->ift & I_PENDING) &&
-	    match(mask, link->cl->lcnick))
+	    match(mask, link->cl->lcnick) > 0)
 	  break;
       if (link == NULL)
 	goto job_done;			/* no more matches */
@@ -190,7 +190,7 @@ job_done:
 }
 
 static int _ircd_mark_message_target(INTERFACE *serv, const char *nick,
-				     const char *target)
+				     const char *target, modeflag eum)
 {
   struct binding_t *b = NULL;
 #define static register
@@ -203,7 +203,7 @@ static int _ircd_mark_message_target(INTERFACE *serv, const char *nick,
     if (b->name)
       continue;
     f = b->func;
-    rc = f(serv, nick, target, &_message_iterator);
+    rc = f(serv, nick, target, eum, &_message_iterator);
     if (rc < 0)
       i = rc;
     else if (rc > 0 && i == 0)
@@ -403,7 +403,7 @@ static void _ircd_broadcast_msglist_mark(IRCD *ircd, const char *nick,
 	for (lnk = ircd->token[0]->c.lients; lnk; lnk = lnk->prev) /* no locals */
 	  lnk->cl->via->p.iface->ift |= I_PENDING;
       need_unmark = 1;
-      _ircd_mark_message_target(ircd->iface, nick, tlist[i]);
+      _ircd_mark_message_target(ircd->iface, nick, tlist[i], 0);
     } else {
       tcl->cs->via->p.iface->ift |= I_PENDING;
 #if IRCD_MULTICONNECT
@@ -652,9 +652,10 @@ static int ircd_privmsg_cb(INTERFACE *srv, struct peer_t *peer, const char *lcni
       register LINK *lnk;
       register int rc;
 
+      /* do custom send to local recipientss */
       for (lnk = ircd->servers; lnk; lnk = lnk->prev) /* preset to ignore later */
 	lnk->cl->via->p.iface->ift |= I_PENDING;
-      rc = _ircd_mark_message_target(srv, peer->dname, c);
+      rc = _ircd_mark_message_target(srv, peer->dname, c, eum | A_ISON);
       for (lnk = ircd->servers; lnk; lnk = lnk->prev) /* preset to ignore later */
 	lnk->cl->via->p.iface->ift &= ~I_PENDING;
       if (rc) {
@@ -666,8 +667,11 @@ static int ircd_privmsg_cb(INTERFACE *srv, struct peer_t *peer, const char *lcni
 #endif
 	  Add_Request(I_PENDING, "*", 0, ":%s!%s@%s PRIVMSG %s :%s",
 		      peer->dname, user, vhost, c, argv[1]);
+      }
+      if (_ircd_mark_message_target(srv, peer->dname, c, eum)) {
+	/* do custom send to remote recipients */
 	ADD_TO_LIST(c);
-      } else
+      } else if (!rc)
 	ircd_do_unumeric (cl, ERR_NOSUCHNICK, cl, 0, c);
     }
   }
@@ -756,9 +760,10 @@ static int ircd_notice_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnic
       register LINK *lnk;
       register int rc;
 
+      /* do custom send to local recipientss */
       for (lnk = ircd->servers; lnk; lnk = lnk->prev) /* preset to ignore later */
 	lnk->cl->via->p.iface->ift |= I_PENDING;
-      rc = _ircd_mark_message_target(srv, peer->dname, c);
+      rc = _ircd_mark_message_target(srv, peer->dname, c, eum | A_ISON);
       for (lnk = ircd->servers; lnk; lnk = lnk->prev) /* preset to ignore later */
 	lnk->cl->via->p.iface->ift &= ~I_PENDING;
       if (rc) {
@@ -770,8 +775,10 @@ static int ircd_notice_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnic
 #endif
 	  Add_Request(I_PENDING, "*", 0, ":%s!%s@%s NOTICE %s :%s",
 		      peer->dname, user, vhost, c, argv[1]);
-	ADD_TO_LIST(c);
       }
+      if (_ircd_mark_message_target(srv, peer->dname, c, eum))
+	/* do custom send to remote recipients */
+	ADD_TO_LIST(c);
     }
   }
   if (s)
@@ -900,9 +907,10 @@ static int ircd_privmsg_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
       register LINK *lnk;
       register int rc;
 
+      /* do custom send to local recipientss */
       for (lnk = ircd->servers; lnk; lnk = lnk->prev) /* preset to ignore later */
 	lnk->cl->via->p.iface->ift |= I_PENDING;
-      rc = _ircd_mark_message_target(srv, sender, c);
+      rc = _ircd_mark_message_target(srv, sender, c, A_SERVER | A_ISON);
       for (lnk = ircd->servers; lnk; lnk = lnk->prev) /* preset to ignore later */
 	lnk->cl->via->p.iface->ift &= ~I_PENDING;
       if (rc) {
@@ -912,8 +920,11 @@ static int ircd_privmsg_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
 	else
 	  Add_Request(I_PENDING, "*", 0, ":%s!%s@%s PRIVMSG %s :%s", sender,
 		      cl->user, cl->vhost, c, argv[1]);
+      }
+      if (_ircd_mark_message_target(srv, sender, c, A_SERVER)) {
+	/* do custom send to remote recipients */
 	ADD_TO_LIST(c);
-      } else {
+      } else if (!rc) {
 	ERROR("ircd:invalid PRIVMSG target %s via %s", c, peer->dname);
 	ircd_recover_done(pp, "Invalid recipient");
       }
@@ -1010,9 +1021,10 @@ static int ircd_notice_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
       register LINK *lnk;
       register int rc;
 
+      /* do custom send to local recipientss */
       for (lnk = ircd->servers; lnk; lnk = lnk->prev) /* preset to ignore later */
 	lnk->cl->via->p.iface->ift |= I_PENDING;
-      rc = _ircd_mark_message_target(srv, sender, c);
+      rc = _ircd_mark_message_target(srv, sender, c, A_SERVER | A_ISON);
       for (lnk = ircd->servers; lnk; lnk = lnk->prev) /* preset to ignore later */
 	lnk->cl->via->p.iface->ift &= ~I_PENDING;
       if (rc) {
@@ -1022,8 +1034,11 @@ static int ircd_notice_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
 	else
 	  Add_Request(I_PENDING, "*", 0, ":%s!%s@%s NOTICE %s :%s", sender,
 		      cl->user, cl->vhost, c, argv[1]);
+      }
+      if (_ircd_mark_message_target(srv, sender, c, A_SERVER)) {
+	/* do custom send to remote recipients */
 	ADD_TO_LIST(c);
-      } else
+      } else if (!rc)
 	Add_Request(I_LOG, "*", F_WARN, "ircd:invalid NOTICE target %s via %s",
 		    c, peer->dname);
     }
@@ -1156,9 +1171,10 @@ static int ircd_iprivmsg(INTERFACE *srv, struct peer_t *peer, unsigned short tok
       register LINK *lnk;
       register int rc;
 
+      /* do custom send to local recipientss */
       for (lnk = ircd->servers; lnk; lnk = lnk->prev) /* preset to ignore later */
 	lnk->cl->via->p.iface->ift |= I_PENDING;
-      rc = _ircd_mark_message_target(srv, sender, c);
+      rc = _ircd_mark_message_target(srv, sender, c, A_SERVER | A_ISON);
       for (lnk = ircd->servers; lnk; lnk = lnk->prev) /* preset to ignore later */
 	lnk->cl->via->p.iface->ift &= ~I_PENDING;
       if (rc) {
@@ -1168,8 +1184,11 @@ static int ircd_iprivmsg(INTERFACE *srv, struct peer_t *peer, unsigned short tok
 	else
 	  Add_Request(I_PENDING, "*", 0, ":%s!%s@%s PRIVMSG %s :%s", sender,
 		      cl->user, cl->vhost, c, argv[1]);
+      }
+      if (_ircd_mark_message_target(srv, sender, c, A_SERVER)) {
+	/* do custom send to remote recipients */
 	ADD_TO_LIST(c);
-      } else {
+      } else if (!rc) {
 	ERROR("ircd:invalid IPRIVMSG target %s via %s", c, peer->dname);
 	ircd_recover_done(pp, "Invalid recipient");
       }
@@ -1259,9 +1278,10 @@ static int ircd_inotice(INTERFACE *srv, struct peer_t *peer, unsigned short toke
       register LINK *lnk;
       register int rc;
 
+      /* do custom send to local recipientss */
       for (lnk = ircd->servers; lnk; lnk = lnk->prev) /* preset to ignore later */
 	lnk->cl->via->p.iface->ift |= I_PENDING;
-      rc = _ircd_mark_message_target(srv, sender, c);
+      rc = _ircd_mark_message_target(srv, sender, c, A_SERVER | A_ISON);
       for (lnk = ircd->servers; lnk; lnk = lnk->prev) /* preset to ignore later */
 	lnk->cl->via->p.iface->ift &= ~I_PENDING;
       if (rc) {
@@ -1271,8 +1291,11 @@ static int ircd_inotice(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 	else
 	  Add_Request(I_PENDING, "*", 0, ":%s!%s@%s NOTICE %s :%s", sender,
 		      cl->user, cl->vhost, c, argv[1]);
+      }
+      if (_ircd_mark_message_target(srv, sender, c, A_SERVER)) {
+	/* do custom send to remote recipients */
 	ADD_TO_LIST(c);
-      } else
+      } else if (!rc)
 	Add_Request(I_LOG, "*", F_WARN, "ircd:invalid INOTICE target %s via %s",
 		    c, peer->dname);
     }
