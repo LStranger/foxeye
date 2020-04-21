@@ -13,6 +13,9 @@ TODO:
 	* *: to check Add_Request/New_Request coming to user to be translatable.
 	* modules/ircd: to support command LANG for numerics translation.
 
+Tue Mar 21 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
+	* intl/VERSION: bump to gettext-0.19.8.
+
 --- release 0.12.1 ---
 Mon Mar 20 2020 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: don't report invalid token if RFC1459 'SERVER'
