@@ -481,6 +481,13 @@ static int _ircd_broadcast_msglist_old (IRCD *ircd, struct peer_priv *via,
   return (rc);
 }
 
+/*
+ * find a message target, either:
+ *   - local or remote by nickname!user@host
+ *   - local by user[%host]@servername
+ *   - local or remote by user%host
+ *   - local or remote by nickname
+ */
 static inline CLIENT *_ircd_find_msg_target (const char *target,
 					     struct peer_priv *pp)
 {
@@ -502,7 +509,7 @@ static inline CLIENT *_ircd_find_msg_target (const char *target,
     tgt = ircd_find_client (c + 1, pp);
     if (tgt && !CLIENT_IS_SERVER(tgt))
       tgt = NULL;
-    if (tgt && !CLIENT_IS_ME(tgt))
+    if (!tgt || !CLIENT_IS_ME(tgt))
       return (NULL);
     /* process user[%host] now */
     h = strchr(target, '%');
@@ -515,6 +522,36 @@ static inline CLIENT *_ircd_find_msg_target (const char *target,
   else if ((c = strchr(target, '%')))
     tgt = ircd_find_by_userhost(NULL, 0, target, c - target, c + 1, -1);
   else if ((tgt = ircd_find_client (target, pp)) && CLIENT_IS_SERVER(tgt))
+    return (NULL);
+  return (tgt);
+}
+
+/*
+ * find a squery target, either:
+ *   - servicename@servername
+ *   - servicename
+ */
+static inline CLIENT *_ircd_find_q_target(const char *target,
+					  struct peer_priv *pp)
+{
+  CLIENT *tgt;
+  const char *c;
+  char nick[MB_LEN_MAX*NICKLEN+1];
+
+  /* handle service@servername */
+  c = strchr(target, '@');
+  if (c)
+  {
+    if (c - target >= (ssize_t)sizeof(nick)) /* too long name */
+      return NULL;
+    tgt = ircd_find_client (c + 1, pp);
+    if (!tgt && !CLIENT_IS_SERVER(tgt))
+      return NULL;
+    strfcpy(nick, target, c - target + 1);
+    target = nick;
+  }
+  /* handle service */
+  if ((tgt = ircd_find_client (target, pp)) && CLIENT_IS_SERVER(tgt))
     return (NULL);
   return (tgt);
 }
@@ -803,7 +840,7 @@ static int ircd_squery_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnic
     return ircd_do_unumeric (cl, ERR_NORECIPIENT, cl, 0, NULL);
   if (argc == 1 || !*argv[1])
     return ircd_do_unumeric (cl, ERR_NOTEXTTOSEND, cl, 0, NULL);
-  if (!(tcl = _ircd_find_msg_target (argv[0], NULL)) ||
+  if (!(tcl = _ircd_find_q_target (argv[0], NULL)) ||
       !CLIENT_IS_SERVICE (tcl))
     return ircd_do_unumeric (cl, ERR_NOSUCHSERVICE, cl, 0, argv[0]);
 #ifdef USE_SERVICES
@@ -1075,7 +1112,7 @@ static int ircd_squery_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
   }
 #endif
   //cl = _ircd_find_client_lc((IRCD *)srv->data, lcsender);
-  if (!(tcl = _ircd_find_msg_target(argv[0], pp)) ||
+  if (!(tcl = _ircd_find_q_target(argv[0], pp)) ||
       !CLIENT_IS_SERVICE(tcl)) {
     ERROR("ircd:invalid SQUERY target %s via %s", argv[0], peer->dname);
     return ircd_recover_done(pp, "Invalid recipient");
@@ -1330,7 +1367,7 @@ static int ircd_isquery(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     //TODO: log duplicate?
     return (1);
   //cl = _ircd_find_client_lc(ircd, lcsender);
-  if (!(tcl = _ircd_find_msg_target(argv[1], pp)) ||
+  if (!(tcl = _ircd_find_q_target(argv[1], pp)) ||
       !CLIENT_IS_SERVICE(tcl)) {
     ERROR("ircd:invalid ISQUERY target %s via %s", argv[1], peer->dname);
     return ircd_recover_done(pp, "Invalid recipient");

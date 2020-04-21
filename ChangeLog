@@ -22,6 +22,8 @@ Tue Mar 21 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* modules/ircd/accvs.api, modules/ircd/messages.c: added mode flags
 	  parameter to "ircd-set-message-targets" bindtable, A_ISON controls
 	  whether local recipients should be activated or opposite.
+	* modules/ircd/messages.c: fixed SQUERY recipients parse: should be
+	  either service name or service@server form.
 
 --- release 0.12.1 ---
 Mon Mar 20 2020 Andriy Gritsenko <andrej@rep.kiev.ua>
