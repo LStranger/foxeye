@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2016-2020  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -1405,6 +1405,41 @@ static void rusnet_stats_r(INTERFACE *srv, const char *rq, modeflag umode)
     New_Request(srv, 0, "481 %s :Permission Denied - You're not an IRC operator", rq);
 }
 
+BINDING_TYPE_ircd_set_message_targets(rusnet_set_msg_target_services);
+static int rusnet_set_msg_target_services(INTERFACE *srv, const char *sender,
+					  const char *target, modeflag eum,
+					  int (*next)(INTERFACE *srv,
+						      const char *mask,
+						      const char **lcname,
+						      modeflag *mf, int **mark,
+						      void **iter))
+{
+  /* we should pass only SomeServ@*.RusNet here */
+  const char *at = strchr(target, '@');
+  const char *lcname;
+  int *mark;
+  void *iter = NULL;
+  modeflag mf;
+  int res = 0;
+  char service[MB_LEN_MAX*NICKLEN+1];
+
+  DBG("rusnet:%s: %s checks for %s mode %u",__func__,sender,target,(unsigned)eum);
+  if (!(eum & A_SERVER) && (eum & A_ISON))	/* no locals or direct msg */
+    return res;
+  if (at == NULL || strcmp(at + 1, SERVICES_SERV) != 0)
+    return res;
+  if (at - target >= (ssize_t)sizeof(service))	/* it's impossible */
+    return res;
+  unistrlower(service, target, at - target + 1);
+  while (next(srv, SERVICES_SERV, &lcname, &mf, &mark, &iter) != 0)
+    if (strcmp(lcname, service) == 0)
+    {
+      *mark = 1;
+      res++;
+    }
+  return res;
+}
+
 static int _rusnet_call_services(INTERFACE *srv, struct peer_t *peer,
 				 const char *lcnick, modeflag mf,
 				 const char *serv, modeflag um, int argc,
@@ -1427,9 +1462,10 @@ static int _rusnet_call_services(INTERFACE *srv, struct peer_t *peer,
     return (1);
   }
   /* verify if we have the service online and not a fake one */
-  um = Inspect_Client(srv->name, NULL, serv, &ident, &host, NULL, NULL);
+  unistrlower(buf, serv, sizeof(buf));
+  um = Inspect_Client(srv->name, NULL, buf, &ident, &host, NULL, NULL);
   if (um == 0 || safe_strcmp(ident, SERVICES_IDENT) != 0 ||
-      safe_strcmp(host, SERVICES_HOST) != 0)
+      safe_strcasecmp(host, SERVICES_HOST) != 0)
   {
     New_Request(srv, 0, "408 %s %s :No such service", peer->dname, serv);
     return (1);
@@ -1561,6 +1597,7 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
       Delete_Binding("ircd-client-cmd", &rusnet_chanserv_cb, NULL);
       Delete_Binding("ircd-client-cmd", &rusnet_memoserv_cb, NULL);
       Delete_Binding("ircd-client-cmd", &rusnet_operserv_cb, NULL);
+      Delete_Binding("ircd-set-message-targets", &rusnet_set_msg_target_services, NULL);
       Delete_Help("ircd-rusnet");
       Send_Signal(I_MODULE, "ircd*", S_FLUSH); /* inform modules about changes */
       FREE(&IrcdRMotd);
@@ -1588,12 +1625,31 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
 SigFunction ModuleInit (char *args)
 {
   void *ptr;
+  char *str;
+  char lcserv[40];
+  /* contains "*@<SERVICES_SERV>" but with escaped '*' and '?' here */
+  char escaped_mask[40];
 
   CheckVersion;
   /* if we cannot override NICKLEN then fail */
   if (!GetVariable("ircd-nicklen", VARIABLE_CONSTANT, &ptr))
     return NULL;
   snprintf((char *)ptr, 3, "%u", RUSNET_NICKLEN); /* get it tweaked on S_FLUSH */
+  /* prepare escaped_mask */
+  unistrlower(lcserv, SERVICES_SERV, sizeof(lcserv));
+  str = escaped_mask;
+  *str++ = '*';
+  *str++ = '@';
+  for (ptr = lcserv; str < escaped_mask + sizeof(escaped_mask) - 2; ptr++)
+  {
+    register char ch = *(char *)ptr;
+    if (ch == '\0')
+      break;
+    if (ch == '*' || ch == '?' || ch == '[')
+      *str++ = '\\';
+    *str++ = ch;
+  }
+  *str = '\0';
   /* register variables */
   RegisterString("rusnet-rmotd-file", _rusnet_rmotd_file,
 		 sizeof(_rusnet_rmotd_file), 0);
@@ -1688,12 +1744,15 @@ SigFunction ModuleInit (char *args)
   /* tweak ircd-version-string so rusnet-ircd recognize we are compatible */
   if (GetVariable("ircd-version-string", VARIABLE_CONSTANT, &ptr))
   {
-    char *str = ptr;			/* it's really not constant */
+    str = ptr;				/* it's really not constant */
     if (str[6] == '0' && str[7] >= '0') /* we have 02110000.... there */
       str[6] = '1', str[7] = '5';	/* say it's rusnet-ircd 1.5.x */
   }
   // FIXME: tweak RPL_VERSION ?
   Add_Binding("ircd-isupport", "*", 0, 0, (Function)&rusnet_isupport, NULL);
+  /* support sending messages to the <service>@<servicesserver> */
+  Add_Binding("ircd-set-message-targets", escaped_mask, 0, 0,
+	      &rusnet_set_msg_target_services, NULL);
   /* add commands for services */
   Add_Binding("ircd-client-cmd", "nickserv", 0, 0, &rusnet_nickserv_cb, NULL);
   Add_Binding("ircd-client-cmd", "chanserv", 0, 0, &rusnet_chanserv_cb, NULL);
