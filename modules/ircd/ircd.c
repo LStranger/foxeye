@@ -146,7 +146,7 @@ static inline CLASS *_ircd_get_new_class (const char *name, const char *parms)
 
   cl->next = NULL;
   cl->name = safe_strdup (name);
-  IrcdClass_namesize += (strlen (name) + 1);
+  IrcdClass_namesize += (strlen (cl->name) + 1);
   cl->pingf = 90;		/* some defaults assuming it's individual */
   cl->lpul = cl->lpug = cl->lpc = 2;
   cl->sendq = IRCD_DEFAULT_SENDQ;
@@ -198,7 +198,11 @@ static int _ircd_class_in (struct peer_t *peer, char *user, char *host,
     clparms = Get_Field (cl, Ircd->sub->name, NULL);
     uf = Get_Flags (cl, Ircd->iface->name);
   }
-  if (clparms);
+  if (clparms)
+  {
+    if (!clname)			/* matches a ban */
+      clname = "<akill>";
+  }
   else if (cl && clname && (clparms == NULL || clparms[0] == 0) &&
 	   (uf & U_UNSHARED)) /* ok, it's a server */
   {
@@ -305,6 +309,8 @@ static void _ircd_class_rin (LINK *l)
     clname = DEFCLASSNAME;
     clparms = _ircd_default_class;
   }
+  else if (!clname)			/* matches a ban */
+    clname = "<akill>";
   for (clp = &Ircd->users; (clcl = *clp); clp = &clcl->next)
     if (!strcmp (clcl->name, clname))
       break;

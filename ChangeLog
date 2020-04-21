@@ -18,6 +18,7 @@ Tue Mar 21 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* modules/ircd/accvs.cfg, modules/ircd/ircd.c: fixed invalid nick try
 	  to correct on invalid remote nickchange, added IRCD_KILL_INVALID_NICK
 	  to control that behavior.
+	* modules/ircd/ircd.c: fixed crash after K-line received.
 
 --- release 0.12.1 ---
 Mon Mar 20 2020 Andriy Gritsenko <andrej@rep.kiev.ua>
