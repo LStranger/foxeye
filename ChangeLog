@@ -19,6 +19,8 @@ Wed Mar 22 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	  parameter to not process marks but just validate.
 	* modules/ircd/messages.c: fixed SQUERY messages processing, it should
 	  accept only single service name.
+	* modules/ircd-rusnet/rusnet.c: fixed KLINE processing from server, it
+	  should accept timestamp instead of hours number or -1 to clear ban.
 
 Tue Mar 21 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* intl/VERSION: bump to gettext-0.19.8.

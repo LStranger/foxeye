@@ -185,8 +185,10 @@ static bool _rusnet_tline(INTERFACE *srv, struct peer_t *peer, const char *mask,
   /* prepare input */
   snprintf(servname, sizeof(servname), "@%s", srv->name);
   t = strtol(timer, NULL, 10);
-  if (t <= 0)
-    t = strtol(DEFAULT_TLINE_HOURS, NULL, 10);
+  if (t <= 0) /* no time given */
+    t = Time + strtol(DEFAULT_TLINE_HOURS, NULL, 10) * 3600;
+  else if (t < 2*365*24) /* if it's not then it's epoch seconds */
+    t = Time + t * 3600;
   /* validate reason */
   if (uf & U_QUIET)
   {
@@ -224,7 +226,7 @@ static bool _rusnet_tline(INTERFACE *srv, struct peer_t *peer, const char *mask,
   }
   //check if it is change or duplicate: compare target, timer, and reason
   //if duplicate then return FALSE;
-  Set_Field(clr, servname, rs, Time + t * 3600);
+  Set_Field(clr, servname, rs, t);
   Set_Flags(clr, srv->name, uf);
   Set_Field(clr, "tline-target", target, 0);
   Unlock_Clientrecord(clr);
@@ -346,7 +348,9 @@ static int _rusnet_tline_sb(INTERFACE *srv, struct peer_t *peer,
   {
     /* make full hostmask */
     snprintf(mask, sizeof(mask), "%s!%s@%s", argv[1], argv[2], argv[3]);
-    if (can_E && strcmp(timer, "E") == 0)
+    if (strcmp(timer, "-1") == 0)
+      applied = _rusnet_untline(srv, peer, mask, U_ACCESS);
+    else if (can_E && strcmp(timer, "E") == 0)
       applied = _rusnet_tline(srv, peer, mask, U_ACCESS, argv[0],
 			      DEFAULT_TLINE_HOURS, reason);
     else
