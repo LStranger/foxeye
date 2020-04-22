@@ -837,7 +837,6 @@ static int ircd_squery_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnic
 			  modeflag eum, int argc, const char **argv)
 { /* args: <servicename> <text to be sent> */
   CLIENT *cl = ((struct peer_priv *)peer->iface->data)->link->cl, *tcl;
-  IRCD *ircd = (IRCD *)srv->data;
 
   if (argc == 0 || !*argv[0])
     return ircd_do_unumeric (cl, ERR_NORECIPIENT, cl, 0, NULL);
@@ -854,10 +853,9 @@ static int ircd_squery_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnic
 #endif
     return 1;
   }
-  _ircd_broadcast_msglist_new(ircd, NULL, 0, ircd_new_id(NULL), peer->dname,
-			      argv[0], argv, 1, "SQUERY", argv[1], 0);
-  _ircd_broadcast_msglist_old(ircd, NULL, 0, peer->dname,
-			      argv[0], argv, 1, "SQUERY", argv[1], 0);
+  ircd_sendto_new (tcl, cl, peer->iface->data, ":%s ISQUERY %d %s :%s",
+		   peer->dname, ircd_new_id(NULL), argv[0], argv[1]);
+  ircd_sendto_old (tcl, ":%s SQUERY %s :%s", peer->dname, argv[0], argv[1]);
   return 1;
 }
 
@@ -1114,23 +1112,24 @@ static int ircd_squery_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
     return ircd_recover_done(pp, "illegal SQUERY command");
   }
 #endif
-  //cl = _ircd_find_client_lc((IRCD *)srv->data, lcsender);
   if (!(tcl = _ircd_find_q_target(argv[0], pp)) ||
       !CLIENT_IS_SERVICE(tcl)) {
     ERROR("ircd:invalid SQUERY target %s via %s", argv[0], peer->dname);
     return ircd_recover_done(pp, "Invalid recipient");
   }
-#ifdef USE_SERVICES
-  if (!CLIENT_IS_REMOTE(tcl))
-    New_Request(tcl->via->p.iface, 0, ":%s SQUERY %s :%s", sender, argv[0], argv[1]);
-  else
-#endif
+  if (CLIENT_IS_REMOTE(tcl))
   {
-    _ircd_broadcast_msglist_new((IRCD *)srv->data, pp, token, -1, sender,
-				argv[1], &argv[1], 1, "SQUERY", argv[2], 0);
-    _ircd_broadcast_msglist_old((IRCD *)srv->data, pp, token, sender,
-				argv[0], argv, 1, "SQUERY", argv[1], 0);
+    IRCD *ircd = (IRCD *)srv->data;
+    CLIENT *cl = _ircd_find_client_lc(ircd, lcsender);
+
+    ircd_sendto_new (tcl, cl, pp, ":%s ISQUERY %d %s :%s",
+		     sender, ircd_new_id(ircd->token[token]), argv[0], argv[1]);
+    ircd_sendto_old (tcl, ":%s SQUERY %s :%s", sender, argv[0], argv[1]);
   }
+#ifdef USE_SERVICES
+  else
+    New_Request(tcl->via->p.iface, 0, ":%s SQUERY %s :%s", sender, argv[0], argv[1]);
+#endif
   return (1);
 }
 
@@ -1375,17 +1374,18 @@ static int ircd_isquery(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     ERROR("ircd:invalid ISQUERY target %s via %s", argv[1], peer->dname);
     return ircd_recover_done(pp, "Invalid recipient");
   }
-#ifdef USE_SERVICES
-  if (!CLIENT_IS_REMOTE(tcl))
-    New_Request(tcl->via->p.iface, 0, ":%s SQUERY %s :%s", sender, argv[1], argv[2]);
-  else
-#endif
+  if (CLIENT_IS_REMOTE(tcl))
   {
-    _ircd_broadcast_msglist_new(ircd, pp, token, id, sender,
-				argv[1], &argv[1], 1, "SQUERY", argv[2], 0);
-    _ircd_broadcast_msglist_old(ircd, pp, token, sender,
-				argv[1], &argv[1], 1, "SQUERY", argv[2], 0);
+    CLIENT *cl = _ircd_find_client_lc(ircd, lcsender);
+
+    ircd_sendto_new (tcl, cl, pp, ":%s ISQUERY %d %s :%s",
+		     sender, id, argv[1], argv[2]);
+    ircd_sendto_old (tcl, ":%s SQUERY %s :%s", sender, argv[1], argv[2]);
   }
+#ifdef USE_SERVICES
+  else
+    New_Request(tcl->via->p.iface, 0, ":%s SQUERY %s :%s", sender, argv[1], argv[2]);
+#endif
   return (1);
 }
 #endif
