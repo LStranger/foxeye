@@ -2066,10 +2066,13 @@ static void _ircd_handler (char *cln, char *ident, const char *host, void *data)
     {
       int res = b->func (&peer->p, ident, host, &msg, &cl->umode);
       Set_Iface (peer->p.iface);	/* regain lock */
-      if (res == 0)
+      if (res == 0) {
+	if (!msg) msg = "unknown auth error";
 	break;				/* auth error */
+      }
     }
-  peer->p.state = P_LOGIN;
+  if (!msg)				/* don't advance it if will be killed */
+    peer->p.state = P_LOGIN;
   pthread_detach(pthread_self());	/* don't let thread turn into zombie */
   Mark_Iface (peer->p.iface);		/* run _ircd_client_request() ASAP */
   Unset_Iface();			/* done so unlock bindtable */

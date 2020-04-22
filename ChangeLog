@@ -21,6 +21,7 @@ Wed Mar 22 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	  accept only single service name.
 	* modules/ircd-rusnet/rusnet.c: fixed KLINE processing from server, it
 	  should accept timestamp instead of hours number or -1 to clear ban.
+	* modules/ircd/ircd.c: fixed crash after auth filter failure.
 
 Tue Mar 21 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* intl/VERSION: bump to gettext-0.19.8.
