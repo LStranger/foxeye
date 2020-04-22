@@ -294,7 +294,8 @@
     that found client matches criteria then it should set _m_a_r_k to 1. User
     mode flags of sender _e_u_m are provided for additional checks, also see
     "ircd-client-cmd" bindtable but A_ISON has special meaning to provide
-    check for local recipients (otherwise for remote ones).
+    check for local recipients (otherwise for remote ones). A_PINGED flag
+    means do not actually mark but just validate recipient.
       Matching: target mask.  (userflags are ignored)
 
 -     "iirrccdd--wwhhooiiss"     MASK

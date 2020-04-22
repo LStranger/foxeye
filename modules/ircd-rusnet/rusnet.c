@@ -1424,10 +1424,12 @@ static int rusnet_set_msg_target_services(INTERFACE *srv, const char *sender,
   char service[MB_LEN_MAX*NICKLEN+1];
 
   DBG("rusnet:%s: %s checks for %s mode %u",__func__,sender,target,(unsigned)eum);
-  if (!(eum & A_SERVER) && (eum & A_ISON))	/* no locals or direct msg */
+  if ((eum & (A_SERVER | A_ISON)) != A_SERVER)	/* no locals or direct msg */
     return res;
   if (at == NULL || strcmp(at + 1, SERVICES_SERV) != 0)
     return res;
+  if (eum & A_PINGED)				/* just a test */
+    return 1;
   if (at - target >= (ssize_t)sizeof(service))	/* it's impossible */
     return res;
   unistrlower(service, target, at - target + 1);

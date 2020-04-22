@@ -13,6 +13,11 @@ TODO:
 	* *: to check Add_Request/New_Request coming to user to be translatable.
 	* modules/ircd: to support command LANG for numerics translation.
 
+Wed Mar 22 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
+	* modules/ircd/accvs.api, modules/ircd/messages.c, modules/ircd-rusnet/rusnet.c:
+	  added A_PINGED special meaning for "ircd-set-message-targets" binding
+	  parameter to not process marks but just validate.
+
 Tue Mar 21 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* intl/VERSION: bump to gettext-0.19.8.
 	* modules/ircd/accvs.cfg, modules/ircd/ircd.c: fixed invalid nick try
