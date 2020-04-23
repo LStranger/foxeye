@@ -1502,6 +1502,7 @@ static iftype_t _ircd_client_signal (INTERFACE *cli, ifsig_t sig)
       if (Peer_Put ((&peer->p), buff, &sw) > 0)
 	while (!Peer_Put ((&peer->p), NULL, &sw));
       //CloseSocket (peer->p.socket);
+      cli->data = NULL;
       cli->ift = I_DIED;
       break;
     default: ;
@@ -2273,6 +2274,7 @@ static iftype_t _ircd_uplink_sig (INTERFACE *uli, ifsig_t sig)
       break;
     case S_SHUTDOWN:
       //CloseSocket (uplink->p.socket);
+      uli->data = NULL;
       uli->ift = I_DIED;
     default: ;
   }

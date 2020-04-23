@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2014  Andriy N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 2006-2020  Andriy N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -267,6 +267,7 @@ static iftype_t _dcc_sig_2 (INTERFACE *iface, ifsig_t signal)
       break;
     case S_SHUTDOWN:
       /* nothing can do... */
+      iface->data = NULL;
       return I_DIED;
     default:;
   }
@@ -1286,6 +1287,7 @@ static iftype_t _dcc_sig_1 (INTERFACE *iface, ifsig_t signal)
       iface->ift = I_DIED;
       break;
     case S_SHUTDOWN:
+      iface->data = NULL;
       return I_DIED;			/* nothing to do on emergency */
     default:;
   }
