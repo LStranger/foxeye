@@ -80,7 +80,7 @@ typedef struct ifst_t
 
 /* since Nick is undeclared for "dispatcher.c"... */
 extern char Nick[NAMEMAX+1];
-extern char *ShutdownR;
+extern const char *ShutdownR;
 
 static request_t *FreeReq = NULL;	/* request_t[] array */
 static unsigned int _Ralloc = 0;

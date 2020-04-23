@@ -149,7 +149,7 @@ static int flush_log (logfile_t *log, int force, int needsync)
   return 0;
 }
 
-static ssize_t textlog_add_buf (logfile_t *log, char *text, size_t sz,
+static ssize_t textlog_add_buf (logfile_t *log, const char *text, size_t sz,
 				size_t sp, int ts, int ishtml)
 {
   char tss[36];	/* we need 32 actually */

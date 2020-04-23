@@ -1391,10 +1391,11 @@ static void _ircd_remote_user_gone(CLIENT *cl)
 static iftype_t _ircd_client_signal (INTERFACE *cli, ifsig_t sig)
 {
   peer_priv *peer = cli->data;
-  const char *reason, *host;
+  const char *reason;
   INTERFACE *tmp;
   size_t sw;
   char nstr[MB_LEN_MAX*NICKLEN+2];
+  char host[HOSTMASKLEN+1];
   char buff[STRING];
 
   dprint(5, "ircd:ircd.c:_ircd_client_signal: name=%s sig=%d",
@@ -1419,9 +1420,10 @@ static iftype_t _ircd_client_signal (INTERFACE *cli, ifsig_t sig)
 	nstr[0] = ' ';
       strfcpy(&nstr[1], peer->link->cl->nick, sizeof(nstr) - 1);
       if (peer->p.state == P_LOGIN || peer->p.state == P_TALK)
-	host = peer->link->cl->host;
+	snprintf(host, sizeof(host), "%s@%s", peer->link->cl->user,
+		 peer->link->cl->host);
       else
-	host = NULL;		/*host isn't valid if not P_LOGIN nor P_TALK */
+	host[0] = '\0';		/*host isn't valid if not P_LOGIN nor P_TALK */
       switch (peer->p.state) {
       case P_TALK:
 	if (CLIENT_IS_SERVER(peer->link->cl))

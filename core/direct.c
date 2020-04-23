@@ -128,7 +128,7 @@ static void _chat_join (peer_t *dcc)
     Add_Request (I_DCCALIAS, ch, F_T_NOTICE, _("joined this botnet channel."));
 }
 
-static void _chat_part (peer_t *dcc, char *quit)
+static void _chat_part (peer_t *dcc, const char *quit)
 {
   register struct binding_t *bind = NULL;
   char *on_bot;

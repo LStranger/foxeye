@@ -39,8 +39,8 @@ WHERE short O_DLEVEL		INITVAL(0);
 WHERE char *Config		INITVAL(NULL);
 WHERE char *RunPath		INITVAL(NULL);
 WHERE char *BindResult		INITVAL(NULL);
-WHERE char *ShutdownR		INITVAL(NULL);
-WHERE char *ReportFormat	INITVAL(NULL);
+WHERE const char *ShutdownR	INITVAL(NULL);
+WHERE const char *ReportFormat	INITVAL(NULL);
 WHERE modeflag ReportMask	INITVAL(0);
 
 WHERE time_t StartTime;
