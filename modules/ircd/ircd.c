@@ -1078,14 +1078,20 @@ _send_ack:
       return (1);		/* just ignore it then */
     } else if (!is_nickchange)	/* ircd_nick_sb needs original sender */
       c2 = c;			/* c is not a phantom at this point */
+    if (CLIENT_IS_ME(c))
+    {
+      t = 0;
+      goto _do_as_server;
+    }
     if (peer == NULL || (peer->p.state != P_LOGIN && peer->p.state != P_IDLE &&
 			 CLIENT_IS_LOCAL(c) && !CLIENT_IS_SERVER(c)))
     {
       /* internal call - client message simulation */
       if ((b = Check_Bindtable (BTIrcdClientCmd, argv[1], U_ALL, U_ANYCH, NULL)))
 	if (!b->name)
-	  return (fc = b->func) (Ircd->iface, &c->via->p, c->lcnick, c->user,
-				 c->host, c->vhost, A_SERVER, argc - 2, &argv[2]);
+	  return (fc = b->func) (Ircd->iface, c->via ? &c->via->p : NULL,
+				 c->lcnick, c->user, c->host, c->vhost,
+				 A_SERVER, argc - 2, &argv[2]);
       return 0;
     }
     if ((CLIENT_IS_ME(c) ||
@@ -1097,6 +1103,7 @@ _send_ack:
       return (1);			/* ouch, it was looped back! */
     }
     t = client2token (c);
+_do_as_server:
     while ((b = Check_Bindtable (BTIrcdServerCmd, argv[1], U_ALL, U_ANYCH, b)))
       if (!b->name)
 	i |= (fs = (void *)b->func) (Ircd->iface, &peer->p, t, c2->nick,
