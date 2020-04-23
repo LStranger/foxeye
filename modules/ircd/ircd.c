@@ -171,6 +171,7 @@ static int _ircd_class_in (struct peer_t *peer, char *user, char *host,
   char uh[HOSTMASKLEN+1];
   register CLASS *clcl;
   int locnt, glcnt;
+  time_t exp;
   register CLIENT *td;
 
   snprintf (uh, sizeof(uh), "%s@%s", NONULL(user), host);
@@ -195,8 +196,11 @@ static int _ircd_class_in (struct peer_t *peer, char *user, char *host,
   if (cl)
   {
     dprint(4, "ircd:ircd.c:_ircd_class_in: found matched %s: %s", uh, clname);
-    clparms = Get_Field (cl, Ircd->sub->name, NULL);
-    uf = Get_Flags (cl, Ircd->iface->name);
+    clparms = Get_Field (cl, Ircd->sub->name, &exp);
+    if (exp > Time)
+      uf = Get_Flags (cl, Ircd->iface->name);
+    else /* ignore expired */
+      clparms = NULL;
   }
   if (clparms)
   {

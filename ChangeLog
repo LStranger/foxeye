@@ -19,6 +19,9 @@ Thu Mar 23 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	  safe_calloc() instead of calloc().
 	* modules/irc-ctcp/dcc.c, modules/ircd/ircd.c: added resetting data
 	  pointer on S_SHUTDOWN as it might be async.
+	* core/foxeye.h, core/list.c, doc/modules.api, modules/ircd/ircd.c:
+	  fixed test for subrecords expiration time, Find_Userrecord() in case
+	  of full host scan should not take into consideration expired records.
 
 Wed Mar 22 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* modules/ircd/accvs.api, modules/ircd/messages.c, modules/ircd-rusnet/rusnet.c:

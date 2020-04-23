@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2020  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -214,11 +214,14 @@ static struct clrec_t *_findbylname (const char *lname)
   return Find_Key (UTree, lclname);
 }
 
+#define U_NONAMED (U_DENY | U_ACCESS | U_INVITE | U_DEOP | U_QUIET | U_IGNORED)
+
 /*--- R --- UFLock read --- no HLock ---*/
 static struct clrec_t *_findthebest (const char *mask, struct clrec_t *prefer)
 {
   struct clrec_t *u, *user = NULL;
   user_hr *hr;
+  user_chr *chr;
   char *at_excl;
   int n, p = 0, matched = 0;
   lid_t lid;
@@ -232,6 +235,17 @@ static struct clrec_t *_findthebest (const char *mask, struct clrec_t *prefer)
   lid = LID_MIN;
   do {
     if ((u = UList[lid - LID_MIN]) && !(u->flag & (U_SPECIAL|U_ALIAS)))
+    {
+      /* check for expiration first */
+      if (lid < ID_REM && (u->flag & U_NONAMED & U_GLOBALS) == 0)
+      {
+	for (chr = u->channels; chr; chr = chr->next)
+	  if (chr->expire > Time && (chr->flag & U_NONAMED))
+	    break;
+	if (chr == NULL) /* all subrecords expired, igrore this lid */
+	  continue;
+      }
+      /* and then do matching */
       for (hr = u->host; hr; hr = hr->next)
       {
 	/* skip xxx! part in hostmask if input does not contain one yet */
@@ -262,6 +276,7 @@ static struct clrec_t *_findthebest (const char *mask, struct clrec_t *prefer)
 	if (u == prefer && n > p)
 	  p = n;
       }
+    }
   } while (lid++ != LID_MAX);
   rw_unlock (&HLock);
   if (p && p == matched)
@@ -952,7 +967,6 @@ static int _add_to_list2 (INTERFACE *iface, char *buf, size_t *len, char *msg)
   return n;
 }
 
-#define U_NONAMED (U_DENY | U_ACCESS | U_INVITE | U_DEOP | U_QUIET | U_IGNORED)
 /*--- W --- no locks ---*/
 int Get_Clientlist (INTERFACE *iface, userflag uf, const char *fn,
 		    const char *mask)
@@ -1393,6 +1407,8 @@ int Set_Field (struct clrec_t *user, const char *field, const char *val,
       c = &chr->greeting;
     if (exp && chr)			/* set it now, it valid only for chr */
       chr->expire = exp;
+    else if (chr)
+      chr->expire = TIME_T_MAX;
     DBG ("Set_Field: added channel: %p, head=%p", chr, user->channels);
   }
   else switch ((i = _get_index_fr (field)))	/* it's not service */
@@ -2097,7 +2113,7 @@ static int _load_listfile (const char *filename, int update)
 	    else if (ur != NULL && ur->lname == NULL) /* check nonamed ones */
 	    {
 	      user_chr *ch, *ch2;
-	      userflag flag = ur->flag;
+	      userflag flag = ur->flag & U_GLOBALS;
 
 	      pthread_mutex_lock (&ur->mutex);
 	      for (ch = ur->channels; ch; ch = ch2)
