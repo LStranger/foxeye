@@ -1673,7 +1673,7 @@ static void _istats_h_show (INTERFACE *tmp, char *serv)
 	c2 = gettoken (c1, NULL);
 	ircd_do_unumeric (_ircd_stats_client, RPL_STATSHLINE, &_istats_dummy_client, 0, c1);
       }
-      free (hub);
+      FREE (&hub);
     }
   }
 }

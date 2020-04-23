@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2020  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -1025,14 +1025,14 @@ static int _add_var (const char *name, void *var, size_t *s)
     return 0;
   }
   dprint (2, "init:_add_var: %s %u", name, (unsigned int)*s);
-  data = calloc (1, sizeof(VarData) + safe_strlen(name));
+  data = safe_calloc (1, sizeof(VarData) + safe_strlen(name));
   data->data = var;
   strcpy (data->name, name);
   data->len = *s;
   if (i) data->changed = TRUE;
   if (!Insert_Key (&VTree, data->name, data, 1))	/* try unique name */
     return 1;
-  free (data);
+  FREE (&data);
   ERROR ("init:_add_var: tree error");
   return 0;
 }
@@ -1078,7 +1078,7 @@ static int _del_var (const char *name)
   }
   dprint (2, "init:_del_var: %s", name);
   Delete_Key (VTree, name, data);
-  free (data);
+  FREE (&data);
   return 1;
 }
 
@@ -1140,12 +1140,12 @@ _add_fn (const char *name, int (*func)(const char *), const char *msg)
       dprint (5, "init:_add_fn: retry on %s", name);
     return 0;
   }
-  data = calloc (1, sizeof(VarData2) + safe_strlen(name));
+  data = safe_calloc (1, sizeof(VarData2) + safe_strlen(name));
   data->f.n = func;
   strcpy (data->name, name);
   if (!Insert_Key (&STree, data->name, data, 1))	/* try unique */
     return 1;
-  free (data);
+  FREE (&data);
   ERROR ("init:_add_fn: tree error");
   return 0;
 }
@@ -1162,7 +1162,7 @@ static int _del_fn (const char *name)
   }
   dprint (2, "init:_del_fn: %s", name);
   Delete_Key (STree, name, data);
-  free (data);
+  FREE (&data);
   return 1;
 }
 
@@ -2109,8 +2109,8 @@ INTERFACE *init (void)
   /* kill all modules */
   Send_Signal (I_MODULE, "*", S_TERMINATE);
   /* I think I need to destroy trees ? */
-  Destroy_Tree (&VTree, free);
-  Destroy_Tree (&STree, free);
+  Destroy_Tree (&VTree, safe_pfree);
+  Destroy_Tree (&STree, safe_pfree);
   /* empty all bindtables */
   for (bt = Tables; bt; bt = bt->next)
   {

@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 1996-8 Michael R. Elkins <me@cs.hmc.edu>
  * Copyright (C) 1999 Thomas Roessler <roessler@guug.de>
- * Copyright (C) 1999-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2020  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -47,7 +47,7 @@ void *safe_calloc (size_t nmemb, size_t size)
     return NULL;
   if (!(p = calloc (nmemb, size)))
     bot_shutdown (mem_msg, 2);
-  DBG ("safe_calloc(%zu*%zu)=0x%08lx", nmemb, size, (long int)p);
+  DBG ("safe_calloc(%zu*%zu)=%p", nmemb, size, p);
   return p;
 }
 
@@ -59,7 +59,7 @@ void *safe_malloc (size_t siz)
     return NULL;
   if ((p = (void *) malloc (siz)) == 0)
     bot_shutdown (mem_msg, 2);
-  DBG ("safe_malloc(%zu)=0x%08lx", siz, (long int)p);
+  DBG ("safe_malloc(%zu)=%p", siz, p);
   return p;
 }
 
@@ -69,7 +69,7 @@ void safe_realloc (void **p, size_t siz)
 
   if (siz == 0)
   {
-    DBG ("safe_realloc(0x%08lx,0)", (long int)*p);
+    DBG ("safe_realloc(%p,0)", *p);
     if (*p)
     {
       free (*p);
@@ -87,16 +87,21 @@ void safe_realloc (void **p, size_t siz)
   }
   if (!r)
     bot_shutdown (mem_msg, 2);
-  DBG ("safe_realloc(0x%08lx,%zu)=0x%08lx", (long int)*p, siz, (long int)r);
+  DBG ("safe_realloc(%p,%zu)=%p", *p, siz, r);
   *p = r;
+}
+
+void safe_pfree (void *p)
+{
+  DBG ("safe_free(%p)", p);
+  if (p) free(p);
 }
 
 void safe_free (void **p)
 {
   if (*p)
   {
-    DBG ("safe_free(0x%08lx)", (long int)*p);
-    free (*p);
+    safe_pfree (*p);
     *p = NULL;
   }
 }

@@ -322,7 +322,7 @@ static int _lua_bind (lua_State *L) /* foxeye.bind(table,mask,uflags,func) */
   /* it's inserted into common list not individual one */
   _lua_getbindlist (L, table); /* t m u A f n B */
   lua_replace (L, 4); /* t m u B f n */
-  table = strdup (table);
+  table = safe_strdup (table);
   dprint (3, "lua:lua_bind: table %s mask %s func %s", table, mask,
 	  lua_tostring (L, 6));
   if (!Add_Binding (table, mask, guf, cuf, &binding_lua, lua_tostring (L, 6)))
@@ -331,7 +331,7 @@ static int _lua_bind (lua_State *L) /* foxeye.bind(table,mask,uflags,func) */
 		 lua_tostring (L, 6));
   }
   if (Insert_Key (&lua_bindtables, table, (void *)table, 1))
-    free ((void *)table); /* it's not added (already in list) so free memory */
+    safe_free ((void *)table); /* it's not added (already in list) so free memory */
   lua_insert (L, 5); /* t m u B n f */
   lua_settable (L, 4); /* t m u B */
   /* and now it's added into individual list too */
@@ -1172,7 +1172,7 @@ static iftype_t lua_module_signal (INTERFACE *iface, ifsig_t sig)
       l = NULL;
       while ((l = Next_Leaf (lua_bindtables, l, &c)))
 	Delete_Binding (c, &binding_lua, NULL);	/* delete all bindings there */
-      Destroy_Tree (&lua_bindtables, free);
+      Destroy_Tree (&lua_bindtables, safe_pfree);
       lua_close (Lua);
       Delete_Help ("lua");
       iface->ift |= I_DIED;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2020  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -3093,7 +3093,7 @@ static void _peer_data_free(void *dataptr)
   PeerData *data = dataptr;
   if (data->free_func)
     data->free_func(data->data);
-  free(dataptr);
+  safe_free(&dataptr);
 }
 
 int PeerData_Attach (struct peer_t *peer, const char *name, void *data,
@@ -3117,7 +3117,7 @@ int PeerData_Attach (struct peer_t *peer, const char *name, void *data,
     return 1;
   }
   DBG("failed to attach data to peer %p by %s", peer, name);
-  free(pd);
+  FREE(&pd);
   return 0;
 }
 

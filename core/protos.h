@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2020  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -117,6 +117,7 @@ size_t strfcpy (char *, const char *, size_t) __attribute__((nonnull(1, 2)));
 void *safe_calloc (size_t, size_t) __attribute__((warn_unused_result));
 void *safe_malloc (size_t) __attribute__((warn_unused_result));
 void safe_realloc (void **, size_t);
+void safe_pfree (void *);
 void safe_free (void **);
 #ifdef HAVE_INLINE
 #if __GNUC__ >= 4
