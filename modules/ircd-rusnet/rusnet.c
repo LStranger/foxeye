@@ -159,6 +159,38 @@ static int _rusnet_tline_bounce(INTERFACE *srv, const char *sender, const char *
   return (1);
 }
 
+static iftype_t rusnet_do_kills_sig(INTERFACE *iface, ifsig_t sig)
+{
+  if (sig == S_TERMINATE || sig == S_SHUTDOWN)
+  {
+    iface->data = NULL;
+    return I_DIED;
+  }
+  return 0;
+}
+
+typedef struct {
+  const char *mask;
+  const char *reason;
+  int counter;
+} rusnet_do_kills_data;
+
+static int rusnet_do_kills(INTERFACE *iface, REQUEST *req)
+{
+  rusnet_do_kills_data *data = iface->data;
+
+  if (req && data && simple_match(data->mask, req->string) > 0)
+  {
+    ShutdownR = data->reason;
+    if (req->from->IFSignal)
+    {
+      req->from->IFSignal(req->from, S_TERMINATE);
+      data->counter++;
+    }
+  }
+  return REQ_OK;
+}
+
 static bool _rusnet_tline(INTERFACE *srv, struct peer_t *peer, const char *mask,
 			  userflag uf, const char *target, const char *timer,
 			  const char *reason)
@@ -169,6 +201,8 @@ static bool _rusnet_tline(INTERFACE *srv, struct peer_t *peer, const char *mask,
   struct clrec_t *clr;
   long t;
   size_t ptr = 0;
+  INTERFACE *tmp;
+  rusnet_do_kills_data data;
 
   /* validate mask first */
   if (mask[0] == '*' && mask[1] == '!')
@@ -215,8 +249,7 @@ static bool _rusnet_tline(INTERFACE *srv, struct peer_t *peer, const char *mask,
   /* try to add client to listfile */
   if (Add_Clientrecord(NULL, mask, U_DEOP) == 0)
   {
-    ERROR("ircd-rusnet: failed to add record for %s", mask);
-    return FALSE;
+    WARNING("ircd-rusnet: failed to add record for %s", mask);
   }
   clr = Find_Clientrecord(mask, NULL, NULL, NULL);
   if (clr == NULL)
@@ -224,12 +257,29 @@ static bool _rusnet_tline(INTERFACE *srv, struct peer_t *peer, const char *mask,
     ERROR("ircd-rusnet: cannot find record for %s after adding it", mask);
     return FALSE;
   }
+  //FIXME:
   //check if it is change or duplicate: compare target, timer, and reason
   //if duplicate then return FALSE;
   Set_Field(clr, servname, rs, t);
   Set_Flags(clr, srv->name, uf);
   Set_Field(clr, "tline-target", target, 0);
   Unlock_Clientrecord(clr);
+  if (!(uf & U_DENY))
+    return TRUE;
+  /* do kills now */
+  data.mask = mask;
+  data.reason = reason;
+  data.counter = 0;
+  tmp = Add_Iface(I_TEMP, NULL, &rusnet_do_kills_sig, &rusnet_do_kills, &data);
+  Set_Iface(tmp);
+  ReportFormat = "%@";
+  Send_Signal(I_CLIENT, servname, S_REPORT);
+  while(Get_Request());
+  Unset_Iface();
+  tmp->data = NULL;
+  tmp->ift = I_DIED;
+  if (data.counter > 0)
+    New_Request(srv, 0, "WALLOPS :%d user(s) killed due to AKILL", data.counter);
   return TRUE;
 }
 
@@ -237,8 +287,8 @@ static bool _rusnet_untline(INTERFACE *srv, struct peer_t *peer, const char *mas
 			    userflag uf)
 {
   /* find client and remove mask from it */
-  const char *lname;
-  userflag rf;
+  const char *lname = NULL;
+  userflag rf = 0;
   struct clrec_t *clr;
 
   /* validate mask first */
@@ -349,7 +399,7 @@ static int _rusnet_tline_sb(INTERFACE *srv, struct peer_t *peer,
     /* make full hostmask */
     snprintf(mask, sizeof(mask), "%s!%s@%s", argv[1], argv[2], argv[3]);
     if (strcmp(timer, "-1") == 0)
-      applied = _rusnet_untline(srv, peer, mask, U_ACCESS);
+      applied = _rusnet_untline(srv, peer, mask, uf);
     else if (can_E && strcmp(timer, "E") == 0)
       applied = _rusnet_tline(srv, peer, mask, U_ACCESS, argv[0],
 			      DEFAULT_TLINE_HOURS, reason);
@@ -1539,6 +1589,8 @@ static void rusnet_isupport(char *buff, size_t bufsize)
  */
 static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
 {
+  INTERFACE *tmp;
+
   switch (sig)
   {
     case S_TERMINATE:
@@ -1610,7 +1662,9 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
       IrcdRMotdSize = 0;
       return I_DIED;
     case S_REPORT:
-      // TODO......
+      tmp = Set_Iface(iface);
+      New_Request(tmp, F_REPORT, "Module rusnet: active."); // FIXME: i18n
+      Unset_Iface();
       break;
     case S_REG:
       Add_Request(I_INIT, "*", F_REPORT, "module ircd-rusnet");
