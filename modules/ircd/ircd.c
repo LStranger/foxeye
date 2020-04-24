@@ -4808,6 +4808,26 @@ static int _ircd_sub_request (INTERFACE *cli, REQUEST *req)
   return REQ_OK;
 }
 
+static iftype_t _ircd_sub_signal (INTERFACE *iface, ifsig_t sig)
+{
+  LINK *cll;
+
+  dprint(5, "_ircd_sub_signal: got sig=%d", (int)sig);
+  switch (sig)
+  {
+    case S_TERMINATE:
+    case S_SHUTDOWN:
+      return I_DIED;
+    case S_REPORT:
+      for (cll = ME.c.lients; cll; cll = cll->prev)
+	if (cll->cl && cll->cl->local && cll->cl->local->p.iface->IFSignal)
+	  cll->cl->local->p.iface->IFSignal(cll->cl->local->p.iface, S_REPORT);
+      break;
+    default: ;
+  }
+  return 0;
+}
+
 
 /* -- common network interface -------------------------------------------- */
 static int _ircd_request (INTERFACE *cli, REQUEST *req)
@@ -5756,7 +5776,10 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
 	  _ircd_client_signal (pp->p.iface, S_SHUTDOWN);
       break;
     case S_REPORT:
-      // TODO......
+      tmp = Set_Iface(iface);
+      New_Request(tmp, F_REPORT, "IRCD active: network '%s', server name '%s'.",
+		  Ircd->iface->name, MY_NAME); // FIXME: i18n
+      Unset_Iface();
       break;
     case S_REG:
       _ircd_register_all();
@@ -5789,7 +5812,8 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
       Add_Timer (Ircd->iface, S_WAKEUP, 1);
       /* also make name@network messages collector */
       snprintf (buff, sizeof(buff), "@%s", Ircd->iface->name);
-      Ircd->sub = Add_Iface (I_CLIENT, buff, NULL, &_ircd_sub_request, NULL);
+      Ircd->sub = Add_Iface (I_CLIENT, buff, &_ircd_sub_signal,
+			     &_ircd_sub_request, NULL);
       strfcpy (MY_NAME, Nick, sizeof(MY_NAME)); /* unchangeable in runtime */
       strfcpy(ME.fname, _ircd_description_string, sizeof(ME.fname));
       strfcpy(ME.away, _ircd_version_string, sizeof(ME.away));
