@@ -13,7 +13,11 @@ TODO:
 	* *: to check Add_Request/New_Request coming to user to be translatable.
 	* modules/ircd: to support command LANG for numerics translation.
 
-Thu Mar 23 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
+Fri Apr 24 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
+	* core/direct.c, modules/ircd/ircd.c: fixed error with thread detach,
+	  added a bit more debug.
+
+Thu Apr 23 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* core/direct.c, core/init.c, core/lib.c, core/protos.h, modules/ircd/queries.c, modules/lua/lua.c:
 	  changed to use safe_pfree() or safe_free() instead of free(), and
 	  safe_calloc() instead of calloc().
@@ -34,7 +38,7 @@ Thu Mar 23 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	  to all local users.
 	* modules/ircd-rusnet/rusnet.c: fixed not working KLINE command.
 
-Wed Mar 22 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
+Wed Apr 22 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* modules/ircd/accvs.api, modules/ircd/messages.c, modules/ircd-rusnet/rusnet.c:
 	  added A_PINGED special meaning for "ircd-set-message-targets" binding
 	  parameter to not process marks but just validate.
@@ -44,7 +48,7 @@ Wed Mar 22 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	  should accept timestamp instead of hours number or -1 to clear ban.
 	* modules/ircd/ircd.c: fixed crash after auth filter failure.
 
-Tue Mar 21 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
+Tue Apr 21 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* intl/VERSION: bump to gettext-0.19.8.
 	* modules/ircd/accvs.cfg, modules/ircd/ircd.c: fixed invalid nick try
 	  to correct on invalid remote nickchange, added IRCD_KILL_INVALID_NICK
@@ -60,7 +64,7 @@ Tue Mar 21 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	  recipients mark when coming from module to remote service.
 
 --- release 0.12.1 ---
-Mon Mar 20 2020 Andriy Gritsenko <andrej@rep.kiev.ua>
+Mon Apr 20 2020 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: don't report invalid token if RFC1459 'SERVER'
 	  message was received.
 	* modules/ziplink/ziplink.c: fixed invalid input stream processing in
@@ -69,12 +73,12 @@ Mon Mar 20 2020 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: don't send mode cancellations on behalf of
 	  server which made the mode change.
 
-Sun Mar 19 2020 Andriy Gritsenko <andrej@rep.kiev.ua>
+Sun Apr 19 2020 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.h: fixed build with -fno-common (default in gcc-10).
 	* modules/ircd/queries.c: fixed invalid processing of whowas list.
 	* core/connchain.c: fixed 'x' chain receive when buffer is wrapped.
 
-Sat Mar 18 2020 Andriy Gritsenko <andrej@rep.kiev.ua>
+Sat Apr 18 2020 Andriy Gritsenko <andrej@rep.kiev.ua>
 	* modules/lua/lua.c: fixed build with Lua 5.3.
 
 Sat Nov 25 2017 Andriy Gritsenko <andrej@rep.kiev.ua>

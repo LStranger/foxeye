@@ -1402,6 +1402,7 @@ static void *_ask_ident (void *input_data)
 
 static void _accept_port_cleanup (void *input_data)
 {
+  DBG("_accept_port_cleanup for socket %hd", acptr->id);
   KillSocket (&acptr->id);
   FREE (&acptr->client);
   safe_free (&input_data); /* FREE (&acptr) */
@@ -1423,6 +1424,7 @@ static void *_accept_port (void *input_data)
   /* set cleanup for the thread before any cancellation point */
   acptr->id = -1;
   pthread_cleanup_push (&_accept_port_cleanup, input_data);
+  dprint(5, "_accept_port: retrieving data for socket %hd", acptr->socket);
   ts1.tv_sec = 0;
   ts1.tv_nsec = 50000000; /* sleep 50 ms */
   while (acptr->tst == 0)
@@ -1432,10 +1434,13 @@ static void *_accept_port (void *input_data)
   if (!*domain)
     domain = NULL;
   /* get ident of user */
+  dprint(5, "_accept_port: socket %hd: got domain '%s'", acptr->socket,
+	 NONULL(domain));
   *ident = 0;
   acptr->id = GetSocket (M_RAW);
   if (acptr->id >= 0 && pthread_create(&ith, NULL, &_ask_ident, input_data) == 0)
   {
+    DBG("_accept_port: got thread %p for ident", (void *)ith);
     Set_Iface (NULL);
     t = Time + ident_timeout;
     Unset_Iface();
@@ -1445,7 +1450,8 @@ static void *_accept_port (void *input_data)
 	pthread_cancel(ith);
     }
     pthread_join(ith, NULL);
-    dprint(5, "ident thread terminated, timer left: %d", (int)(t - time(NULL)));
+    dprint(5, "ident thread %p for %hd terminated, timer left: %d", (void *)ith,
+	   acptr->socket, (int)(t - time(NULL)));
     sp = 0;
     sz = 0;
     while (time(NULL) < t)
@@ -1651,6 +1657,8 @@ static void *_listen_port (void *input_data)
     }
     else
     {
+      DBG("_listen_port: got thread %p for new socket %hd (detach=%d)",
+	  (void *)child->th, child->socket, (acptr->prehandler == NULL));
       if (acptr->prehandler)
 	acptr->prehandler (child->th, &child->data, &child->socket);
       else

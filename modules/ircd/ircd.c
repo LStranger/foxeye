@@ -1461,6 +1461,7 @@ static iftype_t _ircd_client_signal (INTERFACE *cli, ifsig_t sig)
       {
 	case P_DISCONNECTED:		/* there is a thread still */
 	case P_INITIAL:
+	  dprint(6, "ircd: cancelling thread %p", (void *)peer->th);
 	  pthread_cancel (peer->th);
 	  Unset_Iface();		/* let it to finish bindings */
 	  pthread_join (peer->th, NULL);
@@ -1992,6 +1993,7 @@ static void _ircd_prehandler (pthread_t th, void **data, idx_t *as)
   peer->bs = peer->br = peer->ms = peer->mr = 0;
   peer->th = th;
   peer->penalty = 0;
+  dprint(6, "ircd: peer %p set to thread %p", peer, (void *)peer->th);
   while (__ircd_have_started == 0) sleep(1); /* wait for main thread */
   /* lock dispatcher and create connchain */
   Set_Iface (NULL);
@@ -2029,7 +2031,8 @@ static void _ircd_handler (char *cln, char *ident, const char *host, void *data)
   const char *msg;
   struct binding_t *b;
 
-  dprint(5, "ircd:ircd.c:_ircd_handler: %s@%s", NONULL(ident), host);
+  dprint(5, "ircd:ircd.c:_ircd_handler: %s@%s (peer %p in thread %p)",
+	 NONULL(ident), host, peer, (void *)peer->th);
   /* set parameters for peer */
   pthread_mutex_lock (&IrcdLock);
   peer->link = alloc_LINK();
@@ -2087,8 +2090,12 @@ static void _ircd_handler (char *cln, char *ident, const char *host, void *data)
       }
     }
   if (!msg)				/* don't advance it if will be killed */
+  {
+    DBG("_ircd_handler: auth success, detaching %p (%p)", (void *)peer->th,
+	(void *)pthread_self());
     peer->p.state = P_LOGIN;
-  pthread_detach(pthread_self());	/* don't let thread turn into zombie */
+    pthread_detach(pthread_self());	/* don't let thread turn into zombie */
+  }
   Mark_Iface (peer->p.iface);		/* run _ircd_client_request() ASAP */
   Unset_Iface();			/* done so unlock bindtable */
   if (msg)				/* not allowed! */
@@ -2257,6 +2264,7 @@ static iftype_t _ircd_uplink_sig (INTERFACE *uli, ifsig_t sig)
       break;
     case S_TERMINATE:
       /* free everything including socket */
+      dprint(6, "ircd: cancelling uplink thread %p", (void *)uplink->th);
       pthread_cancel (uplink->th);
       pthread_join (uplink->th, NULL); /* it never locks dispatcher */
       Peer_Cleanup (&uplink->p);
