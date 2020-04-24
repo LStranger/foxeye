@@ -1859,8 +1859,9 @@ _sendq_exceeded:
       else if (CLIENT_IS_SERVER (cl))
 	ircd_recover_done (peer, "Invalid command"); /* it might get squit */
       else if (peer->p.state != P_LOGIN && peer->p.state != P_IDLE)
-	//FIXME: make silence on unknown message when registering configurable?
 	ircd_do_unumeric (cl, ERR_UNKNOWNCOMMAND, cl, 0, argv[1]);
+      else
+	ircd_do_unumeric (cl, ERR_NOTREGISTERED, cl, 0, argv[1]);
     }
     else if (!_ircd_idle_from_msg && i > 0)
       peer->noidle = Time;		/* for idle calculation */
