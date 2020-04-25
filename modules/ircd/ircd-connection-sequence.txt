@@ -1,0 +1,99 @@
+INPUT CONNECTION
+========================================================
+[thread start]
+- allocate peer_priv (state P_DISCONNECTED), add it to IrcdPeers
+- Add_Iface (I_CLIENT | I_CONNECT, NULL, &_ircd_client_signal, &_ircd_client_request, peer)
+- add 'x' connchain
+- set conversion charset
+- throw hello message to the peer
+[thread continue with ident and host]
+- allocate LINK, insert it to ME.c.lients
+- allocate CLIENT (where=ME via=peer local=peer)
+- set state P_INITIAL
+- parse ident and host
+- run "ircd-auth" bindtable
+- set state P_LOGIN
+- mark Iface to run
+- if "ircd-auth" failed then _ircd_peer_kill()
+[internal "ircd-auth"]
+- find class or create new
+- if class overloaded:
+  + exit failed
+- if server overloaded:
+  + exit failed
+- if host overloaded:
+  + exit failed
+- insert into CLASS
+- initialize charset conversion
+[Iface in P_DISCONNECTED or P_INITIAL state]
+- in case of timeout:
+  + wait for thread
+  + _ircd_peer_kill()
+- add a timer to mark Iface to run
+[Iface in P_LOGIN+ state]
+- try to push messages if any
+- try to get message and process it
+- apply penalty
+[P_LOGIN state]
+- received PASS:
+  + if NICK or USER received then fail
+  + save contents
+- received QUIT:
+  + _ircd_peer_kill()
+- received USER:
+  + fill user and realname
+  + if NICK received then register new client
+- received NICK:
+  + check nick
+  + if USER received then register new client
+- received SERVER:
+  + if NICK or USER received then fail
+  + check and _ircd_peer_kill() if failed
+  + send PASS and SERVER
+  + add received flags to the connchain
+  + if server already known then replace existing data and drop CLIENT
+    + else grab a token for it
+  + allocate tokens array
+  + drop LINK from ME.c.lients
+  + add LINK to Ircd->servers
+  + set A_SERVER in umode
+  + set state to P_TALK
+  + run "ircd-got-server" binstable
+  + do connection burst
+[register new client]
+- check for akill
+  + _ircd_peer_kill()
+- check if password required
+  + validate password
+    + _ircd_peer_kill()
+- add to the Ircd->clients tree
+- update data (ident, host, umode)
+- propagate user to services and servers
+- set state to P_TALK
+- update users counters
+- send user welcome messages
+- run "ircd-local-client" bindtable
+- run "ircd-client" bindtable
+[_ircd_peer_kill]
+- if no LINK:
+  + set state P_QUIT
+  + return
+- if P_QUIT or P_LASTWAIT:
+  + return
+- send Bye to user
+- drop A_UPLINK umode
+- if server and not P_DISCONNECTED:
+  + drop from Ircd->servers
+  + drop A_UPLINK umode
+  + run "ircd-lost-server" bindtable
+- else if not P_IDLE and not P_DISCONNECTED:
+  + remove from CLASS
+- if P_LOGIN or P_IDLE:
+  + run "ircd-drop-unknown" bindtable
+- if P_TALK:
+  + if not server then update counters and run "ircd-client" bindtable
+- if P_IDLE:
+  + set A_UPLINK umode
+- release tokens array
+- set state P_QUIT
+- mark Iface to run

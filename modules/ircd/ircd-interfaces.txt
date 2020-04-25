@@ -1,0 +1,23 @@
+Main ircd interface:
+  name     <network>
+  flags    I_SERVICE
+  request  parse and send message to the network
+  S_REPORT nothing
+
+Secondary ircd interface:
+  name     @<network>
+  flags    I_CLIENT
+  request  forward to a client (if to <client>@<network>) or to all local users
+  S_REPORT report all local clients
+
+A local user interface:
+  name     <nick>@<network>
+  flags    I_CLIENT | I_CONNECT
+  request  send to user directly
+  S_REPORT one-line report
+
+A server interface:
+  name     <servername>@<network>
+  flags    I_CLIENT | I_CONNECT
+  request  send to server directly
+  S_REPORT one-line report

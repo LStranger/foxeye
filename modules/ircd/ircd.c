@@ -561,7 +561,8 @@ static void _ircd_peer_kill (peer_priv *peer, const char *msg)
     if (CLIENT_IS_SERVER(cl))		/* remove from Ircd->servers */
       _ircd_lserver_out (peer->link);
     else if (peer->p.state != P_IDLE)	/* no class on broken uplink attempt */
-      _ircd_class_out (peer->link);
+      if (peer->p.state != P_INITIAL || cl->x.class != NULL) /* auth failed? */
+	_ircd_class_out (peer->link);
     if (peer->p.state == P_LOGIN || peer->p.state == P_IDLE)
       _ircd_unknown_disconnected (peer);
   }
@@ -2695,6 +2696,7 @@ static int _ircd_got_local_user (CLIENT *cl)
     /* there might be some non-comment data in the field */
     c = cl->lcnick[0] ? strchr (cl->lcnick, ':') : NULL;
     ircd_do_unumeric (cl, ERR_YOUREBANNEDCREEP, cl, 0, c ? c : cl->lcnick);
+    cl->lcnick[0] = '\0';	/* need to be empty, client isn't registered */
     _ircd_peer_kill (cl->via, "Bye!");
     return 1;
   }
