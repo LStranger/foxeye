@@ -615,7 +615,7 @@ static struct clrec_t *_add_userrecord (const char *name, userflag uf, lid_t id)
     return NULL;
   }
   pthread_mutex_init (&user->mutex, NULL);
-  if (id < ID_REM)
+  if (user->uid < ID_REM)
     _R_d++;
   else if (!name)
     _R_i++;
