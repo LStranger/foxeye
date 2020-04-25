@@ -13,6 +13,9 @@ TODO:
 	* *: to check Add_Request/New_Request coming to user to be translatable.
 	* modules/ircd: to support command LANG for numerics translation.
 
+Sat Apr 25 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
+	* modules/ircd/ircd.c: fixed crash on S_REPORT on registering client.
+
 Fri Apr 24 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* core/direct.c, modules/ircd/ircd.c: fixed error with thread detach,
 	  added a bit more debug.

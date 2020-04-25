@@ -419,6 +419,8 @@ flood-type ircd-errors
  b  - set/remove ban mask to keep users out, parameter - nick!ident@host mask;
  e  - set/remove an exception mask to override a ban mask, parameter - nick!ident@host mask;
  I  - set/remove an invitation mask to automatically override the invite-only flag, parameter - nick!ident@host mask;
+ 
+ Some networks may provide additional modes.
 
 =ircd motd
 :MOTD [<target>]

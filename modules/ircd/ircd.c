@@ -1391,7 +1391,7 @@ static void _ircd_remote_user_gone(CLIENT *cl)
 static iftype_t _ircd_client_signal (INTERFACE *cli, ifsig_t sig)
 {
   peer_priv *peer = cli->data;
-  const char *reason;
+  const char *reason, *class;
   INTERFACE *tmp;
   size_t sw;
   char nstr[MB_LEN_MAX*NICKLEN+2];
@@ -1426,25 +1426,31 @@ static iftype_t _ircd_client_signal (INTERFACE *cli, ifsig_t sig)
 	host[0] = '\0';		/*host isn't valid if not P_LOGIN nor P_TALK */
       switch (peer->p.state) {
       case P_TALK:
-	if (CLIENT_IS_SERVER(peer->link->cl))
+	if (CLIENT_IS_SERVER(peer->link->cl)) {
 	  reason = "active IRCD server connection";
+	  class = peer->link->cl->lcnick;
 #ifdef USE_SERVICES
-	else if (CLIENT_IS_SERVICE(peer->link->cl))
+	} else if (CLIENT_IS_SERVICE(peer->link->cl)) {
 	  reason = "active IRCD service connection";
+	  class = peer->link->cl->lcnick;
 #endif
-	else
+	} else {
 	  reason = "active IRCD client connection";
+	  class = peer->link->cl->x.class->name;
+	}
 	break;
       case P_LASTWAIT:
       case P_QUIT:
 	reason = "(IRCD) link is terminating";
+	class = NULL;
 	break;
       default:
 	reason = "(IRCD) registering";
+	class = NULL;
       }
-      printl(buff, sizeof(buff), ReportFormat, 0, nstr, host,
-	     CLIENT_IS_SERVER(peer->link->cl) ? peer->link->cl->lcnick :
-						peer->link->cl->x.class->name,
+      if (CLIENT_IS_SERVER(peer->link->cl))
+	class = peer->link->cl->lcnick;
+      printl(buff, sizeof(buff), ReportFormat, 0, nstr, host, class,
 	     NULL, 0, peer->p.socket + 1, (int)(Time - peer->noidle), reason);
       New_Request(tmp, F_REPORT, "%s", buff);
       Unset_Iface();
