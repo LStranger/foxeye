@@ -262,7 +262,7 @@ ssize_t Connchain_Get (connchain_i **chain, idx_t idx, char *buf, size_t sz)
 
 typedef struct				/* one side buffer for filter 'x' */
 {
-  ssize_t inbuf;			/* how much bytes are in buf */
+  ssize_t inbuf;			/* how much chars to send */
   size_t bufpos;			/* where is first char */
   char buf[2*MBMESSAGEMAX];		/* message buffer */
 } connchain_b;
@@ -296,7 +296,7 @@ static ssize_t _ccfilter_x_send (connchain_i **ch, idx_t id, const char *str,
 				 size_t *sz, struct connchain_buffer **b)
 {
   connchain_b *bb;
-  ssize_t i;
+  ssize_t i, ptr;
 
   if (*b == NULL)			/* already terminated */
     return E_NOSOCKET;
@@ -325,14 +325,14 @@ static ssize_t _ccfilter_x_send (connchain_i **ch, idx_t id, const char *str,
     i = *sz;
   if (i == 0)				/* it was a test and we are ready */
     return Connchain_Put (ch, id, str, sz); /* bounce test to next link */
-  if (i > (ssize_t)sizeof(bb->buf) - 2)	/* line + CR/LF */
-    i = sizeof(bb->buf) - 2;
-  memcpy (&bb->buf[bb->bufpos], str, i);
+  ptr = bb->bufpos + bb->inbuf;
+  if (i > (ssize_t)sizeof(bb->buf) - ptr - 2) /* line + CR/LF */
+    i = sizeof(bb->buf) - ptr - 2;
+  memcpy (&bb->buf[ptr], str, i);
   DBG("connchain.c:_ccfilter_x_send: added to buffer +%zd", i);
   *sz -= i;
-  i += bb->inbuf;
-  bb->buf[i] = '\r';			/* CR */
-  bb->buf[i+1] = '\n';			/* LF */
+  bb->buf[ptr + i] = '\r';		/* CR */
+  bb->buf[ptr + i + 1] = '\n';		/* LF */
   bb->inbuf = i + 2;
   _ccfilter_x_push(ch, id, bb);		/* try to send, ignoring errors now */
   return i;
@@ -347,7 +347,7 @@ static ssize_t _ccfx_find_line (connchain_b *bb)
   {
     if ((c = memchr (&bb->buf[bb->bufpos], '\n', bb->inbuf)))
       return (c - &bb->buf[bb->bufpos]);	/* found it */
-    else if (bb->inbuf > (ssize_t)sizeof(bb->buf) - 1)	/* buffer is full */
+    else if (bb->inbuf > (ssize_t)sizeof(bb->buf) - 1) /* buffer is full */
       return (sizeof(bb->buf) - 1);
     return -1;					/* try it later */
   }
@@ -378,7 +378,8 @@ static ssize_t _ccfx_get_line (connchain_b *bb, ssize_t i, char *str, size_t sz)
     if (x > (ssize_t)sz)			/* we don't care! */
       x = sz;					/* put as many as we can */
     strfcpy (str, &bb->buf[bb->bufpos], x);	/* with terminating 0 */
-    if ((bb->inbuf -= d) == 0)			/* emptied, ignore ->bufpos */
+    bb->inbuf -= d;
+    if (bb->inbuf == 0)				/* emptied, ignore ->bufpos */
       return x;
     d += bb->bufpos;				/* calculate new bufpos */
     if (d >= (ssize_t)sizeof(bb->buf))

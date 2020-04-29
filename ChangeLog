@@ -15,6 +15,10 @@ TODO:
 	* modules/ircd: to allow MODE KILL KICK TOPIC INVITE to be used by the
 	  service with admin rights.
 
+Wed Apr 29 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
+	* core/connchain.c: fixed invalid 'x' filter sending when buffer wasn't
+	  empty.
+
 Mon Apr 27 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.*, modules/ircd/messages.c, modules/ircd/queries.c, modules/ircd/servers.c, modules/ircd/channels.c, modules/ircd-rusnet/rusnet.c:
 	  fixed handling of peer_t as NULL (in case of internal source).
