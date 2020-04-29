@@ -24,8 +24,10 @@
 #include <direct.h>
 
 typedef struct IrcdCapabServ {
+  INTERFACE *srv;
   struct IrcdCapabServ *prev;
   struct peer_t *peer;
+  bool registered;
   char capab[400];
 } IrcdCapabServ;
 
@@ -45,6 +47,30 @@ static inline IrcdCapabServ *_find_server(struct peer_t *peer)
     if (serv->peer == peer)
       return serv;
   return NULL;
+}
+
+/* this function will be called when peer is destroyed */
+static void _release_capab_server(void *data)
+{
+  register IrcdCapabServ **servp = &_known_servers;
+  IrcdCapabServ *serv = (IrcdCapabServ *)data;
+  struct binding_t *b;
+
+  while (*servp && *servp != serv)	/* find it now */
+    servp = &(*servp)->prev;
+  if (*servp == NULL)
+    ERROR("ircd-capab:_release_capab_server: data %p not found!", data);
+  else
+  {
+    *servp = serv->prev;		/* drop from list */
+    DBG("ircd-capab: peer %s %s", serv->peer->dname,
+	serv->registered ? "is unregistered" : "died");
+    if (serv->registered)
+      while ((b = Check_Bindtable(BtIrcdCapab, NULL, U_ALL, U_ANYCH, b)))
+	if (b->name == NULL)
+	  b->func(serv->srv, serv->peer, NULL);
+    free_IrcdCapabServ(serv);
+  }
 }
 
 /* phase 1: before PASS - send our list and receive other */
@@ -92,26 +118,12 @@ static int ircd_capab(INTERFACE *srv, struct peer_t *peer, int argc, const char 
   serv->prev = _known_servers;
   _known_servers = serv;
   serv->peer = peer;
+  serv->srv = srv;
+  serv->registered = FALSE;
   strfcpy(serv->capab, argv[0], sizeof(serv->capab));
+  PeerData_Attach(peer, "ircd-capab-serv", serv, &_release_capab_server);
   DBG("ircd-capab: got CAPAB from peer %s", peer->dname);
   return 1;
-}
-
-BINDING_TYPE_ircd_drop_unknown(_ircd_drop_unknown_capab);
-static void _ircd_drop_unknown_capab(INTERFACE *srv, struct peer_t *peer,
-				     const char *user, const char *host)
-{
-  IrcdCapabServ *serv;
-  IrcdCapabServ **ptr;
-
-  for (ptr = &_known_servers; (serv = *ptr) != NULL; ptr = &serv->prev)
-    if (serv->peer == peer)
-    {
-      DBG("ircd-capab: dropping peer %s", peer->dname);
-      *ptr = serv->prev;
-      free_IrcdCapabServ(serv);
-      break;
-    }
 }
 
 /* phase 2 -- server registered, activate bindings */
@@ -129,6 +141,7 @@ static void _ircd_got_server_capab(INTERFACE *srv, struct peer_t *peer,
     DBG("ircd-capab: unknown peer %s", peer->dname);
     return;
   }
+  serv->registered = TRUE;
   c = serv->capab;
   while (*c)
   {
@@ -143,27 +156,6 @@ static void _ircd_got_server_capab(INTERFACE *srv, struct peer_t *peer,
   DBG("ircd-capab: peer %s is registered", peer->dname);
 }
 
-/* phase 3 -- server disconnected, deactivate bindings */
-BINDING_TYPE_ircd_lost_server(_ircd_lost_server_capab);
-static void _ircd_lost_server_capab(INTERFACE *srv, struct peer_t *peer)
-{
-  IrcdCapabServ *serv;
-  IrcdCapabServ **ptr;
-  struct binding_t *b = NULL;
-
-  for (ptr = &_known_servers; (serv = *ptr) != NULL; ptr = &serv->prev)
-    if (serv->peer == peer)
-    {
-      DBG("ircd-capab: peer %s is unregistered", peer->dname);
-      *ptr = serv->prev;
-      while ((b = Check_Bindtable(BtIrcdCapab, NULL, U_ALL, U_ANYCH, b)))
-	if (b->name == NULL)
-	  b->func(srv, peer, NULL);
-      free_IrcdCapabServ(serv);
-      return;
-    }
-}
-
 
 /*
  * this function must receive signals:
@@ -173,16 +165,18 @@ static void _ircd_lost_server_capab(INTERFACE *srv, struct peer_t *peer)
  */
 static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
 {
+  IrcdCapabServ *serv;
+
   switch (sig)
   {
     case S_TERMINATE:
       Delete_Binding("ircd-server-handshake", &_ircd_server_handshake_capab, NULL);
-      Delete_Binding("ircd-drop-unknown", (Function)&_ircd_drop_unknown_capab, NULL);
       Delete_Binding("ircd-got-server", (Function)&_ircd_got_server_capab, NULL);
-      Delete_Binding("ircd-lost-server", (Function)&_ircd_lost_server_capab, NULL);
       Delete_Binding("ircd-server-cmd", (Function)&ircd_capab, NULL);
       UnregisterVariable("ircd-capab-blacklist");
       Delete_Help("ircd-capab");
+      for (serv = _known_servers; serv; serv = serv->prev)
+	PeerData_Detach(serv->peer, "ircd-capab-serv");
       _forget_(IrcdCapabServ);
       _known_servers = NULL;
       return I_DIED;
@@ -209,9 +203,7 @@ SigFunction ModuleInit (char *args)
   CheckVersion;
   BtIrcdCapab = Add_Bindtable("ircd-capab", B_UNIQ);
   Add_Binding("ircd-server-handshake", "*", 0, 0, &_ircd_server_handshake_capab, NULL);
-  Add_Binding("ircd-drop-unknown", "*", 0, 0, (Function)&_ircd_drop_unknown_capab, NULL);
   Add_Binding("ircd-got-server", "*", 0, 0, (Function)&_ircd_got_server_capab, NULL);
-  Add_Binding("ircd-lost-server", "*", 0, 0, (Function)&_ircd_lost_server_capab, NULL);
   Add_Binding("ircd-register-cmd", "capab", 0, 0, (Function)&ircd_capab, NULL);
   RegisterString("ircd-capab-blacklist", ircd_capab_blacklist,
 		 sizeof(ircd_capab_blacklist), 0);
