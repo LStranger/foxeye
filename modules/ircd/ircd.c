@@ -197,7 +197,7 @@ static int _ircd_class_in (struct peer_t *peer, char *user, char *host,
   {
     dprint(4, "ircd:ircd.c:_ircd_class_in: found matched %s: %s", uh, clname);
     clparms = Get_Field (cl, Ircd->sub->name, &exp);
-    if (exp > Time)
+    if (clparms && exp > Time)
       uf = Get_Flags (cl, Ircd->iface->name);
     else /* ignore expired */
       clparms = NULL;
