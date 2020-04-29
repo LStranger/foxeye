@@ -24,6 +24,7 @@ Mon Apr 27 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	  NULL peer and messages from ME should go through server bindtable.
 	* modules/ircd-capab/ircd-capab.c: reworked peer links using PeerData
 	  interface to have reliable deallocation on them.
+	* core/dispatcher.c: create a core dump on memory allocation error.
 
 Sat Apr 25 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed crash on S_REPORT on registering client.

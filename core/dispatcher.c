@@ -193,7 +193,10 @@ static void _bot_shutdown (char *message, int e)
 
 void bot_shutdown (char *message, int e)
 {
-  _bot_shutdown (message, e);
+  if (e == 2) /* memory error */
+    kill(getpid(), SIGABRT);
+  else
+    _bot_shutdown (message, e);
   exit(e);
 }
 
