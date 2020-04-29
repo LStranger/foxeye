@@ -4752,6 +4752,11 @@ static void _istats_l (INTERFACE *srv, const char *rq, modeflag umode)
   {
     if (peer->p.state < P_LOGIN) /* no link data yet */
       continue;
+    if (peer->link == NULL)
+    {
+      ERROR("ircd:_istats_l: peer %p does not have a link!", peer);
+      continue;
+    }
     snprintf (buf, sizeof(buf), "%s[%s@%s] %d %zu %zu %zu %zu %ld",
 	      peer->link->cl->nick, peer->link->cl->user, peer->link->cl->host,
 	      peer->p.iface->qsize, peer->ms, peer->bs/1000, peer->mr,
