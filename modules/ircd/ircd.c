@@ -4251,7 +4251,6 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     New_Request(peer->iface, 0, ":%s NICK :%s", argv[0], tgt->nick);
     dprint(2, "ircd:CLIENT: adding remote client %s: %p", tgt->nick, tgt);
     DBG("ircd:CLIENT: collided NICK relations: %p => %p", phantom, tgt);
-    collision = NULL;			/* mark to insert key */
   } else if (collision != NULL) { /* we got new client collided with phantom */
     collision = collision->cs;		/* go to the keyholder */
     if (Delete_Key(Ircd->clients, collision->lcnick, collision) < 0)
@@ -4266,7 +4265,6 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
       collision = collision->pcl;
     }
     dprint(2, "ircd:CLIENT: adding phantom %p tailed to holder %p", tgt->rfr, tgt);
-    collision = tgt->rfr;		/* mark to not instert key */
   } else
     dprint(2, "ircd:CLIENT: adding remote client %s: %p", tgt->nick, tgt);
   tgt->hops = on->hops + 1;
@@ -4303,8 +4301,7 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   DBG("ircd:updated users count on %s to %u", on->lcnick, on->x.a.uc);
   _ircd_update_users_counters();
   unistrlower(tgt->lcnick, tgt->nick, sizeof(tgt->lcnick));
-  if (collision != NULL) ;		/* key is already in Ircd->clients */
-  else if (Insert_Key(&Ircd->clients, tgt->lcnick, tgt, 1))
+  if (Insert_Key(&Ircd->clients, tgt->lcnick, tgt, 1))
     ERROR("ircd:ircd_nick_sb: tree error on adding %s (%p)", tgt->lcnick, tgt);
     //TODO: isn't it fatal?
   else
