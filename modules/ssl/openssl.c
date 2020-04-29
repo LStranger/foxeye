@@ -218,6 +218,7 @@ static ssize_t _ccfilter_S_send(struct connchain_i **ch, idx_t id, const char *s
       return (0);
   }
   if (str == NULL) {		/* asked to flush, we not call SSL here! */
+    // SSL_shutdown(buf->ssl);
     if (buf->out.inbuf)
       return (0);
     return Connchain_Put (ch, id, str, sz); /* ask next link to flush then */
@@ -324,6 +325,7 @@ finish_filter:
   i = (*b)->error;
   if (i == 0)
     i = E_NOSOCKET;
+  SSL_set_shutdown(buf->ssl, SSL_SENT_SHUTDOWN | SSL_RECEIVED_SHUTDOWN);
   _freesslbuff(b);
   return (i);
 }

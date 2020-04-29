@@ -18,6 +18,7 @@ TODO:
 Mon Apr 27 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.*, modules/ircd/messages.c, modules/ircd/queries.c, modules/ircd/servers.c, modules/ircd/channels.c, modules/ircd-rusnet/rusnet.c:
 	  fixed handling of peer_t as NULL (in case of internal source).
+	* modules/ssl/openssl.c: added call to SSL_set_shutdown() on finish.
 
 Sat Apr 25 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed crash on S_REPORT on registering client.
