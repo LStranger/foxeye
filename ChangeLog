@@ -22,6 +22,8 @@ Wed Apr 29 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	  seemed to terminate thread unexpectedly.
 	* core/dispatcher.c, modules/ircd-rusnet/rusnet.c: fixed missing reset
 	  on ShutdownR value after seinding signals.
+	* core/dispatcher.c: added a safeguard against failed conversion when
+	  sending requests.
 
 Mon Apr 27 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.*, modules/ircd/messages.c, modules/ircd/queries.c, modules/ircd/servers.c, modules/ircd/channels.c, modules/ircd-rusnet/rusnet.c:
