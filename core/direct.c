@@ -1300,7 +1300,7 @@ typedef struct
   unsigned short lport, eport;	/* listener port range */
   idx_t socket, id;
   pthread_t th;
-  unsigned tst:1;
+  volatile unsigned int tst;
 } accept_t;
 
 #define static
