@@ -2284,8 +2284,11 @@ static int ircd_mode_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 			const char *sender, const char *lcsender,
 			int argc, const char **argv)
 { /* args: <target> modes... */
-  struct peer_priv *pp = peer->iface->data; /* it's really peer */
+  struct peer_priv *pp;
 
+  if (peer == NULL) /* invalid internal call */
+    return 0;
+  pp = peer->iface->data; /* it's really peer */
   if (argc < 2)
   {
     ERROR ("ircd:incomplete MODE command by %s via %s", sender, peer->dname);
@@ -2307,9 +2310,12 @@ static int ircd_imode(INTERFACE *srv, struct peer_t *peer, unsigned short token,
 		      const char *sender, const char *lcsender,
 		      int argc, const char **argv)
 { /* args: <id> <target> modes... */
-  struct peer_priv *pp = peer->iface->data; /* it's really peer */
+  struct peer_priv *pp;
   int id;
 
+  if (peer == NULL) /* invalid internal call */
+    return 0;
+  pp = peer->iface->data; /* it's really peer */
   if (!(pp->link->cl->umode & A_MULTI))
     return (0);			/* it is ambiguous from RFC2813 servers */
   if (argc < 3) {

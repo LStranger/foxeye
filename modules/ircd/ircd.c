@@ -3686,7 +3686,7 @@ static int ircd_server_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
 			  const char *sender, const char *lcsender,
 			  int argc, const char **argv)
 { /* args: <servername> <hopcount> <token/info(RFC1459)> <info(RFC2813)> */
-  peer_priv *pp = peer->iface->data; /* it's peer really */
+  peer_priv *pp;
   CLIENT *src, *cl;
   long ntok;
   const char *info;
@@ -3696,6 +3696,9 @@ static int ircd_server_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
 
   if (argc < 3)
     return 0;
+  if (peer == NULL) /* invalid internal call */
+    return 0;
+  pp = peer->iface->data; /* it's peer really */
   src = Ircd->token[token];
   if (_ircd_find_client_lc (lcsender) != src)
   {
@@ -3800,7 +3803,7 @@ static int ircd_iserver(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 			const char *sender, const char *lcsender,
 			int argc, const char **argv)
 { /* args: <servername> <hopcount> <token> <info> */
-  peer_priv *pp = peer->iface->data; /* it's peer really */
+  peer_priv *pp;
   CLIENT *src, *cl, *clo;
   long ntok;
   LINK *link;
@@ -3809,6 +3812,9 @@ static int ircd_iserver(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 
   if (argc < 3)
     return 0;
+  if (peer == NULL) /* invalid internal call */
+    return 0;
+  pp = peer->iface->data; /* it's peer really */
   src = Ircd->token[token];
   if (_ircd_find_client_lc (lcsender) != src)
   {
@@ -4141,10 +4147,13 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   /* args: <newnickname> */
   CLIENT *tgt, *on, *collision, *phantom;
   LINK *link;
-  peer_priv *pp = peer->iface->data; /* it's peer really */
+  peer_priv *pp;
   const char *c;
   int ct;
 
+  if (peer == NULL) /* invalid internal call */
+    return 0;
+  pp = peer->iface->data; /* it's peer really */
   if (argc < 7) {
     if (argc != 1) {
       ERROR("ircd:incorrect number of arguments for NICK from %s: %d",
@@ -4318,9 +4327,12 @@ static int ircd_inum(INTERFACE *srv, struct peer_t *peer, unsigned short token,
 		     const char *sender, const char *lcsender,
 		     int argc, const char **argv)
 { /* args: <id> <numeric> <target> text... */
-  struct peer_priv *pp = peer->iface->data; /* it's peer really */
+  struct peer_priv *pp;
   int id;
 
+  if (peer == NULL) /* invalid internal call */
+    return 0;
+  pp = peer->iface->data; /* it's peer really */
   if (argc < 4) {
     ERROR("ircd:incorrect number of arguments for INUM from %s: %d",
 	  peer->dname, argc);
@@ -4343,9 +4355,12 @@ static int ircd_service_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
 { /* args: <servicename> <servertoken> <distribution> <type> <hopcount> <info> */
   CLIENT *tgt, *on;
   LINK *link;
-  peer_priv *pp = peer->iface->data; /* it's peer really */
+  peer_priv *pp;
   int ct;
 
+  if (peer == NULL) /* invalid internal call */
+    return 0;
+  pp = peer->iface->data; /* it's peer really */
   if (argc < 6) {
     ERROR("ircd:incorrect number of arguments for SERVICE from %s: %d",
 	  peer->dname, argc);

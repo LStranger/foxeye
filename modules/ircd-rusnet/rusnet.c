@@ -213,7 +213,7 @@ static bool _rusnet_tline(INTERFACE *srv, struct peer_t *peer, const char *mask,
   if (c != NULL && uf != U_DENY) /* only KLINE may have nick, see ircd module */
   {
     ERROR("ircd-rusnet: got nick mask %.*s via %s but not KLINE, ignoring it",
-	  (int)(c - mask), mask, peer->dname);
+	  (int)(c - mask), mask, peer ? peer->dname : "?");
     mask = c + 1;
   }
   /* prepare input */

@@ -270,7 +270,13 @@ static int ircd_names_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick
 /* works with unified BINDING_TYPE_ircd_server_cmd parameters */
 //TODO: check and forbid services to query
 #define DO_SERVER_QUERY(F) \
-  register CLIENT *cl = _ircd_find_client_lc ((IRCD *)srv->data, lcsender); \
+  register CLIENT *cl; \
+  if (peer == NULL) \
+  { \
+    ERROR ("ircd:%s: Invalid internal query", __FUNCTION__); \
+    return 0; \
+  } \
+  cl = _ircd_find_client_lc ((IRCD *)srv->data, lcsender); \
   if (cl == NULL || CLIENT_IS_SERVER(cl) || !CLIENT_IS_REMOTE(cl)) \
   { \
     ERROR ("ircd:Invalid query source %s from %s", sender, peer->dname); \
@@ -280,7 +286,13 @@ static int ircd_names_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick
 
 /* the same but for PING and PONG as servers can send them too */
 #define DO_SERVER2_QUERY(F) \
-  register CLIENT *cl = _ircd_find_client_lc ((IRCD *)srv->data, lcsender); \
+  register CLIENT *cl; \
+  if (peer == NULL) \
+  { \
+    ERROR ("ircd:%s: Invalid internal query", __FUNCTION__); \
+    return 0; \
+  } \
+  cl = _ircd_find_client_lc ((IRCD *)srv->data, lcsender); \
   if (cl == NULL || cl->hold_upto != 0) \
   { \
     ERROR ("ircd:Invalid query source %s from %s", sender, peer->dname); \

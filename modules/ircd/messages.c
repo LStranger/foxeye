@@ -874,12 +874,17 @@ static int ircd_privmsg_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
   MEMBER *tch;
   IRCD *ircd = (IRCD *)srv->data;
   char *c, *cnext;
-  struct peer_priv *pp = peer->iface->data; /* it's really peer */
+  struct peer_priv *pp;
   unsigned int max_targets = _ircd_client_recvq[0];
   const char *tlist[max_targets];
   size_t s = 0, s2 = 0;
   char targets[MESSAGEMAX];
 
+  if (peer == NULL) {
+    ERROR("ircd:cannot sent PRIVMSG from ME");
+    return 0;
+  }
+  pp = peer->iface->data; /* it's really peer */
   /* check number of parameters */
   if (argc != 2) {
     ERROR("ircd:got invalid PRIVMSG via %s with %d parameters", peer->dname,
@@ -987,12 +992,17 @@ static int ircd_notice_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
   MEMBER *tch;
   IRCD *ircd = (IRCD *)srv->data;
   char *c, *cnext;
-  struct peer_priv *pp = peer->iface->data; /* it's really peer */
+  struct peer_priv *pp;
   unsigned int max_targets = _ircd_client_recvq[0];
   const char *tlist[max_targets];
   size_t s = 0, s2 = 0;
   char targets[MESSAGEMAX];
 
+  if (peer == NULL) {
+    ERROR("ircd:cannot sent NOTICE from ME");
+    return 0;
+  }
+  pp = peer->iface->data; /* it's really peer */
   /* check number of parameters */
   if (argc != 2) {
     Add_Request(I_LOG, "*", F_WARN,
@@ -1097,8 +1107,13 @@ static int ircd_squery_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
 			  int argc, const char **argv)
 { /* args: <servicename> <text to be sent> */
   CLIENT *tcl;
-  struct peer_priv *pp = peer->iface->data; /* it's really peer */
+  struct peer_priv *pp;
 
+  if (peer == NULL) {
+    ERROR("ircd:cannot sent SQUERY from ME");
+    return 0;
+  }
+  pp = peer->iface->data; /* it's really peer */
   /* check number of parameters */
   if (argc != 2) {
     ERROR("ircd:got invalid SQUERY via %s with %d parameters", peer->dname,
@@ -1143,13 +1158,18 @@ static int ircd_iprivmsg(INTERFACE *srv, struct peer_t *peer, unsigned short tok
   MEMBER *tch;
   IRCD *ircd = (IRCD *)srv->data;
   char *c, *cnext;
-  struct peer_priv *pp = peer->iface->data; /* it's really peer */
+  struct peer_priv *pp;
   unsigned int max_targets = _ircd_client_recvq[0];
   const char *tlist[max_targets];
   size_t s = 0, s2 = 0;
   int id;
   char targets[MESSAGEMAX];
 
+  if (peer == NULL) {
+    ERROR("ircd:cannot sent IPRIVMSG from ME");
+    return 0;
+  }
+  pp = peer->iface->data; /* it's really peer */
   /* check number of parameters */
   if (argc != 3) {
     ERROR("ircd:got invalid IPRIVMSG via %s with %d parameters", peer->dname,
@@ -1251,13 +1271,18 @@ static int ircd_inotice(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   MEMBER *tch;
   IRCD *ircd = (IRCD *)srv->data;
   char *c, *cnext;
-  struct peer_priv *pp = peer->iface->data; /* it's really peer */
+  struct peer_priv *pp;
   unsigned int max_targets = _ircd_client_recvq[0];
   const char *tlist[max_targets];
   size_t s = 0, s2 = 0;
   int id;
   char targets[MESSAGEMAX];
 
+  if (peer == NULL) {
+    ERROR("ircd:cannot sent INOTICE from ME");
+    return 0;
+  }
+  pp = peer->iface->data; /* it's really peer */
   /* check number of parameters */
   if (argc != 3) {
     Add_Request(I_LOG, "*", F_WARN,
@@ -1355,9 +1380,14 @@ static int ircd_isquery(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 { /* args: <id> <servicename> <text to be sent> */
   CLIENT *tcl;
   IRCD *ircd = (IRCD *)srv->data;
-  struct peer_priv *pp = peer->iface->data; /* it's really peer */
+  struct peer_priv *pp;
   int id;
 
+  if (peer == NULL) {
+    ERROR("ircd:cannot sent ISQUERY from ME");
+    return 0;
+  }
+  pp = peer->iface->data; /* it's really peer */
   /* check number of parameters */
   if (argc != 3) {
     ERROR("ircd:got invalid ISQUERY via %s with %d parameters", peer->dname,

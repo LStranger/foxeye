@@ -300,6 +300,8 @@ static int ircd_quit_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   CLIENT *cl;
   const char *msg;
 
+  if (peer == NULL)
+    return 0; /* ignore invalid internal call */
   if (argc == 0)
     msg = sender;
   else
@@ -334,17 +336,21 @@ static int ircd_squit_sb(INTERFACE *srv, struct peer_t *peer, unsigned short tok
 { /* args: <server> <comment> */
   CLIENT *cl, *tgt;
   register LINK *l;
-  struct peer_priv *pp = peer->iface->data; /* it's really peer */
+  struct peer_priv *pp = peer ? peer->iface->data : NULL; /* it's really peer */
 #if IRCD_MULTICONNECT
   register ACK *ack;
 #endif
 
   if (argc != 2) {
+    if (!pp) return 0; /* ignore invalid internal call */
     ERROR("ircd:got SQUIT from %s with %d != 2 parameters", peer->dname, argc);
     return ircd_recover_done(pp, "SQUIT need more parameters");
   }
   tgt = ircd_find_client(argv[0], pp);	/* in case of backfired it's NULL */
   if (tgt == NULL || tgt->hold_upto || !CLIENT_IS_SERVER(tgt)) {
+    if (!pp)
+      return 0; /* ignore invalid internal call */
+    else
 #if IRCD_MULTICONNECT
     if ((tgt == NULL || tgt->hold_upto) && (pp->link->cl->umode & A_MULTI)) {
       cl = _ircd_find_client_lc((IRCD *)srv->data, lcsender);
@@ -359,13 +365,14 @@ static int ircd_squit_sb(INTERFACE *srv, struct peer_t *peer, unsigned short tok
   cl = _ircd_find_client_lc((IRCD *)srv->data, lcsender);
   if (CLIENT_IS_SERVER(cl)) {
 #if IRCD_MULTICONNECT
-    if (pp->link->cl->umode & A_MULTI)
+    if (pp && pp->link->cl->umode & A_MULTI)
       New_Request(peer->iface, 0, "ACK SQUIT %s", argv[0]);
 #endif
     for (l = cl->c.lients; l; l = l->prev)
       if (l->cl == tgt)
 	break;
     if (l == NULL) {			/* ambiguous sender */
+      if (!pp) return 0; /* ignore invalid internal call */
 #if IRCD_MULTICONNECT
       /* or it might be a duplicate still */
       ack = ircd_check_ack(pp, tgt, NULL);
@@ -449,6 +456,8 @@ static int ircd_join_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   char chname[MB_LEN_MAX*CHANNAMELEN+1];
   char msg[MB_LEN_MAX*IRCMSGLEN];
 
+  if (peer == NULL)
+    return 0; /* ignore invalid internal call */
   if (argc < 1) {
     ERROR("ircd:got JOIN from %s for %s without parameters", peer->dname, sender);
     return ircd_recover_done(peer->iface->data, "Invalid JOIN message");
@@ -539,7 +548,7 @@ static int ircd_njoin(INTERFACE *srv, struct peer_t *peer, unsigned short token,
   register MEMBER *t;
   CLIENT *cl;
   const char *c, *n;
-  struct peer_priv *pp = peer->iface->data; /* it's really peer */
+  struct peer_priv *pp;
   size_t mptr, mflen;
   modeflag mf;
   register modeflag amf;
@@ -547,6 +556,9 @@ static int ircd_njoin(INTERFACE *srv, struct peer_t *peer, unsigned short token,
   char msg[MB_LEN_MAX*IRCMSGLEN];
   register size_t i;
 
+  if (peer == NULL)
+    return 0; /* ignore invalid internal call */
+  pp = peer->iface->data; /* it's really peer */
   /* check number of parameters and if channel isn't local one */
   if (argc != 2) {
     ERROR("ircd:got NJOIN from %s with %d(<2) parameters", peer->dname, argc);
@@ -637,12 +649,15 @@ static int ircd_part_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   char *t;
   register char *cmask;
   MEMBER *memb;
-  struct peer_priv *pp = peer->iface->data; /* it's really peer */
+  struct peer_priv *pp;
   char chname[MB_LEN_MAX*CHANNAMELEN+1];
 #if IRCD_MULTICONNECT
   register ACK *ack;
 #endif
 
+  if (peer == NULL)
+    return 0; /* ignore invalid internal call */
+  pp = peer->iface->data; /* it's really peer */
   if (argc < 1) {
     ERROR("ircd:got PART from %s without parameters", peer->dname);
     return ircd_recover_done(pp, "Invalid PART message");
@@ -731,9 +746,12 @@ static int ircd_topic_sb(INTERFACE *srv, struct peer_t *peer, unsigned short tok
 { /* args: <channel> <topic> */
   CLIENT *cl;
   MEMBER *memb;
-  struct peer_priv *pp = peer->iface->data; /* it's really peer */
+  struct peer_priv *pp;
   int id = -1;
 
+  if (peer == NULL)
+    return 0; /* ignore invalid internal call */
+  pp = peer->iface->data; /* it's really peer */
   /* check number of parameters and if channel isn't local one */
   if (argc != 2) {
     ERROR("ircd:got TOPIC from %s with %d(<2) parameters", peer->dname, argc);
@@ -768,8 +786,11 @@ static int ircd_invite_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
 { /* args: <nickname> <channel> */
   CLIENT *cl, *tgt;
   MEMBER *me, *memb;
-  struct peer_priv *pp = peer->iface->data; /* it's really peer */
+  struct peer_priv *pp;
 
+  if (peer == NULL)
+    return 0; /* ignore invalid internal call */
+  pp = peer->iface->data; /* it's really peer */
   if (argc != 2) {
     ERROR("ircd:got INVITE from %s with %d(<2) parameters", peer->dname, argc);
     return ircd_recover_done(pp, "Invalid number of parameters");
@@ -818,9 +839,12 @@ static int ircd_kick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   MEMBER *tm;
   const char *reason;
   char *lcl, *lch, *chn, *nlcl, *nchn, *tname;
-  struct peer_priv *pp = peer->iface->data; /* it's really peer */
+  struct peer_priv *pp;
   register char *cmask;
 
+  if (peer == NULL)
+    return 0; /* ignore invalid internal call */
+  pp = peer->iface->data; /* it's really peer */
   if (argc < 2) {
     ERROR("ircd:got KICK from %s with %d(<2) parameters", peer->dname, argc);
     return ircd_recover_done(pp, "Invalid number of parameters");
@@ -930,7 +954,7 @@ static int ircd_kill_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 			int argc, const char **argv)
 { /* args: <nickname> <comment> */
   CLIENT *cl, *tcl;
-  struct peer_priv *pp = peer->iface->data; /* it's really peer */
+  struct peer_priv *pp = peer ? peer->iface->data : NULL; /* it's really peer */
   char reason[MB_LEN_MAX*IRCMSGLEN];
   register char *c;
 #if IRCD_MULTICONNECT
@@ -942,7 +966,7 @@ static int ircd_kill_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     return ircd_recover_done(pp, "Invalid number of parameters");
   }
 #if IRCD_MULTICONNECT
-  if (pp->link->cl->umode & A_MULTI)
+  if (pp && pp->link->cl->umode & A_MULTI)
     New_Request(peer->iface, 0, "ACK KILL %s", argv[0]);
 #endif
   cl = _ircd_find_client_lc((IRCD *)srv->data, lcsender);
@@ -953,11 +977,13 @@ static int ircd_kill_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     //TODO: squit a broken server?
   }
 #if IRCD_MULTICONNECT
-  ack = ircd_check_ack(pp, tcl, NULL);
-  if (ack != NULL) {			/* we got it backfired */
-    ack->contrary = 1;
-//    return (1);
-    WARNING("ircd:KILL via %s while waiting ACK for %s", peer->dname, argv[0]);
+  if (pp) {
+    ack = ircd_check_ack(pp, tcl, NULL);
+    if (ack != NULL) {			/* we got it backfired */
+      ack->contrary = 1;
+//      return (1);
+      WARNING("ircd:KILL via %s while waiting ACK for %s", peer->dname, argv[0]);
+    }
   }
 #endif
   while (tcl != NULL && tcl->hold_upto != 0) /* trace nickchanges now */
@@ -968,7 +994,7 @@ static int ircd_kill_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   }
   //TODO: check if reason is badly formatted - should be path!killer (reason)
   /* prepare the message with path and reason */
-  snprintf(reason, sizeof(reason), "%s!%s", peer->dname, argv[1]);
+  snprintf(reason, sizeof(reason), "%s!%s", peer ? peer->dname : "*", argv[1]);
   if (!CLIENT_IS_REMOTE(tcl))
     New_Request(tcl->via->p.iface, 0, ":%s KILL %s :%s", cl->nick, tcl->nick,
 		reason);		/* notify the victim */
@@ -997,7 +1023,8 @@ static int ircd_error_sb(INTERFACE *srv, struct peer_t *peer, unsigned short tok
 			 int argc, const char **argv)
 { /* args: <error message> */
   /* just broadcasting it to channel and log */
-  ERROR("ircd: ERROR from %s: %s", peer->dname, argc ? argv[0] : "(nil)");
+  ERROR("ircd: ERROR from %s: %s", peer ? peer->dname : "*",
+	argc ? argv[0] : "(nil)");
   return (1);
 }
 
@@ -1006,16 +1033,18 @@ static int ircd_wallops_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
 			   const char *sender, const char *lcsender,
 			   int argc, const char **argv)
 { /* args: <wallops message> */
-  struct peer_priv *pp = peer->iface->data; /* it's really peer */
+  struct peer_priv *pp = peer ? peer->iface->data : NULL; /* it's really peer */
   register CLIENT *cl;
 
   if (argc == 0) {
+    if (peer == NULL)
+      return 0; /* ingnore invalid internall call */
     ERROR("ircd:got empty WALLOPS from %s", peer->dname);
     return ircd_recover_done(pp, "Invalid number of parameters");
   }
   /* reject if it came not shortest way */
   cl = _ircd_find_client_lc((IRCD *)srv->data, lcsender);
-  if (cl->cs->via != pp)
+  if (cl->cs && cl->cs->via != pp)
     return (1); //TODO: log as duplicate
   /* just broadcast it to everyone */
   ircd_sendto_wallops((IRCD *)srv->data, pp, sender, "%s", argv[0]);
@@ -1086,10 +1115,13 @@ static int ircd_itopic(INTERFACE *srv, struct peer_t *peer, unsigned short token
 { /* args: <num> <channel> <topic> */
   CLIENT *cl;
   MEMBER *memb;
-  struct peer_priv *pp = peer->iface->data; /* it's really peer */
+  struct peer_priv *pp;
   int id;
   register ACK *ack;
 
+  if (peer == NULL)
+    return 0; /* ignore invalid internal call */
+  pp = peer->iface->data; /* it's really peer */
   if (!(pp->link->cl->umode & A_MULTI)) /* it's ambiguous from RFC2813 server */
     return (0);
   /* check number of parameters and if channel isn't local one */
@@ -1125,10 +1157,13 @@ static int ircd_ack(INTERFACE *srv, struct peer_t *peer, unsigned short token,
 		    const char *sender, const char *lcsender,
 		    int argc, const char **argv)
 { /* args: <command> <target> [<channel>] */
-  register struct peer_priv *pp = peer->iface->data; /* it's really peer */
+  register struct peer_priv *pp;
   const char *channame;
   ACK *ack = NULL;
 
+  if (peer == NULL)
+    return 0; /* ignore invalid internal call */
+  pp = peer->iface->data; /* it's really peer */
   if (!(pp->link->cl->umode & A_MULTI)) /* it's ambiguous from RFC2813 server */
     return (0);
   /* check number of parameters and if ack is expected */

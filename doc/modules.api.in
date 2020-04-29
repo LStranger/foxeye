@@ -571,7 +571,7 @@ Bindings API:
     which will get _f_n_a_m_e as first parameter (see below). See match() for
     _m_a_s_k details if bindtable is B_MASK or B_UNIQMASK type. Returns
     pointer to new added binding. Note: _m_a_s_k must be a lowercase string
-    until bindtable is B_MATCHCASE type.
+    unless bindtable is B_MATCHCASE type.
 	Reenterability: none
 
   void DDeelleettee__BBiinnddiinngg (const char *_t_a_b_l_e_n_a_m_e, Function _f_u_n_c,
@@ -1359,7 +1359,9 @@ Connection chain API:
     link of connection chain _c_c for socket identifier _i_d_x. If _l_i_n_e is
     NULL then it tries to send what is still left in chain's own buffers
     and in that case either returns error (if nothing left to send into
-    socket _i_d_x) or number of bytes sent (i.e. 0). If _l_i_n_e isn't NULL but
+    socket _i_d_x) or number of bytes sent (i.e. 0). Note that using NULL as
+    a _l_i_n_e would mean connection is going to be terminated thus some
+    filters like SSL may push an ending sequence. If _l_i_n_e isn't NULL but
     _s contains 0 then it returns value CONNCHAIN_READY in case when chain
     can take data for sending on next call or some other value otherwise.
     If there are data to send and there were no errors encountered then

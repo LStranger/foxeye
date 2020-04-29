@@ -381,7 +381,7 @@ void ircd_drop_nick (CLIENT *);
 /* get token by sender (server or remote user only) */
 static inline unsigned short int client2token (CLIENT *cl)
 {
-  if (cl != NULL && !cl->hold_upto &&
+  if (cl != NULL && !CLIENT_IS_ME(cl) && !cl->hold_upto &&
       (CLIENT_IS_SERVER(cl) || !CLIENT_IS_LOCAL(cl)))
     return cl->cs->x.a.token;
   return 0;

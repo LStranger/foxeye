@@ -12,6 +12,12 @@ TODO:
 	* modules/ircd: to review against IRCd 2.11.2 for compliance.
 	* *: to check Add_Request/New_Request coming to user to be translatable.
 	* modules/ircd: to support command LANG for numerics translation.
+	* modules/ircd: to allow MODE KILL KICK TOPIC INVITE to be used by the
+	  service with admin rights.
+
+Mon Apr 27 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
+	* modules/ircd/ircd.*, modules/ircd/messages.c, modules/ircd/queries.c, modules/ircd/servers.c, modules/ircd/channels.c, modules/ircd-rusnet/rusnet.c:
+	  fixed handling of peer_t as NULL (in case of internal source).
 
 Sat Apr 25 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed crash on S_REPORT on registering client.
