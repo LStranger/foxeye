@@ -24,6 +24,8 @@ Wed Apr 29 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	  on ShutdownR value after seinding signals.
 	* core/dispatcher.c: added a safeguard against failed conversion when
 	  sending requests.
+	* modules/ircd/channels.c, modules/ircd/ircd.c: fixed missing fields
+	  initialization creating new channels or clients.
 
 Mon Apr 27 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.*, modules/ircd/messages.c, modules/ircd/queries.c, modules/ircd/servers.c, modules/ircd/channels.c, modules/ircd-rusnet/rusnet.c:

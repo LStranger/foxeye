@@ -173,6 +173,10 @@ static inline CHANNEL *_ircd_new_channel (IRCD *ircd, const char *name,
 #if IRCD_MULTICONNECT
   ch->on_ack = 0;
 #endif
+#if TOPICWHOTIME
+  ch->topic_by[0] = '\0';
+  ch->topic_since = 0;
+#endif
   if (Insert_Key (&ircd->channels, ch->lcname, ch, 1))
     ERROR("ircd:_ircd_new_channel: tree error on adding %s", ch->lcname);
     //TODO: isn't it fatal?

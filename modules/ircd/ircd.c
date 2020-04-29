@@ -932,9 +932,12 @@ __attribute__((warn_unused_result)) static inline CLIENT *
   strfcpy(cl2->nick, on, sizeof(cl2->nick));
   cl2->via = NULL;			/* no structures for this */
   cl2->local = NULL;
+  cl2->c.hannels = NULL;
   cl2->host[0] = 0;			/* mark it to drop later */
   cl2->vhost[0] = 0;
   cl2->away[0] = 0;			/* it's used by nick tracking */
+  cl2->user[0] = 0;
+  cl2->fname[0] = 0;
   cl2->umode = 0;
 #if IRCD_MULTICONNECT
   cl2->alt = NULL;
@@ -1992,8 +1995,12 @@ static void _ircd_prehandler (pthread_t th, void **data, idx_t *as)
   peer->p.socket = *as;
   peer->p.connchain = NULL;
   peer->p.start[0] = 0;
+#ifdef ENABLE_NLS
+  peer->p.lang[0] = 0;
+#endif
   peer->bs = peer->br = peer->ms = peer->mr = 0;
   peer->th = th;
+  peer->noidle = 0;
   peer->penalty = 0;
   dprint(6, "ircd: peer %p set to thread %p", peer, (void *)peer->th);
   while (__ircd_have_started == 0) sleep(1); /* wait for main thread */
@@ -2076,7 +2083,6 @@ static void _ircd_handler (char *cln, char *ident, const char *host, void *data)
   cl->alt = NULL;
 #endif
   peer->p.dname = &cl->nick[0];
-  peer->noidle = 0;
   /* find class, validate user... "ircd-auth" bindtable */
   Set_Iface (peer->p.iface);		/* lock bindtable access */
   b = NULL;
@@ -2408,14 +2414,21 @@ static inline void _ircd_start_uplink2 (const char *name, char *host,
   uplink->via->p.state = P_DISCONNECTED;
   uplink->via->p.socket = -1;
   uplink->via->p.connchain = NULL;
-  uplink->via->started = Time;
+  uplink->via->p.last_input = uplink->via->started = Time;
+  uplink->via->p.start[0] = 0;
+#ifdef ENABLE_NLS
+  uplink->via->p.lang[0] = 0;
+#endif
   uplink->via->i.token = NULL;
   uplink->via->penalty = 0;
+  uplink->via->noidle = 0;
   uplink->via->t = 0;
+  uplink->via->timer = -1;
   uplink->pcl = NULL;
   uplink->cs = uplink;
   uplink->x.class = NULL;
   uplink->c.lients = NULL;
+  uplink->rfr = NULL;
   uplink->hold_upto = 0;
   uplink->umode = A_UPLINK;
   uplink->nick[0] = 0;
@@ -3650,11 +3663,13 @@ static CLIENT *_ircd_got_new_remote_server (peer_priv *pp, CLIENT *src,
   cl->last_id = -1;			/* no ids received yet */
   memset(cl->id_cache, 0, sizeof(cl->id_cache));
   cl->on_ack = 0;
-  cl->pcl = src;
+  cl->alt = NULL;
 #endif
+  cl->pcl = src;
   cl->c.lients = NULL;
   cl->umode = A_SERVER;
   cl->cs = cl;
+  cl->rfr = NULL;
   cl->via = NULL;			/* it will be recalculated */
   cl->local = NULL;
   cl->hold_upto = 0;
@@ -4273,6 +4288,7 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   }
 #if IRCD_MULTICONNECT
   tgt->on_ack = 0;
+  tgt->alt = NULL;
 #endif
   link = alloc_LINK();
   link->cl = tgt;
@@ -4433,6 +4449,7 @@ static int ircd_service_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
   tgt->local = NULL;
 #if IRCD_MULTICONNECT
   tgt->on_ack = 0;
+  tgt->alt = NULL;
 #endif
   tgt->c.hannels = NULL;
   tgt->cs = on;
