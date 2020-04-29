@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2020  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -188,6 +188,7 @@ static void _bot_shutdown (char *message, int e)
   NewEvent (W_DOWN, ID_ME, ID_ME, e);
   if (*PID_path)
     unlink (PID_path);
+  ShutdownR = NULL;
   /* return here -- let it do coredump */
 }
 

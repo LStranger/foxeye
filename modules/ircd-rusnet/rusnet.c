@@ -187,6 +187,7 @@ static int rusnet_do_kills(INTERFACE *iface, REQUEST *req)
       req->from->IFSignal(req->from, S_TERMINATE);
       data->counter++;
     }
+    ShutdownR = NULL;
   }
   return REQ_OK;
 }
