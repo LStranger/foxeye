@@ -817,20 +817,23 @@ static int rusnet_cmch(INTERFACE *u, modeflag umode, const char *chname,
 {
   /* check for non-ascii nick for ascii-only channel */
   if (add && chg == 0 && (cmode & A_ASCIINICK))
+  {
+    const char *nick = tgt;
+
     for (; *tgt; tgt++)
       if (*((uint8_t *)tgt) <= 0x20 || *((uint8_t *)tgt) > 0x7f)
       {
 	if (u != NULL)
 	{
 	  tgt = strchr(u->name, '@'); /* split off network name */
-	  add = (++tgt) - (const char *)u->name; /* reuse int */
-	  if (!Lname_IsOn(tgt, NULL, NULL, &tgt))
+	  if (!tgt || !Lname_IsOn(tgt + 1, NULL, NULL, &tgt))
 	    tgt = "server"; /* is this ever possible? */
-	  New_Request(u, 0, ":%s 470 %.*s %s :Only latin-coded nicknames allowed (+z)",
-		      tgt, add, u->name, chname);
+	  New_Request(u, 0, ":%s 470 %s %s :Only latin-coded nicknames allowed (+z)",
+		      tgt, nick, chname);
 	}
 	return 0;
       }
+  }
   /* limitations for R-Mode */
   if (umode & A_QUIET)
     return 0;

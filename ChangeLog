@@ -29,6 +29,7 @@ Fri May  1 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.c: fixed missing correction if not set define on
 	  IRCD_KILL_INVALID_NICK.
 	* modules/ircd/ircd.c: fixed (again) client message simulation.
+	* modules/ircd-rusnet/rusnet.c: fixed sending 470 numeric on +z join.
 
 Wed Apr 29 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* core/connchain.c: fixed invalid 'x' filter sending when buffer wasn't
