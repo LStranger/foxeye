@@ -4188,6 +4188,13 @@ static int _ircd_remote_nickchange(CLIENT *tgt, peer_priv *pp,
        phantom which client is changed from so cannot to tail collided there */
     _ircd_force_drop_collision(&collision);
   } /* else nick change is non-colliding and just accepted */
+#if !IRCD_KILL_INVALID_NICK
+  if (strcmp(checknick, nn) != 0) {
+    /* send correction back */
+    ERROR("ircd:invalid NICK %s via %s => %s", nn, pp->p.dname, checknick);
+    New_Request(pp->p.iface, 0, ":%s NICK %s", nn, checknick);
+  }
+#endif
   _ircd_do_nickchange(tgt, pp, token, checknick, 0);
   return 1;
 }
