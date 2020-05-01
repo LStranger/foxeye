@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2020  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -351,7 +351,7 @@ int Add_Help (const char *name)
 static void _delete_help_lang(HELPLANG *hl, const char *name)
 {
   HELPFILE *h, **hp;
-  HELP *t, **tp;
+  HELP *t;
   HELPLGR *lgr;
   NODE *tree;
 
@@ -365,9 +365,8 @@ static void _delete_help_lang(HELPLANG *hl, const char *name)
     return;
   *hp = h->next;
   /* delete keys from groups */
-  for (tp = &h->help; (t = *tp); )
+  while ((t = h->help))
   {
-    tp = &t->next;
     if (hl->lang) {
       for (lgr = t->helpgr->langs; lgr; lgr = lgr->next)
 	if (lgr->lang == hl)
@@ -377,6 +376,7 @@ static void _delete_help_lang(HELPLANG *hl, const char *name)
 	/* this should never happen! */
 	ERROR("help: lang \"%s\" not found in set \"%s\"!", hl->lang,
 	      NONULL(t->helpgr->key));
+	FREE (&t);
 	continue;
       }
       tree = lgr->tree;
