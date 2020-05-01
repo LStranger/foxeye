@@ -4279,8 +4279,9 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
       continue;
     mf = ircd_char2umode(srv, peer->dname, *c, tgt);
     if (mf == 0)
-      ERROR("ircd:unknown umode char %c for NICK on %s from %s", *c,
-	    argv[0], peer->dname);
+      Add_Request(I_LOG, "*", F_WARN,
+		  "ircd:unknown umode char %c for NICK on %s from %s", *c,
+		  argv[0], peer->dname);
     else
       tgt->umode |= mf;
   }
