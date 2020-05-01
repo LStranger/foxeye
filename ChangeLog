@@ -24,6 +24,8 @@ Fri May  1 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* core/foxeye.h, modules/ircd/channels.c: allowed non-ops do channel
 	  mode change for some networks, #define ALLOW_NOOP_CHANMGMT 1 to allow
 	  such behavior.
+	* modules/ircd/ircd.c: rewritten _ircd_transform_invalid_nick() to allow
+	  non-ascii chars in nick.
 
 Wed Apr 29 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* core/connchain.c: fixed invalid 'x' filter sending when buffer wasn't

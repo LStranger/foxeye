@@ -3959,14 +3959,72 @@ static int ircd_iserver(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 static inline void _ircd_transform_invalid_nick(char *buf, const char *nick,
 						size_t bs)
 {
-  while (bs > 0 && *nick)
-    if (*nick == '-' ||
-	(*nick >= 'A' && *nick <= '~') ||
-	(*nick >= '0' && *nick <= '9')) {
+  ssize_t sc, sp, sz;
+  wchar_t wc;
+  mbstate_t ps;
+
+  if (strcmp(nick, "anonymous") == 0)	/* RFC2811 */
+  {
+    strfcpy(buf, "_anonymous_", bs);
+    return;
+  }
+  sz = safe_strlen(nick);
+  memset(&ps, 0, sizeof(mbstate_t));	/* reset state for mbrtowc */
+  /* validate if name consists of alphanumeric chars (RFC2813) */
+  if (strchr ("[]\\`_^{|}~", *nick))	/* allowed non-alphanum chars */
+  {
+    bs--;
+    sz--;
+    *buf++ = *nick++;
+    sp = 1;
+  }
+  else
+  {
+    sc = mbrtowc (&wc, nick, sz, &ps);
+    if (sc <= 0 || !iswalpha (wc))	/* first char must be letter */
+    {
+      *buf++ = '~';
+      bs--;
+      sp = 1;
+    }
+    else
+      sp = 0;
+    memset(&ps, 0, sizeof(mbstate_t));
+  }
+  while (*nick && sp < _ircd_nicklen && bs > 1)
+  {
+    if (strchr ("[]\\`_^{|}~-", *nick)) /* allowed non-alphanum chars */
+    {
       *buf++ = *nick++;
       bs--;
-    } else
-      nick++; /* skip non-ASCII and invalid chars so we never get rename back */
+      sz--;
+      sp++;
+      continue;
+    }
+    sc = mbrtowc (&wc, nick, sz, &ps);
+    if (sc <= 0)			/* invalid sequence */
+    {
+      nick++;
+      sz--;
+      continue;
+    }
+    if (!iswalnum (wc))			/* invalid character */
+    {
+      nick += sc;
+      sz -= sc;
+      continue;
+    }
+    if ((ssize_t)bs <= sc)
+      break;
+    sp++;
+    memcpy(buf, nick, sc);
+    buf += sc;
+    nick += sc;
+    bs -= sc;
+    sz -= sc;
+  }
+  if (sp == 0)
+    *buf++ = '~';
   *buf = '\0';
 }
 
