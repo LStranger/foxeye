@@ -1841,8 +1841,10 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
       /* log alient MODE change */
       Add_Request(I_LOG, "*", F_WARN, "ircd:MODE by %s not on %s via %s",
 		  src->nick, ch->name, pp->p.dname);
-//      if (!ircd_recover_done (pp, "bogus MODE sender"))
-//	return 1;
+#if !ALLOW_NOOP_CHANMGMT
+      if (!ircd_recover_done (pp, "bogus MODE sender"))
+	return 1;
+#endif
       whof = A_OP | A_ADMIN;		/* but allow it anyway */
     }
     n = x = errors = 0;
@@ -1934,6 +1936,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	    mf--;			/* reset the flag */
 	  }
 	  mf &= ~A_PINGED;		/* reset extra flag */
+#if !ALLOW_NOOP_CHANMGMT
 	  if (mf && !ircd_check_modechange(NULL, whof, ch->name, ch->mode, add,
 					   mf, par, tar ? tar->who->umode : 0,
 					   tar ? tar->mode : 0))
@@ -1945,6 +1948,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	    CONTINUE_ON_MODE_ERROR ("impossible MODE", " %c%c via %s",
 				    add ? '+' : '-', *c, pp->p.dname);
 	  }
+#endif
 	  if ((par != NULL && x == MAXMODES) || n > 30) /* see modepass */
 	  {
 #if IRCD_MULTICONNECT
