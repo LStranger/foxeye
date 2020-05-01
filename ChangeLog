@@ -18,7 +18,9 @@ TODO:
 Fri May  1 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* core/help.c: fixed invalid memory access in _delete_help_lang().
 	* modules/ircd/ircd.c: lowered message level on unknown user mode from
-	  the neighbour to warning from error.
+	  the neighbour server to warning from error.
+	* modules/ircd/channels.c: lowered message level on alien channel mode
+	  change coming from neigbour server to warning from error.
 
 Wed Apr 29 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* core/connchain.c: fixed invalid 'x' filter sending when buffer wasn't

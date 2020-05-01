@@ -1838,10 +1838,11 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
       whof = who->mode;
     else
     {
-      ERROR ("ircd:MODE by %s not on %s via %s", src->nick, ch->name,
-	     pp->p.dname);
-      if (!ircd_recover_done (pp, "bogus MODE sender"))
-	return 1;
+      /* log alient MODE change */
+      Add_Request(I_LOG, "*", F_WARN, "ircd:MODE by %s not on %s via %s",
+		  src->nick, ch->name, pp->p.dname);
+//      if (!ircd_recover_done (pp, "bogus MODE sender"))
+//	return 1;
       whof = A_OP | A_ADMIN;		/* but allow it anyway */
     }
     n = x = errors = 0;
