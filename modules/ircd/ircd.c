@@ -1084,11 +1084,12 @@ _send_ack:
       c2 = c;			/* c is not a phantom at this point */
     /* at this point the peer can be either ME or some server */
     if ((CLIENT_IS_ME(c) ||
-	 (CLIENT_IS_LOCAL(c) && !CLIENT_IS_SERVER(c))) && peer != c->via)
+	 (CLIENT_IS_LOCAL(c) && !CLIENT_IS_SERVER(c))) && peer != NULL &&
+	peer != c->via)
     {
       /* we should never get our or our users messages back */
       ERROR ("ircd: message %s from %s seems looped back by %s", argv[1],
-	     argv[0], peer ? peer->p.dname : "internal call");
+	     argv[0], peer->p.dname);
       return (1);			/* ouch, it was looped back! */
     }
     if (peer == NULL && !CLIENT_IS_SERVER(c))
