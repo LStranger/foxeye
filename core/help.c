@@ -367,6 +367,7 @@ static void _delete_help_lang(HELPLANG *hl, const char *name)
   /* delete keys from groups */
   while ((t = h->help))
   {
+    h->help = t->next;
     if (hl->lang) {
       for (lgr = t->helpgr->langs; lgr; lgr = lgr->next)
 	if (lgr->lang == hl)
