@@ -7,6 +7,8 @@ User modes:
 
    +b   RusNet-mode restriction
 
+   +R   registered and identified with services
+
 
 Channel modes:
 
@@ -15,6 +17,8 @@ Channel modes:
    +z   non-ASCII nick not allowed
 
    +h   (parameter = nick) channel half-operator
+
+   +R   non-registered users not allowed
 
 
 Numeric replies:
@@ -32,6 +36,12 @@ Numeric replies:
          - Returned to an OPER in reply to WHOIS command against client
            whose host is masked (+x user mode).
 
+       337   RPL_WHOISREGNICK
+             <nick> :has identified and verified with services
+
+         - Returned to client in reply to WHOIS command against client
+           who has registered and identified with services
+
        470   ERR_7BIT
              <channel> :Only latin-coded nicknames allowed (+z)
 
@@ -42,6 +52,13 @@ Numeric replies:
            otherwise change client's nick the way it will contain some
            non-ascii character while client already joined a channel that
            has mode +z set.
+
+       490   ERR_IDENTIFIEDONLY
+             <channel> :You need to be identified (+R) to join that channel
+
+         - Returned to client in reply to JOIN command if target channel
+           has mode +R and client was not registered and identified with
+           services.
 
 
 Client commands:

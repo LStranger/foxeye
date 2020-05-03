@@ -749,6 +749,10 @@ static void rusnet_whois(INTERFACE *srv, const char *sender, modeflag sumf,
   {
     New_Request(srv, 0, "327 %s %s :Real host is %s", sender, target, thost);
   }
+  if (tumf & A_REGISTERED)
+  {
+    New_Request(srv, 0, "337 %s %s :has identified and verified with services", sender, target);
+  }
   if (tumf & A_QUIET)			/* user is +b */
   {
     New_Request(srv, 0, "225 %s %s :is Restricted", sender, target);
@@ -812,6 +816,19 @@ static modeflag rusnet_mch_z(modeflag rchmode, modeflag rmode, const char *targe
   return 0;
 }
 
+BINDING_TYPE_ircd_modechange(rusnet_mch_R);
+static modeflag rusnet_mch_R(modeflag rchmode, modeflag rmode, const char *target,
+			     modeflag tmode, modeflag tumode, int add, char chtype,
+			     int (**ma)(INTERFACE *srv, const char *rq,
+					const char *ch, int add, const char **param,
+					MASK **(* gcl)(struct CHANNEL *, char),
+					struct CHANNEL *chd))
+{
+  if (!target && ((rchmode & (A_OP | A_HALFOP | A_ADMIN)) || !rchmode))
+    return A_REGONLY;
+  return 0;
+}
+
 BINDING_TYPE_ircd_check_modechange(rusnet_cmch);
 static int rusnet_cmch(INTERFACE *u, modeflag umode, const char *chname,
 		       modeflag cmode, int add, modeflag chg, const char *tgt,
@@ -835,6 +852,17 @@ static int rusnet_cmch(INTERFACE *u, modeflag umode, const char *chname,
 	}
 	return 0;
       }
+  }
+  /* don't allow join +R without +R */
+  if (add && chg == 0 && (cmode & A_REGONLY) && !(umode & A_REGISTERED))
+  {
+    const char *me = strchr(u->name, '@'); /* split off network name */
+
+    if (!me || !Lname_IsOn(me + 1, NULL, NULL, &me))
+      me = "server";
+    New_Request(u, 0, ":%s 490 %s %s :You need to be identified (+R) to join that channel",
+		me, tgt, chname);
+    return 0;
   }
   /* limitations for R-Mode */
   if (umode & A_QUIET)
@@ -880,6 +908,20 @@ static modeflag rusnet_umch_b(modeflag rumode, int add,
     return 0;
   //FIXME: set ma for numeric
   return A_QUIET;
+}
+
+BINDING_TYPE_ircd_umodechange(rusnet_umch_R);
+static modeflag rusnet_umch_R(modeflag rumode, int add,
+			      void (**ma)(INTERFACE *srv, const char *rq,
+					  char *vhost, const char *host, size_t vhs,
+					  int add, const char *servname))
+{
+  if (!add || /* only can be deopped */
+      !rumode || /* or it's a test */
+      (rumode & A_SERVER)) /* or servermode */
+    //FIXME: set ma for numeric?
+    return A_REGISTERED;
+  return 0;
 }
 
 BINDING_TYPE_ircd_auth(rusnet_auth);
@@ -1647,10 +1689,12 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
       Delete_Binding("ircd-whois", (Function)&rusnet_whois, NULL);
       Delete_Binding("ircd-collision", (Function)&rusnet_coll, NULL);
       Delete_Binding("ircd-modechange", (Function)&rusnet_mch_z, NULL);
+      Delete_Binding("ircd-modechange", (Function)&rusnet_mch_R, NULL);
       Delete_Binding("ircd-check-modechange", &rusnet_cmch, NULL);
       Delete_Binding("ircd-modechange", (Function)&rusnet_mch_c, NULL);
       Delete_Binding("ircd-check-message", &rusnet_check_message, NULL);
       Delete_Binding("ircd-umodechange", (Function)&rusnet_umch_b, NULL);
+      Delete_Binding("ircd-umodechange", (Function)&rusnet_umch_R, NULL);
       Delete_Binding("ircd-auth", &rusnet_auth, NULL);
       Delete_Binding("ircd-client-filter", &rusnet_check_msg, NULL);
       Delete_Binding("ircd-client-filter", &rusnet_check_ntc, NULL);
@@ -1769,6 +1813,8 @@ SigFunction ModuleInit (char *args)
   Add_Binding("ircd-collision", "rusnet", 0, 0, &rusnet_coll, NULL);
   /* support latin-only channels (+z channelmode) */
   Add_Binding("ircd-modechange", "z", 0, 0, (Function)&rusnet_mch_z, NULL);
+  /* support registered-only */
+  Add_Binding("ircd-modechange", "R", 0, 0, (Function)&rusnet_mch_R, NULL);
   Add_Binding("ircd-check-modechange", "*", 0, 0, &rusnet_cmch, NULL);
   /* support no-color channels (+c channelmode) */
   Add_Binding("ircd-modechange", "c", 0, 0, (Function)&rusnet_mch_c, NULL);
@@ -1786,6 +1832,8 @@ SigFunction ModuleInit (char *args)
    Clonelimit for +b clients is independent from I:lines and is equal to 2.
  */
   Add_Binding("ircd-umodechange", "b", 0, 0, (Function)&rusnet_umch_b, NULL);
+  /* registered client from services */
+  Add_Binding("ircd-umodechange", "R", 0, 0, (Function)&rusnet_umch_R, NULL);
   Add_Binding("ircd-auth", "*", 0, 0, &rusnet_auth, NULL);
   Add_Binding("ircd-client-filter", "privmsg", 0, 0, &rusnet_check_msg, NULL);
   Add_Binding("ircd-client-filter", "notice", 0, 0, &rusnet_check_ntc, NULL);
