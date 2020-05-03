@@ -86,20 +86,19 @@ typedef struct CLASS CLASS;		/* internally defined in ircd.c */
 typedef struct CLIENT CLIENT;		/* defined below */
 typedef struct MEMBER MEMBER;
 
-typedef struct MASK
+typedef struct CMASKL
 {
-  struct MASK *next;
-//  time_t since;
-  char what[HOSTMASKLEN+1];
-//  char by[HOSTMASKLEN+1];
-} MASK;
+  struct CMASKL *next;
+  MASK *list;
+  char mch;
+} CMASKL;
 
 typedef struct CHANNEL
 {
   MEMBER *users;
   MEMBER *creator;			/* creator of ! channels if online */
   MEMBER *invited;
-  MASK *bans, *exempts, *invites;
+  CMASKL *masks;
   time_t hold_upto;			/* it's on hold if set and count == 0 */
   time_t noop_since;
   modeflag mode;
@@ -444,6 +443,17 @@ modeflag ircd_whochar2mode(char);
 modeflag ircd_char2mode(INTERFACE *, const char *, const char *, const char *, char);
 /* args: ircd, servername, mode char, user; returns umode for server modechange */
 modeflag ircd_char2umode(INTERFACE *, const char *, char, CLIENT *);
+static inline MASK* get_chanmask(CHANNEL *ch, char mch)
+{
+  register CMASKL *cml;
+  for (cml = ch->masks; cml; cml = cml->next)
+    if (cml->mch == mch)
+      return cml->list;
+  return NULL;
+}
+#define BANS(ch) get_chanmask(ch, 'b')
+#define EXEMPTS(ch) get_chanmask(ch, 'e')
+#define INVITES(ch) get_chanmask(ch, 'I')
 
 	/* calls to channel.c from ircd.c */
 void ircd_channels_flush (IRCD *, char *, size_t);
@@ -452,7 +462,7 @@ void ircd_channels_report (INTERFACE *);
 void ircd_channels_chreop (IRCD *, CLIENT *);
 void send_isupport (IRCD *, CLIENT *);
 bool ircd_check_modechange(INTERFACE *, modeflag, const char *, modeflag, int,
-			   modeflag, const char *, modeflag, modeflag);
+			   modeflag, const char *, modeflag, modeflag, CHANNEL *);
 
 	/* calls to client.c from channel.c */
 int ircd_names_reply (CLIENT *, CLIENT *, CHANNEL *, int);

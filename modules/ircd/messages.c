@@ -320,13 +320,13 @@ static int _ircd_can_send_to_chan (CLIENT *cl, CHANNEL *ch, const char *msg)
   if (cl->umode & A_MASKED)
     snprintf (buffv, sizeof(buffv), "%s!%s@%s", cl->lcnick, cl->user, cl->vhost);
   /* note: check all bans can be slow, I know, but what else to do? */
-  for (cm = ch->bans; cm; cm = cm->next)
+  for (cm = BANS(ch); cm; cm = cm->next)
     if (simple_match (cm->what, buff) > 0 ||
 	(buffv[0] && simple_match (cm->what, buffv) > 0))
       break;
   if (cm)
   {
-    for (cm = ch->exempts; cm; cm = cm->next)
+    for (cm = EXEMPTS(ch); cm; cm = cm->next)
       if (simple_match (cm->what, buff) > 0 ||
 	  (buffv[0] && simple_match (cm->what, buffv) > 0))
 	break;

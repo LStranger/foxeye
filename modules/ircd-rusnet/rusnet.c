@@ -803,7 +803,9 @@ BINDING_TYPE_ircd_modechange(rusnet_mch_z);
 static modeflag rusnet_mch_z(modeflag rchmode, modeflag rmode, const char *target,
 			     modeflag tmode, modeflag tumode, int add, char chtype,
 			     int (**ma)(INTERFACE *srv, const char *rq,
-					const char *ch, int add, const char **param))
+					const char *ch, int add, const char **param,
+					MASK **(* gcl)(struct CHANNEL *, char),
+					struct CHANNEL *chd))
 {
   if (!target && ((rchmode & (A_OP | A_HALFOP | A_ADMIN)) || !rchmode))
     return A_ASCIINICK;
@@ -813,7 +815,7 @@ static modeflag rusnet_mch_z(modeflag rchmode, modeflag rmode, const char *targe
 BINDING_TYPE_ircd_check_modechange(rusnet_cmch);
 static int rusnet_cmch(INTERFACE *u, modeflag umode, const char *chname,
 		       modeflag cmode, int add, modeflag chg, const char *tgt,
-		       modeflag tumode, modeflag tcmode)
+		       modeflag tumode, modeflag tcmode, MASK *list)
 {
   /* check for non-ascii nick for ascii-only channel */
   if (add && chg == 0 && (cmode & A_ASCIINICK))
@@ -846,7 +848,9 @@ BINDING_TYPE_ircd_modechange(rusnet_mch_c);
 static modeflag rusnet_mch_c(modeflag rchmode, modeflag rmode, const char *target,
 			     modeflag tmode, modeflag tumode, int add, char chtype,
 			     int (**ma)(INTERFACE *srv, const char *rq,
-					const char *ch, int add, const char **param))
+					const char *ch, int add, const char **param,
+					MASK **(* gcl)(struct CHANNEL *, char),
+					struct CHANNEL *chd))
 {
   if (!target && ((rchmode & (A_OP | A_HALFOP | A_ADMIN)) || !rchmode))
     return A_NOCOLOR;
@@ -1176,7 +1180,9 @@ BINDING_TYPE_ircd_modechange(rusnet_mch_h);
 static modeflag rusnet_mch_h(modeflag rchmode, modeflag rmode, const char *target,
 			     modeflag tmode, modeflag tumode, int add, char chtype,
 			     int (**ma)(INTERFACE *srv, const char *rq,
-					const char *ch, int add, const char **param))
+					const char *ch, int add, const char **param,
+					MASK **(* gcl)(struct CHANNEL *, char),
+					struct CHANNEL *chd))
 {
   if (target && (!rchmode || rchmode & (A_OP | A_ADMIN)))
     return A_HALFOP;
@@ -1188,7 +1194,9 @@ BINDING_TYPE_ircd_modechange(rusnet_mch_l);
 static modeflag rusnet_mch_l(modeflag rchmode, modeflag rmode, const char *target,
 			     modeflag tmode, modeflag tumode, int add, char chtype,
 			     int (**ma)(INTERFACE *srv, const char *rq,
-					const char *ch, int add, const char **param))
+					const char *ch, int add, const char **param,
+					MASK **(* gcl)(struct CHANNEL *, char),
+					struct CHANNEL *chd))
 {
   if (!target && (rchmode & A_HALFOP))
     return A_LIMIT; /* everything else is done by ircd */
@@ -1199,7 +1207,9 @@ BINDING_TYPE_ircd_modechange(rusnet_mch_v);
 static modeflag rusnet_mch_v(modeflag rchmode, modeflag rmode, const char *target,
 			     modeflag tmode, modeflag tumode, int add, char chtype,
 			     int (**ma)(INTERFACE *srv, const char *rq,
-					const char *ch, int add, const char **param))
+					const char *ch, int add, const char **param,
+					MASK **(* gcl)(struct CHANNEL *, char),
+					struct CHANNEL *chd))
 {
   if (target && (rchmode & A_HALFOP))
     return A_VOICE;
@@ -1210,7 +1220,9 @@ BINDING_TYPE_ircd_modechange(rusnet_mch_b);
 static modeflag rusnet_mch_b(modeflag rchmode, modeflag rmode, const char *target,
 			     modeflag tmode, modeflag tumode, int add, char chtype,
 			     int (**ma)(INTERFACE *srv, const char *rq,
-					const char *ch, int add, const char **param))
+					const char *ch, int add, const char **param,
+					MASK **(* gcl)(struct CHANNEL *, char),
+					struct CHANNEL *chd))
 {
   if (!target && (rchmode & A_HALFOP))
     return A_DENIED;
@@ -1221,7 +1233,9 @@ BINDING_TYPE_ircd_modechange(rusnet_mch_e);
 static modeflag rusnet_mch_e(modeflag rchmode, modeflag rmode, const char *target,
 			     modeflag tmode, modeflag tumode, int add, char chtype,
 			     int (**ma)(INTERFACE *srv, const char *rq,
-					const char *ch, int add, const char **param))
+					const char *ch, int add, const char **param,
+					MASK **(* gcl)(struct CHANNEL *, char),
+					struct CHANNEL *chd))
 {
   if (!target && (rchmode & A_HALFOP))
     return A_EXEMPT;
@@ -1232,7 +1246,9 @@ BINDING_TYPE_ircd_modechange(rusnet_mch_I);
 static modeflag rusnet_mch_I(modeflag rchmode, modeflag rmode, const char *target,
 			     modeflag tmode, modeflag tumode, int add, char chtype,
 			     int (**ma)(INTERFACE *srv, const char *rq,
-					const char *ch, int add, const char **param))
+					const char *ch, int add, const char **param,
+					MASK **(* gcl)(struct CHANNEL *, char),
+					struct CHANNEL *chd))
 {
   if (!target && (rchmode & A_HALFOP) && (tmode & A_INVITEONLY))
     return A_INVITED;
@@ -1243,7 +1259,9 @@ BINDING_TYPE_ircd_modechange(rusnet_mch_m);
 static modeflag rusnet_mch_m(modeflag rchmode, modeflag rmode, const char *target,
 			     modeflag tmode, modeflag tumode, int add, char chtype,
 			     int (**ma)(INTERFACE *srv, const char *rq,
-					const char *ch, int add, const char **param))
+					const char *ch, int add, const char **param,
+					MASK **(* gcl)(struct CHANNEL *, char),
+					struct CHANNEL *chd))
 {
   if (!target && (rchmode & A_HALFOP))
     return A_MODERATED;
@@ -1254,7 +1272,9 @@ BINDING_TYPE_ircd_modechange(rusnet_mch_n);
 static modeflag rusnet_mch_n(modeflag rchmode, modeflag rmode, const char *target,
 			     modeflag tmode, modeflag tumode, int add, char chtype,
 			     int (**ma)(INTERFACE *srv, const char *rq,
-					const char *ch, int add, const char **param))
+					const char *ch, int add, const char **param,
+					MASK **(* gcl)(struct CHANNEL *, char),
+					struct CHANNEL *chd))
 {
   if (!target && (rchmode & A_HALFOP))
     return A_NOOUTSIDE;
@@ -1265,7 +1285,9 @@ BINDING_TYPE_ircd_modechange(rusnet_mch_t);
 static modeflag rusnet_mch_t(modeflag rchmode, modeflag rmode, const char *target,
 			     modeflag tmode, modeflag tumode, int add, char chtype,
 			     int (**ma)(INTERFACE *srv, const char *rq,
-					const char *ch, int add, const char **param))
+					const char *ch, int add, const char **param,
+					MASK **(* gcl)(struct CHANNEL *, char),
+					struct CHANNEL *chd))
 {
   if (!target && (rchmode & A_HALFOP))
     return A_TOPICLOCK;
@@ -1276,7 +1298,9 @@ BINDING_TYPE_ircd_modechange(rusnet_mch_k);
 static modeflag rusnet_mch_k(modeflag rchmode, modeflag rmode, const char *target,
 			     modeflag tmode, modeflag tumode, int add, char chtype,
 			     int (**ma)(INTERFACE *srv, const char *rq,
-					const char *ch, int add, const char **param))
+					const char *ch, int add, const char **param,
+					MASK **(* gcl)(struct CHANNEL *, char),
+					struct CHANNEL *chd))
 {
   if (!target && (rchmode & A_HALFOP))
     return A_KEYSET;
@@ -1287,7 +1311,9 @@ BINDING_TYPE_ircd_modechange(rusnet_mch_i);
 static modeflag rusnet_mch_i(modeflag rchmode, modeflag rmode, const char *target,
 			     modeflag tmode, modeflag tumode, int add, char chtype,
 			     int (**ma)(INTERFACE *srv, const char *rq,
-					const char *ch, int add, const char **param))
+					const char *ch, int add, const char **param,
+					MASK **(* gcl)(struct CHANNEL *, char),
+					struct CHANNEL *chd))
 {
   if (!target && (rchmode & A_HALFOP))
     return A_INVITEONLY;

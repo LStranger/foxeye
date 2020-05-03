@@ -151,7 +151,7 @@
 -     "iirrccdd--cchheecckk--mmooddeecchhaannggee" MASK
   int func(INTERFACE *_u, modeflag _u_m_o_d_e, const char *_c_h_n, modeflag _c_m_o_d_e,
 	   int _a_d_d, modeflag _c_h_g, const char *_t_g_t, modeflag _t_u_m_o_d_e,
-	   modeflag _t_c_m_o_d_e);
+	   modeflag _t_c_m_o_d_e, MASK *_l_i_s_t);
     Used when someone with channel mode _u_m_o_d_e trying to make a modechange
     _c_h_g for some target _t_g_t which has user mode _t_u_m_o_d_e and channel mode
     _t_c_m_o_d_e on the channel _c_h_n with modes _m_m_o_d_e. Binding gets modechange
@@ -162,8 +162,10 @@
     attempts to join channel or changes their nick, and in that case _t_g_t
     is user nick, _u_m_o_d_e is user mode and _c_h_g is 0. In latter case if
     binding denies the join, it should send a message to the user using
-    user interface _u (it's NULL if user is remote). Returns 0 in case
-    if modechange should be rejected or any other value otherwise.
+    user interface _u (it's NULL if user is remote). If mode change has
+    some masks associated then _l_i_s_t of such masks also provided (see the
+    "ircd-modechange" bindtable). Returns 0 in case if modechange should
+    be rejected or any other value otherwise.
       Matching: channel name.  (userflags are ignored)
       Matching stops after first reject.
 
@@ -173,7 +175,9 @@
 		      modeflag _t_u_m_o_d_e, int _a_d_d, char _c_h_t_y_p_e,
 		      int (**_m_a)(INTERFACE *_s_r_v, const char *_r_q,
 				 const char *_c_h, int _a_d_d,
-				 const char **_p_a_r_a_m));
+				 const char **_p_a_r_a_m,
+				 MASK **(*_g_c_l)(struct CHANNEL *, char),
+				 struct CHANNEL *_c_h_d));
     Used when some client which has channel mode _r_c_h_m_o_d_e and user mode
     _r_m_o_d_e sent command for some mode change on channel of type _c_h_t_y_p_e in
     direction _a_d_d (which is 0 if it's an attempt to down mode or 1 if
@@ -192,7 +196,13 @@
     function _m_a can replace pointer to _p_a_r_a_m if it must be rewritten on
     further mode broadcast. Since function _m_a is called only on actual
     request, it may use interface _s_r_v to send numeric messages to the
-    client _r_q. The binding returns modeflag change for target if it's
+    client _r_q. In case if function _m_a should add or remove some mask on
+    the channel, it provided with a callback function _g_c_l to access the
+    channel data, and opaque pointer _c_h_d to the channel data is provided
+    for such purpose, said callback _g_c_l should be called with pointer _c_h_d
+    and with channel mode char, returned value will be pointer to head of
+    appropriate masks list which _m_a can use to search, add or delete data
+    as needed. The binding returns modeflag change for target if it's
     approved combined with lowest bit set to 1 if that modechange should
     consume a parameter (even if change isn't approved). If change is not
     approved due to missing original channel creator privileges then

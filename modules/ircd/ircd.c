@@ -3034,7 +3034,8 @@ static int ircd_nick_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
   /* also test joined channels rules for the nick */
   for (ch = cl->c.hannels; ch; ch = ch->prevchan)
     if (!ircd_check_modechange(peer->iface, cl->umode, ch->chan->name,
-			       ch->chan->mode, 1, 0, argv[0], cl->umode, 0))
+			       ch->chan->mode, 1, 0, argv[0], cl->umode, 0,
+			       ch->chan))
       return (1);		/* quiet, binding sent a message */
   _ircd_do_nickchange(cl, NULL, 0, argv[0], is_casechange);
   if (is_casechange)		/* no iface rename required */
@@ -4609,7 +4610,7 @@ static modeflag incl_ircd(const char *net, const char *public,
 	ch && ch->hold_upto ? " (on hold)" : "");
     if (ch == NULL || ch->hold_upto)
       return 0;
-    for (m = ch->invites; m; m = m->next) /* invite overrides ban */
+    for (m = INVITES(ch); m; m = m->next) /* invite overrides ban */
       if (simple_match (m->what, name) > 0) /* check invites */
       {
 	if (host)
@@ -4620,10 +4621,10 @@ static modeflag incl_ircd(const char *net, const char *public,
 //	  *idle = m->since;
 	return A_INVITED;
       }
-    for (m = ch->bans; m; m = m->next)
+    for (m = BANS(ch); m; m = m->next)
       if (simple_match (m->what, name) > 0) /* check for ban */
       {
-	for (e = ch->exempts; e; e = e->next)
+	for (e = EXEMPTS(ch); e; e = e->next)
 	  if (simple_match (e->what, name) > 0) /* check for exempt */
 	  {
 	    if (host)
