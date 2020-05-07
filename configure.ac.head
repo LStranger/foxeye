@@ -121,11 +121,7 @@ if test $ac_cv_add_optimization = yes; then
     case "$CC" in
 	c99*)
 	    AC_CHECK_LDFLAG(fe_cv_add_erroff, -erroff, CPPFLAGS)
-	    AC_CHECK_LDFLAG(fe_cv_add_fast, -fast, CPPFLAGS)
-	    fe_save_CC="$CC"
-	    CC="c99 -fast"
 	    AC_CHECK_LDFLAG(fe_cv_add_xipo, -xipo=2, CPPFLAGS)
-	    CC="$fe_save_CC"
 	    AC_CHECK_LDFLAG(fe_cv_add_xrestrict, [-xrestrict=%all], CPPFLAGS)
 	    AC_CHECK_LDFLAG(fe_cv_add_xinline, [-xinline=%auto], CPPFLAGS)
 	    ;;
@@ -222,7 +218,7 @@ if test "$fe_cv_static" = no; then
 	solaris*)
 #	    LD="ld -G -z text"
 	    CCLIB="${CCLIB} -G"
-	    CPPFLAGS="-Kpic ${CPPFLAGS}"
+	    CPPFLAGS="-fpic ${CPPFLAGS}"
 	    AC_CHECK_LDFLAG(fe_cv_add_wl_e, [-Wl,-E], LDFLAGS)
 	    case "$CC" in
 		gcc*)
