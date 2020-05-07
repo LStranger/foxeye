@@ -275,8 +275,9 @@
     Used when server got nick collision for some nick _n_e_w. Binding have
     to propose some solution to resolve this issue. If binding proposes
     to kill both users then it should return -1. If binding proposes to
-    kill one of users then it should return 0 to keep existing user or 1
-    to keep colliding user. If binding proposes to rename a user then it
+    kill one of users then it should return 0 to kill existing user or 1
+    to kill colliding user, in such case binding should put a reason into
+    buffer _n_e_w, e.g. "(OK)". If binding proposes to rename a user then it
     should make a nick for it in buffer _n_e_w of size _n_s_i_z_e and return 2 in
     case if existing user should be renamed or 3 in case if colliding
     user should be renamed. If that returned nick is indentical to any

@@ -124,6 +124,7 @@ static int _rusnet_needmoreparam(INTERFACE *srv, const char *sender, const char 
   return (1);
 }
 
+/* check if client is local, fill namebuf with <lcnick>@<network> to push */
 static inline bool _rusnet_client_is_local(INTERFACE *srv, const char *nick,
 					   char *namebuf, size_t namebufsize)
 {
@@ -787,10 +788,20 @@ BINDING_TYPE_ircd_collision(rusnet_coll);
 static int rusnet_coll(INTERFACE *srv, char *new, size_t nsize,
 		       const char *cserv, const char *nserv)
 {
+  DBG("rusnet_coll: nick %s exists at %s comes from %s", new,
+      cserv ? cserv : "ME", nserv);
   if (cserv == NULL)
   {
     /* rename local user */
     _rusnet_make_collided_local(new, nsize);
+  }
+  else if (strcasecmp(cserv, SERVICES_SERV) == 0)
+  {
+    /* don't rename services enforcer */
+    DBG("rusnet_coll: nick %s seems to be on services, kill newcomer instead",
+	new);
+    strfcpy(new, "(Services collision)", nsize);
+    return 1;
   }
   else
   {
@@ -799,7 +810,7 @@ static int rusnet_coll(INTERFACE *srv, char *new, size_t nsize,
     strfcpy(collided, new, sizeof(collided));
     _rusnet_make_collided(new, collided, nsize, cserv);
   }
-  /* ask to do rename */
+  /* ask to do rename on existing */
   return 2;
 }
 

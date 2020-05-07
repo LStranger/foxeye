@@ -769,6 +769,24 @@ static inline CLIENT *_ircd_find_phantom(CLIENT *nick, peer_priv *via)
   return (resort);
 }
 
+#if COLLISION_RESOLVING
+/* nick here is live collided client, via here should be server (not NULL!) */
+static inline CLIENT *_ircd_find_collided_phantom(CLIENT *nick, const char *via)
+{
+  if (nick->rfr == NULL || nick->rfr->cs != nick) {
+    dprint(5, "ircd:_ircd_find_collided_phantom: %s is not a nick holder",
+	   nick->nick);
+    return NULL;
+  }
+  dprint(5, "ircd:ircd.c:_ircd_find_collided_phantom %s via %s", nick->nick, via);
+  for (nick = nick->rfr; nick; nick = nick->pcl)
+    if (nick->x.rto && (nick->x.rto->umode & A_COLLISION) &&
+	!strcmp(nick->away, via))
+      return (nick);
+  return (NULL);
+}
+#endif
+
 /* sublist receiver interface (for internal usage, I_TEMP) */
 static char *_ircd_sublist_buffer;	/* MESSAGEMAX sized! */
 
@@ -981,7 +999,6 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
   CLIENT *c;
   register CLIENT *c2;
   int t;
-  bool is_nickchange = FALSE;
 #define static register
   BINDING_TYPE_ircd_client_cmd ((*fc));
   BINDING_TYPE_ircd_server_cmd ((*fs));
@@ -996,33 +1013,18 @@ static inline int _ircd_do_command (peer_priv *peer, int argc, const char **argv
     else if (c->hold_upto != 0) {
       /* link haven't got our NICK or KILL so track it */
       c = _ircd_find_phantom(c, peer);
-      is_nickchange = (argc == 3 && strcmp(argv[1], "NICK") == 0);
-#if IRCD_MULTICONNECT
-      if (is_nickchange && (peer->link->cl->umode & A_MULTI) && c &&
-	  (c2 = _ircd_find_client(argv[2])) == c->x.rto)
-      {
-	if (ircd_check_ack(peer, c, NULL))
-	  goto _send_ack;
-	else while (c2 != NULL && c2->hold_upto)
-	  c2 = c->x.rto;	/* it may be origin server, find current nick */
-	if (c2 != NULL && c2->cs == peer->link->cl)
-	{
-_send_ack:
-	  /* we know that change already so let send ACK and be done with it */
-	  dprint(4, "ircd: backup nickchange %s => %s", argv[0], argv[2]);
-	  New_Request(peer->p.iface, 0, "ACK NICK %s", argv[0]);
-	  return (1);
-	}
-	WARNING("ircd: spurious nickchange via %s!", peer->link->cl->lcnick);
+#if COLLISION_RESOLVING
+    } else if ((c2 = _ircd_find_collided_phantom(c, peer->p.dname)) != NULL) {
+      if (c2->hold_upto <= Time) {
+	/* collision expired, let kill server */
+	ERROR("ircd: stalled collision on %s via %s", argv[0], c2->away);
+	ircd_do_squit(peer->link, peer, "stalled collision");
+	return (0);
       }
-      /* otherwise it's a nick change collision, ircd_nick_sb will handle it */
-#endif
-    } else if (c->rfr != NULL && c->rfr->cs == c && /* it's nick holder */
-	     (c2 = _ircd_find_phantom(c->rfr, peer)) != NULL &&
-	     c2->away[0] != '\0')
       c = c2;			/* found collision originated from this link */
+#endif
     /* it's real client, check if message may come from the link */
-    else if (!CLIENT_IS_ME(c) && c->cs->via != peer)
+    } else if (!CLIENT_IS_ME(c) && c->cs->via != peer)
 #if IRCD_MULTICONNECT
     if (!(peer->link->cl->umode & A_MULTI)) /* else if (X && Y) */
 #endif
@@ -1064,24 +1066,25 @@ _send_ack:
     }
     /* we might send a nickchange and party still sends us messages
        from the old nick, let handle that case and follow it now */
-    c2 = c;
+    c2 = c;			/* c2 is now a client which message came from */
     while (c != NULL && c->hold_upto)
       c = c->x.rto;		/* if it's phantom then go to current nick */
-    if (c == NULL) {			/* sender has quited at last */
+    if (c == NULL) {		/* sender has quited at last */
       dprint(3, "ircd: sender [%s] of message %s is offline for us", argv[0],
 	     argv[1]);
 #if IRCD_MULTICONNECT
       /* handle remote ":killed NICK :someone" message as well */
       if (peer != NULL && (peer->link->cl->umode & A_MULTI)) {
-	if (is_nickchange || strcasecmp (argv[1], "QUIT") == 0)
+	if (strcasecmp(argv[1], "NICK") == 0 || strcasecmp (argv[1], "QUIT") == 0)
 	  New_Request(peer->p.iface, 0, "ACK %s %s", argv[1], argv[0]);
 	else if (strcasecmp (argv[1], "SQUIT") == 0)
 	  New_Request(peer->p.iface, 0, "ACK %s %s", argv[1], argv[2]);
       }
 #endif
       return (1);		/* just ignore it then */
-    } else if (!is_nickchange)	/* ircd_nick_sb needs original sender */
-      c2 = c;			/* c is not a phantom at this point */
+    } else if (strcasecmp(argv[1], "NICK") != 0)
+      /* ircd_nick_sb needs original sender, all others take current one */
+      c2 = c;
     /* at this point the peer can be either ME or some server */
     if ((CLIENT_IS_ME(c) ||
 	 (CLIENT_IS_LOCAL(c) && !CLIENT_IS_SERVER(c))) && peer != NULL &&
@@ -1106,8 +1109,8 @@ _send_ack:
     while ((b = Check_Bindtable (BTIrcdServerCmd, argv[1], U_ALL, U_ANYCH, b)))
       if (!b->name)
 	i |= (fs = (void *)b->func)(Ircd->iface, &peer->p, t,
-				    CLIENT_IS_ME(c2) ? MY_NAME : c2->nick,
-				    c2->lcnick, argc - 2, &argv[2]);
+				    CLIENT_IS_ME(c) ? MY_NAME : c2->nick,
+				    c->lcnick, argc - 2, &argv[2]);
     return i;
   }
   return 0;
@@ -1203,24 +1206,29 @@ static inline void _ircd_move_acks (CLIENT *tgt, CLIENT *clone)
 }
 #endif
 
-static void _ircd_kill_collided(CLIENT *collided, peer_priv *pp, const char *by)
+/* query a kill for local connect and send KILL/QUIT message to everyone
+   involved except peer pp */
+static void _ircd_kill_collided(CLIENT *collided, peer_priv *pp, const char *by,
+				const char *reason)
 {
+  if (!reason)
+    reason = "";
   if (!CLIENT_IS_REMOTE(collided))
-    New_Request(collided->via->p.iface, 0, ":%s KILL %s :Nick collision from %s",
-		MY_NAME, collided->nick, by); /* notify the victim */
+    New_Request(collided->via->p.iface, 0, ":%s KILL %s :Nick collision from %s %s",
+		MY_NAME, collided->nick, by, reason); /* notify the victim */
 #ifdef USE_SERVICES
   ircd_sendto_services_mark_all(Ircd, SERVICE_WANT_KILL);
 #endif
-  ircd_sendto_servers_all_ack(Ircd, collided, NULL, NULL,
-			      ":%s KILL %s :Nick collision from %s", MY_NAME,
-			      collided->nick, by); /* broadcast KILL */
-  ircd_prepare_quit(collided, pp, "nick collision");
+  ircd_sendto_servers_all_ack(Ircd, collided, NULL, pp,
+			      ":%s KILL %s :Nick collision from %s %s", MY_NAME,
+			      collided->nick, by, reason); /* broadcast KILL */
+  ircd_prepare_quit(collided, "nick collision");
   collided->hold_upto = Time + CHASETIMELIMIT;
-  Add_Request(I_PENDING, "*", 0, ":%s!%s@%s QUIT :Nick collision from %s",
-	      collided->nick, collided->user, collided->vhost, by);
+  Add_Request(I_PENDING, "*", 0, ":%s!%s@%s QUIT :Nick collision from %s %s",
+	      collided->nick, collided->user, collided->vhost, by, reason);
   collided->host[0] = '\0';		/* for collision check */
-  Add_Request(I_LOG, "*", F_MODES, "KILL %s :Nick collision from %s",
-	      collided->nick, by);
+  Add_Request(I_LOG, "*", F_MODES, "KILL %s :Nick collision from %s %s",
+	      collided->nick, by, reason);
 }
 
 /* declaration, args: client, server-sender, sender token, new nick, is-casechange
@@ -1256,18 +1264,20 @@ static CLIENT *_ircd_find_nick_collision(const char *nick, const char *onserv)
    else may try to make a new nick for this one and/or rename collided
    if there is no solution then kills collided one and sets nick to ""
    in either case returns collided nick structure (either a phantom or a
-   service) which caller should handle, tailing client/phantom data to it */
+   service) which caller may inspect to perform actions with source client */
 static CLIENT *_ircd_check_nick_collision(char *nick, size_t nsz, peer_priv *pp,
 					  char *onserv)
 {
-  struct binding_t *b;
   CLIENT *collided;
+#if COLLISION_RESOLVING
+  struct binding_t *b;
+  CLIENT *cs, *test;
   int res;
 #define static register
   BINDING_TYPE_ircd_collision ((*f));
 #undef static
-  register CLIENT *test;
   char collnick[MB_LEN_MAX*NICKLEN+1];
+#endif
 
   /* "colliding" below is for incoming nick whick makes a collision,
      "collided" is for a client nick which already is in the network,
@@ -1277,6 +1287,20 @@ static CLIENT *_ircd_check_nick_collision(char *nick, size_t nsz, peer_priv *pp,
   collided = _ircd_find_nick_collision(nick, onserv);
   if (collided == NULL)
     return (collided);
+  else if (collided->hold_upto != 0) {	/* collision with phantom */
+    DBG("ircd:collision with nick %s on hold", collided->nick);
+    /* caller should resolve this itself */
+    return (collided);
+#if COLLISION_RESOLVING
+  } else if ((collided->umode & A_COLLISION)) {
+    /* double collision rename attempt! */
+    ERROR("ircd:_ircd_check_nick_collision:collision with nick %s on collision",
+	  collided->nick);
+    _ircd_kill_collided(collided, NULL, onserv, "(Collision resolving error)");
+    return (collided);
+#endif
+  }
+#if COLLISION_RESOLVING
   /* phase 2: try to resolve collision making a solution */
   b = Check_Bindtable(BTIrcdCollision, "*", U_ALL, U_ANYCH, NULL);
   if (b == NULL || b->name) {		/* no binding or script binding? */
@@ -1297,31 +1321,68 @@ static CLIENT *_ircd_check_nick_collision(char *nick, size_t nsz, peer_priv *pp,
   }
   /* phase 2a: check for result and apply to buffer */
   if (res < 2) ; /* going to kill one or another */
-  else if (!collnick[0] || (test = _ircd_find_client(collnick)) != NULL) {
+  else if (!collnick[0] ||
+	   ((test = _ircd_find_client(collnick)) != NULL && test->hold_upto > Time)) {
     ERROR("ircd:collision resolving conflict for nick %s", nick);
+    strfcpy(collnick, "(Collision resolving conflict)", sizeof(collnick));
     res &= 1; /* resolv from binding was wrong, kill user instead */
-  } else if (res == 3)
-    strfcpy(nick, collnick, nsz);
-  if (res < 0 || res == 1) {
-    /* going to kill colliding one */
-    if (collided->hold_upto == 0)
-      nick[0] = '\0';
+  } else if (res == 2 && CLIENT_IS_SERVICE(collided)) {
+    Add_Request(I_LOG, "*", F_WARN, "nick collision from %s with service %s",
+		onserv, nick);
+    strfcpy(collnick, "(Service collision)", sizeof(collnick));
+    res = 0; /* cannot rename, just keep service intact */
+#if IRCD_MULTICONNECT
+  } else if ((collided->cs->via->link->cl->umode & A_MULTI)) {
+    /* this collision resolving is unreliable with multiconnect, sorry */
+    collnick[0] = '\0';
+    res &= 1;
+#endif
   }
   /* phase 3: apply solution to existing nick */
-  if (collided->hold_upto != 0) {	/* collision with phantom */
-    DBG("ircd:collision with nick %s on hold", collided->nick);
-    /* caller should resolve this itself */
-  } else if (res < 1) {			/* binding asked to kill collided */
-    _ircd_kill_collided(collided, pp, onserv);
-  } else if (res == 2) {		/* binding asked to change collided */
-    if (!CLIENT_IS_SERVICE(collided))	/* service cannot be renamed! */
-      collided = _ircd_do_nickchange(collided, NULL, 0, collnick, 0);
+  switch (res) {
+  case 0:
+    /* kill collided */
+    _ircd_kill_collided(collided, NULL, onserv, collnick);
+    break;
+  case 2:
+    /* rename collided */
+    cs = collided->cs;
+    /* well, it seems as a collision resolving try -- we advertise change
+       to a forged nick to all neighbours but nick origin and then send new
+       nick to everyone, letting nick origin to change the existing nick
+       later as they wish and when that happens then we finally change our
+       forged nick to what origin decides is right one (or kill user). */
+    if (test != NULL)
+      /* we have a phantom for this nick already, have to drop it now */
+      _ircd_force_drop_collision(&test);
+    collided = _ircd_do_nickchange(collided, cs->via, 0, collnick, 0);
+    if (CLIENT_IS_SERVER(cs))		/* remember path to check later */
+      strfcpy(collided->away, cs->via->p.dname, sizeof(collided->away));
+    collided->x.rto->umode |= A_COLLISION; /* may wait backward change */
     test = _ircd_find_client(nick);
     if (test && test->hold_upto == 0) { /* ouch! we got the same for both collided! */
       ERROR("ircd:collision resolving conflict for nick %s", nick);
       nick[0] = '\0';
+      nick[1] = '\0';
     }
-  } /* else binding decided to keep collided intact */
+    break;
+  case 3:
+    /* rename colliding */
+    strfcpy(nick, collnick, nsz);
+    break;
+  default:
+    /* kill both */
+    _ircd_kill_collided(collided, NULL, onserv, collnick);
+    /* FALLTHRU */
+  case 1:
+    /* kill colliding */
+    nick[0] = '\0';
+    strfcpy(nick + 1, collnick, nsz - 1);
+    break;
+  }
+#else /* COLLISION_RESOLVING */
+  _ircd_kill_collided(collided, NULL, onserv, NULL);
+#endif
   return (collided);
 }
 
@@ -1506,7 +1567,7 @@ static iftype_t _ircd_client_signal (INTERFACE *cli, ifsig_t sig)
 #endif
 	    ircd_sendto_servers_all_ack (Ircd, peer->link->cl, NULL, NULL,
 					 ":%s QUIT :%s", peer->p.dname, reason);
-	    ircd_prepare_quit (peer->link->cl, peer, reason);
+	    ircd_prepare_quit (peer->link->cl, reason);
 #ifdef USE_SERVICES
 	    ircd_sendto_services_mark_prefix (Ircd, SERVICE_WANT_QUIT | SERVICE_WANT_RQUIT);
 #endif
@@ -2975,6 +3036,7 @@ static int _ircd_validate_nickname (char *d, const char *name, size_t s)
   return 1;
 }
 
+/* check if client can regain new nick, and copy it to buffer b[bs] or cut it */
 static int _ircd_check_nick_cmd (CLIENT *cl, char *b, const char *nick,
 				 size_t bs)
 {
@@ -3037,6 +3099,9 @@ static int ircd_nick_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 			       ch->chan->mode, 1, 0, argv[0], cl->umode, 0,
 			       ch->chan))
       return (1);		/* quiet, binding sent a message */
+#if COLLISION_RESOLVING
+  cl->umode &= ~A_COLLISION;		/* it's done, clear it */
+#endif
   _ircd_do_nickchange(cl, NULL, 0, argv[0], is_casechange);
   if (is_casechange)		/* no iface rename required */
     return (1);
@@ -4096,42 +4161,95 @@ static int _ircd_remote_nickchange(CLIENT *tgt, peer_priv *pp,
 				   unsigned short token, const char *sender,
 				   const char *nn)
 {
-  CLIENT *collision, *phantom;
+  CLIENT *phantom = NULL, *collided;
   int changed = 0;
   char checknick[MB_LEN_MAX*NICKLEN+NAMEMAX+2];
 
-  dprint(5, "ircd:ircd.c:_ircd_remote_nickchange: %s to %s", tgt->nick, nn);
+  dprint(5, "ircd:ircd.c:_ircd_remote_nickchange: %s to %s",
+	 tgt ? tgt->nick : "(dead)", nn);
 #if IRCD_MULTICONNECT
   if (pp->link->cl->umode & A_MULTI)
     New_Request(pp->p.iface, 0, "ACK NICK %s", sender);
 #endif
-  if (tgt && tgt->hold_upto != 0) {
-    dprint(3, "ircd:ircd.c: nickchange collision via %s", pp->p.dname);
+  if (tgt == NULL) ; /* handled below */
+  else if (tgt->hold_upto == 0 && /* pp here is not NULL! */
+	   (phantom = _ircd_find_collided_phantom(tgt, pp->p.dname)) == NULL) ;
+  else {
+    dprint(3, "ircd:ircd.c: nickchange for dead %s via %s", sender, pp->p.dname);
+    if (phantom == NULL)
+      phantom = _ircd_find_phantom(tgt, pp);
     /* so we got counter change, that might happen in case:
        1) user changed his/her nick at the same time with a collision resolving
-       2) another multiconnect changed user nick due to a collision
+       2) we renamed client via RFC2812 link and waiting a confirmation but new
+       collided client also died
+       3) another multiconnect changed user nick due to a collision
        so if we sent our ACK already but got different change then either
        our party server is broken or conflict is unresolvable.
        Hopefully this pretty bad timing is so rare that it will never happen. */
 #if IRCD_MULTICONNECT
-    tgt = _ircd_find_phantom(tgt, pp);
+    /* check case 3 here */
     if ((pp->link->cl->umode & A_MULTI) && ircd_check_ack(pp, tgt, NULL)) {
       /* it's nickchange collision (we got nickchange while sent ours) */
-      phantom = _ircd_find_client(nn);
-      if (phantom != NULL && tgt->x.rto != NULL && phantom == tgt->x.rto->cs) {
+      tgt = _ircd_find_client(nn);
+      if (tgt != NULL && phantom->x.rto != NULL && tgt == phantom->x.rto->cs) {
 	dprint(4, "ircd:ircd.c: nickchange to %s already known to me", nn);
 	return 1;			/* we got the change back */
       }
+      /* all other cases are wrong - we should never get alternate nickchange */
     }
 #endif
-    while (tgt != NULL && tgt->hold_upto != 0)
-      tgt = tgt->x.rto;			/* find current nick */
-    if (tgt)				/* so it's unresolvable, send kills */
-      changed = -1;
-    else
+#if COLLISION_RESOLVING
+#if IRCD_MULTICONNECT
+    if (!(pp->link->cl->umode & A_MULTI))
+#endif
+      /* check case 2 here */
+      if (phantom != NULL && (tgt = phantom->x.rto) != NULL &&
+	  tgt->rfr == phantom && (tgt->umode & A_COLLISION)) {
+	tgt->umode &= ~A_COLLISION;
+	/* another collided client already dead, not clearing */
+	if (strcmp(tgt->nick, nn) == 0) {
+	  /* nice, we finally got it back, let just clear status */
+	  dprint(4, "ircd:ircd.c: confirmed collision nickchange %s => %s by %s",
+		 sender, nn, pp->p.dname);
+	  return 1;
+	} else if (tgt->hold_upto == 0 && tgt->cs->via == pp) {
+	  /* fine, our assumption was wrong and origin chosen another change */
+	  dprint(4, "ircd:ircd.c: different collision nickchange %s => %s by %s, processing %s",
+		 sender, nn, pp->p.dname, tgt->nick);
+	  goto process_change; /* process as usual using current client */
+	} else {
+	  /* we got different rename but client already killed (because
+	     we should not rename already colliding client again) */
+	  Add_Request(I_LOG, "*", F_WARN, "ircd:ircd.c: nickchange for dead %s via %s to %s",
+		      sender, pp->p.dname, nn);
+	  /* fine, let isolate our collision phantom, it's dead end */
+	  phantom->rfr = NULL;
+	  tgt->x.rto = NULL;
+	}
+      }
+#endif
+    /* we have phantom pointing on name which was on pp (may be collided) and
+       that client is either killed for us or renamed differently */
+    if (phantom != NULL && phantom->x.rto == NULL) {
+      /* OK, it was renamed by the kill time, just remember it */
       dprint(3, "ircd:ircd.c:_ircd_remote_nickchange: nick %s already gone",
 	     sender);
+      tgt = _ircd_get_phantom(nn, NULL);
+      tgt->hold_upto = Time + CHASETIMELIMIT;
+      phantom->x.rto = tgt;		/* set relations */
+      tgt->rfr = phantom;
+      tgt->x.rto = NULL;
+    } else {
+      /* not much OK, it seems it was delayed but renamed user dead now */
+      Add_Request(I_LOG, "*", F_WARN,
+		  "ircd: ignore nickchange %s => %s via %s, user gone",
+		  sender, nn, pp->p.dname);
+    }
+    return 1;
   }
+#if COLLISION_RESOLVING
+process_change:
+#endif
   if (tgt == NULL || (tgt->umode & (A_SERVER | A_SERVICE))) {
     /* tgt->hold_upto can be only 0 after check above */
     ERROR("ircd:got NICK from nonexistent user %s via %s", sender, pp->p.dname);
@@ -4142,31 +4260,47 @@ static int _ircd_remote_nickchange(CLIENT *tgt, peer_priv *pp,
 		pp->p.dname, nn);
     return ircd_recover_done(pp, "Bogus nickchange");
   }
+    dprint(4, "ircd:ircd.c: nick change originated");
+#if IRCD_MULTICONNECT
+  if (!(tgt->cs->via->link->cl->umode & A_MULTI))
+#endif
+    if (tgt->cs->via != pp) {
+      /* only client's server can initiate nickchange */
+      snprintf(checknick, sizeof(checknick), "(%s[%s] != %s)", tgt->nick,
+	       tgt->cs->lcnick, pp->p.dname);
+      ERROR("ircd:NICK change coming wrong path: %s != %s", pp->p.dname,
+	    tgt->cs->lcnick);
+      New_Request(pp->p.iface, 0, ":%s KILL %s :%s %s", MY_NAME, nn, MY_NAME,
+		  checknick);
+      _ircd_kill_collided(tgt, pp, pp->p.dname, checknick);
+      return ircd_recover_done(pp, checknick);
+    }
   unistrlower(checknick, nn, sizeof(checknick));
   if (strcmp(tgt->lcnick, checknick) == 0) { /* this is just case change */
     _ircd_do_nickchange(tgt, pp, token, nn, 1);
     return (1);
   }
+  /* we have real alive client here, let validate it, just in case */
   if (!_ircd_validate_nickname(checknick, nn, sizeof(checknick))) {
     _ircd_transform_invalid_nick(checknick, nn, sizeof(checknick));
-#if IRCD_KILL_INVALID_NICK
     if (strcmp(checknick, nn) != 0) {
       ERROR("ircd:invalid NICK %s via %s => %s", nn, pp->p.dname, checknick);
-      changed = -1;			/* should be corrected */
+      changed = -1;			/* should be killed */
       ircd_recover_done(pp, "Invalid nick");
     }
-#endif
   }
-  collision = _ircd_find_nick_collision(checknick,
+  /* let check if there is a collision and handle it */
+  collided = _ircd_check_nick_collision(checknick, sizeof(checknick), pp,
 					tgt->cs ? tgt->cs->lcnick : pp->p.dname);
-  if (collision != NULL && collision->hold_upto == 0) {
-    /* we have the same nick alive or on hold and it's void to try to correct
-       wrong server which sent existing nick, so kill both, unfortunately */
-    ERROR("ircd:nick collision on nick change %s => %s", sender, nn);
+#if COLLISION_RESOLVING
+  if (changed == 0 && strcmp(checknick, nn) != 0)
+    /* ah, it is a collision after all and it was decided to kill changed one */
     changed = -1;
-    ircd_recover_done(pp, "Nick collision on nick change");
-  }
-  if (changed < 0) {			/* unresolvable collision, kill both */
+  tgt->umode &= ~A_COLLISION;		/* it's done, clear it */
+#endif
+  if (changed < 0) {
+    register const char *reason;
+    /* add a phantom to it and send kill back */
     phantom = _ircd_get_phantom(nn, NULL); /* order: ? -> tgt-> phantom */
 #if IRCD_MULTICONNECT
     if (pp->link->cl->umode & A_MULTI) {
@@ -4176,27 +4310,22 @@ static int _ircd_remote_nickchange(CLIENT *tgt, peer_priv *pp,
 #endif
     phantom->hold_upto = Time + CHASETIMELIMIT; /* nick delay for collided */
     strfcpy(phantom->away, pp->p.dname, sizeof(phantom->away));
-    New_Request(pp->p.iface, 0, ":%s KILL %s :Unresolvable nick collision",
-		MY_NAME, nn);		/* send KILL back */
-    _ircd_kill_collided(tgt, pp, pp->p.dname);
+    if (!checknick[0] && checknick[1])
+      reason = &checknick[1];
+    else
+      reason = "(Unresolvable collision)";
+    New_Request(pp->p.iface, 0, ":%s KILL %s :Nick collision %s", MY_NAME, nn,
+		reason);		/* send KILL back */
+    _ircd_kill_collided(tgt, pp, pp->p.dname, reason);
     tgt->x.rto = phantom;		/* set relations */
     phantom->rfr = tgt;
     phantom->x.rto = NULL;
     DBG("ircd:CLIENT: nick change collision KILL: %p => %p", tgt, phantom);
     return 1;
-  } else if (collision != NULL) {
-    /* we have collision on new nick with phantom but decided to accept change
-       and we cannot keep collided one since we'll get ->rfr filled with
-       phantom which client is changed from so cannot to tail collided there */
-    _ircd_force_drop_collision(&collision);
-  } /* else nick change is non-colliding and just accepted */
-#if !IRCD_KILL_INVALID_NICK
-  if (strcmp(checknick, nn) != 0) {
-    /* send correction back */
-    ERROR("ircd:invalid NICK %s via %s => %s", nn, pp->p.dname, checknick);
-    New_Request(pp->p.iface, 0, ":%s NICK %s", nn, checknick);
-  }
-#endif
+  } /* else nick change can be accepted */
+  if (collided)
+    /* we cannot have new name as a nick holder after setting relations to it */
+    _ircd_force_drop_collision(&collided);
   _ircd_do_nickchange(tgt, pp, token, checknick, 0);
   return 1;
 }
@@ -4228,6 +4357,7 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   const char *c;
   int ct;
 
+  /* note: lcsender here is current client nick, sender is what came from peer */
   if (peer == NULL) /* invalid internal call */
     return 0;
   pp = peer->iface->data; /* it's peer really */
@@ -4237,7 +4367,7 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 	    peer->dname, argc);
       return ircd_recover_done(pp, "Invalid NICK arguments");
     }
-    return _ircd_remote_nickchange(_ircd_find_client_lc(lcsender), pp, token,
+    return _ircd_remote_nickchange(_ircd_find_client(sender), pp, token,
 				   sender, argv[0]);
   }
   ct = atoi(argv[4]);
@@ -4256,14 +4386,14 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   if (!_ircd_validate_nickname(tgt->nick, argv[0], sizeof(tgt->nick))) {
     _ircd_transform_invalid_nick(tgt->nick, argv[0], sizeof(tgt->nick));
     ERROR("ircd:invalid NICK %s via %s => %s", argv[0], peer->dname, tgt->nick);
-    ct = 1;				/* should be corrected */
+    ct = 1;				/* should be killed */
     ircd_recover_done(pp, "Invalid nick");
 #if IRCD_MULTICONNECT
     collision = NULL;
   } else
     collision = ircd_find_client(tgt->nick, pp);
   if (collision != NULL)
-    dprint(3, "found collided name %s on server %s(%p), got %s(%p)", tgt->nick,
+    dprint(3, "found collided name %s from %s(%p), got %s(%p)", tgt->nick,
 	   collision->cs->lcnick, collision->cs, on->lcnick, on);
   if (collision != NULL && collision->cs == on) {
     dprint(4, "ircd: backup introduction of %s from %s by %s", tgt->nick,
@@ -4282,14 +4412,14 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   tgt->away[0] = '\0';
   collision = _ircd_check_nick_collision(tgt->nick, sizeof(tgt->nick), pp,
 					 on->lcnick);
-  if ((collision != NULL && collision->hold_upto == 0) ||
-      strcmp(argv[0], tgt->nick) != 0) {
-    /* another client of that nick found and still kept alive
-       or asked to remove/change remote client too */
+#if COLLISION_RESOLVING
+  if (ct == 0 && strcmp(tgt->nick, argv[0]) != 0) {
+    /* existing client requested to be renamed/killed */
     ERROR("ircd:nick collision via %s: %s => %s", peer->dname, argv[0],
 	  tgt->nick);
     ct = 1;				/* should be changed by collision */
   }
+#endif
   if (ct != 0) {			/* change invalid/collided nick */
     /* create phantom which is tailed to collision and link it to client */
     phantom = _ircd_get_phantom(argv[0], NULL);
@@ -4302,22 +4432,12 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 #endif
     phantom->hold_upto = Time + CHASETIMELIMIT; /* nick delay for collided */
     strfcpy(phantom->away, peer->dname, sizeof(phantom->away));
-    /* just a safeguard */
-    if (strcmp(argv[0], tgt->nick) == 0)
-      tgt->nick[0] = '\0';
-    if (tgt->nick[0] == '\0')
-    {
-      New_Request(peer->iface, 0, ":%s KILL %s :Nick collision", MY_NAME, argv[0]);
-      Add_Request(I_LOG, "*", F_MODES, "KILL %s :Nick collission", argv[0]);
-      phantom->x.rto = NULL;
-      free_CLIENT(tgt);
-      return 1;
-    }
-    phantom->x.rto = tgt;		/* set relations */
-    tgt->rfr = phantom;
-    New_Request(peer->iface, 0, ":%s NICK :%s", argv[0], tgt->nick);
-    dprint(2, "ircd:CLIENT: adding remote client %s: %p", tgt->nick, tgt);
-    DBG("ircd:CLIENT: collided NICK relations: %p => %p", phantom, tgt);
+    /* unfortunately we cannot send change back so just killing it */
+    New_Request(peer->iface, 0, ":%s KILL %s :Nick collision", MY_NAME, argv[0]);
+    Add_Request(I_LOG, "*", F_MODES, "KILL %s :Nick collission", argv[0]);
+    phantom->x.rto = NULL;
+    free_CLIENT(tgt);
+    return 1;
   } else if (collision != NULL) { /* we got new client collided with phantom */
     collision = collision->cs;		/* go to the keyholder */
     if (Delete_Key(Ircd->clients, collision->lcnick, collision) < 0)
@@ -4470,7 +4590,7 @@ static int ircd_service_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
     _ircd_force_drop_collision(&tgt);
   } else if (tgt != NULL && !CLIENT_IS_SERVICE(tgt)) {
     /* collision with nick, let remove nick then and forget it */
-    _ircd_kill_collided(tgt, pp, pp->p.dname);
+    _ircd_kill_collided(tgt, NULL, pp->p.dname, "(Service collision)");
     tgt->hold_upto = Time;
     if (Delete_Key(Ircd->clients, tgt->lcnick, tgt) < 0)
       ERROR("ircd:ircd_nick_sb: tree error on removing %s", tgt->lcnick);
@@ -5138,7 +5258,7 @@ CLIENT *ircd_find_client_nt(const char *name, peer_priv *via)
 
 /* manages lists, prepares to notify network about that quit (I_PENDING),
    and kills peer if it's local */
-void ircd_prepare_quit (CLIENT *client, peer_priv *via, const char *msg)
+void ircd_prepare_quit (CLIENT *client, const char *msg)
 {
   dprint(5, "ircd:ircd.c:ircd_prepare_quit: %s", client->nick);
   if (client->hold_upto != 0 || CLIENT_IS_SERVER(client)) {

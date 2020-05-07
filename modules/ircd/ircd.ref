@@ -9,8 +9,7 @@ unprintable characters available in the names for channel at all, not only
 ^G (ASCII 7). Also there is a compilation option IRCD_STRICT_NAMES which
 does a further restriction (see below).
 
-    Two compilation options make new features: IRCD_USES_ICONV and
-IRCD_MULTICONNECT. See descriptions below.
+    Few compilation options make new features. See descriptions below.
 
 
 #define IRCD_USES_ICONV 1
@@ -294,7 +293,7 @@ IRCD_MULTICONNECT. See descriptions below.
 #define TOPICWHOTIME 1
 
     If TOPICWHOTIME is defined then this feature which is present in many
- other servers is enabled. If it is enabled then server keeps track on
+ other servers is enabled.  If it is enabled then server keeps track on
  who and when changed the channel topic and send that info along with the
  topic itself when user joins channel or sends query for the topic.
 
@@ -306,6 +305,18 @@ IRCD_MULTICONNECT. See descriptions below.
          - Sent to client, <who> is the client (in form nick!user@host)
            who changed the channel topic last, and <time> is time when
            topic was changed last, in seconds since Epoch.
+
+
+#define COLLISION_RESOLVING 1
+
+    If COLLISION_RESOLVING is defined to 1 then instead of KILL colliding
+ clients a "soft" collision resolving will be attempted.  That means the
+ nickname of existing client will be changed temporarily and server will
+ send changed nick in direction other than origin server of that nick and
+ adertise new client to every connected server.  After that server will
+ wait for some time until origin server either renames own client, or
+ kills it.  This feature will work if some module installs a binding that
+ implements such rename using some principle.
 
 
 Meaning of letters in VERSION reply:

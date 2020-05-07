@@ -215,7 +215,7 @@ static int ircd_quit_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 #endif
   ircd_sendto_servers_all_ack ((IRCD *)srv->data, cl, NULL, NULL,
 			       ":%s QUIT :%s", peer->dname, msg);
-  ircd_prepare_quit (cl, cl->via, msg);
+  ircd_prepare_quit (cl, msg);
 #ifdef USE_SERVICES
   ircd_sendto_services_mark_prefix ((IRCD *)srv->data,
 				    SERVICE_WANT_QUIT | SERVICE_WANT_RQUIT);
@@ -719,7 +719,7 @@ static int ircd_kill_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
   ircd_sendto_servers_all_ack((IRCD *)srv->data, tcl, NULL, NULL,
 			      ":%s KILL %s :%s", cl->nick, tcl->nick, reason);
 				/* broadcast KILL */
-  ircd_prepare_quit(tcl, cl->via, "you are killed");
+  ircd_prepare_quit(tcl, "you are killed");
   tcl->hold_upto = Time + CHASETIMELIMIT; /* make 'nick delay' */
   for (c = NextWord(reason); c > reason && c[-1] != '!'; c--); /* find nick */
   Add_Request(I_PENDING, "*", 0, ":%s!%s@%s QUIT :Killed by %s", tcl->nick,

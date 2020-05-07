@@ -38,6 +38,8 @@
 #define A_LIMIT		(1<<1)	/* +-l	channel modelock flag */
 #define A_KEYSET	(1<<2)	/* +-k	channel keylock flag */
 
+#define A_COLLISION	A_TOPICLOCK /* user-only "mode" not usable otherwise */
+
 #if ! IRCD_USES_ICONV
 # undef IRCD_STRICT_NAMES
 #endif
@@ -367,8 +369,8 @@ int ircd_do_cnumeric (CLIENT *, int, const char *, CHANNEL *, unsigned short,
    resets away message, and shedules kill of peer if it's local
    converts collision list into phantom so caller have to set 'hold_upto'
    caller should manage 'host' field after this for nick tracking purposes
-   args: client, sender, reason */
-void ircd_prepare_quit (CLIENT *, struct peer_priv *, const char *);
+   args: client, reason */
+void ircd_prepare_quit (CLIENT *, const char *);
 /* we got informed about lost server; args: who, source, reason */
 void ircd_do_squit (LINK *, struct peer_priv *, const char *);
 /* main seek engine: nick/name to structure; returns ME by NULL */

@@ -15,6 +15,13 @@ TODO:
 	* modules/ircd: to allow MODE KILL KICK TOPIC INVITE to be used by the
 	  service with admin rights.
 
+Tue May  5 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
+	* modules/ircd/ircd.*, modules/ircd/servers.c, modules/ircd/clients.c, modules/ircd-rusnet/rusnet.c:
+	  reworked collision handling, it now uses "soft" collision handling
+	  where server which got a collision resolves it for peers other than
+	  existing client in a collision and waits for said origin to resolve
+	  it (rename or kill the client).
+
 Sun May  3 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* core/foxeye.h, modules/ircd/channels.c, modules/ircd/ircd.*, modules/ircd-rusnet/rusnet.c, doc/modules.api:
 	  reworked "ircd-modechange" and "ircd-check-modechange" bindtables to

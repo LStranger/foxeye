@@ -317,7 +317,7 @@ static int ircd_quit_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 #endif
   ircd_sendto_servers_all_ack((IRCD *)srv->data, cl, NULL, peer->iface->data,
 			      ":%s QUIT :%s", cl->nick, msg);
-  ircd_prepare_quit(cl, cl->via, msg);
+  ircd_prepare_quit(cl, msg);
 #ifdef USE_SERVICES
   ircd_sendto_services_mark_prefix((IRCD *)srv->data,
 				   SERVICE_WANT_QUIT | SERVICE_WANT_RQUIT);
@@ -986,10 +986,13 @@ static int ircd_kill_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
     }
   }
 #endif
+  if (tcl->hold_upto != 0)
+    dprint(3, "ircd:servers: KILL target %s already gone for us", argv[0]);
   while (tcl != NULL && tcl->hold_upto != 0) /* trace nickchanges now */
     tcl = tcl->x.rto;
   if (tcl == NULL) {			/* user has quited for us already */
-    //TODO: log it!
+    Add_Request(I_LOG, "*", F_WARN, "ircd:KILL via %s for dead user %s",
+		peer->dname, argv[0]);
     return (1);
   }
   //TODO: check if reason is badly formatted - should be path!killer (reason)
@@ -1007,7 +1010,7 @@ static int ircd_kill_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   ircd_sendto_servers_all_ack((IRCD *)srv->data, tcl, NULL, pp,
 			      ":%s KILL %s :%s", cl->nick, tcl->nick, reason);
 			      /* broadcast KILL */
-  ircd_prepare_quit(tcl, cl->via, "you are killed"); /* to notify local users */
+  ircd_prepare_quit(tcl, "you are killed"); /* to notify local users */
   tcl->hold_upto = Time + CHASETIMELIMIT; /* make 'nick delay' */
   for (c = NextWord(reason); c > reason && c[-1] != '!'; c--); /* find nick */
   Add_Request(I_PENDING, "*", 0, ":%s!%s@%s QUIT :Killed by %s", tcl->nick,
