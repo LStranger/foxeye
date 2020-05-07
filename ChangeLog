@@ -21,6 +21,7 @@ Thu May  7 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* modules/ircd/channels.c: fixed incomplete initialization of CMASKL.
 	* modules/ircd/ircd.c: loosed on client names that come from servers.
 	* configure: dropped flag '-fast' from CFLAGS on Solaris: too unstable.
+	* modules/ircd/channels.c: fixed wrong channel "flags" like +b.
 
 Tue May  5 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.*, modules/ircd/servers.c, modules/ircd/clients.c, modules/ircd-rusnet/rusnet.c:

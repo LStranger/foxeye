@@ -2009,8 +2009,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 		  dprint(4, "ircd:channels.c: mode +%c %s already present on %s",
 			 *c, par, ch->name);
 		continue;
-	      } else
-		ch->mode |= mf;
+	      } /* else it's handled, no flags just propagate */
 	    } else if (ch->mode & mf) { /* dummy modechange */
 	      dprint(4, "ircd:channels.c: dummy modechange via %s on %s: +%c",
 		     pp->p.dname, ch->name, *c);
@@ -2053,8 +2052,7 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
 	      dprint(4, "ircd:channels.c: there isn't +%c %s on %s to remove but sending it anyway",
 		     *c, par, ch->name); /* see below - we skipped sending */
 #endif
-	    }
-	    ch->mode &= ~mf;
+	    } /* else it's handled, no flags just propagate */
 	  } else if (!(ch->mode & mf)) { /* dummy modechange */
 	    dprint(4, "ircd:channels.c: dummy modechange via %s on %s: -%c",
 		   pp->p.dname, ch->name, *c);
