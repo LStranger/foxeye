@@ -19,6 +19,7 @@ Thu May  7 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* modules/ircd-rusnet/rusnet.c: workarounded an issue with random()
 	  range on Solaris (it may exceed RAND_MAX).
 	* modules/ircd/channels.c: fixed incomplete initialization of CMASKL.
+	* modules/ircd/ircd.c: loosed on client names that come from servers.
 
 Tue May  5 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* modules/ircd/ircd.*, modules/ircd/servers.c, modules/ircd/clients.c, modules/ircd-rusnet/rusnet.c:

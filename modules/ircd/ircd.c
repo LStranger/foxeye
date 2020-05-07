@@ -4038,6 +4038,9 @@ static inline void _ircd_transform_invalid_nick(char *buf, const char *nick,
   sz = safe_strlen(nick);
   memset(&ps, 0, sizeof(mbstate_t));	/* reset state for mbrtowc */
   /* validate if name consists of alphanumeric chars (RFC2813) */
+#if 1
+  sp = 0;
+#else
   if (strchr ("[]\\`_^{|}~", *nick))	/* allowed non-alphanum chars */
   {
     bs--;
@@ -4058,6 +4061,7 @@ static inline void _ircd_transform_invalid_nick(char *buf, const char *nick,
       sp = 0;
     memset(&ps, 0, sizeof(mbstate_t));
   }
+#endif
   while (*nick && sp < _ircd_nicklen && bs > 1)
   {
     if (strchr ("[]\\`_^{|}~-", *nick)) /* allowed non-alphanum chars */
@@ -4091,7 +4095,7 @@ static inline void _ircd_transform_invalid_nick(char *buf, const char *nick,
     sz -= sc;
   }
   if (sp == 0)
-    *buf++ = '~';
+    *buf++ = '_';
   *buf = '\0';
 }
 
