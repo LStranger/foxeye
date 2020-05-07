@@ -770,7 +770,7 @@ static void _rusnet_make_collided_local(char *nick, size_t ns)
   if (i > 5)
     len -= 5;
   snprintf(&nick[len], ns - len, "%d",
-	   10000 + (int) (60000.0 * random() / (RAND_MAX + 10000.0)));
+	   10000 + (int) (60000.0 * random() / (RAND_MAX + 10000.0)) % 90000);
 }
 
 static void _rusnet_make_collided(char *newnick, const char *nick, size_t ns,
