@@ -271,6 +271,7 @@ static MASK** _get_chanmasklist(CHANNEL *ch, char mch)
   *ptr = l = alloc_CMASKL();
   l->mch = mch;
   l->list = NULL;
+  l->next = NULL;
   return &l->list;
 }
 
