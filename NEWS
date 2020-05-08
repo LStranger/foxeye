@@ -1,5 +1,74 @@
 -=-=-=-=-  This file describes changes in recent releases of FoxEye  -=-=-=-=-
 
+Changes in version 0.13 since 0.12:
+
+- Changed bindings call aruments on some of ircd module bindtables,
+    recheck docs, please.
+
+
+Changes in version 0.12 since 0.11:
+
+- New module 'ircd-rusnet' with implementation of RusNet IRC network
+    extensions for ircd.
+
+- New bindtables: 'ircd-got-server' and 'ircd-lost-server' to inform
+    modules about servers linking.
+
+- Help now is available in any language, not just one set on start.  New
+    function Get_Help_L() added for such purpose.
+
+- Process of restart reworked, it will shutdown everything and then
+    re-exec the process, thus allow restart the same with new executable.
+
+- New bindtable 'ircd-eob' to inform modules that burst was finished.
+
+- Reworked interfaces requests to consume less CPU by putting them into
+    sleep until requested.  Added new function Mark_Iface() to mark any
+    interface to wake up even if there is nothing to receive or send.
+
+- New signal S_WAKEUP for purpose of waking up interface by timer.
+
+- New F_RAW message flag to don't do any message conversions.
+
+- New bindtables: 'ircd-drop-unknown' and 'ircd-server-handshake' to
+    inform modules about connections in progress.
+
+- New module 'ircd-capab' which adds optional capabilities pre-check into
+    ircd handshake, it might be useful for future expansion.
+
+- Added support for Lua 5.2 and 5.3.
+
+
+Changes in version 0.11 since 0.10:
+
+- New translation: Spanish.
+
+- Build for GNU/kFreeBSD, GNU/Hurd or Mac OS X now is supported.
+
+- New module 'syslog' to logging messages using syslog.
+
+- New module 'ssl' to handle encrypted connections using connchain API.
+
+- New bindtable "ircd-whois" to expand WHOIS query reply.
+
+- New API Connchain_Shrink to use by recv() callback from filter to
+    perform suicide.
+
+- Added support for visible host in ircd (or masked, whatever) if some
+    network module will handle it.
+
+- New 'ircd-check-send' bindtable to filter recipients on sending.
+
+- New function GetVariable() which grants access to variables of one
+    module to another at init stage.
+
+- New PeerData_* functions family to allow modules attach fast access
+    data to peer_t structure.
+
+- Changed bindings call aruments on most of ircd module bindtables,
+    recheck docs, please.
+
+
 Changes in version 0.10 since 0.9:
 
 - IDN (international domain names) support.

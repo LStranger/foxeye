@@ -321,11 +321,13 @@ does a further restriction (see below).
 
 Meaning of letters in VERSION reply:
 
+   A  - "Stealth" channel modes are allowed
    E  - Opers can rehash server
    i  - Multiple encoding support is enabled
    J  - Opers can use /die
    K  - Opers can use /kill
    o  - Cyclic network scheme is enabled
+   O  - "Soft" collision resolving is enabled
    R  - Opers can restart server
    s  - Using local services is enabled
    S  - Local /summon is enabled

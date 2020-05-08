@@ -611,6 +611,9 @@ static int ircd_lusers_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
 }
 
 const char *ircd_version_flags =
+#ifdef ALLOW_NOOP_CHANMGMT
+"A"
+#endif
 #ifdef IRCD_ENABLE_REHASH
 "E"
 #endif
@@ -625,6 +628,9 @@ const char *ircd_version_flags =
 #endif
 #if IRCD_MULTICONNECT
 "o"
+#endif
+#if COLLISION_RESOLVING
+"O"
 #endif
 #ifdef IRCD_ENABLE_RESTART
 "R"
