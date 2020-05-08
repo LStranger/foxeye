@@ -989,8 +989,10 @@ static void *_poll_thread(void __attribute__((unused)) *data)
     //FIXME: what to do in case of error?
     pthread_mutex_lock (&LockPoll);
     pthread_cond_wait(&PollIntr, &LockPoll);
+    pthread_mutex_unlock (&LockPoll);
     pthread_cancel(subthread);
     pthread_join(subthread, NULL);
+    pthread_mutex_lock (&LockPoll);
     /* reset found events but callers will set it again when needs */
     for (i = 0; i < d.pfdset; i++) {
       if (Pollfd[i].events & POLLHUP) ; /* was reset while we polled */
