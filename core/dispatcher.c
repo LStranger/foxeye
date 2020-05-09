@@ -645,6 +645,9 @@ static int _get_current (void)
     Current->a.ift |= I_SLEEPING;		/* but with delay */
   }
 
+  if (Current->a.ift & I_FINWAIT)
+    Current->a.marked = TRUE;			/* suicide performed, do kill */
+
   if (out == REQ_OK)
     return delete_request (Current, curq);	/* else it was rejected */
 
