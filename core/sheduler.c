@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2020  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -307,8 +307,12 @@ tid_t Add_Timer (INTERFACE *iface, ifsig_t sig, time_t timer)
   if (i < _STnum || _STnum >= MAXTABLESIZE)
   {
 //    pthread_mutex_unlock (&LockShed);
-    WARNING ("Add_Timer: failed for %s +%ld sec (entry %u id %d)", iface->name,
-	     (long)timer, i, id);
+    if (i < _STnum)
+      dprint (3, "Add_Timer: timer for %s +%ld sec sig=%d exists (id %d)",
+	      iface->name, (long)timer, (int)sig, id);
+    else
+      WARNING ("Add_Timer: failed for %s +%ld sec (entry %u id %d)", iface->name,
+	       (long)timer, i, id);
     return id;
   }
   if (_STnum >= _STalloc)

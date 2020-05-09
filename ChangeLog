@@ -28,6 +28,7 @@ Sat May  9 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* core/dispatcher.c: mark interface if it got I_FINWAIT after run.
 	* core/socket.c: fixed case if something left in the socket, in such
 	  case callback should be called and owner must be marked to run.
+	* core/sheduler.c: lowered debug level on trying to add duplicate timer.
 
 Thu May  7 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* modules/ircd-rusnet/rusnet.c: workarounded an issue with random()
