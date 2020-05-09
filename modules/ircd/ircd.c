@@ -1813,6 +1813,9 @@ _sendq_exceeded:
   if (!(cl->umode & (A_SERVER | A_SERVICE)) &&
       peer->penalty > _ircd_client_recvq[1])
   {
+    DBG("ircd:client %s is in penalty zone, qsize %d", cl->nick, cli->qsize);
+    if (cli->qsize == 0)		/* else it will be waked up by queue */
+      Add_Timer(cli, S_WAKEUP, peer->penalty - _ircd_client_recvq[1]);
     sr = 0;				/* apply penalty on flood from clients */
   }
   else while ((sr = Peer_Get ((&peer->p), buff, sizeof(buff))) > 0)
@@ -1940,7 +1943,7 @@ _sendq_exceeded:
       if (CheckFlood (&peer->penalty, _ircd_client_recvq) > 0) {
 	dprint(4, "ircd: flood from %s, applying penalty on next message",
 	       cl->nick);
-	Add_Timer(cli, S_WAKEUP, peer->penalty - _ircd_client_recvq[1]);
+	Mark_Iface(cli);		/* will add a timer there */
 	break;				/* don't accept more messages */
       }
     }
