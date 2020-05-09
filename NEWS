@@ -5,6 +5,8 @@ Changes in version 0.13 since 0.12:
 - Changed bindings call aruments on some of ircd module bindtables,
     recheck docs, please.
 
+- New function match_simple_ic() to do case-insensitive matching.
+
 
 Changes in version 0.12 since 0.11:
 

@@ -15,6 +15,10 @@ TODO:
 	* modules/ircd: to allow MODE KILL KICK TOPIC INVITE to be used by the
 	  service with admin rights.
 
+Sat May  9 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
+	* core/lib.c, core/protos.h, doc/modules.api: added new function
+	  match_simple_ic() to do case-insensitive matching.
+
 Thu May  7 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* modules/ircd-rusnet/rusnet.c: workarounded an issue with random()
 	  range on Solaris (it may exceed RAND_MAX).

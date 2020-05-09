@@ -622,7 +622,7 @@ int match (const char *mask, const char *text)
 #define swildcard(c) (c == '*' || c == '?' || c == '\\')
 
 static int smatch_it_mb (const char *p, const char *pe, const char *t,
-			 const char *te, char pp)
+			 const char *te, bool ic, char pp)
 {
   const char *tc;
   int count = 0, rc;
@@ -649,7 +649,7 @@ static int smatch_it_mb (const char *p, const char *pe, const char *t,
       rc = -1;
       p++;
       for (tc = t; tc <= te; ) {
-	r = smatch_it_mb(p, pe, tc, te, '*');
+	r = smatch_it_mb(p, pe, tc, te, ic, '*');
 	if (r > rc)
 	  rc = r;
 	if (tc == te)
@@ -671,7 +671,12 @@ static int smatch_it_mb (const char *p, const char *pe, const char *t,
       if (r < 1)
 	return (-1);
       t += r;
-      if (mbrtowc(&pc, p, pe - p, &ms) < 1 || pc != wc)
+      if (mbrtowc(&pc, p, pe - p, &ms) < 1)
+	return (-1);
+      if (ic) {
+	if (towlower(pc) != towlower(wc))
+	  return (-1);
+      } else if (pc != wc)
 	return (-1);
       p += (r - 1);		/* p is incremented below */
       count++;
@@ -683,7 +688,7 @@ static int smatch_it_mb (const char *p, const char *pe, const char *t,
   return (count);
 }
 
-static int smatch_it (const char *p, const char *t, char pp)
+static int smatch_it (const char *p, const char *t, bool ic, char pp)
 {
   const char *tc;
   int count = 0, rc;
@@ -703,7 +708,7 @@ static int smatch_it (const char *p, const char *t, char pp)
       rc = -1;
       tc = t;
       do {
-	r = smatch_it(&p[1], tc, '*');
+	r = smatch_it(&p[1], tc, ic, '*');
 	if (r > rc)
 	  rc = r;
       } while (*tc++ != '\0');
@@ -715,7 +720,10 @@ static int smatch_it (const char *p, const char *t, char pp)
 	p++;			/* skip one escaped wildcard */
       /* else take it literally */
     default:
-      if (*p != *t++)
+      if (ic) {
+	if (tolower(*p) != tolower(*t++))
+	  return (-1);
+      } else if (*p != *t++)
 	return (-1);
       count++;
     }
@@ -726,7 +734,7 @@ static int smatch_it (const char *p, const char *t, char pp)
   return (count);
 }
 
-int simple_match (const char *mask, const char *text)
+static int simple_match_int(const char *mask, const char *text, bool ic)
 {
 //  register int ptr;
 
@@ -740,8 +748,18 @@ int simple_match (const char *mask, const char *text)
 //  ptr = strlen (mask);
 //  return smatch_it (mask, &text, &mask[ptr]);	/* do real comparison */
   if (MB_CUR_MAX > 1)
-    return smatch_it_mb(mask, &mask[strlen(mask)], text, &text[strlen(text)], '\0');
-  return smatch_it (mask, text, '\0');		/* do real comparison */
+    return smatch_it_mb(mask, &mask[strlen(mask)], text, &text[strlen(text)], ic, '\0');
+  return smatch_it (mask, text, ic, '\0');	/* do real comparison */
+}
+
+int simple_match (const char *mask, const char *text)
+{
+  return simple_match_int(mask, text, FALSE);
+}
+
+int simple_match_ic(const char *mask, const char *text)
+{
+  return simple_match_int(mask, text, TRUE);
 }
 
 int Have_Wildcard (const char *str)

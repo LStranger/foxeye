@@ -400,6 +400,11 @@ Common API:
     Note: this function does not perform case-insensitive comparison!
 	Reenterability: async-safe
 
+  int ssiimmppllee__mmaattcchh__iicc (const char *_m_a_s_k, const char *_s_t_r_i_n_g);
+    Behaves the same as simple_match() but performs case-insensitive
+    matching.
+	Reenterability: async-safe
+
   size_t ssttrrffccppyy (char *_d_s_t, const char *_s_r_c, size_t _n);
     Copies null-terminated text string _s_r_c to end of text string in the
     _d_s_t but don't exceed maximum string length _n of _d_s_t. In difference of

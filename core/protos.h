@@ -101,6 +101,8 @@ int match (const char *, const char *)		/* lib.c */
 	__attribute__((warn_unused_result));
 int simple_match (const char *, const char *)
 	__attribute__((warn_unused_result));
+int simple_match_ic (const char *, const char *)
+	__attribute__((warn_unused_result));
 userflag strtouserflag (const char *, char **)
 	__attribute__((warn_unused_result));
 int Have_Wildcard (const char *) __attribute__((warn_unused_result,nonnull(1)));
