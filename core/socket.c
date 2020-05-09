@@ -255,6 +255,7 @@ ssize_t ReadSocket (char *buf, idx_t idx, size_t sr)
     } else if ((size_t)sg == sr) {	/* buffer is full, there may be more data */
       pthread_mutex_lock(&LockPoll);
       Pollfd[idx].revents |= POLLIN;
+      pthread_cond_broadcast(&PollIntr); /* inform threads about update */
       pthread_mutex_unlock(&LockPoll);
     }
   }// else if (rev & POLLHUP)
