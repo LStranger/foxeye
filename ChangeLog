@@ -30,6 +30,8 @@ Sat May  9 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	  case callback should be called and owner must be marked to run.
 	* core/sheduler.c: lowered debug level on trying to add duplicate timer.
 	* modules/ircd/ircd.c: fixed wakeup after penalty to be more reliable.
+	* modules/ircd/clients.c, modules/ircd/messages.c, modules/ircd/ircd.ref, modules/ircd-rusnet/rusnet.c, doc/modules.api:
+	  expanded "ircd-check-message" to check private messages to users.
 
 Thu May  7 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* modules/ircd-rusnet/rusnet.c: workarounded an issue with random()

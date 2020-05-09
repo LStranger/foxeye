@@ -7,6 +7,8 @@ Changes in version 0.13 since 0.12:
 
 - New function match_simple_ic() to do case-insensitive matching.
 
+- Expanded "ircd-check-message" to check private messages to users.
+
 
 Changes in version 0.12 since 0.11:
 

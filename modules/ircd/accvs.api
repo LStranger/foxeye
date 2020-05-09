@@ -139,12 +139,17 @@
       Matching: channel name's first char.  (userflags are ignored)
 
 -     "iirrccdd--cchheecckk--mmeessssaaggee" MASK
-  int func(modeflag _u_m_o_d_e, modeflag _m_m_o_d_e, char *_m_s_g);
+  int func(modeflag _u_m_o_d_e, modeflag _m_m_o_d_e, const char **_m_s_g);
     Used when someone with channel mode _u_m_o_d_e is trying to send a message
     _m_s_g into some channel with modes _m_m_o_d_e. Returns 1 in case if sending
     is allowed, -1 if it may be allowed (i.e. allowed until other binding
     disallowed it), or 0 if it is disallowed. If no appropriate binding
-    was found then message will be allowed.
+    was found then message will be allowed. This binding will be used for
+    test messages to a person as well, in that case _u_m_o_d_e is user mode of
+    sender and _m_m_o_d_e is user mode of recipient. Difference is that in
+    such case flag A_ISON will be set in _m_m_o_d_e while when channel is for
+    test, this flag will be absent. Binding may put a reason for denying
+    back into pointer _m_s_g as well.
       Matching: target.  (userflags are ignored)
       Matching stops after first binding call that returns 1.
 

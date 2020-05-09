@@ -493,3 +493,15 @@ Special support for SSL connections.
               "<nick> :is using encrypted connection"
 
          - Returned to client in reply to WHOIS command.
+
+
+Special support for modules to filter message targets.
+
+    In case if some module denies sending message to some user, then
+ user will receive a numeric:
+
+       531    ERR_CANTSENDTOUSER
+              "<nick> :User does not accept private messages"
+
+         - Returned to a client in reply to PRIVMSG if target user does
+           not allow sender to send him messages.

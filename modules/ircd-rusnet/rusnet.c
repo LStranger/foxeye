@@ -897,13 +897,19 @@ static modeflag rusnet_mch_c(modeflag rchmode, modeflag rmode, const char *targe
 }
 
 BINDING_TYPE_ircd_check_message(rusnet_check_message);
-static int rusnet_check_message(modeflag umode, modeflag mmode, char *msg)
+static int rusnet_check_message(modeflag umode, modeflag mmode, const char **msg)
 {
-  /* check for color in msg for colorless channel */
-  if (mmode & A_NOCOLOR)
+  if (mmode & A_ISON)
   {
-    if (strchr(msg, 0x3))		/* mIRC color code */
+    /* it is for user */
+  }
+  /* check for color in msg for colorless channel */
+  else if (mmode & A_NOCOLOR)
+  {
+    if (strchr(*msg, 0x3)) {		/* mIRC color code */
+      *msg = "No color codes allowed";
       return 0;
+    }
   }
   /* pass to next filter */
   return -1;

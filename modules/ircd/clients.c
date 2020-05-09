@@ -74,8 +74,11 @@ static int _ircd_client_receiver (INTERFACE *iface, REQUEST *req)
 /* ---------------------------------------------------------------------------
  * Check message binding.
  */
-static int ichmsg_ircd (modeflag umode, modeflag mmode, char *msg)
+BINDING_TYPE_ircd_check_message(ichmsg_ircd);
+static int ichmsg_ircd (modeflag umode, modeflag mmode, const char **msg)
 {
+  if (mmode & A_ISON)
+    return -1;				/* allow send to a person */
   if (mmode & A_QUIET)
     return 0;
   if (!(umode & A_ISON) && (mmode & A_NOOUTSIDE))

@@ -308,6 +308,9 @@ static int _ircd_can_send_to_chan (CLIENT *cl, CHANNEL *ch, const char *msg)
   register MEMBER *m;
   MASK *cm;
   struct binding_t *b = NULL;
+#define static register
+  BINDING_TYPE_ircd_check_message((*f));
+#undef static
   int i, x = -1;
   char buff[MB_LEN_MAX*NICKLEN+IDENTLEN+HOSTLEN+3];
   char buffv[MB_LEN_MAX*NICKLEN+IDENTLEN+HOSTLEN+3];
@@ -336,10 +339,38 @@ static int _ircd_can_send_to_chan (CLIENT *cl, CHANNEL *ch, const char *msg)
   while ((b = Check_Bindtable (BTIrcdCheckMessage, ch->name, U_ALL, U_ANYCH, b)))
     if (b->name)
       continue;
-    else if ((i = b->func (mf, ch->mode, msg)) > 0)
+    else if ((i = (f = b->func)(mf, (ch->mode & ~A_ISON), &msg)) > 0)
       return 1;
     else
       x &= i;
+  return x;
+}
+
+static int _ircd_can_send_to_one (CLIENT *cl, CLIENT *tgt, const char *msg,
+				  const char **res)
+{
+  int i, x = -1;
+  struct binding_t *b = NULL;
+  const char *m = msg;
+#define static register
+  BINDING_TYPE_ircd_check_message((*f));
+#undef static
+
+  if (!(tgt->umode & A_ISON))
+    return x; // FIXME
+
+  while ((b = Check_Bindtable (BTIrcdCheckMessage, tgt->nick, U_ALL, U_ANYCH, b)))
+    if (b->name)
+      continue;
+    else if ((i = (f = b->func)(cl->umode, tgt->umode, &m)) > 0)
+      return 1;
+    else
+      x &= i;
+  if (res == NULL) ;
+  else if (x != 0 || m == msg)
+    *res = NULL;
+  else
+    *res = m;
   return x;
 }
 
@@ -605,6 +636,7 @@ static int ircd_privmsg_cb(INTERFACE *srv, struct peer_t *peer, const char *lcni
   MEMBER *tch;
   IRCD *ircd = (IRCD *)srv->data;
   char *c, *cnext;
+  const char *msg;
   register char *cmask;
   unsigned int n;
   unsigned int max_targets = _ircd_client_recvq[0];
@@ -669,6 +701,8 @@ static int ircd_privmsg_cb(INTERFACE *srv, struct peer_t *peer, const char *lcni
     {
       if (CLIENT_IS_SERVICE(tcl))
 	ircd_do_unumeric (cl, ERR_NOSUCHNICK, cl, 0, c);
+      else if (!_ircd_can_send_to_one(cl, tcl, argv[1], &msg))
+	ircd_do_unumeric (cl, ERR_CANTSENDTOUSER, tcl, 0, msg);
       else if (!CLIENT_IS_REMOTE(tcl))
       {
 #ifdef USE_SERVICES
@@ -782,6 +816,7 @@ static int ircd_notice_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnic
     else if ((tcl = _ircd_find_msg_target (c, NULL)))
     {
       if (CLIENT_IS_SERVICE(tcl)) ;
+      else if (!_ircd_can_send_to_one(cl, tcl, argv[1], NULL)) ;
       else if (!CLIENT_IS_REMOTE(tcl))
 #ifdef USE_SERVICES
 	if (CLIENT_IS_SERVICE (cl))
@@ -874,6 +909,7 @@ static int ircd_privmsg_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
   MEMBER *tch;
   IRCD *ircd = (IRCD *)srv->data;
   char *c, *cnext;
+  const char *msg;
   struct peer_priv *pp;
   unsigned int max_targets = _ircd_client_recvq[0];
   const char *tlist[max_targets];
@@ -935,6 +971,11 @@ static int ircd_privmsg_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
       if (CLIENT_IS_SERVICE(tcl)) {
 	ERROR("ircd:invalid PRIVMSG target %s via %s", c, peer->dname);
 	ircd_recover_done(pp, "Invalid recipient");
+      } else if (!_ircd_can_send_to_one(cl, tcl, argv[1], &msg)) {
+	Add_Request(I_LOG, "*", F_WARN,
+		    "ircd:not permitted PRIVMSG to %s via %s: %s", c,
+		    peer->dname, msg);
+	//FIXME: send numeric back?
       } else if (!CLIENT_IS_REMOTE(tcl)) {
 	if (CLIENT_IS_SERVICE(cl))
 	  New_Request(tcl->via->p.iface, 0, ":%s@%s PRIVMSG %s :%s", sender,
@@ -1053,6 +1094,9 @@ static int ircd_notice_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
       if (CLIENT_IS_SERVICE(tcl)) {
 	Add_Request(I_LOG, "*", F_WARN, "ircd:invalid NOTICE target %s via %s",
 		    c, peer->dname);
+      } else if (!_ircd_can_send_to_one(cl, tcl, argv[1], NULL)) {
+	Add_Request(I_LOG, "*", F_WARN,
+		    "ircd:not permitted NOTICE to %s via %s", c, peer->dname);
       } else if (!CLIENT_IS_REMOTE(tcl)) {
 	if (CLIENT_IS_SERVER(cl))
 	  New_Request(tcl->via->p.iface, 0, ":%s NOTICE %s :%s", sender, c,
@@ -1158,6 +1202,7 @@ static int ircd_iprivmsg(INTERFACE *srv, struct peer_t *peer, unsigned short tok
   MEMBER *tch;
   IRCD *ircd = (IRCD *)srv->data;
   char *c, *cnext;
+  const char *msg;
   struct peer_priv *pp;
   unsigned int max_targets = _ircd_client_recvq[0];
   const char *tlist[max_targets];
@@ -1215,6 +1260,11 @@ static int ircd_iprivmsg(INTERFACE *srv, struct peer_t *peer, unsigned short tok
       if (CLIENT_IS_SERVICE(tcl)) {
 	ERROR("ircd:invalid IPRIVMSG target %s via %s", c, peer->dname);
 	ircd_recover_done(pp, "Invalid recipient");
+      } else if (!_ircd_can_send_to_one(cl, tcl, argv[1], &msg)) {
+	Add_Request(I_LOG, "*", F_WARN,
+		    "ircd:not permitted IPRIVMSG to %s via %s: %s", c,
+		    peer->dname, msg);
+	//FIXME: send numeric back?
       } else if (!CLIENT_IS_REMOTE(tcl)) {
 	if (CLIENT_IS_SERVICE(cl))
 	  New_Request(tcl->via->p.iface, 0, ":%s@%s PRIVMSG %s :%s", sender,
@@ -1326,6 +1376,9 @@ static int ircd_inotice(INTERFACE *srv, struct peer_t *peer, unsigned short toke
       if (CLIENT_IS_SERVICE(tcl)) {
 	Add_Request(I_LOG, "*", F_WARN, "ircd:invalid INOTICE target %s via %s",
 		    c, peer->dname);
+      } else if (!_ircd_can_send_to_one(cl, tcl, argv[1], NULL)) {
+	Add_Request(I_LOG, "*", F_WARN,
+		    "ircd:not permitted INOTICE to %s via %s", c, peer->dname);
       } else if (!CLIENT_IS_REMOTE(tcl)) {
 	if (CLIENT_IS_SERVER(cl))
 	  New_Request(tcl->via->p.iface, 0, ":%s NOTICE %s :%s", sender, c,
