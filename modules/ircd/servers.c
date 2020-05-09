@@ -203,12 +203,12 @@ int ircd_test_id(CLIENT *cl, int id)
       /* id either is in zone before wrap, or jumped ahead */
       if (cl->last_id >= ID_MAP_MASK) { /* seems overflowed */
 	ERROR("ircd: overflow in bit cache from %s, messages may be lost",
-	      cl->lcnick);
+	      cl->nick);
 	memset(cl->id_cache, 0, sizeof(cl->id_cache));
       } else if (id <= (IRCD_ID_MAXVAL - ID_MAP_MASK + cl->last_id)) {
 	/* wrapped, but too old to be in range */
 	WARNING("ircd: probably lost ID %d from %s, skipping anyway", id,
-		cl->lcnick);
+		cl->nick);
 	return (0);
       } else if (bit_test((bitstr_t *)cl->id_cache, (id & ID_MAP_MASK)) == 0) {
 	/* seems to be in upper (wrapped) part, mark it */
@@ -249,7 +249,7 @@ int ircd_test_id(CLIENT *cl, int id)
 	bit_nclear((bitstr_t *)cl->id_cache, 0, id - 1);
     } else {
       WARNING("ircd: probably lost ID %d from %s, skipping anyway", id,
-	      cl->lcnick);
+	      cl->nick);
       return (0);
     }
   } else {			/* probably received one */
@@ -917,10 +917,10 @@ static int ircd_kick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 		      sender, chn, lcl, reason);
       } else if (CLIENT_IS_SERVICE(cl)) {
 	ircd_sendto_chan_butone(tm->chan, tgt, ":%s@%s KICK %s %s :%s",
-				sender, cl->cs->lcnick, chn, tname, reason);
+				sender, cl->cs->nick, chn, tname, reason);
 	if (!CLIENT_IS_REMOTE(tgt))
 	  New_Request(tgt->via->p.iface, 0, ":%s@%s KICK %s %s :%s",
-		      sender, cl->cs->lcnick, chn, lcl, reason);
+		      sender, cl->cs->nick, chn, lcl, reason);
       } else if (tm->chan->mode & A_ANONYMOUS) {
 	ircd_sendto_chan_butone(tm->chan, tgt,
 				":anonymous@anonymous!anonymous. KICK %s anonymous :%s",
@@ -1080,7 +1080,7 @@ static int _ircd_do_stopic(IRCD *ircd, const char *via, const char *sender,
     ircd_sendto_chan_local(ch, ":%s TOPIC %s :%s", sender, ch->name, ch->topic);
   else if (CLIENT_IS_SERVICE(cl))
     ircd_sendto_chan_local(ch, ":%s@%s TOPIC %s :%s", sender,
-			   cl->cs->lcnick, ch->name, ch->topic);
+			   cl->cs->nick, ch->name, ch->topic);
   else if (ch->mode & A_ANONYMOUS)
     ircd_sendto_chan_local(ch, ":anonymous!anonymous@anonymous. TOPIC %s :%s",
 			   ch->name, ch->topic);

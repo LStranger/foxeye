@@ -559,7 +559,7 @@ static int ircd_servlist_cb(INTERFACE *srv, struct peer_t *peer, const char *lcn
   {
     tgt = l->s.data;
     if (!tgt->hold_upto && CLIENT_IS_SERVICE (tgt) &&
-	simple_match (mask, tgt->lcnick) >= 0)
+	simple_match (mask, tgt->nick) >= 0)
     {
       snprintf (buf, sizeof(buf), "%s %s %s %d :%s",
 #ifdef USE_SERVICES
@@ -589,14 +589,14 @@ static inline void _ircd_who_reply (CLIENT *rq, CLIENT *srv, CLIENT *tgt,
     } else
       ircd_mode2whochar (m->mode, ch, sizeof(ch));
     snprintf (buf, sizeof(buf), "%s %s %s %s %s %c%s%s :%d %s", m->chan->name,
-	      tgt->user, tgt->vhost, srv->lcnick, tgt->nick,
+	      tgt->user, tgt->vhost, srv->nick, tgt->nick,
 	      (tgt->umode & A_AWAY) ? 'G' : 'H',
 	      (tgt->umode & (A_OP | A_HALFOP)) ? "*" : "", ch, (int)tgt->hops - 1,
 	      tgt->fname);
   }
   else
     snprintf (buf, sizeof(buf), "* %s %s %s %s %c%s :%d %s", tgt->user,
-	      tgt->vhost, srv->lcnick, tgt->nick, (tgt->umode & A_AWAY) ? 'G' : 'H',
+	      tgt->vhost, srv->nick, tgt->nick, (tgt->umode & A_AWAY) ? 'G' : 'H',
 	      (tgt->umode & (A_OP | A_HALFOP)) ? "*" : "", (int)tgt->hops - 1,
 	      tgt->fname);
   ircd_do_unumeric (rq, RPL_WHOREPLY, rq, 0, buf);
@@ -644,7 +644,7 @@ static int ircd_who_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
       if ((tgt = ((IRCD *)srv->data)->token[i]) && !tgt->hold_upto)
       {
 	if (mask)
-	  smatched = simple_match (mask, tgt->lcnick);
+	  smatched = simple_match_ic (mask, tgt->nick);
 	for (link = tgt->c.lients; link; link = link->prev)
 	{
 	  tgt = link->cl;
@@ -661,7 +661,7 @@ static int ircd_who_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 	  if (mc)
 	    if (!mask || smatched >= 0 || simple_match (mask, tgt->host) >= 0 ||
 		((tgt->umode & A_MASKED) && simple_match (mask, tgt->vhost) >= 0) ||
-		simple_match (mask, tgt->lcnick) >= 0 ||
+		simple_match_ic (mask, tgt->nick) >= 0 ||
 		simple_match (mask, tgt->fname) >= 0) //TODO: LC search?
 	      _ircd_who_reply (cl, (i == 0) ? me : tgt->cs, tgt, NULL);
 	}

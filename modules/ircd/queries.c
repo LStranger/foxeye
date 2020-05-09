@@ -85,7 +85,7 @@ static inline CLIENT *_ircd_find_by_mask (IRCD *ircd, struct peer_priv *p,
   }
   for (i = 1; i < ircd->s; i++)
     if ((cl = ircd->token[i]) &&
-	cl->via != p && simple_match (m, cl->lcnick) >= 0)
+	cl->via != p && simple_match_ic (m, cl->nick) >= 0)
       return cl;
   return NULL;
 }
@@ -534,13 +534,13 @@ static inline int _ircd_query_lusers (IRCD *ircd, CLIENT *cl, struct peer_priv *
     else
       ERROR("ircd:/lusers: client %s in local servers list isn't a server",
 	    l->cl->nick);
-  if (simple_match (smask, ircd->token[0]->lcnick) >= 0)
+  if (simple_match_ic (smask, ircd->token[0]->nick) >= 0)
     gu = lu, gs = ls, gl = ll, lu += op, x = 1;
   else
     op = 0;
   ll = 0;
   for (i = 1; i < ircd->s; i++)
-    if (ircd->token[i] && simple_match (smask, ircd->token[i]->lcnick) >= 0)
+    if (ircd->token[i] && simple_match_ic (smask, ircd->token[i]->nick) >= 0)
     {
       unsigned int su = 0, op_save = op;
       if (!CLIENT_IS_SERVER(ircd->token[i]))
@@ -565,7 +565,7 @@ static inline int _ircd_query_lusers (IRCD *ircd, CLIENT *cl, struct peer_priv *
       if (ircd->token[i]->x.a.uc != (su + op - op_save))
       {
 	ERROR("ircd:/lusers: users count on %s mismatch on recount: %u != %u, fixing it",
-	      ircd->token[i]->lcnick, ircd->token[i]->x.a.uc, su + op - op_save);
+	      ircd->token[i]->nick, ircd->token[i]->x.a.uc, su + op - op_save);
 	ircd->token[i]->x.a.uc = su + op - op_save;
       }
     }
@@ -747,8 +747,8 @@ static void _ircd_tell_links(CLIENT *cl, CLIENT *server, char *where,
 #if IRCD_MULTICONNECT
 	(tgt->cl->pcl == server) && /* ignore backlink */
 #endif
-	simple_match (smask, tgt->cl->lcnick) >= 0)
-      _ircd_tell_links(cl, tgt->cl, server->lcnick, smask, via);
+	simple_match_ic (smask, tgt->cl->nick) >= 0)
+      _ircd_tell_links(cl, tgt->cl, server->nick, smask, via);
 }
 
 static inline int _ircd_query_links (IRCD *ircd, CLIENT *cl, struct peer_priv *via,
@@ -774,10 +774,10 @@ static inline int _ircd_query_links (IRCD *ircd, CLIENT *cl, struct peer_priv *v
   else
     smask = argv[0];
   s = ircd->token[0]; /* ME */
-  ircd_do_unumeric (cl, RPL_LINKS, s, 0, s->lcnick);
+  ircd_do_unumeric (cl, RPL_LINKS, s, 0, s->nick);
   for (tgt = ircd->servers; tgt; tgt = tgt->prev)
-    if (simple_match (smask, tgt->cl->lcnick) >= 0)
-      _ircd_tell_links(cl, tgt->cl, tgt->where->lcnick, smask, tgt->cl->via);
+    if (simple_match_ic (smask, tgt->cl->nick) >= 0)
+      _ircd_tell_links(cl, tgt->cl, tgt->where->nick, smask, tgt->cl->via);
   return ircd_do_unumeric (cl, RPL_ENDOFLINKS, cl, 0, smask);
 }
 
@@ -1130,7 +1130,7 @@ static inline int _ircd_query_whois (IRCD *ircd, CLIENT *cl, struct peer_priv *v
     if (CLIENT_IS_ME(tgt) || !CLIENT_IS_SERVER(tgt))
       return _ircd_query_whois (ircd, cl, via, 1, &argv[1]);
     New_Request (tgt->via->p.iface, 0, ":%s WHOIS %s :%s", cl->nick,
-		 tgt->lcnick, argv[1]);
+		 tgt->nick, argv[1]);
     return 1;
   }
   n = 0;
@@ -1162,7 +1162,7 @@ static inline int _ircd_query_whois (IRCD *ircd, CLIENT *cl, struct peer_priv *v
 	    continue;
 	  if ((cl->umode & (A_OP | A_HALFOP)) || !(tgt->umode & A_INVISIBLE) ||
 	      _ircd_is_on_the_same_channel (cl, tgt))
-	    if (simple_match (c, tgt->lcnick) >= 0)
+	    if (simple_match_ic (c, tgt->nick) >= 0)
 	    {
 	      _ircd_do_whois (ircd, cl, tgt, me);
 	      n++;

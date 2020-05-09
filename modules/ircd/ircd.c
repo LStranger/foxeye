@@ -1420,7 +1420,7 @@ static void _ircd_remote_user_gone(CLIENT *cl)
     else
       ERROR("ircd:internal error with users count on %s", cl->cs->lcnick);
   }
-  _ircd_bt_client(cl, cl->nick, NULL, cl->cs->lcnick); /* do bindtable */
+  _ircd_bt_client(cl, cl->nick, NULL, cl->cs->nick); /* do bindtable */
   cl->cs = cl;		/* abandon server */
   /* converts active user into phantom on hold for this second */
   cl->hold_upto = Time;
@@ -3573,7 +3573,7 @@ static int ircd_server_rb (INTERFACE *srv, struct peer_t *peer, int argc, const 
   ircd_sendto_servers_old (Ircd, cl->via, "SERVER %s 2 %u :%s", argv[0],
 			   (int)cl->x.a.token + 1, cl->fname); //!
   Add_Request(I_LOG, "*", F_SERV, "Received SERVER %s from %s (1 %s)", argv[0],
-	      cl->lcnick, cl->fname);
+	      cl->nick, cl->fname);
   /* tell other modules about connected server */
   while ((b = Check_Bindtable(BTIrcdGotServer, cl->lcnick, U_ALL, U_ANYCH, b)))
     if (b->name == NULL) /* internal only */
@@ -3857,7 +3857,7 @@ static int ircd_server_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
 	 link->prev);
   if (atoi(argv[1]) != (int)cl->hops)
     Add_Request(I_LOG, "*", F_WARN, "ircd: hops count for %s from %s %s!=%hd",
-		argv[0], cl->lcnick, argv[1], cl->hops);
+		argv[0], cl->nick, argv[1], cl->hops);
 #ifdef USE_SERVICES
   ircd_sendto_services_mark_all (Ircd, SERVICE_WANT_SERVER);
 #endif
@@ -4006,7 +4006,7 @@ static int ircd_iserver(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   }
   if (atoi(argv[1]) != (int)cl->hops)
     dprint(3, "ircd: hops count for %s from %s: got %s, have %hd", argv[0],
-	   cl->lcnick, argv[1], cl->hops);
+	   cl->nick, argv[1], cl->hops);
   /* don't send to the target so set token appropriately */
   token = cl->x.a.token + 1;
   if (clo == NULL)		/* don't send duplicate to RFC2813 servers */
@@ -4124,7 +4124,7 @@ static CLIENT *_ircd_do_nickchange(CLIENT *tgt, peer_priv *pp,
 #endif
   Add_Request(I_PENDING, "*", 0, ":%s!%s@%s NICK %s", tgt->nick, tgt->user,
 	      tgt->vhost, nn);
-  _ircd_bt_client(tgt, tgt->nick, nn, pp ? pp->link->cl->lcnick : MY_NAME);
+  _ircd_bt_client(tgt, tgt->nick, nn, pp ? pp->link->cl->nick : MY_NAME);
   /* change our data now */
   if (casechange) {
     strfcpy(tgt->nick, nn, sizeof(tgt->nick));
@@ -4505,8 +4505,8 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 	(SERVICE_FLAGS(link->cl) & SERVICE_WANT_NICK) &&
 	!(SERVICE_FLAGS(link->cl) & SERVICE_WANT_TOKEN))
       link->cl->via->p.iface->ift |= I_PENDING;
-  Add_Request (I_PENDING, "*", 0, "NICK %s %hu %s %s %s +%s :%s",
-	       tgt->nick, tgt->hops, argv[2], argv[3], on->lcnick, argv[5],
+  Add_Request (I_PENDING, "*", 0, "NICK %s %hu %s %s %s %s :%s",
+	       tgt->nick, tgt->hops, argv[2], argv[3], on->nick, argv[5],
 	       argv[6]);
   for (link = ME.c.lients; link; link = link->prev)
     if (CLIENT_IS_SERVICE(link->cl) &&
@@ -4517,7 +4517,7 @@ static int ircd_nick_sb(INTERFACE *srv, struct peer_t *peer, unsigned short toke
   ircd_sendto_servers_all_but(Ircd, pp, on->via, "NICK %s %hu %s %s %u %s :%s",
 			      tgt->nick, tgt->hops, argv[2], argv[3],
 			      (int)on->x.a.token + 1, argv[5], argv[6]);
-  _ircd_bt_client(tgt, NULL, tgt->nick, on->lcnick);
+  _ircd_bt_client(tgt, NULL, tgt->nick, on->nick);
   return 1;
 }
 
@@ -4585,7 +4585,7 @@ static int ircd_service_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
   if (tgt != NULL && tgt->cs == on)
   {
     dprint(4, "ircd: backup introduction of %s from %s by %s", tgt->nick,
-	   on->lcnick, peer->dname);
+	   on->nick, peer->dname);
     return (1);
   }
 #endif
@@ -4671,7 +4671,7 @@ static int ircd_service_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
 #ifdef USE_SERVICES
   /* notify services about new service, using server name instead of token */
   ircd_sendto_services_all(Ircd, SERVICE_WANT_SERVICE,
-			   "SERVICE %s %s %s %s %hu :%s", tgt->nick, on->lcnick,
+			   "SERVICE %s %s %s %s %hu :%s", tgt->nick, on->nick,
 			   argv[2], argv[3], tgt->hops, argv[5]);
 #endif
   //TODO: BTIrcdGotRemote
@@ -5338,10 +5338,10 @@ static inline void _ircd_squit_one (CLIENT *server, CLIENT *where)
     ircd_sendto_services_mark_prefix (Ircd, SERVICE_WANT_QUIT);
 #endif
     Add_Request (I_PENDING, "*", 0, ":%s!%s@%s QUIT :%s %s", tgt->nick,
-		 tgt->user, tgt->vhost, where->lcnick, server->lcnick);
+		 tgt->user, tgt->vhost, where->nick, server->nick);
 		 /* send split message */
     _ircd_class_out (l);		/* remove from global class list */
-    _ircd_bt_client(tgt, tgt->nick, NULL, server->lcnick); /* "ircd-client" */
+    _ircd_bt_client(tgt, tgt->nick, NULL, server->nick); /* "ircd-client" */
     tgt->hold_upto = Time + _ircd_hold_period; /* put it in temp. unavailable list */
     tgt->x.rto = NULL;			/* convert active user into phantom */
     tgt->cs = tgt;			/* it holds key for itself */
@@ -5352,7 +5352,7 @@ static inline void _ircd_squit_one (CLIENT *server, CLIENT *where)
       dprint(2, "ircd:CLIENT: converting holder %s (%p) into phantom, prev %p",
 	     tgt->nick, tgt, tgt->pcl);
     }
-    strfcpy (tgt->host, server->lcnick, sizeof(tgt->host));
+    strfcpy (tgt->host, server->nick, sizeof(tgt->host));
     pthread_mutex_lock (&IrcdLock);
     free_LINK (l);
     dprint(2, "ircd: link %p freed", l);
@@ -5466,7 +5466,7 @@ static inline bool _ircd_rserver_out (LINK *l, bool nocheck)
     *s = l->prev;
   else
     ERROR ("ircd:_ircd_rserver_out: server %s not found on %s!", l->cl->nick,
-	   l->where->lcnick);
+	   l->where->nick);
 #if IRCD_MULTICONNECT
   _ircd_drop_backlink(l);
   if (!nocheck)
@@ -5493,14 +5493,14 @@ static inline void _ircd_send_squit (CLIENT *cl, CLIENT *where, peer_priv *via,
     ircd_sendto_services_mark_all (Ircd, SERVICE_WANT_SQUIT);
 #endif
     ircd_sendto_servers_all_ack(Ircd, cl, NULL, via, ":%s SQUIT %s :%s",
-				where->lcnick, cl->lcnick, msg);
+				where->nick, cl->nick, msg);
 #if IRCD_MULTICONNECT
   } else
     ircd_sendto_servers_new_ack(Ircd, cl, NULL, via, ":%s SQUIT %s :%s",
-				where->lcnick, cl->lcnick, msg);
+				where->nick, cl->nick, msg);
 #endif
   Add_Request(I_LOG, "*", F_SERV, "Received SQUIT %s from %s (%s)",
-	      cl->lcnick, where->lcnick, msg);
+	      cl->nick, where->nick, msg);
 }
 #undef __TRANSIT__
 #define __TRANSIT__
@@ -5532,7 +5532,7 @@ _send_squit:
 #endif
   for (link = cl->c.lients; link; ) /* squit all behind it first */
     if (CLIENT_IS_SERVER (link->cl)) {
-      _ircd_do_squit (link, via, cl->lcnick, TRUE);
+      _ircd_do_squit (link, via, cl->nick, TRUE);
 			/* squit reason is the name of server which have gone */
       link = cl->c.lients; /* rescan list again since prev may be removed now */
     } else
@@ -5615,8 +5615,7 @@ int ircd_do_unumeric (CLIENT *requestor, int n, const char *template,
 	     %L - ident, %# - nick, %P - $i, %- - idle, %* - $m */
   printl (buff, sizeof(buff), template, 0, requestor->nick,
 	  CLIENT_IS_SERVER(target) ? target->fname : target->vhost,
-	  target->user,
-	  CLIENT_IS_SERVER(target) ? target->lcnick : target->nick, 0, i,
+	  target->user, target->nick, 0, i,
 	  target->via ? (Time - target->via->p.last_input) : (time_t)0, m);
   if (!b || b->name ||
       !b->func (Ircd->iface, n, requestor->nick, requestor->umode, buff))
@@ -6056,6 +6055,7 @@ static iftype_t _ircd_module_signal (INTERFACE *iface, ifsig_t sig)
       Ircd->sub = Add_Iface (I_CLIENT, buff, &_ircd_sub_signal,
 			     &_ircd_sub_request, NULL);
       strfcpy (MY_NAME, Nick, sizeof(MY_NAME)); /* unchangeable in runtime */
+      strfcpy(ME.nick, Nick, sizeof(ME.nick));
       strfcpy(ME.fname, _ircd_description_string, sizeof(ME.fname));
       strfcpy(ME.away, _ircd_version_string, sizeof(ME.away));
       Ircd->token = safe_calloc (TOKEN_ALLOC_SIZE, sizeof(CLIENT *));

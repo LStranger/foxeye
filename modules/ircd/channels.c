@@ -1010,7 +1010,7 @@ static inline void _ircd_mode_broadcast (IRCD *ircd, int id, CLIENT *sender,
   else if (!sender)
     ircd_sendto_chan_local (ch, "MODE %s %s%s", ch->name, modepass, buff);
   else if (CLIENT_IS_SERVER (sender))
-    ircd_sendto_chan_local (ch, ":%s MODE %s %s%s", sender->lcnick, ch->name,
+    ircd_sendto_chan_local (ch, ":%s MODE %s %s%s", sender->nick, ch->name,
 			    modepass, buff);
   else if (CLIENT_IS_SERVICE (sender))	/* it's forbidden for local services */
     ircd_sendto_chan_local (ch, ":%s@%s MODE %s %s%s", sender->nick,
@@ -2524,7 +2524,7 @@ MEMBER *ircd_add_to_channel (IRCD *ircd, struct peer_priv *bysrv, CHANNEL *ch,
 	/* don't send client mode to client as NAMES will do it */
 	if (bysrv)
 	  ircd_sendto_chan_butone(ch, cl, ":%s MODE %s +%s%s",
-				  bysrv->link->cl->lcnick, ch->name, smode,
+				  bysrv->link->cl->nick, ch->name, smode,
 				  madd);
 	else
 	  ircd_sendto_chan_butone(ch, cl, ":%s!%s@%s MODE %s +%s%s", cl->nick,
@@ -2541,7 +2541,7 @@ MEMBER *ircd_add_to_channel (IRCD *ircd, struct peer_priv *bysrv, CHANNEL *ch,
 #endif
 	if (bysrv)
 	  ircd_sendto_chan_butone(ch, cl, ":%s MODE %s +%s",
-				  bysrv->link->cl->lcnick, ch->name, madd);
+				  bysrv->link->cl->nick, ch->name, madd);
 	else
 	  ircd_sendto_chan_butone(ch, cl, ":%s!%s@%s MODE %s +%s", cl->nick,
 				  cl->user, cl->vhost, ch->name, madd);

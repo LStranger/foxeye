@@ -90,7 +90,7 @@
 #define ircd_sendto_servers_mask(a,b,c,...) do {\
   register LINK *L; \
   for (L = (a)->servers; L; L = L->prev) \
-    if (L->cl->via != b && simple_match (c, L->cl->lcnick) >= 0) \
+    if (L->cl->via != b && simple_match_ic (c, L->cl->nick) >= 0) \
       __TRANSIT__ L->cl->via->p.iface->ift |= I_PENDING; \
   Add_Request (I_PENDING, "*", 0, __VA_ARGS__); } while(0)
 #if IRCD_MULTICONNECT
@@ -106,7 +106,7 @@
 #define ircd_sendto_servers_mask_but(i,a,b,c,...) do {\
   register LINK *L; \
   for (L = (i)->servers; L; L = L->prev) \
-    if (L->cl->via != a && L->cl->via != b && simple_match (c, L->cl->lcnick) >= 0) \
+    if (L->cl->via != a && L->cl->via != b && simple_match_ic (c, L->cl->nick) >= 0) \
       __TRANSIT__ L->cl->via->p.iface->ift |= I_PENDING; \
   Add_Request (I_PENDING, "*", 0, __VA_ARGS__); } while(0)
 /* sends to every new type server */
@@ -121,7 +121,7 @@
   register LINK *L; \
   for (L = (a)->servers; L; L = L->prev) \
     if ((L->cl->umode & A_MULTI) && L->cl->via != b && \
-	simple_match (c, L->cl->lcnick) >= 0) \
+	simple_match_ic (c, L->cl->nick) >= 0) \
       __TRANSIT__ L->cl->via->p.iface->ift |= I_PENDING; \
   Add_Request (I_PENDING, "*", 0, __VA_ARGS__); } while(0)
 /* sends to every old type server */
@@ -136,7 +136,7 @@
   register LINK *L; \
   for (L = (a)->servers; L; L = L->prev) \
     if (!(L->cl->umode & A_MULTI) && L->cl->via != b && \
-	simple_match (c, L->cl->lcnick) >= 0) \
+	simple_match_ic (c, L->cl->nick) >= 0) \
       __TRANSIT__ L->cl->via->p.iface->ift |= I_PENDING; \
   Add_Request (I_PENDING, "*", 0, __VA_ARGS__); } while(0)
 /* sends to every new type server with ack;
@@ -154,7 +154,7 @@
   LINK *L; \
   for (L = (i)->servers; L; L = L->prev) \
     __TRANSIT__ if ((L->cl->umode & A_MULTI) && L->cl->via != c && \
-	simple_match (d, L->cl->lcnick) >= 0) { \
+	simple_match_ic (d, L->cl->nick) >= 0) { \
       L->cl->via->p.iface->ift |= I_PENDING; \
       ircd_add_ack (L->cl->via, a, b); } \
   Add_Request (I_PENDING, "*", 0, __VA_ARGS__); } while(0)
@@ -171,7 +171,7 @@
 #define ircd_sendto_servers_mask_all_ack(i,a,b,c,d,...) do {\
   LINK *L; \
   for (L = (i)->servers; L; L = L->prev) \
-    __TRANSIT__ if (L->cl->via != c && simple_match (d, L->cl->lcnick) >= 0) { \
+    __TRANSIT__ if (L->cl->via != c && simple_match_ic (d, L->cl->nick) >= 0) { \
       L->cl->via->p.iface->ift |= I_PENDING; \
       if (L->cl->umode & A_MULTI) \
 	ircd_add_ack (L->cl->via, a, b); } \

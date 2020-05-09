@@ -938,7 +938,7 @@ static int ircd_privmsg_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
       } else if (!CLIENT_IS_REMOTE(tcl)) {
 	if (CLIENT_IS_SERVICE(cl))
 	  New_Request(tcl->via->p.iface, 0, ":%s@%s PRIVMSG %s :%s", sender,
-		      cl->cs->lcnick, c, argv[1]);
+		      cl->cs->nick, c, argv[1]);
 	else
 	  New_Request(tcl->via->p.iface, 0, ":%s!%s@%s PRIVMSG %s :%s", sender,
 		      cl->user, cl->vhost, c, argv[1]);
@@ -959,7 +959,7 @@ static int ircd_privmsg_sb(INTERFACE *srv, struct peer_t *peer, unsigned short t
       if (rc) {
 	if (CLIENT_IS_SERVICE (cl))
 	  Add_Request(I_PENDING, "*", 0, ":%s@%s PRIVMSG %s :%s", sender,
-		      cl->cs->lcnick, c, argv[1]);
+		      cl->cs->nick, c, argv[1]);
 	else
 	  Add_Request(I_PENDING, "*", 0, ":%s!%s@%s PRIVMSG %s :%s", sender,
 		      cl->user, cl->vhost, c, argv[1]);
@@ -1059,7 +1059,7 @@ static int ircd_notice_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
 		      argv[1]);
 	else if (CLIENT_IS_SERVICE(cl))
 	  New_Request(tcl->via->p.iface, 0, ":%s@%s NOTICE %s :%s", sender,
-		      cl->cs->lcnick, c, argv[1]);
+		      cl->cs->nick, c, argv[1]);
 	else
 	  New_Request(tcl->via->p.iface, 0, ":%s!%s@%s NOTICE %s :%s", sender,
 		      cl->user, cl->vhost, c, argv[1]);
@@ -1078,7 +1078,7 @@ static int ircd_notice_sb(INTERFACE *srv, struct peer_t *peer, unsigned short to
       if (rc) {
 	if (CLIENT_IS_SERVICE (cl))
 	  Add_Request(I_PENDING, "*", 0, ":%s@%s NOTICE %s :%s", sender,
-		      cl->cs->lcnick, c, argv[1]);
+		      cl->cs->nick, c, argv[1]);
 	else
 	  Add_Request(I_PENDING, "*", 0, ":%s!%s@%s NOTICE %s :%s", sender,
 		      cl->user, cl->vhost, c, argv[1]);
@@ -1218,7 +1218,7 @@ static int ircd_iprivmsg(INTERFACE *srv, struct peer_t *peer, unsigned short tok
       } else if (!CLIENT_IS_REMOTE(tcl)) {
 	if (CLIENT_IS_SERVICE(cl))
 	  New_Request(tcl->via->p.iface, 0, ":%s@%s PRIVMSG %s :%s", sender,
-		      cl->cs->lcnick, c, argv[2]);
+		      cl->cs->nick, c, argv[2]);
 	else
 	  New_Request(tcl->via->p.iface, 0, ":%s!%s@%s PRIVMSG %s :%s", sender,
 		      cl->user, cl->vhost, c, argv[2]);
@@ -1239,7 +1239,7 @@ static int ircd_iprivmsg(INTERFACE *srv, struct peer_t *peer, unsigned short tok
       if (rc) {
 	if (CLIENT_IS_SERVICE (cl))
 	  Add_Request(I_PENDING, "*", 0, ":%s@%s PRIVMSG %s :%s", sender,
-		      cl->cs->lcnick, c, argv[1]);
+		      cl->cs->nick, c, argv[1]);
 	else
 	  Add_Request(I_PENDING, "*", 0, ":%s!%s@%s PRIVMSG %s :%s", sender,
 		      cl->user, cl->vhost, c, argv[1]);
@@ -1332,7 +1332,7 @@ static int ircd_inotice(INTERFACE *srv, struct peer_t *peer, unsigned short toke
 		      argv[2]);
 	else if (CLIENT_IS_SERVICE(cl))
 	  New_Request(tcl->via->p.iface, 0, ":%s@%s NOTICE %s :%s", sender,
-		      cl->cs->lcnick, c, argv[2]);
+		      cl->cs->nick, c, argv[2]);
 	else
 	  New_Request(tcl->via->p.iface, 0, ":%s!%s@%s NOTICE %s :%s", sender,
 		      cl->user, cl->vhost, c, argv[2]);
@@ -1351,7 +1351,7 @@ static int ircd_inotice(INTERFACE *srv, struct peer_t *peer, unsigned short toke
       if (rc) {
 	if (CLIENT_IS_SERVICE (cl))
 	  Add_Request(I_PENDING, "*", 0, ":%s@%s NOTICE %s :%s", sender,
-		      cl->cs->lcnick, c, argv[1]);
+		      cl->cs->nick, c, argv[1]);
 	else
 	  Add_Request(I_PENDING, "*", 0, ":%s!%s@%s NOTICE %s :%s", sender,
 		      cl->user, cl->vhost, c, argv[1]);
