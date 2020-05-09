@@ -2241,15 +2241,15 @@ static int _ircd_do_smode(INTERFACE *srv, struct peer_priv *pp,
         ircd_sendto_services_mark_all ((IRCD *)srv->data, SERVICE_WANT_UMODE);
 #endif
 #if IRCD_MULTICONNECT
-      if (id >= 0) {
-	ircd_sendto_servers_old(((IRCD *)srv->data), pp, ":%s MODE %s %s",
-				sender, tgt->nick, modepass);
-	ircd_sendto_servers_new(((IRCD *)srv->data), pp, ":%s IMODE %d %s %s",
-				sender, id, tgt->nick, modepass);
-      } else
+      if (id < 0 && !CLIENT_IS_LOCAL(src))
+	id = ircd_new_id(src->cs); /* allocate id for IMODE */
+      else if (id < 0)
+	id = ircd_new_id(NULL); /* make new id if it's local client */
 #endif
-	ircd_sendto_servers_all(((IRCD *)srv->data), pp, ":%s MODE %s %s",
-				sender, tgt->nick, modepass);
+      ircd_sendto_servers_old(((IRCD *)srv->data), pp, ":%s MODE %s %s",
+			      sender, tgt->nick, modepass);
+      ircd_sendto_servers_new(((IRCD *)srv->data), pp, ":%s IMODE %d %s %s",
+			      sender, id, tgt->nick, modepass);
     }
     for (i = 0; i < errors; i++)
       if (!ircd_recover_done (pp, (i >= MAXTRACKED_MODE_ERRORS) ?
