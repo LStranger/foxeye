@@ -1193,6 +1193,7 @@ void Mark_Iface (INTERFACE *iface)
 {
   if (unknown_iface (iface))
     return;
+  dprint(6, "wake up interface %p", iface);
   iface->marked = TRUE;
   pthread_cond_broadcast (&CondIface);		/* wake up dispatcher */
 }

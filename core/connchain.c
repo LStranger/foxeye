@@ -94,6 +94,7 @@ static void _connchain_do_mark (void *data)
 {
   struct peer_t *peer = data;
 
+  DBG("_connchain_do_mark: wake up socket %hd", peer->socket);
   if (peer->iface)
     Mark_Iface (peer->iface);
 }

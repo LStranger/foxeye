@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2017  Andrej N. Gritsenko <andrej@rep.kiev.ua>
+ * Copyright (C) 1999-2020  Andrej N. Gritsenko <andrej@rep.kiev.ua>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -234,11 +234,13 @@ ssize_t ReadSocket (char *buf, idx_t idx, size_t sr)
   _socket_acquire_lock_and_poll(idx, (sock->ready == FALSE) ? 1 : 0);
   rev = Pollfd[idx].revents;
   Pollfd[idx].events |= (POLLIN|POLLPRI); /* update it for next read */
-  Pollfd[idx].revents &= ~(POLLIN|POLLPRI); /* we'll read socket, reset state */
+  Pollfd[idx].revents &= ~(POLLIN|POLLPRI|POLLHUP); /* we'll read socket, reset state */
   pthread_mutex_unlock(&LockPoll);
   if (!rev && (sock->ready == FALSE))	/* check for incomplete connection */
     return (E_AGAIN);			/* still waiting for connection */
   sock->ready = TRUE;			/* connection established or failed */
+  if (rev & POLLHUP)
+    DBG("got POLLHUP from socket %hd!", idx);
   /*if (rev & (POLLIN | POLLPRI))*/ {	/* even dead socket can contain data */
     DBG ("trying read socket %hd", idx);
     if ((sg = read (Pollfd[idx].fd, buf, sr)) > 0)
@@ -936,7 +938,7 @@ static void *_poll_subthread(void *pdata)
 /* poll thread is here... */
 static void *_poll_thread(void __attribute__((unused)) *data)
 {
-  register idx_t i;
+  idx_t i;
   idx_t _pfdnum;
   SocketPollData d;
   pthread_t subthread;
@@ -964,9 +966,12 @@ static void *_poll_thread(void __attribute__((unused)) *data)
     SReady = 0;
     /* send callbacks if some data are ready to get */
     for (i = 0; i < _Snum; i++) {
-      if (Pollfd[i].fd >= 0 && (Pollfd[i].revents & ~POLLOUT) != 0 &&
-	  Socket[i].callback != NULL)
+      if (Pollfd[i].fd >= 0 &&
+	  (Pollfd[i].revents & (POLLIN | POLLERR | POLLHUP)) != 0 &&
+	  Socket[i].callback != NULL) {
+	DBG("socket.c:run callback due to revents %04hx on %hd", Pollfd[i].revents, i);
 	Socket[i].callback(Socket[i].callback_data);
+      }
     }
     /* update data if something changed by sockets */
     d.pfdset = _Snum;
