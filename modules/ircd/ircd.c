@@ -1969,7 +1969,8 @@ _sendq_exceeded:
   } else if (sw > 0) {
     if (peer->timer >= 0)
       KillTimer(peer->timer);
-    if (peer->penalty <= _ircd_client_recvq[1])
+    if ((cl->umode & (A_SERVER | A_SERVICE)) ||
+	peer->penalty <= _ircd_client_recvq[1])
       peer->timer = Add_Timer(cli, S_TIMEOUT, i);
     else
       /* don't set S_TIMEOUT if S_WAKEUP was already set */
