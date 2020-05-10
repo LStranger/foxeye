@@ -7,7 +7,9 @@ User modes:
 
    +b   RusNet-mode restriction
 
-   +R   registered and identified with services
+   +I   registered and identified with services
+
+   +R   messages from non-registered users not allowed
 
 
 Channel modes:

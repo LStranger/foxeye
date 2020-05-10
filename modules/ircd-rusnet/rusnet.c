@@ -902,6 +902,10 @@ static int rusnet_check_message(modeflag umode, modeflag mmode, const char **msg
   if (mmode & A_ISON)
   {
     /* it is for user */
+    if (!(umode & (A_REGISTERED | A_OP)) && (mmode & A_REGONLY)) {
+      *msg = "You must be identified";
+      return 0;
+    }
   }
   /* check for color in msg for colorless channel */
   else if (mmode & A_NOCOLOR)
@@ -927,8 +931,8 @@ static modeflag rusnet_umch_b(modeflag rumode, int add,
   return A_QUIET;
 }
 
-BINDING_TYPE_ircd_umodechange(rusnet_umch_R);
-static modeflag rusnet_umch_R(modeflag rumode, int add,
+BINDING_TYPE_ircd_umodechange(rusnet_umch_I);
+static modeflag rusnet_umch_I(modeflag rumode, int add,
 			      void (**ma)(INTERFACE *srv, const char *rq,
 					  char *vhost, const char *host, size_t vhs,
 					  int add, const char *servname))
@@ -939,6 +943,15 @@ static modeflag rusnet_umch_R(modeflag rumode, int add,
     //FIXME: set ma for numeric?
     return A_REGISTERED;
   return 0;
+}
+
+BINDING_TYPE_ircd_umodechange(rusnet_umch_R);
+static modeflag rusnet_umch_R(modeflag rumode, int add,
+			      void (**ma)(INTERFACE *srv, const char *rq,
+					  char *vhost, const char *host, size_t vhs,
+					  int add, const char *servname))
+{
+  return A_REGONLY; /* can be changed freely */
 }
 
 BINDING_TYPE_ircd_auth(rusnet_auth);
@@ -1711,6 +1724,7 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
       Delete_Binding("ircd-modechange", (Function)&rusnet_mch_c, NULL);
       Delete_Binding("ircd-check-message", &rusnet_check_message, NULL);
       Delete_Binding("ircd-umodechange", (Function)&rusnet_umch_b, NULL);
+      Delete_Binding("ircd-umodechange", (Function)&rusnet_umch_I, NULL);
       Delete_Binding("ircd-umodechange", (Function)&rusnet_umch_R, NULL);
       Delete_Binding("ircd-auth", &rusnet_auth, NULL);
       Delete_Binding("ircd-client-filter", &rusnet_check_msg, NULL);
@@ -1850,6 +1864,7 @@ SigFunction ModuleInit (char *args)
  */
   Add_Binding("ircd-umodechange", "b", 0, 0, (Function)&rusnet_umch_b, NULL);
   /* registered client from services */
+  Add_Binding("ircd-umodechange", "I", 0, 0, (Function)&rusnet_umch_I, NULL);
   Add_Binding("ircd-umodechange", "R", 0, 0, (Function)&rusnet_umch_R, NULL);
   Add_Binding("ircd-auth", "*", 0, 0, &rusnet_auth, NULL);
   Add_Binding("ircd-client-filter", "privmsg", 0, 0, &rusnet_check_msg, NULL);
