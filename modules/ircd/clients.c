@@ -990,14 +990,14 @@ static int ircd_help_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
     return ircd_do_unumeric(cl, RPL_ENDOFHELP, cl, 0, argv[0]);
   } else {
     // RPL_HELPSTART ?
-    snprintf(prefix, sizeof(prefix), ":%s 705 %s index :", me->lcnick, peer->dname);
+    snprintf(prefix, sizeof(prefix), ":%s 705 %s * :", me->lcnick, peer->dname);
     b = NULL;
     while ((b = Check_Bindtable (BTIrcdClientCmd, NULL, uf, U_ANYCH, b)))
     {
       Get_Help_L("=ircd", b->key, peer->iface, U_NEGATE, uf, BTIrcdClientCmd,
 		 prefix, -1, 1, ""); //FIXME: LANG support
     }
-    return ircd_do_unumeric(cl, RPL_ENDOFHELP, cl, 0, "index");
+    return ircd_do_unumeric(cl, RPL_ENDOFHELP, cl, 0, "*");
   }
 }
 

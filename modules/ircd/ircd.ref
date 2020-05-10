@@ -46,7 +46,7 @@ does a further restriction (see below).
    Parameters: [ <charset name> ]
 
    The CHARSET command can be used to query or change encoding of traffic
-   between client and server. If parameter <charset name> is given then
+   between client and server.  If parameter <charset name> is given then
    server will attempt to set enconding to that charset before returning
    name of charset which is used for user's connection.
 
@@ -146,11 +146,9 @@ does a further restriction (see below).
    The ITOPIC message MAY come only from link to server which is capable
    to work with cyclic network scheme and SHOULD NOT come neither from
    server which is not capable to work with cyclic network scheme nor
-   originated from some server which is not capable to work with cyclic
-   network scheme nor from some service or user who is connected to such
-   kind of server.  The ITOPIC message SHOULD NOT be sent neither to a
-   server which is not capable to work with cyclic network scheme nor to
-   any client.
+   from some service or user.  The ITOPIC message SHOULD NOT be sent
+   neither to a server which is not capable to work with cyclic network
+   scheme nor to any client.
 
    The ITOPIC command is used to change the topic of a channel.  If the
    <topic> parameter is not an empty string, the topic for that channel
@@ -168,11 +166,9 @@ does a further restriction (see below).
                <msgid> <channel> *( ( "-" / "+" ) *<modes> *<modeparams> )
 
    The IMODE message SHOULD NOT come neither from server which is not
-   capable to work with cyclic network scheme nor originated from some
-   server which is not capable to work with cyclic network scheme nor
-   from some service or user who is connected to such kind of server.
-   The IMODE message SHOULD NOT be sent neither to a server which is not
-   capable to work with cyclic network scheme nor to any client.
+   capable to work with cyclic network scheme nor from some service or
+   user.  The IMODE message SHOULD NOT be sent neither to a server which
+   is not capable to work with cyclic network scheme nor to any client.
 
    The IMODE message is a dual-purpose command in IRC similar to RFC2813
    message MODE.  It allows both usernames and channels to have their
@@ -188,10 +184,8 @@ does a further restriction (see below).
    Parameters: <msgid> <numeric> <target> *( <text> )
 
    The INUM message SHOULD NOT come neither from server which is not
-   capable to work with cyclic network scheme nor originated from some
-   server which is not capable to work with cyclic network scheme nor
-   from some service or user.  The INUM message SHOULD NOT be sent to
-   clients.
+   capable to work with cyclic network scheme nor from some service or
+   user.  The INUM message SHOULD NOT be sent to clients.
 
    The INUM message is used to send numeric replies to users on another
    servers in cyclic network scheme environment so numeric digits which
@@ -207,10 +201,9 @@ does a further restriction (see below).
    Parameters: <command> <target> ( <where> )
 
    The ACK message SHOULD NOT come neither from server which is not
-   capable to work with cyclic network scheme nor originated from some
-   server which is not capable to work with cyclic network scheme nor
-   from some service or user.  The ACK message SHOULD NOT be sent to a
-   client.
+   capable to work with cyclic network scheme nor from some service or
+   user.  The ACK message SHOULD NOT be sent neither to a server which is
+   not capable to work with cyclic network scheme nor to any client.
 
    The ACK message MUST be sent as reply to any QUIT, SQUIT, KILL, KICK,
    or PART message or to any NICK message which introduces change of
@@ -230,17 +223,16 @@ does a further restriction (see below).
    The IPRIVMSG message MAY come only from link to server which is
    capable to work with cyclic network scheme and SHOULD NOT come neither
    from server which is not capable to work with cyclic network scheme
-   nor originated from some service or user who is connected to such kind
-   of server.  The IPRIVMSG message SHOULD NOT be sent neither to a
-   server which is not capable to work with cyclic network scheme nor to
-   any client.
+   nor from some service or user.  The IPRIVMSG message SHOULD NOT be
+   sent neither to a server which is not capable to work with cyclic
+   network scheme nor to any client.
 
    The message IPRIVMSG is just alike PRIVMSG but used between servers
    to send private messages between users, as well as to send messages to
    channels.  <msgtarget> is usually the nickname of the recipient of the
    message, or a channel name.  All recipient matching and numeric
-   replies are the same as those for PRIVMSG message but only difference
-   between those messages is the parameter <msgid> which is unique
+   replies are the same as those for PRIVMSG message.  Only difference
+   between those two messages is the parameter <msgid> which is an unique
    message identifier.
 
    Example:
@@ -254,18 +246,16 @@ does a further restriction (see below).
    The INOTICE message MAY come only from link to server which is capable
    to work with cyclic network scheme and SHOULD NOT come neither from
    server which is not capable to work with cyclic network scheme nor
-   originated from some server which is not capable to work with cyclic
-   network scheme nor from some service or user who is connected to such
-   kind of server.  The INOTICE message SHOULD NOT be sent neither to a
-   server which is not capable to work with cyclic network scheme nor to
-   any client.
+   from some service or user.  The INOTICE message SHOULD NOT be sent
+   neither to a server which is not capable to work with cyclic network
+   scheme nor to any client.
 
    The message INOTICE is just alike NOTICE but used between servers to
    send private messages between users, as well as to send messages to
    channels.  <msgtarget> is usually the nickname of the recipient of the
    message, or a channel name.  <msgid> is an unique message identifier.
    All recipient matching and numeric replies are the same as those for
-   PRIVMSG message.
+   NOTICE message.
 
       Command: ISQUERY
    Parameters: <msgid> <servicename> <text>
@@ -273,15 +263,15 @@ does a further restriction (see below).
    The ISQUERY message MAY come only from link to server which is capable
    to work with cyclic network scheme and SHOULD NOT come neither from
    server which is not capable to work with cyclic network scheme nor
-   originated from some client who is connected to such kind of server.
-   The ISQUERY message SHOULD NOT be sent neither to a server which is
-   not capable to work with cyclic network scheme nor to any client.
+   from some service or user.  The ISQUERY message SHOULD NOT be sent
+   neither to a server which is not capable to work with cyclic network
+   scheme nor to any client.
 
    The ISQUERY message is just alike SQUERY but used between servers to
    send private messages from users to services.  <servicename> is the
    name of the service recipient of the message.  <msgid> is an unique
    message identifier.  All recipient matching and numeric replies are
-   the same as those for PRIVMSG message.
+   the same as those for SQUERY message.
 
    Examples:
 
@@ -317,6 +307,63 @@ does a further restriction (see below).
  wait for some time until origin server either renames own client, or
  kills it.  This feature will work if some module installs a binding that
  implements such rename using some principle.
+
+
+Online help (always enabled)
+
+      Command: HELP
+   Parameters: [ <command> ]
+
+   Command HELP is a query to get help for available IRC commands.  The
+   HELP message MAY come only from user and SHOULD NOT come from server
+   or service.  If parameter <command> is given then server will reply
+   with description of that command.  If no parameter is given then list
+   of available commands will be replied with brief description for each
+   of them.
+
+   Numeric Replies:
+
+           ERR_HELPTEXT                    RPL_ENDOFHELP
+
+       705    RPL_HELPTXT
+              "<command> :<help message>"
+
+         - Returned to a client in reply to HELP message with help text.
+           If no arguments were provided to the HELP message then "*"
+           will be replied in place of <command>.
+
+       706    RPL_ENDOFHELP
+              "<command> :End of /HELP."
+
+         - Returned to a client in reply to HELP message after all help
+           text replies were sent.
+
+
+Special support for SSL connections.
+
+   There is some support included if module that supports SSL ('openssl'
+ usually) is enabled and activated on connection. The support includes:
+
+   1. Usermode flag 'z' is added if SSL is active.
+
+   2. Additional WHOIS numeric reply is added:
+
+       336    RPL_WHOISSECURE
+              "<nick> :is using encrypted connection"
+
+         - Returned to client in reply to WHOIS command.
+
+
+Special support for modules to filter message targets.
+
+    In case if some module denies sending message to some user, then
+ user will receive a numeric:
+
+       531    ERR_CANTSENDTOUSER
+              "<nick> :User does not accept private messages"
+
+         - Returned to a client in reply to PRIVMSG if target user does
+           not allow sender to send him messages.
 
 
 Meaning of letters in VERSION reply:
@@ -478,30 +525,3 @@ Transition from ircd.conf to foxeye configuration.
    can be used for that purpose the same way in the future), servers have
    unlimited maximum number of links and sendQ, and ping frequency is
    defined in config variable 'ircd-serverclass-pingf'.
-
-
-Special support for SSL connections.
-
-   There is some support included if module that supports SSL ('openssl'
- usually) is enabled and activated on connection. The support includes:
-
-   1. Usermode flag 'z' is added if SSL is active.
-
-   2. Additional WHOIS numeric reply is added:
-
-       336    RPL_WHOISSECURE
-              "<nick> :is using encrypted connection"
-
-         - Returned to client in reply to WHOIS command.
-
-
-Special support for modules to filter message targets.
-
-    In case if some module denies sending message to some user, then
- user will receive a numeric:
-
-       531    ERR_CANTSENDTOUSER
-              "<nick> :User does not accept private messages"
-
-         - Returned to a client in reply to PRIVMSG if target user does
-           not allow sender to send him messages.

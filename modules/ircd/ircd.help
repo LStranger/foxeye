@@ -267,8 +267,8 @@ flood-type ircd-errors
 =ircd away
 :AWAY [<text>]
 :AWAY     - set or remove "away" status
-:Without an argument, it will set you back. With an argument,\
- it will set you as AWAY with the specified message.
+:Without an argument, it will set you being back. With an argument,\
+ it will set you as being AWAY with the specified message.
 
 =ircd charset
 :CHARSET [<charset>]
@@ -626,7 +626,12 @@ flood-type ircd-errors
 =ircd who
 :WHO [<mask>[ "o"]]
 :WHO      - query info about user status in newtork or channel
-:
+:WHO is a multipurpose command. If called without arguments, it will list\
+ every user of network available to list. If called with name of a channel,\
+ it will list all users of that channel available to list. If called with\
+ some mask, it will list all users whose server, nick, ident or host\
+ matches the mask. If called with additional argument %_o%_, only server\
+ operators matching the mask will be listed.
 
 =ircd whois
 :WHOIS [<target>] <mask>[,<mask>...]

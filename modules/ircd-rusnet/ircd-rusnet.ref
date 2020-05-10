@@ -127,13 +127,13 @@ Server commands (coming from services):
    Parameters: <nick> <modechange>
 
       Command: KLINE
-   Parameters: <servermask> <nickmask> <usermask> <hostmask> [<hours>|E] [:reason]
+   Parameters: <servermask> <nickmask> <usermask> <hostmask> [<exptime>|E] [:reason]
 
       Command: ELINE
-   Parameters: <servermask> * <usermask> <hostmask> [<hours>] [:reason]
+   Parameters: <servermask> * <usermask> <hostmask> [<exptime>] [:reason]
 
       Command: RLINE
-   Parameters: <servermask> * <usermask> <hostmask> [<hours>] [:reason]
+   Parameters: <servermask> * <usermask> <hostmask> [<exptime>] [:reason]
 
       Command: RCPAGE
    Parameters: <nick> <charset>
