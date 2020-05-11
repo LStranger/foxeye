@@ -3077,6 +3077,7 @@ modeflag ircd_char2umode(INTERFACE *srv, const char *sname, char c, CLIENT *tgt)
   charstr[1] = '\0';
   ma = NULL;
   b = Check_Bindtable (BTIrcdUmodechange, charstr, U_ALL, U_ANYCH, NULL);
+  while (b)				/* cycle thru all */
   {
     if (!b->name)
       mf |= (f = (modeflag (*)())b->func) (A_SERVER, 1, &ma);

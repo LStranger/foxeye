@@ -23,6 +23,7 @@ Mon May 11 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* core/socket.c: fixed crash due to missing lock in AssociateSocket().
 	* core/sheduler.c: fixed bug where not all flood timers were processed.
 	* doc/HOWTO.ircd: added new HOWTO file.
+	* modules/ircd/channels.c: fixed crash in ircd_char2umode().
 
 Sat May  9 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* core/lib.c, core/protos.h, doc/modules.api: added new function
