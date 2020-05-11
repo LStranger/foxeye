@@ -22,6 +22,7 @@ Mon May 11 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	  each=-1, it will not wrap lines sent.
 	* core/socket.c: fixed crash due to missing lock in AssociateSocket().
 	* core/sheduler.c: fixed bug where not all flood timers were processed.
+	* doc/HOWTO.ircd: added new HOWTO file.
 
 Sat May  9 2020 Andriy Grytsenko <andrej@rep.kiev.ua>
 	* core/lib.c, core/protos.h, doc/modules.api: added new function

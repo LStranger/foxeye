@@ -1,0 +1,130 @@
+So you have decided to start IRCD using FoxEye with appropriate module.
+Good. Let me help you in that. First of all let hope you have FoxEye
+installed as you cannot run something you don't have, right? Second thing
+is to select some working directory where starting script and database
+will be located. If both things are done then let it begin.
+
+
+1. Make a start script.
+
+Of course, it will be done in your loved shell, no GUI. To make it simple
+let go into your chosen working directory and start it from there. You
+have to choose some trivial things first. Better to write them down. We
+will need here:
+- filename of script, let it be 'my-ircd'.
+- your internal admin account, let it be 'admin'.
+- your admin account password, let it be 'MyPaSsWd'
+- a port for local connection, let it be 1234.
+- name of your server, let it be 'irc.local'
+- name of you IRC network, let it be 'TestNet'
+Also if you want SSL support for clients then you should prepare now a
+certificate together with a secret key for it. Self-signed certificate
+should be fine.
+
+Once chosen, start to build your initial script:
+
+foxeye -crmg my-ircd
+
+You should see a prompt like this:
+
+set name []:
+
+You should set this to name of your server, i.e. 'irc.local' (every value
+with quotes is quoted just for a convenience and type it without quotes,
+please). Type it then press Enter. It will then ask you to change some
+defaults. Either change them, or simply press Enter to take default. If
+you want to see details, you can press '?' on any prompt and you will get
+some hints. Anyway, most of those settings you can change later just by
+editing the script which will be generated for you. When you are asked to
+add a port then type port number which you decided above. When it will
+ask it for a second time, don't type anything, just press Enter (unless
+you want few ports to listen). Next thing you will be asked the same way
+is modules, and that is where we should be careful to not redo everything
+again. Well, as you already know, you always can press '?' to get a hint.
+And well, you can edit the script and add some lines there but adding
+things now is more convenient and you also get variables into the script
+which will spare you from searching and adding them manually to change
+defaults later. And which modules you would like to get activated are:
+- logs (I think you want important things logged, right?)
+    - you will be asked for a log file, I would suggest something like
+        ircd.log mucbseodi *
+      don't ask me details now, you can find it from FoxEye help later.
+- ssl (if your FoxEye was build wil SSL support)
+    - you need to put certificate and key files paths when it prompts.
+- ziplink (it is still preferred to compress server traffic)
+- ircd (yes, that is why we are here, isn't it?)
+    - you will be asked for an ircd, just type in some port, e.g. '6667',
+      maybe also '6697%S' as it is default for SSL connections (RFC7194).
+- probably some specific module for your network, e.g. ircd-rusnet.
+
+After few more prompts you will see an empty line with prompt. Take my
+congratulations, you got your (first?) startup script for the FoxEye. Now
+it's time to add your admin account and then restart the daemon. Add your
+account ('admin', right?) by typing:
+
+.+name admin *@locahost afhomns
+
+I use 'localhost' here as a mask just to restrict access to the admin
+console. You may add some other access masks later. Set the password
+(which was chosen above):
+
+.chpass admin MyPaSsWd
+
+Also you need to assign your IRC network, otherwise ircd will not start.
+
+.+name -ircd TestNet
+
+Well done, let exit and shutdown it:
+
+.die
+
+
+2. Configuring the IRCD.
+
+From now on, you can start your server just running the created script,
+using either full path, or relative path, it is an executable script.
+Your server will be ready just in a second after you run it. You can also
+add it to the cron to start each minute, that is safe, it will never run
+more than one instance as it tests PID file.
+
+More or less but you would want to add something more. You should enter
+the admin console for that. That can be done connecting the port you've
+chosen earlier (which was added to your startup script for you):
+
+telnet -8E localhost 1234
+
+Enter your login and password to be granted access. Let me show you few
+examples what you can do there.
+
+Add an user User11 as OPER for your server and set him/her a password:
+
+.+name User11 *@*.net
+.chpass User11 UserPassword11
+.chattr User11 +o TestNet
+
+Add an server to connect with outgoing password 'oPASSWD':
+
+.+name other.server.net
+.chpass other.server.net oPASSWD
+.chattr other.server.net +u TestNet
+
+Set host to allow other.server.net to connect to us using incoming
+password 'iPASSWD' (you know, both incoming and outgoing passwords are
+required to complete server handshake):
+
+.+host other.server.net *:iPASSWD@other.server.net
+
+Allow it to be hub with mask '*':
+
+.+hub other.server.net *
+
+Set connect to port 6660 and make it autoconnecting (you should test it
+to connect first, use CONNECT command in IRC to test):
+
+.-host other.server.net *:iPASSWD@other.server.net
+.+host other.server.net *:iPASSWD@other.server.net/6660
+.chattr other.server.net +a
+
+If you are used to setup classic IRC server, you can find some info in
+the file ircd.ref.
+Enjoy and have fun!
