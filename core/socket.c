@@ -647,10 +647,13 @@ void AssociateSocket (idx_t idx, void (*callback)(void *), void *callback_data)
 {
   /* check for errors! */
   DBG("AssociateSocket: %hd %p %p", idx, callback, callback_data);
-  if (idx < 0 || idx >= _Snum || Pollfd[idx].fd < 0)
-    return;
-  Socket[idx].callback_data = callback_data;
-  Socket[idx].callback = callback;
+  pthread_mutex_lock (&LockPoll);
+  if (idx >= 0 && idx < _Snum && Pollfd[idx].fd >= 0)
+  {
+    Socket[idx].callback_data = callback_data;
+    Socket[idx].callback = callback;
+  }
+  pthread_mutex_unlock (&LockPoll);
 }
 
 static void _answer_cleanup(void *data)
