@@ -358,6 +358,11 @@ void Dcc_Parse (peer_t *dcc, char *name, char *cmd, userflag gf, userflag cf,
   struct binding_t *bind;
   INTERFACE *sif;
   int res;
+#define static register
+  BINDING_TYPE_dcc ((*fd));
+  BINDING_TYPE_ss_ ((*fs));
+  BINDING_TYPE_chat ((*fc));
+#undef static
 
   dprint (5, "dcc:Dcc_Parse: \"%s\"", cmd);
   if (cmd[0] == '.')
@@ -377,7 +382,7 @@ void Dcc_Parse (peer_t *dcc, char *name, char *cmd, userflag gf, userflag cf,
 	(sif = Find_Iface (I_SERVICE, service)))
     {
       if (!bind->name)
-	res = bind->func (dcc, sif, arg);
+	res = (fs = bind->func) (dcc, sif, arg);
       else
 	res = 0;
       Unset_Iface();
@@ -405,7 +410,7 @@ void Dcc_Parse (peer_t *dcc, char *name, char *cmd, userflag gf, userflag cf,
       else if (bind->name)
 	res = RunBinding (bind, NULL, name, NULL, NULL, dccidx, arg);
       else
-	res = bind->func (dcc, arg);
+	res = (fd = bind->func) (dcc, arg);
       if (res == 0)
 	Get_Help_L (bind->key, NULL, dcc->iface, gf, cf, BT_Dcc, _("Usage: "),
 		    0, 0, dcc->lang[0] ? dcc->lang : locale);
@@ -429,7 +434,7 @@ void Dcc_Parse (peer_t *dcc, char *name, char *cmd, userflag gf, userflag cf,
       if (bind->name)
 	RunBinding (bind, NULL, name, NULL, NULL, botch, cmd);
       else
-	bind->func (dcc, cmd);
+	(fc = (void *)bind->func) (dcc, cmd);
     snprintf (to, sizeof(to), ":*:%d", botch);
     Add_Request (I_DCCALIAS, to, F_T_MESSAGE | F_BOTNET, "%s", cmd);
   }
