@@ -251,6 +251,8 @@ static int Add_Help_L (const char *name, const char *lang)
 	endc = EOL (data);
 	if (c)				/* there is data topic yet? */
 	{
+	  if (*data == ' ' || *data == '\t')
+	    data++;			/* skip first space char */
 	  if (s)			/* need to join to previous line? */
 	    while (*data == ' ' || *data == '\t') data++;
 	  else
