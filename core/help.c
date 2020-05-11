@@ -444,6 +444,7 @@ static int _help_one_topic (char *text, INTERFACE *iface, const char *prefix,
 {
   char buff[HUGE_STRING];
   char *c, *end;
+  size_t line_len = (each < 0) ? MESSAGEMAX : HELP_LINE_SIZE;
 
   if (mode > 2 || mode < 0)		/* ugly mode? */
     mode = 0;
@@ -474,11 +475,11 @@ static int _help_one_topic (char *text, INTERFACE *iface, const char *prefix,
     char tbuf[STRING];
 
     snprintf (tbuf, sizeof(tbuf), "%s %s", gr, topic);
-    printl (buff, sizeof(buff), text, HELP_LINE_SIZE,
+    printl (buff, sizeof(buff), text, line_len,
 	    iface->name, NULL, NULL, NULL, 0L, 0, 0, tbuf);
   }
   else
-    printl (buff, sizeof(buff), text, HELP_LINE_SIZE,
+    printl (buff, sizeof(buff), text, line_len,
 	    iface->name, NULL, NULL, NULL, 0L, 0, 0, topic);
   if (c)
     *c = '\n';

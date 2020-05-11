@@ -339,10 +339,12 @@ Common API:
     in bindtable _t_a_b_l_e and allowed for user with global userflags _g_u_f or
     channel userflags _c_u_f, then send help to that topics to interface
     _i_f_a_c_e. If _e_a_c_h is 0 then the first line of sent help will begin with
-    _p_r_e_f_i_x, if _e_a_c_h is 1 then each line will be prefixed. If _m_o_d_e is 0
+    _p_r_e_f_i_x, if _e_a_c_h is 1 then each line will be prefixed. If _e_a_c_h is -1
+    then nothing will be sent if no help found, otherwise each line will
+    be prefixed but there will be no wrapping applied on it. If _m_o_d_e is 0
     then sent just usage, if _m_o_d_e is 1 then sent short description and
     otherwise full one. Special case 1: if _m_o_d_e is -1 then it works as
-    if it is 0 but quietly if no help found. Special case 2: if _f_s_t is
+    if it is 0 but quietly if no help found. Special case 3: if _f_s_t is
     NULL but _s_e_c is not then assume first keyword is name of _t_a_b_l_e and
     _t_a_b_l_e is extension so check allowance for _s_e_c instead of _f_s_t. In case
     if _l_a_n_g is "", returned help is in default language ("C"), otherwise
