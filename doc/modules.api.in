@@ -1195,7 +1195,8 @@ Sockets API:
     possible to get a deadlock. Note on reenterability: the function does
     not change any other data so should be safe to call from a thread if
     that thread ensures the socket is owned by a calling thread.
-	Reenterability: none
+	Reenterability: thread-safe
+	Cancellation point: no
 
 Direct client's connections API:
 --------------------------------

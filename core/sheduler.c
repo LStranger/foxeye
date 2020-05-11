@@ -397,7 +397,7 @@ static void *_scheduler_thread (void *data)
   int drift;
   struct tm tm;
   struct tm tm0;
-  register unsigned int i, j = 0;
+  register unsigned int i, j;
   struct binding_t *bind = NULL;
   struct timespec abstime;
   struct timespec req;
@@ -439,19 +439,21 @@ static void *_scheduler_thread (void *data)
       drift = 1;			/* assume 1 second passed */
     }
     /* decrement floodtimers */
-    for (i = 0; i < _SFnum; i++)
+    for (i = 0, j = 0; i < _SFnum; )
     {
       register int change = Floodtable[i].count * drift;
 
-      DBG("decrementing flood counter by %d from %hd", change, *Floodtable[i].ptr);
+      DBG("decrementing flood counter %u by %d from %hd", i, change, *Floodtable[i].ptr);
       if (*Floodtable[i].ptr <= change)
       {
 	_SFnum--;
 	j++;
-	if (i != _SFnum)
+	if (i < _SFnum)
 	  memcpy (&Floodtable[i], &Floodtable[_SFnum], sizeof(shedfloodentry_t));
-      } else
+      } else {
 	*Floodtable[i].ptr -= change;
+	i++;				/* it remains, iterate to next */
+      }
     }
     if (j)
       dprint (3, "Sheduler: removed %u flood timer(s), remained %u/%u",
