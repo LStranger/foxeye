@@ -955,6 +955,12 @@ static int ircd_charset_cb(INTERFACE *srv, struct peer_t *peer, const char *lcni
 }
 #endif
 
+#ifdef ENABLE_NLS
+#define PEER_LANG(p) p->lang
+#else
+#define PEER_LANG(p) ""
+#endif
+
 BINDING_TYPE_ircd_client_cmd(ircd_help_cb);
 static int ircd_help_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
 			const char *user, const char *host, const char *vhost,
@@ -982,10 +988,10 @@ static int ircd_help_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
     b = Check_Bindtable (BTIrcdClientCmd, argv[0], uf, U_ANYCH, NULL);
     if (b)
       Get_Help_L("=ircd", b->key, peer->iface, U_NEGATE, uf, BTIrcdClientCmd,
-		 prefix, 1, -1, ""); //FIXME: LANG support
+		 prefix, 1, -1, PEER_LANG(peer));
     ircd_do_unumeric(cl, RPL_HELPTXT, cl, 0, argv[0]);
     Get_Help_L("=ircd", b ? b->key : argv[0], peer->iface, U_NEGATE, uf,
-	       BTIrcdClientCmd, prefix, 1, 2, ""); //FIXME: LANG support
+	       BTIrcdClientCmd, prefix, 1, 2, PEER_LANG(peer));
     // RPL_HELPTXT empty line ?
     return ircd_do_unumeric(cl, RPL_ENDOFHELP, cl, 0, argv[0]);
   } else {
@@ -995,7 +1001,7 @@ static int ircd_help_cb(INTERFACE *srv, struct peer_t *peer, const char *lcnick,
     while ((b = Check_Bindtable (BTIrcdClientCmd, NULL, uf, U_ANYCH, b)))
     {
       Get_Help_L("=ircd", b->key, peer->iface, U_NEGATE, uf, BTIrcdClientCmd,
-		 prefix, -1, 1, ""); //FIXME: LANG support
+		 prefix, -1, 1, PEER_LANG(peer));
     }
     return ircd_do_unumeric(cl, RPL_ENDOFHELP, cl, 0, "*");
   }

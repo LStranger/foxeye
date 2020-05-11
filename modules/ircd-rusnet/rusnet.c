@@ -903,7 +903,7 @@ static int rusnet_check_message(modeflag umode, modeflag mmode, const char **msg
   {
     /* it is for user */
     if (!(umode & (A_REGISTERED | A_OP)) && (mmode & A_REGONLY)) {
-      *msg = "You must be identified";
+      *msg = N_("You must be identified");
       return 0;
     }
   }
@@ -911,7 +911,7 @@ static int rusnet_check_message(modeflag umode, modeflag mmode, const char **msg
   else if (mmode & A_NOCOLOR)
   {
     if (strchr(*msg, 0x3)) {		/* mIRC color code */
-      *msg = "No color codes allowed";
+      *msg = N_("No color codes allowed");
       return 0;
     }
   }
