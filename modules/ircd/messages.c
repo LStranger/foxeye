@@ -356,13 +356,10 @@ static int _ircd_can_send_to_one (CLIENT *cl, CLIENT *tgt, const char *msg,
   BINDING_TYPE_ircd_check_message((*f));
 #undef static
 
-  if (!(tgt->umode & A_ISON))
-    return x; // FIXME
-
   while ((b = Check_Bindtable (BTIrcdCheckMessage, tgt->nick, U_ALL, U_ANYCH, b)))
     if (b->name)
       continue;
-    else if ((i = (f = b->func)(cl->umode, tgt->umode, &m)) > 0)
+    else if ((i = (f = b->func)(cl->umode, tgt->umode | A_ISON, &m)) > 0)
       return 1;
     else
       x &= i;
