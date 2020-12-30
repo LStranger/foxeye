@@ -958,7 +958,7 @@ static void *_poll_thread(void __attribute__((unused)) *data)
 #ifdef HAVE_ALLOCA
   d.pollfd = alloca(_pfdnum * sizeof(struct pollfd));
 #else
-  d.pollfd = safe_alloc(_pfdnum * sizeof(struct pollfd));
+  d.pollfd = safe_malloc(_pfdnum * sizeof(struct pollfd));
   pthread_cleanup_push((void(*)(void *))&safe_free, (void *)&d.pollfd);
 #endif
   memset(d.pollfd, 0, _pfdnum * sizeof(struct pollfd));

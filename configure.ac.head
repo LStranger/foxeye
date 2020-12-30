@@ -328,6 +328,7 @@ fi
 AM_CONDITIONAL([STATICBUILD], [test x$fe_cv_static = xyes])
 
 dnl Checks for library functions.
+AC_FUNC_ALLOCA
 AC_CHECK_FUNCS(rename sigaction strncasecmp towlower)
 
 AC_CACHE_CHECK([whether you need libcrypt], ac_cv_need_libcrypt,
