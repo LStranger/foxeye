@@ -7,103 +7,107 @@ msgstr ""
 "Project-Id-Version: foxeye 0.12.1\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2020-05-12 00:18+0300\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"PO-Revision-Date: 2021-02-02 23:13+0000\n"
+"Last-Translator: Andriy Grytsenko <andrej@rep.kiev.ua>\n"
+"Language-Team: Ukrainian <https://hosted.weblate.org/projects/foxeye/pot/uk/>"
+"\n"
 "Language: uk\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=n%10==1 && n%100!=11 ? 0 : n%10>=2 && n"
+"%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\n"
+"X-Generator: Weblate 4.5-dev\n"
 
 #: core/direct.c:128
 msgid "joined this botnet channel."
-msgstr ""
+msgstr "приєднується до цього каналу."
 
 #: core/direct.c:149
 #, c-format
 msgid "quit botnet: %s"
-msgstr ""
+msgstr "виходить з ботнету: %s"
 
 #: core/direct.c:151
 msgid "left this botnet channel."
-msgstr ""
+msgstr "виходить з цього каналу."
 
 #: core/direct.c:338
 msgid "no reason."
-msgstr ""
+msgstr "просто так."
 
 #: core/direct.c:390 core/direct.c:415 core/direct.c:2358 core/direct.c:2361
 #: core/init.c:1938
 msgid "Usage: "
-msgstr ""
+msgstr "Використання: "
 
 #: core/direct.c:400
 #, c-format
 msgid "Nothing appropriated to: %s"
-msgstr ""
+msgstr "Нічого підходящого для %s"
 
 #: core/direct.c:485
 #, c-format
 msgid "Logged in: %s."
-msgstr ""
+msgstr "Заходить: %s."
 
 #: core/direct.c:558 core/direct.c:581
 msgid "session lost"
-msgstr ""
+msgstr "сесію втрачено"
 
 #: core/direct.c:1326
 #, c-format
 msgid "listening on port %hu"
-msgstr ""
+msgstr "слухаю на порту %hu"
 
 #: core/direct.c:1362
 #, c-format
 msgid "Listening socket on port %hu terminated."
-msgstr ""
+msgstr "Слухання на порту %hu припинено."
 
 #: core/direct.c:1526
 msgid "((unknown))"
-msgstr ""
+msgstr "((невідомо))"
 
 #: core/direct.c:1819
 #, c-format
 msgid "Now: %s"
-msgstr ""
+msgstr "Зараз: %s"
 
 #: core/direct.c:1839
 #, c-format
 msgid "now away: %s"
-msgstr ""
+msgstr "відходить: %s"
 
 #: core/direct.c:1841
 msgid "returned to life."
-msgstr ""
+msgstr "повертається до життя."
 
 #: core/direct.c:1891
 msgid "No such person at the botnet!"
-msgstr ""
+msgstr "В ботнеті нема таких!"
 
 #: core/direct.c:1893
 msgid "Cannot boot the bot owner!"
-msgstr ""
+msgstr "Власника не викидають!"
 
 #: core/direct.c:1895
 msgid "You not permitted to boot a bot master!"
-msgstr ""
+msgstr "Не маєш права викинути майстра боту!"
 
 #: core/direct.c:1897
 msgid "I don't know how to boot it!"
-msgstr ""
+msgstr "Не знаю як викинути його!"
 
 #: core/direct.c:1905
 #, c-format
 msgid "%s booted by %s."
-msgstr ""
+msgstr "%s викинуто через %s."
 
 #: core/direct.c:2172
 #, c-format
 msgid "No such active service found: %s"
-msgstr ""
+msgstr "Не знайдено такого активного сервісу %s"
 
 #: core/direct.c:2222
 msgid "messages"
