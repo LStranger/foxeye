@@ -7,7 +7,7 @@ msgstr ""
 "Project-Id-Version: foxeye 0.12.1\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2020-05-12 00:18+0300\n"
-"PO-Revision-Date: 2021-02-02 23:13+0000\n"
+"PO-Revision-Date: 2021-02-02 23:37+0000\n"
 "Last-Translator: Andriy Grytsenko <andrej@rep.kiev.ua>\n"
 "Language-Team: Ukrainian <https://hosted.weblate.org/projects/foxeye/pot/uk/>"
 "\n"
@@ -111,7 +111,7 @@ msgstr "Не знайдено такого активного сервісу %s"
 
 #: core/direct.c:2222
 msgid "messages"
-msgstr ""
+msgstr "повідомлень"
 
 #: core/direct.c:2225
 msgid "commands"
