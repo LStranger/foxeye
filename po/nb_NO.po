@@ -7,35 +7,38 @@ msgstr ""
 "Project-Id-Version: foxeye 0.12.1\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2020-05-12 00:18+0300\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"PO-Revision-Date: 2021-02-06 10:41+0000\n"
+"Last-Translator: Allan Nordhøy <epost@anotheragency.no>\n"
+"Language-Team: Norwegian Bokmål <https://hosted.weblate.org/projects/foxeye/"
+"pot/nb_NO/>\n"
 "Language: nb_NO\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+"X-Generator: Weblate 4.5-dev\n"
 
 #: core/direct.c:128
 msgid "joined this botnet channel."
-msgstr ""
+msgstr "tok del i denne bottnett-kanalen."
 
 #: core/direct.c:149
 #, c-format
 msgid "quit botnet: %s"
-msgstr ""
+msgstr "avslutt bottnett: %s"
 
 #: core/direct.c:151
 msgid "left this botnet channel."
-msgstr ""
+msgstr "forlot denne bottnett-kanalen."
 
 #: core/direct.c:338
 msgid "no reason."
-msgstr ""
+msgstr "ingen grunn."
 
 #: core/direct.c:390 core/direct.c:415 core/direct.c:2358 core/direct.c:2361
 #: core/init.c:1938
 msgid "Usage: "
-msgstr ""
+msgstr "Bruk: "
 
 #: core/direct.c:400
 #, c-format
@@ -49,31 +52,31 @@ msgstr ""
 
 #: core/direct.c:558 core/direct.c:581
 msgid "session lost"
-msgstr ""
+msgstr "økt gikk tapt"
 
 #: core/direct.c:1326
 #, c-format
 msgid "listening on port %hu"
-msgstr ""
+msgstr "lytter på port %hu"
 
 #: core/direct.c:1362
 #, c-format
 msgid "Listening socket on port %hu terminated."
-msgstr ""
+msgstr "Lyttesocket på port %hu avsluttet."
 
 #: core/direct.c:1526
 msgid "((unknown))"
-msgstr ""
+msgstr "((ukjent))"
 
 #: core/direct.c:1819
 #, c-format
 msgid "Now: %s"
-msgstr ""
+msgstr "Nå: %s"
 
 #: core/direct.c:1839
 #, c-format
 msgid "now away: %s"
-msgstr ""
+msgstr "nå borte: %s"
 
 #: core/direct.c:1841
 msgid "returned to life."
@@ -103,23 +106,23 @@ msgstr ""
 #: core/direct.c:2172
 #, c-format
 msgid "No such active service found: %s"
-msgstr ""
+msgstr "Fant ingen slik aktiv tjeneste: %s"
 
 #: core/direct.c:2222
 msgid "messages"
-msgstr ""
+msgstr "meldinger"
 
 #: core/direct.c:2225
 msgid "commands"
-msgstr ""
+msgstr "kommandoer"
 
 #: core/direct.c:2228
 msgid "connections/shares"
-msgstr ""
+msgstr "tilkoblinger/delinger"
 
 #: core/direct.c:2231
 msgid "server messages"
-msgstr ""
+msgstr "tjenermeldinger"
 
 #: core/direct.c:2234
 msgid "wallops"
@@ -127,27 +130,27 @@ msgstr ""
 
 #: core/direct.c:2237
 msgid "userfile changes"
-msgstr ""
+msgstr "brukerfilendringer"
 
 #: core/direct.c:2240
 msgid "debug"
-msgstr ""
+msgstr "avlusing"
 
 #: core/direct.c:2243
 msgid "boot diagnostics"
-msgstr ""
+msgstr "oppstartdiagnostikk"
 
 #: core/direct.c:2246
 msgid "errors"
-msgstr ""
+msgstr "feil"
 
 #: core/direct.c:2249
 msgid "warnings"
-msgstr ""
+msgstr "advarsler"
 
 #: core/direct.c:2252
 msgid "public"
-msgstr ""
+msgstr "offentlig"
 
 #: core/direct.c:2255
 msgid "joins/parts"
@@ -159,23 +162,23 @@ msgstr ""
 
 #: core/direct.c:2275 core/direct.c:2279
 msgid "Your console logs"
-msgstr ""
+msgstr "Dine konsoll-logger"
 
 #: core/direct.c:2276
 msgid ", and "
-msgstr ""
+msgstr ", og "
 
 #: core/direct.c:2277
 msgid "on the channel"
-msgstr ""
+msgstr "på kanalen"
 
 #: core/direct.c:2422
 msgid "No such client on DCC now"
-msgstr ""
+msgstr "Ingen slik klient på DCC nå"
 
 #: core/direct.c:2435
 msgid "You can simulate only local DCC clients, sorry"
-msgstr ""
+msgstr "Du kan kun simulere lokale DCC-klienter"
 
 #: core/direct.c:2532
 #, c-format
@@ -199,17 +202,17 @@ msgstr ""
 
 #: core/direct.c:3000 core/direct.c:3009 core/direct.c:3019 core/direct.c:3094
 msgid " for bots"
-msgstr ""
+msgstr " for botter"
 
 #: core/direct.c:3008
 #, c-format
 msgid "Cannot open listening port on %hu%s!"
-msgstr ""
+msgstr "Kan ikke åpne lytteport på %hu%s."
 
 #: core/direct.c:3018
 #, c-format
 msgid "Listening on port %hu%s."
-msgstr ""
+msgstr "Lytter på port %hu%s."
 
 #: core/direct.c:3066
 #, c-format
@@ -223,12 +226,12 @@ msgstr ""
 
 #: core/dispatcher.c:1435
 msgid "kill PID file"
-msgstr ""
+msgstr "drep PID-fil"
 
 #: core/dispatcher.c:1445
 #, c-format
 msgid "The bot already running!\n"
-msgstr ""
+msgstr "Botten kjører allerede.\n"
 
 #: core/dispatcher.c:1456
 msgid "fork dispatcher"
@@ -248,7 +251,7 @@ msgstr ""
 
 #: core/dispatcher.c:1547
 msgid "Cannot write a PID file!"
-msgstr ""
+msgstr "Kan ikke skrive PID-fil."
 
 #: core/formats.default:21
 msgid "DCC connection to %L lost."
@@ -273,36 +276,36 @@ msgstr ""
 
 #: core/init.c:684 core/init.c:731
 msgid "y"
-msgstr ""
+msgstr "j"
 
 #: core/init.c:730
 #, c-format
 msgid "%s (y/n)?[%s] "
-msgstr ""
+msgstr "%s (j/n)?[%s] "
 
 #: core/init.c:731
 msgid "n"
-msgstr ""
+msgstr "n"
 
 #: core/init.c:1585
 #, c-format
 msgid "Current value of %s: %ld"
-msgstr ""
+msgstr "Nåværende verdi av %s: %ld"
 
 #: core/init.c:1588
 #, c-format
 msgid "Current value of %s: %s%s"
-msgstr ""
+msgstr "Nåværende verdi av %s: %s%s"
 
 #: core/init.c:1592
 #, c-format
 msgid "Current value of %s: %s"
-msgstr ""
+msgstr "Nåværende verdi av %s: %s"
 
 #: core/init.c:1601
 #, c-format
 msgid "List of variables%s%s:"
-msgstr ""
+msgstr "Liste over variabler%s%s:"
 
 #: core/init.c:1602 core/init.c:1665
 msgid " by mask "
@@ -311,16 +314,16 @@ msgstr ""
 #: core/init.c:1656
 #, c-format
 msgid "Current format %s: %s"
-msgstr ""
+msgstr "Nåværende format %s: %s"
 
 #: core/init.c:1664
 #, c-format
 msgid "List of formats%s%s:"
-msgstr ""
+msgstr "Liste over formater%s%s:"
 
 #: core/init.c:1699
 msgid "Universal network client "
-msgstr ""
+msgstr "Universell nettverksklient "
 
 #: core/init.c:1751
 msgid "case-sensitive "
@@ -374,7 +377,7 @@ msgstr ""
 
 #: core/lib.c:40
 msgid "Out of memory!"
-msgstr ""
+msgstr "Slapp opp for minne!"
 
 #: core/main.c:387
 msgid ""
@@ -403,6 +406,9 @@ msgid ""
 "\n"
 "OS: %s %s on %s.\n"
 msgstr ""
+"Opphavsrett © Andriy Gritsenko.\n"
+"\n"
+"OS: %s %s på %s.\n"
 
 #: core/main.c:512
 #, c-format
@@ -517,20 +523,20 @@ msgstr ""
 #: core/list.c:3016
 #, c-format
 msgid "Name %s does not exist."
-msgstr ""
+msgstr "Navnet %s finnes ikke."
 
 #: core/list.c:3114
 #, c-format
 msgid "Password for %s erased."
-msgstr ""
+msgstr "Passord for %s slettet."
 
 #: core/list.c:3162 core/list.c:3222
 msgid "Cannot load userfile!"
-msgstr ""
+msgstr "Kan ikke laste inn brukerfil."
 
 #: core/list.c:3171
 msgid "Cannot save userfile!"
-msgstr ""
+msgstr "Kan ikke lagre brukerfil."
 
 #: core/sheduler.c:590
 #, c-format
@@ -566,9 +572,9 @@ msgid "is in netsplit"
 msgstr ""
 
 #: modules/irc-channel/irc-channel.c:1712
-#, c-format
+#, c-format, fuzzy
 msgid "%s invited you to %s. Would you like to join"
-msgstr ""
+msgstr "%s inviterte deg til %s. Ønsker du å delta"
 
 #: modules/irc-channel/irc-channel.c:2798
 #, c-format
@@ -578,7 +584,7 @@ msgstr ""
 #: modules/irc-channel/irc-channel.c:2917
 #, c-format
 msgid "*** cannot send to channel %s"
-msgstr ""
+msgstr "*** kan ikke sende til kanal %s"
 
 #: modules/irc-channel/irc-channel.c:2935
 #, c-format
@@ -601,7 +607,7 @@ msgstr ""
 #: modules/irc-channel/irc-channel.c:3585
 #, c-format
 msgid "You're recognized as %s."
-msgstr ""
+msgstr "Du er gjenkjent som %s."
 
 #: modules/irc-channel/irc-channel.c:3838
 msgid "%y%N%n(%@) has joined %#"
@@ -645,11 +651,11 @@ msgstr ""
 
 #: modules/irc-channel/irc-channel.c:3858
 msgid "Topic on %# is: %*"
-msgstr ""
+msgstr "Emne på %# er: %*"
 
 #: modules/irc-channel/irc-channel.c:3860
 msgid "Topic for %# is set %@ by %N"
-msgstr ""
+msgstr "Emne for %# er satt %@ av %N"
 
 #: modules/irc-channel/chmanagement.c:1232
 #, c-format
@@ -675,7 +681,7 @@ msgstr ""
 #: modules/irc-channel/chmanagement.c:1487
 #, c-format
 msgid "%s isn't IRC channel!"
-msgstr ""
+msgstr "%s er ikke en IRC-kanal!"
 
 #: modules/irc-channel/chmanagement.c:1513
 #: modules/irc-channel/chmanagement.c:1577
@@ -741,17 +747,17 @@ msgstr ""
 #: modules/irc-ctcp/dcc.c:1136
 #, c-format
 msgid "Get file \"%s\" from %s"
-msgstr ""
+msgstr "Hent filen «%s» fra %s"
 
 #: modules/irc-ctcp/dcc.c:1138
 #, c-format
 msgid "Accept chat request from %s"
-msgstr ""
+msgstr "Godta sludringsforespørsel fra %s"
 
 #: modules/irc-ctcp/dcc.c:1152
 #, c-format
 msgid "Overvrite existing file \"%s\""
-msgstr ""
+msgstr "Overskriv eksisterende fil «%s»"
 
 #: modules/irc-ctcp/dcc.c:1268
 #, c-format
