@@ -7,7 +7,7 @@ msgstr ""
 "Project-Id-Version: foxeye 0.12.1\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2020-05-12 00:18+0300\n"
-"PO-Revision-Date: 2021-02-06 10:41+0000\n"
+"PO-Revision-Date: 2021-02-07 12:50+0000\n"
 "Last-Translator: Allan Nordhøy <epost@anotheragency.no>\n"
 "Language-Team: Norwegian Bokmål <https://hosted.weblate.org/projects/foxeye/"
 "pot/nb_NO/>\n"
@@ -239,7 +239,7 @@ msgstr ""
 
 #: core/dispatcher.c:1465
 msgid "write PID file"
-msgstr ""
+msgstr "skriv PID-fil"
 
 #: core/dispatcher.c:1480
 msgid "Failed to create signals thread."
@@ -602,7 +602,7 @@ msgstr ""
 
 #: modules/irc-channel/irc-channel.c:3582
 msgid "Password incorrect."
-msgstr ""
+msgstr "Feil passord."
 
 #: modules/irc-channel/irc-channel.c:3585
 #, c-format
@@ -611,19 +611,19 @@ msgstr "Du er gjenkjent som %s."
 
 #: modules/irc-channel/irc-channel.c:3838
 msgid "%y%N%n(%@) has joined %#"
-msgstr ""
+msgstr "%y%N%n(%@) har tatt del i %#"
 
 #: modules/irc-channel/irc-channel.c:3840
 msgid "%^%N%^(%@) has left %# (%*)"
-msgstr ""
+msgstr "%^%N%^(%@) har forlatt %# (%*)"
 
 #: modules/irc-channel/irc-channel.c:3842
 msgid "%^%N%^ is now known as %y%*%n"
-msgstr ""
+msgstr "%^%N%^ is går nå under navnet %y%*%n"
 
 #: modules/irc-channel/irc-channel.c:3844
 msgid "%^%N%^(%@) has quit %# (%*)"
-msgstr ""
+msgstr "%^%N%^(%@) har avsluttet %# (%*)"
 
 #: modules/irc-channel/irc-channel.c:3846
 msgid "%^%N%^ has lost in netsplit (%*)"
@@ -631,7 +631,7 @@ msgstr ""
 
 #: modules/irc-channel/irc-channel.c:3848
 msgid "%^%N%^ has kicked %L from %# (%*)"
-msgstr ""
+msgstr "%^%N%^ har sparket ut %L fra %# (%*)"
 
 #: modules/irc-channel/irc-channel.c:3850
 msgid "mode/%# (%*) by %^%N%^"
