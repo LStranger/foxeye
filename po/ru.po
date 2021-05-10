@@ -7,25 +7,25 @@ msgstr ""
 "Project-Id-Version: foxeye 0.10\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2020-05-12 00:18+0300\n"
-"PO-Revision-Date: 2011-11-22 19:21+0200\n"
-"Last-Translator: Andriy Grytsenko <andrej@rep.kiev.ua>\n"
-"Language-Team: Russian <ru@li.org>\n"
+"PO-Revision-Date: 2021-05-11 01:32+0000\n"
+"Last-Translator: Axus Wizix <axus.wizix@mail.ru>\n"
+"Language-Team: Russian <https://hosted.weblate.org/projects/foxeye/pot/ru/>\n"
 "Language: ru\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=KOI8-R\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: KBabel 1.11.4\n"
-"Plural-Forms:  nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n"
-"%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"Plural-Forms: nplurals=3; plural=n%10==1 && n%100!=11 ? 0 : n%10>=2 && n"
+"%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\n"
+"X-Generator: Weblate 4.7-dev\n"
 
 #: core/direct.c:128
 msgid "joined this botnet channel."
-msgstr ""
+msgstr "присоединяется к этому каналу."
 
 #: core/direct.c:149
 #, c-format
 msgid "quit botnet: %s"
-msgstr ""
+msgstr "выйти из ботнета: %s"
 
 #: core/direct.c:151
 msgid "left this botnet channel."
@@ -52,21 +52,21 @@ msgstr "Зашёл: %s."
 
 #: core/direct.c:558 core/direct.c:581
 msgid "session lost"
-msgstr ""
+msgstr "сессия потеряна"
 
 #: core/direct.c:1326
 #, c-format
 msgid "listening on port %hu"
-msgstr ""
+msgstr "прослушивание порта %hu"
 
 #: core/direct.c:1362
 #, c-format
 msgid "Listening socket on port %hu terminated."
-msgstr ""
+msgstr "Прослушивание сокета порта %hu прекращено."
 
 #: core/direct.c:1526
 msgid "((unknown))"
-msgstr ""
+msgstr "((неизвестно))"
 
 #: core/direct.c:1819
 #, c-format
