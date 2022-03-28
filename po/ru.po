@@ -7,8 +7,8 @@ msgstr ""
 "Project-Id-Version: foxeye 0.10\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2020-05-12 00:18+0300\n"
-"PO-Revision-Date: 2021-05-11 01:32+0000\n"
-"Last-Translator: Axus Wizix <axus.wizix@mail.ru>\n"
+"PO-Revision-Date: 2022-03-29 21:07+0000\n"
+"Last-Translator: ANIGO R. (AR) <franigoyt@gmail.com>\n"
 "Language-Team: Russian <https://hosted.weblate.org/projects/foxeye/pot/ru/>\n"
 "Language: ru\n"
 "MIME-Version: 1.0\n"
@@ -16,7 +16,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=n%10==1 && n%100!=11 ? 0 : n%10>=2 && n"
 "%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\n"
-"X-Generator: Weblate 4.7-dev\n"
+"X-Generator: Weblate 4.12-dev\n"
 
 #: core/direct.c:128
 msgid "joined this botnet channel."
@@ -138,7 +138,7 @@ msgstr "отладка"
 
 #: core/direct.c:2243
 msgid "boot diagnostics"
-msgstr "запуск"
+msgstr "загрузочная диагностика"
 
 #: core/direct.c:2246
 msgid "errors"
@@ -162,7 +162,7 @@ msgstr ""
 
 #: core/direct.c:2275 core/direct.c:2279
 msgid "Your console logs"
-msgstr "Консольный лог"
+msgstr "Ваши Консольные логи"
 
 #: core/direct.c:2276
 msgid ", and "
