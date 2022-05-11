@@ -448,7 +448,7 @@ static iftype_t module_signal (INTERFACE *iface, ifsig_t sig)
     /* deinit library */
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
     ERR_remove_state(0);
-#else
+#elif OPENSSL_VERSION_NUMBER < 0x30000000L
     FIPS_mode_set(0);
 #endif
     ENGINE_cleanup();
