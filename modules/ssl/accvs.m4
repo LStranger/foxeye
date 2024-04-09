@@ -158,10 +158,10 @@ int main(void) {
 
         fd = fopen(DATA,"w");
         if(fd == NULL)
-                exit(1);
+                return(1);
         if ((rc = fprintf(fd ,"%lx (%s)\n", OPENSSL_VERSION_NUMBER, OPENSSL_VERSION_TEXT)) <0)
-                exit(1);
-        exit(0);
+                return(1);
+        return(0);
 }
     ]])], [
 	ssl_header_ver=`cat conftest.sslincver`
@@ -188,12 +188,12 @@ int main(void) {
 
         fd = fopen(DATA,"w");
         if(fd == NULL)
-                exit(1);
+                return(1);
 
         if ((rc = fprintf(fd ,"%lx (%s)\n", SSLeay(), SSLeay_version(SSLEAY_VERSION))) <0)
-                exit(1);
+                return(1);
 
-        exit(0);
+        return(0);
 }
     ]])], [
 	ssl_library_ver=`cat conftest.ssllibver`
@@ -212,7 +212,7 @@ int main(void) {
 #include <string.h>
 #include <openssl/opensslv.h>
 #include <openssl/crypto.h>
-int main(void) { exit(SSLeay() == OPENSSL_VERSION_NUMBER ? 0 : 1); }
+int main(void) { return(SSLeay() == OPENSSL_VERSION_NUMBER ? 0 : 1); }
     ]])], [
 	AC_MSG_RESULT(yes)
     ], [
