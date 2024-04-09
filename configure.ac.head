@@ -334,10 +334,10 @@ AC_CHECK_FUNCS(rename sigaction strncasecmp towlower)
 AC_CACHE_CHECK([whether you need libcrypt], ac_cv_need_libcrypt,
 [
     ac_cv_have_crypt=yes
-    AC_TRY_LINK([], [crypt ("","");], [ac_cv_need_libcrypt=no],
+    AC_TRY_LINK([#include <unistd.h>], [crypt ("","");], [ac_cv_need_libcrypt=yes],
 	[save_LIBS="${LIBS}"
 	LIBS="-lcrypt ${LIBS}"
-	AC_TRY_LINK([], [crypt ("","");], [ac_cv_need_libcrypt=yes],
+	AC_TRY_LINK([#include <unistd.h>], [crypt ("","");], [ac_cv_need_libcrypt=yes],
 	    [ac_cv_need_libcrypt=no
 	    ac_cv_have_crypt=no
 	])
