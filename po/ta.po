@@ -7,374 +7,378 @@ msgstr ""
 "Project-Id-Version: foxeye 0.12.1\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2020-05-12 00:18+0300\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"PO-Revision-Date: 2024-12-28 07:00+0000\n"
+"Last-Translator: தமிழ்நேரம் <anishprabu.t@gmail.com>\n"
+"Language-Team: Tamil <https://hosted.weblate.org/projects/foxeye/pot/ta/>\n"
 "Language: ta\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+"X-Generator: Weblate 5.10-dev\n"
 
 #: core/direct.c:128
 msgid "joined this botnet channel."
-msgstr ""
+msgstr "இந்த போட்நெட் சேனலில் சேர்ந்தார்."
 
 #: core/direct.c:149
 #, c-format
 msgid "quit botnet: %s"
-msgstr ""
+msgstr "போட்நெட்டிலிருந்து விலகுங்கள்: %s"
 
 #: core/direct.c:151
 msgid "left this botnet channel."
-msgstr ""
+msgstr "இந்த போட்நெட் சேனலை விட்டு வெளியேறினார்."
 
 #: core/direct.c:338
 msgid "no reason."
-msgstr ""
+msgstr "எந்த காரணமும் இல்லை."
 
 #: core/direct.c:390 core/direct.c:415 core/direct.c:2358 core/direct.c:2361
 #: core/init.c:1938
 msgid "Usage: "
-msgstr ""
+msgstr "பயன்பாடு: "
 
 #: core/direct.c:400
 #, c-format
 msgid "Nothing appropriated to: %s"
-msgstr ""
+msgstr "இதற்கு எதுவும் பயன்படுத்தப்படவில்லை: %s"
 
 #: core/direct.c:485
 #, c-format
 msgid "Logged in: %s."
-msgstr ""
+msgstr "உள்நுழைந்தது: %s."
 
 #: core/direct.c:558 core/direct.c:581
 msgid "session lost"
-msgstr ""
+msgstr "அமர்வு இழந்தது"
 
 #: core/direct.c:1326
-#, c-format
+#, c-format, fuzzy
 msgid "listening on port %hu"
-msgstr ""
+msgstr "துறைமுகம் %HU இல் கேட்பது"
 
 #: core/direct.c:1362
-#, c-format
+#, c-format, fuzzy
 msgid "Listening socket on port %hu terminated."
-msgstr ""
+msgstr "துறைமுகம் %HU இல் சாக்கெட் கேட்பது நிறுத்தப்பட்டது."
 
 #: core/direct.c:1526
 msgid "((unknown))"
-msgstr ""
+msgstr "((தெரியவில்லை))"
 
 #: core/direct.c:1819
 #, c-format
 msgid "Now: %s"
-msgstr ""
+msgstr "இப்போது: %s"
 
 #: core/direct.c:1839
 #, c-format
 msgid "now away: %s"
-msgstr ""
+msgstr "இப்போது விலகி: %s"
 
 #: core/direct.c:1841
 msgid "returned to life."
-msgstr ""
+msgstr "வாழ்க்கைக்குத் திரும்பினார்."
 
 #: core/direct.c:1891
 msgid "No such person at the botnet!"
-msgstr ""
+msgstr "போட்நெட்டில் அத்தகைய நபர் இல்லை!"
 
 #: core/direct.c:1893
 msgid "Cannot boot the bot owner!"
-msgstr ""
+msgstr "போட் உரிமையாளரை துவக்க முடியாது!"
 
 #: core/direct.c:1895
 msgid "You not permitted to boot a bot master!"
-msgstr ""
+msgstr "போட் மாச்டரை துவக்க நீங்கள் அனுமதிக்கவில்லை!"
 
 #: core/direct.c:1897
 msgid "I don't know how to boot it!"
-msgstr ""
+msgstr "அதை எப்படி துவக்குவது என்று எனக்குத் தெரியவில்லை!"
 
 #: core/direct.c:1905
 #, c-format
 msgid "%s booted by %s."
-msgstr ""
+msgstr "%s %s மூலம் துவக்கப்பட்டன."
 
 #: core/direct.c:2172
 #, c-format
 msgid "No such active service found: %s"
-msgstr ""
+msgstr "அத்தகைய செயலில் பணி எதுவும் கிடைக்கவில்லை: %s"
 
 #: core/direct.c:2222
 msgid "messages"
-msgstr ""
+msgstr "செய்திகள்"
 
 #: core/direct.c:2225
 msgid "commands"
-msgstr ""
+msgstr "கட்டளைகள்"
 
 #: core/direct.c:2228
 msgid "connections/shares"
-msgstr ""
+msgstr "இணைப்புகள்/பங்குகள்"
 
 #: core/direct.c:2231
 msgid "server messages"
-msgstr ""
+msgstr "சேவையக செய்திகள்"
 
 #: core/direct.c:2234
 msgid "wallops"
-msgstr ""
+msgstr "சுவர்"
 
 #: core/direct.c:2237
 msgid "userfile changes"
-msgstr ""
+msgstr "பயனர் கோப்பு மாற்றங்கள்"
 
 #: core/direct.c:2240
 msgid "debug"
-msgstr ""
+msgstr "பிழைத்திருத்தம்"
 
 #: core/direct.c:2243
 msgid "boot diagnostics"
-msgstr ""
+msgstr "துவக்க நோயறிதல்"
 
 #: core/direct.c:2246
 msgid "errors"
-msgstr ""
+msgstr "பிழைகள்"
 
 #: core/direct.c:2249
 msgid "warnings"
-msgstr ""
+msgstr "எச்சரிக்கைகள்"
 
 #: core/direct.c:2252
 msgid "public"
-msgstr ""
+msgstr "பொது"
 
 #: core/direct.c:2255
 msgid "joins/parts"
-msgstr ""
+msgstr "சேர/பாகங்கள்"
 
 #: core/direct.c:2258
 msgid "mode changes"
-msgstr ""
+msgstr "பயன்முறை மாற்றங்கள்"
 
 #: core/direct.c:2275 core/direct.c:2279
 msgid "Your console logs"
-msgstr ""
+msgstr "உங்கள் கன்சோல் பதிவுகள்"
 
 #: core/direct.c:2276
 msgid ", and "
-msgstr ""
+msgstr ", மற்றும் "
 
 #: core/direct.c:2277
 msgid "on the channel"
-msgstr ""
+msgstr "சேனலில்"
 
 #: core/direct.c:2422
 msgid "No such client on DCC now"
-msgstr ""
+msgstr "டி.சி.சி.யில் இப்போது அத்தகைய கிளையன்ட் இல்லை"
 
 #: core/direct.c:2435
 msgid "You can simulate only local DCC clients, sorry"
 msgstr ""
+"நீங்கள் உள்ளக டி.சி.சி வாடிக்கையாளர்களை மட்டுமே உருவகப்படுத்த முடியும், மன்னிக்கவும்"
 
 #: core/direct.c:2532
 #, c-format
 msgid "I don't know how to connect to %s."
-msgstr ""
+msgstr "%s உடன் எவ்வாறு இணைப்பது என்று எனக்குத் தெரியவில்லை."
 
 #: core/direct.c:2557
 #, c-format
 msgid "I don't know how disconnect %s."
-msgstr ""
+msgstr "%s எவ்வாறு துண்டிக்கப்படுகின்றன என்று எனக்குத் தெரியவில்லை."
 
 #: core/direct.c:2935
 #, c-format
 msgid "Connection from %s terminated: %s"
-msgstr ""
+msgstr "%s இலிருந்து இணைப்பு நிறுத்தப்பட்டது: %s"
 
 #: core/direct.c:2999
-#, c-format
+#, c-format, fuzzy
 msgid "Could not open listening port %hu%s, retrying in 10 seconds."
 msgstr ""
+"கேட்கும் துறைமுகம் %உ %s திறக்க முடியவில்லை, 10 வினாடிகளில் மீண்டும் முயற்சிக்கிறது."
 
 #: core/direct.c:3000 core/direct.c:3009 core/direct.c:3019 core/direct.c:3094
 msgid " for bots"
-msgstr ""
+msgstr " போட்ச்"
 
 #: core/direct.c:3008
-#, c-format
+#, c-format, fuzzy
 msgid "Cannot open listening port on %hu%s!"
-msgstr ""
+msgstr "%HU %s இல் கேட்கும் துறைமுகத்தைத் திறக்க முடியாது!"
 
 #: core/direct.c:3018
-#, c-format
+#, c-format, fuzzy
 msgid "Listening on port %hu%s."
-msgstr ""
+msgstr "துறைமுகம் %Hu %s இல் கேட்பது."
 
 #: core/direct.c:3066
-#, c-format
+#, c-format, fuzzy
 msgid "Already listening on port %hu!"
-msgstr ""
+msgstr "ஏற்கனவே துறைமுகம் %HU இல் கேட்கிறது!"
 
 #: core/direct.c:3093
-#, c-format
+#, c-format, fuzzy
 msgid "Could not create listening thread for port on %hu%s!"
-msgstr ""
+msgstr "%HU %s இல் துறைமுகத்திற்கு கேட்கும் நூலை உருவாக்க முடியவில்லை!"
 
 #: core/dispatcher.c:1435
 msgid "kill PID file"
-msgstr ""
+msgstr "PID கோப்பைக் கொல்லுங்கள்"
 
 #: core/dispatcher.c:1445
 #, c-format
 msgid "The bot already running!\n"
-msgstr ""
+msgstr "போட் ஏற்கனவே இயங்குகிறது!\n"
 
 #: core/dispatcher.c:1456
 msgid "fork dispatcher"
-msgstr ""
+msgstr "ஃபோர்க் டிச்பாட்சர்"
 
 #: core/dispatcher.c:1465
 msgid "write PID file"
-msgstr ""
+msgstr "PID கோப்பை எழுதுங்கள்"
 
 #: core/dispatcher.c:1480
 msgid "Failed to create signals thread."
-msgstr ""
+msgstr "சிக்னல்கள் நூலை உருவாக்குவதில் தோல்வி."
 
 #: core/dispatcher.c:1537
 msgid "Cannot run without a nick!"
-msgstr ""
+msgstr "நிக் இல்லாமல் ஓட முடியாது!"
 
 #: core/dispatcher.c:1547
 msgid "Cannot write a PID file!"
-msgstr ""
+msgstr "PID கோப்பை எழுத முடியாது!"
 
 #: core/formats.default:21
 msgid "DCC connection to %L lost."
-msgstr ""
+msgstr "%எல் இழந்த டி.சி.சி இணைப்பு."
 
 #: core/formats.default:22
 msgid "DCC chat to %L closed: %*."
-msgstr ""
+msgstr "டி.சி.சி அரட்டை %எல் மூடப்பட்டது: %*."
 
 #: core/formats.default:23
 msgid "Input connection from %@:%P, ident %*."
-msgstr ""
+msgstr "உள்ளீட்டு இணைப்பு %@: %p, அடையாளம் %*."
 
 #: core/help.c:434 core/help.c:436
 msgid "No help on this."
-msgstr ""
+msgstr "இதற்கு உதவி இல்லை."
 
 #: core/help.c:521
 #, c-format
 msgid "Available topics for \"help%s%s\":"
-msgstr ""
+msgstr "\"உதவி%s%s\" க்கான கிடைக்கக்கூடிய தலைப்புகள்:"
 
 #: core/init.c:684 core/init.c:731
 msgid "y"
-msgstr ""
+msgstr "ஒய்"
 
 #: core/init.c:730
 #, c-format
 msgid "%s (y/n)?[%s] "
-msgstr ""
+msgstr "%s (y/n)? [%s] "
 
 #: core/init.c:731
 msgid "n"
-msgstr ""
+msgstr "n"
 
 #: core/init.c:1585
 #, c-format
 msgid "Current value of %s: %ld"
-msgstr ""
+msgstr "%s இன் தற்போதைய மதிப்பு: %ld"
 
 #: core/init.c:1588
 #, c-format
 msgid "Current value of %s: %s%s"
-msgstr ""
+msgstr "%s இன் தற்போதைய மதிப்பு: %s %s"
 
 #: core/init.c:1592
 #, c-format
 msgid "Current value of %s: %s"
-msgstr ""
+msgstr "%s இன் தற்போதைய மதிப்பு: %s"
 
 #: core/init.c:1601
 #, c-format
 msgid "List of variables%s%s:"
-msgstr ""
+msgstr "மாறிகள் பட்டியல்%s%s:"
 
 #: core/init.c:1602 core/init.c:1665
 msgid " by mask "
-msgstr ""
+msgstr " எழுதியவர் முகமூடி "
 
 #: core/init.c:1656
 #, c-format
 msgid "Current format %s: %s"
-msgstr ""
+msgstr "தற்போதைய வடிவம் %s: %s"
 
 #: core/init.c:1664
 #, c-format
 msgid "List of formats%s%s:"
-msgstr ""
+msgstr "வடிவங்களின் பட்டியல்%s%s:"
 
 #: core/init.c:1699
 msgid "Universal network client "
-msgstr ""
+msgstr "யுனிவர்சல் பிணையம் வாங்கி "
 
 #: core/init.c:1751
 msgid "case-sensitive "
-msgstr ""
+msgstr "வழக்கு உணர்திறன் "
 
 #: core/init.c:1754
 msgid "full match     "
-msgstr ""
+msgstr "முழு போட்டி     "
 
 #: core/init.c:1757
 msgid "mask match     "
-msgstr ""
+msgstr "முகமூடி போட்டி     "
 
 #: core/init.c:1760
 msgid "first key only "
-msgstr ""
+msgstr "முதல் விசை மட்டுமே "
 
 #: core/init.c:1763
 msgid "try completion "
-msgstr ""
+msgstr "நிறைவு செய்ய முயற்சிக்கவும் "
 
 #: core/init.c:1766
 msgid "first mask only"
-msgstr ""
+msgstr "முதல் முகமூடி மட்டுமே"
 
 #: core/init.c:1837
 #, c-format
 msgid "  Bindtable %s:"
-msgstr ""
+msgstr "  பிணைக்கக்கூடிய %s:"
 
 #: core/init.c:1888
 msgid "Success"
-msgstr ""
+msgstr "செய்"
 
 #: core/init.c:1890
 msgid "Fail"
-msgstr ""
+msgstr "தோல்வி"
 
 #: core/init.c:1923
 #, c-format
 msgid "Terminated by %s%c %s"
-msgstr ""
+msgstr "%s %c %s ஆல் நிறுத்தப்பட்டது"
 
 #: core/init.c:2161
 msgid "Invalid configuration file!"
-msgstr ""
+msgstr "தவறான உள்ளமைவு கோப்பு!"
 
 #: core/init.c:2201
 msgid "Cannot create configuration file."
-msgstr ""
+msgstr "உள்ளமைவு கோப்பை உருவாக்க முடியாது."
 
 #: core/lib.c:40
 msgid "Out of memory!"
-msgstr ""
+msgstr "நினைவகத்திற்கு வெளியே!"
 
 #: core/main.c:387
 msgid ""
@@ -395,287 +399,306 @@ msgid ""
 "  -v\t\tversion information\n"
 "   <file>\tconfig file name\n"
 msgstr ""
+"பயன்பாடு: ஃபாக்சே [-n நிக்] [-cqdmt] <file>-இயல்பான ரன்\n"
+" foxeye -cr [-n nick] [-dm] [-g <file>]-இயல்புநிலைகளுடன் இயக்கவும்\n"
+" FOXEYE - [H | v] - செய்தி அச்சிட்டு திரும்பவும்\n"
+"\n"
+" விருப்பங்கள்:\n"
+" -c கன்சோலைப் பிரிக்க வேண்டாம் (அரட்டை உருவகப்படுத்துதல் முறை)\n"
+" பிழைத்திருத்த அளவை ஒவ்வொன்றாக அதிகரிக்கவும்\n"
+" -g <file> ஒரு கட்டமைப்பு கோப்பை உருவாக்கவும்\n"
+" -h இந்த உதவி செய்தி\n"
+" -எம் வெற்று பயனர் மற்றும் சேனல் கோப்புகளை உருவாக்குங்கள்\n"
+" -n <நிக்> இயல்புநிலை நிக் அமைக்கவும்\n"
+" -q அச்சிடு மட்டும் அபாயகரமான பிழைகள் (aborts -c, -h, மற்றும் -v விருப்பங்கள்)\n"
+" -r மீட்டமை அளவுருக்கள் (கட்டமைப்பு கோப்பு அறிக்கைகளைப் பயன்படுத்த வேண்டாம்)\n"
+" உள்ளமைவை சோதித்து வெளியேறவும்\n"
+" -V பதிப்பு செய்தி\n"
+" <கோப்பு> கட்டமைப்பு கோப்பு பெயர்\n"
 
 #: core/main.c:412
-#, c-format
+#, c-format, fuzzy
 msgid ""
 "Copyright (C) 1999-2017 Andriy Gritsenko.\n"
 "\n"
 "OS: %s %s on %s.\n"
 msgstr ""
+"கோபிரைட் (சி) 1999-2017 ஆண்ட்ரி கிரிட்சென்கோ.\n"
+"\n"
+" OS: %c it %p.\n"
 
 #: core/main.c:512
 #, c-format
 msgid "Incorrect options. Type 'foxeye -h' for more help.\n"
-msgstr ""
+msgstr "தவறான விருப்பங்கள். மேலும் உதவிக்கு 'ஃபாக்சே -எச்' என தட்டச்சு செய்க.\n"
 
 #: core/list.c:403
 #, c-format
 msgid "Added hostmask %s for name %s."
-msgstr ""
+msgstr "பெயர் %s க்கு ஓச்ட்மாச்க் %s சேர்க்கப்பட்டன."
 
 #: core/list.c:437
 #, c-format
 msgid "Deleted hostmask %s from name %s."
-msgstr ""
+msgstr "பெயர் %s இலிருந்து ஓச்ட்மாச்க் %s ஐ நீக்கியது."
 
 #: core/list.c:808
 #, c-format
 msgid "Added name %s with flag(s) %s."
-msgstr ""
+msgstr "கொடி (கள்) %s உடன் பெயர் %s சேர்க்கப்பட்டது."
 
 #: core/list.c:812
 #, c-format
 msgid "Added name %s."
-msgstr ""
+msgstr "பெயர் %s."
 
 #: core/list.c:834
 #, c-format
 msgid "Added alias %s for %s."
-msgstr ""
+msgstr "%s க்கு மாற்றுப்பெயர் %s."
 
 #: core/list.c:853 core/list.c:3021
 #, c-format
 msgid "Deleted name %s."
-msgstr ""
+msgstr "நீக்கப்பட்ட பெயர் %s."
 
 #: core/list.c:2658
 #, c-format
 msgid "No user with login name %s found."
-msgstr ""
+msgstr "உள்நுழைவு பெயர் %s கொண்ட எந்த பயனரும் காணப்படவில்லை."
 
 #: core/list.c:2684
 #, c-format
 msgid "No such service '%s'."
-msgstr ""
+msgstr "அத்தகைய பணி '%s' இல்லை."
 
 #: core/list.c:2721 core/list.c:3143 modules/irc-channel/chmanagement.c:1264
 #: modules/irc-channel/chmanagement.c:1335
 #: modules/irc-channel/chmanagement.c:1545
 #: modules/irc-channel/chmanagement.c:1612 modules/modes/modes.c:582
 msgid "Permission denied."
-msgstr ""
+msgstr "இசைவு மறுக்கப்பட்டது."
 
 #: core/list.c:2727
 msgid "You set no default service yet."
-msgstr ""
+msgstr "நீங்கள் இதுவரை இயல்புநிலை சேவையை அமைக்கவில்லை."
 
 #: core/list.c:2750 core/list.c:2763 core/list.c:2836 core/list.c:2849
 msgid "owner"
-msgstr ""
+msgstr "உரிமையாளர்"
 
 #: core/list.c:2752 core/list.c:2765 core/list.c:2838 core/list.c:2851
 msgid "master"
-msgstr ""
+msgstr "மாச்டர்"
 
 #: core/list.c:2754 core/list.c:2767 core/list.c:2840 core/list.c:2853
 msgid "operator"
-msgstr ""
+msgstr "ஆபரேட்டர்"
 
 #: core/list.c:2756 core/list.c:2769 core/list.c:2842 core/list.c:2855
 msgid "half op"
-msgstr ""
+msgstr "பாதி"
 
 #: core/list.c:2761
 #, c-format
 msgid "OOPS, you are not %s anymore..."
-msgstr ""
+msgstr "அச்சச்சோ, நீங்கள் இனி %s இல்லை ..."
 
 #: core/list.c:2774
 #, c-format
 msgid "WOW, you are %s now..."
-msgstr ""
+msgstr "ஆஆ, நீங்கள் இப்போது %s ..."
 
 #: core/list.c:2779
 #, c-format
 msgid "Global attributes for %s are now: %s."
-msgstr ""
+msgstr "%s க்கான உலகளாவிய பண்புக்கூறுகள் இப்போது: %s."
 
 #: core/list.c:2847
 #, c-format
 msgid "OOPS, you are not %s on %s anymore..."
-msgstr ""
+msgstr "அச்சச்சோ, நீங்கள் இனி %s இல் %s இல்லை ..."
 
 #: core/list.c:2860
 #, c-format
 msgid "WOW, you are %s on %s now..."
-msgstr ""
+msgstr "ஆஆ, நீங்கள் இப்போது %s இல் %s ஆக இருக்கிறீர்கள் ..."
 
 #: core/list.c:2878
 #, c-format
 msgid "Channel attributes for %s on %s are now: %s."
-msgstr ""
+msgstr "%s இல் %s க்கான சேனல் பண்புக்கூறுகள் இப்போது: %s."
 
 #: core/list.c:2972
 msgid "Cannot add name: network does not exist."
-msgstr ""
+msgstr "பெயரைச் சேர்க்க முடியாது: பிணையம் இல்லை."
 
 #: core/list.c:2999
 msgid "Cannot add user: invalid or already exist."
-msgstr ""
+msgstr "பயனரைச் சேர்க்க முடியாது: தவறானது அல்லது ஏற்கனவே உள்ளது."
 
 #: core/list.c:3016
 #, c-format
 msgid "Name %s does not exist."
-msgstr ""
+msgstr "பெயர் %s இல்லை."
 
 #: core/list.c:3114
 #, c-format
 msgid "Password for %s erased."
-msgstr ""
+msgstr "%s அழிக்கப்பட்டதற்கான கடவுச்சொல்."
 
 #: core/list.c:3162 core/list.c:3222
 msgid "Cannot load userfile!"
-msgstr ""
+msgstr "பயனர் கோப்பை ஏற்ற முடியாது!"
 
 #: core/list.c:3171
 msgid "Cannot save userfile!"
-msgstr ""
+msgstr "பயனர் கோப்பை சேமிக்க முடியாது!"
 
 #: core/sheduler.c:590
 #, c-format
 msgid "Timers: flood %u, once %u, periodic %u."
-msgstr ""
+msgstr "டைமர்கள்: வெள்ளம் %u, ஒரு முறை %u, கால %u."
 
 #: modules/autolog/autolog.c:779
 #, c-format
 msgid "Auto log #%d: file \"%s\" for client %s."
-msgstr ""
+msgstr "ஆட்டோ பதிவு #%d: கிளையன்ட்%s க்கு \"%s\" கோப்பு."
 
 #: modules/autolog/autolog.c:782
 msgid "Module autolog: no opened logs."
-msgstr ""
+msgstr "தொகுதி ஆட்டோலாக்: திறந்த பதிவுகள் இல்லை."
 
 #: modules/autolog/autolog.c:799
-#, c-format
+#, c-format, fuzzy
 msgid "IRC log started %c"
-msgstr ""
+msgstr "ஐ.ஆர்.சி பதிவு %சி"
 
 #: modules/autolog/autolog.c:800
-#, c-format
+#, c-format, fuzzy
 msgid "IRC log ended %c"
-msgstr ""
+msgstr "ஐ.ஆர்.சி பதிவு %சி"
 
 #: modules/autolog/autolog.c:801
 #, c-format
 msgid "Day changed: %a %x"
-msgstr ""
+msgstr "நாள் மாற்றப்பட்டது: %a %x"
 
 #: modules/irc-channel/irc-channel.c:1523
 msgid "is in netsplit"
-msgstr ""
+msgstr "நெட்ச்பிளிட்டில் உள்ளது"
 
 #: modules/irc-channel/irc-channel.c:1712
 #, c-format
 msgid "%s invited you to %s. Would you like to join"
-msgstr ""
+msgstr "%s உங்களை %s அழைத்தன. நீங்கள் சேர விரும்புகிறீர்களா?"
 
 #: modules/irc-channel/irc-channel.c:2798
 #, c-format
 msgid "%s: %d nicks [%d ops, %d halfops, %d voices, %d normal]"
-msgstr ""
+msgstr "%s: %d நிக்ச் [ %d ops, %d ஆஃப்ரோப்ச், %d குரல்கள், %d இயல்பானது]"
 
 #: modules/irc-channel/irc-channel.c:2917
 #, c-format
 msgid "*** cannot send to channel %s"
-msgstr ""
+msgstr "*** சேனல் %s க்கு அனுப்ப முடியாது"
 
 #: modules/irc-channel/irc-channel.c:2935
 #, c-format
 msgid "cannot join to channel %s: %s"
-msgstr ""
+msgstr "சேனல் %s: %s இல் சேர முடியாது"
 
 #: modules/irc-channel/irc-channel.c:3563
 #, c-format
 msgid "I don't know anyone with name %s."
-msgstr ""
+msgstr "%s பெயர் உள்ள எவரையும் எனக்குத் தெரியாது."
 
 #: modules/irc-channel/irc-channel.c:3572
 msgid "Sorry, you aren't on any channel I'm on too."
-msgstr ""
+msgstr "மன்னிக்கவும், நான் எந்த சேனலிலும் இல்லை."
 
 #: modules/irc-channel/irc-channel.c:3582
 msgid "Password incorrect."
-msgstr ""
+msgstr "கடவுச்சொல் தவறானது."
 
 #: modules/irc-channel/irc-channel.c:3585
 #, c-format
 msgid "You're recognized as %s."
-msgstr ""
+msgstr "நீங்கள் %s என அங்கீகரிக்கப்பட்டுள்ளீர்கள்."
 
 #: modules/irc-channel/irc-channel.c:3838
 msgid "%y%N%n(%@) has joined %#"
-msgstr ""
+msgstr "%y%n%n (%@)%# இல் சேர்ந்துள்ளது"
 
 #: modules/irc-channel/irc-channel.c:3840
 msgid "%^%N%^(%@) has left %# (%*)"
-msgstr ""
+msgstr "%^%N%^(%@)%# (%*)"
 
 #: modules/irc-channel/irc-channel.c:3842
 msgid "%^%N%^ is now known as %y%*%n"
-msgstr ""
+msgstr "%^%N%இப்போது%y%*%n என அழைக்கப்படுகிறது"
 
 #: modules/irc-channel/irc-channel.c:3844
 msgid "%^%N%^(%@) has quit %# (%*)"
-msgstr ""
+msgstr "%^%N%^(%@)%# (%*)"
 
 #: modules/irc-channel/irc-channel.c:3846
 msgid "%^%N%^ has lost in netsplit (%*)"
-msgstr ""
+msgstr "%^%N%^ நெட்ச்பிளிட்டில் இழந்துவிட்டது (%*)"
 
 #: modules/irc-channel/irc-channel.c:3848
 msgid "%^%N%^ has kicked %L from %# (%*)"
-msgstr ""
+msgstr "%^%N%the%# ஐ%# (%*) இலிருந்து உதைத்தது"
 
 #: modules/irc-channel/irc-channel.c:3850
 msgid "mode/%# (%*) by %^%N%^"
-msgstr ""
+msgstr "பயன்முறை/%# (%*)%^%n%^"
 
 #: modules/irc-channel/irc-channel.c:3852
 msgid "netsplit (%*), quits: %N"
-msgstr ""
+msgstr "நெட்ச்பிளிட் ( %*), விலகுகிறது: %n"
 
 #: modules/irc-channel/irc-channel.c:3854
 msgid "netsplit of %* is over, joins: %N"
-msgstr ""
+msgstr "%* இன் நெட்ச்பிளிட் முடிந்துவிட்டது, இணைகிறது: %n"
 
 #: modules/irc-channel/irc-channel.c:3856
 msgid "%N %?*changed?unset? the topic of %#%?* to: %*??"
-msgstr ""
+msgstr "%N %?*மாற்றப்பட்டது? அமைக்கப்படாததா? %# %?* க்கு: %* ??"
 
 #: modules/irc-channel/irc-channel.c:3858
 msgid "Topic on %# is: %*"
-msgstr ""
+msgstr "%# இல் தலைப்பு: %*"
 
 #: modules/irc-channel/irc-channel.c:3860
 msgid "Topic for %# is set %@ by %N"
-msgstr ""
+msgstr "%# க்கான தலைப்பு %@ by %n ஆல் அமைக்கப்பட்டுள்ளது"
 
 #: modules/irc-channel/chmanagement.c:1232
 #, c-format
 msgid "adduser: %s is already known as %s."
-msgstr ""
+msgstr "adduser: %s ஏற்கனவே %s என அழைக்கப்படுகிறது."
 
 #: modules/irc-channel/chmanagement.c:1240
 #: modules/irc-channel/chmanagement.c:1318
 #, c-format
 msgid "Could not find host of %s."
-msgstr ""
+msgstr "%s ஓச்டைக் கண்டுபிடிக்க முடியவில்லை."
 
 #: modules/irc-channel/chmanagement.c:1308
 #, c-format
 msgid "Could not find nick %s."
-msgstr ""
+msgstr "நிக் %s கண்டுபிடிக்க முடியவில்லை."
 
 #: modules/irc-channel/chmanagement.c:1313
 #, c-format
 msgid "deluser: %s isn't registered."
-msgstr ""
+msgstr "டெலசர்: %s பதிவு செய்யப்படவில்லை."
 
 #: modules/irc-channel/chmanagement.c:1487
 #, c-format
 msgid "%s isn't IRC channel!"
-msgstr ""
+msgstr "%s ஐ.ஆர்.சி சேனல் அல்ல!"
 
 #: modules/irc-channel/chmanagement.c:1513
 #: modules/irc-channel/chmanagement.c:1577
@@ -684,751 +707,753 @@ msgstr ""
 #: modules/irc-channel/chmanagement.c:1784
 #, c-format
 msgid "No operator privileges on %s."
-msgstr ""
+msgstr "%s மீது ஆபரேட்டர் சலுகைகள் இல்லை."
 
 #: modules/irc-channel/chmanagement.c:1528
 #: modules/irc-channel/chmanagement.c:1595
 #: modules/irc-channel/chmanagement.c:1663
-#, c-format
+#, c-format, fuzzy
 msgid "%s isn't on IRC channel %s for me!"
-msgstr ""
+msgstr "%s எனக்கு ஐ.ஆர்.சி சேனலில் இல்லை!"
 
 #: modules/irc-ctcp/dcc.c:240
 #, c-format
 msgid "DCC GET: got late ACCEPT for %s, ignoring it."
-msgstr ""
+msgstr "டி.சி.சி பெறுதல்: அதை புறக்கணித்து %s தாமதமாக ஏற்றுக்கொள்ளுங்கள்."
 
 #: modules/irc-ctcp/dcc.c:247
 #, c-format
 msgid "DCC: got ACCEPT on %s, transfer resumed at %u."
 msgstr ""
+"டி.சி.சி: %s இல் ஏற்றுக்கொள்ளப்பட்டது, பரிமாற்றம் %u இல் மீண்டும் தொடங்கியது."
 
 #: modules/irc-ctcp/dcc.c:254
 #, c-format
 msgid "DCC connection to %s terminated."
-msgstr ""
+msgstr "%s உடன் டி.சி.சி இணைப்பு நிறுத்தப்பட்டது."
 
 #: modules/irc-ctcp/dcc.c:624
 #, c-format
 msgid "DCC SEND connection to %s failed: %s."
-msgstr ""
+msgstr "டி.சி.சி %s தோல்வியுற்றது: %s."
 
 #: modules/irc-ctcp/dcc.c:661
 #, c-format
 msgid "DCC CHAT connection to %s failed: %s."
-msgstr ""
+msgstr "டி.சி.சி அரட்டை இணைப்பு %s தோல்வியுற்றது: %s."
 
 #: modules/irc-ctcp/dcc.c:877
-#, c-format
+#, c-format, fuzzy
 msgid "Got file \"%s\" from %s: %lu bytes instead of %lu."
-msgstr ""
+msgstr "%s: %lu பைட்டுகளிலிருந்து %lu க்கு பதிலாக \" %s\" கோப்பு கிடைத்தது."
 
 #: modules/irc-ctcp/dcc.c:881
 #, c-format
 msgid "Got incomplete file \"%s\" from %s: %lu/%lu bytes."
-msgstr ""
+msgstr "%s இலிருந்து முழுமையற்ற கோப்பு \" %s\" கிடைத்தது: %lu/ %lu பைட்டுகள்."
 
 #: modules/irc-ctcp/dcc.c:1102 modules/irc-ctcp/dcc.c:1444
 #, c-format
 msgid "DCC: Cannot create connection thread to %s."
-msgstr ""
+msgstr "டி.சி.சி: %s க்கு இணைப்பு நூலை உருவாக்க முடியாது."
 
 #: modules/irc-ctcp/dcc.c:1133
 #, c-format
 msgid "Resume file \"%s\" from %s"
-msgstr ""
+msgstr "%s இலிருந்து கோப்பு \" %s\" ஐ மீண்டும் தொடங்குங்கள்"
 
 #: modules/irc-ctcp/dcc.c:1136
 #, c-format
 msgid "Get file \"%s\" from %s"
-msgstr ""
+msgstr "%s இலிருந்து \" %s\" கோப்பைப் பெறுங்கள்"
 
 #: modules/irc-ctcp/dcc.c:1138
 #, c-format
 msgid "Accept chat request from %s"
-msgstr ""
+msgstr "%s இலிருந்து அரட்டை கோரிக்கையை ஏற்றுக்கொள்ளுங்கள்"
 
 #: modules/irc-ctcp/dcc.c:1152
-#, c-format
+#, c-format, fuzzy
 msgid "Overvrite existing file \"%s\""
-msgstr ""
+msgstr "இருக்கும் கோப்புகளை மேலெழுதவும் \""
 
 #: modules/irc-ctcp/dcc.c:1268
 #, c-format
 msgid "DCC: got ACCEPT, transfer resumed at %u."
-msgstr ""
+msgstr "டி.சி.சி: ஏற்றுக்கொள்ளப்பட்டது, பரிமாற்றம் %u இல் மீண்டும் தொடங்கியது."
 
 #: modules/irc-ctcp/dcc.c:1340
 msgid "DCC: Cannot create thread!"
-msgstr ""
+msgstr "டி.சி.சி: நூலை உருவாக்க முடியாது!"
 
 #: modules/irc-ctcp/dcc.c:1367 modules/irc-ctcp/dcc.c:1660
 msgid "DCC ERRMSG No duplicate connections allowed."
-msgstr ""
+msgstr "Dcc errmsg நகல் இணைப்புகள் அனுமதிக்கப்படவில்லை."
 
 #: modules/irc-ctcp/dcc.c:1368
 msgid "DCC CHAT: Duplicate connection attempt, refused."
-msgstr ""
+msgstr "டி.சி.சி அரட்டை: நகல் இணைப்பு முயற்சி, மறுக்கப்பட்டது."
 
 #: modules/irc-ctcp/dcc.c:1637
 msgid "DCC ERRMSG Unknown command."
-msgstr ""
+msgstr "Dcc errmsg தெரியாத கட்டளை."
 
 #: modules/irc-ctcp/dcc.c:1768
 #, c-format
 msgid "Connection timeout on sending %s."
-msgstr ""
+msgstr "%s அனுப்புவதில் இணைப்பு நேரம் முடிந்தது."
 
 #: modules/irc-ctcp/dcc.c:1809
 #, c-format
 msgid "Unknown modifier -%s ignored!"
-msgstr ""
+msgstr "தெரியாத மாற்றியமைப்பாளர் -%s புறக்கணிக்கப்பட்டன!"
 
 #: modules/irc-ctcp/dcc.c:1817
 #, c-format
 msgid "File %s does not exist."
-msgstr ""
+msgstr "கோப்பு %s இல்லை."
 
 #: modules/irc-ctcp/dcc.c:1819
 msgid "File access error."
-msgstr ""
+msgstr "கோப்பு அணுகல் பிழை."
 
 #: modules/irc-ctcp/dcc.c:1825
 #, c-format
 msgid "File %s is too big."
-msgstr ""
+msgstr "கோப்பு %s மிகப் பெரியவை."
 
 #: modules/irc-ctcp/dcc.c:1871
 #, c-format
 msgid "Cannot send file: there is a listener to %s already."
-msgstr ""
+msgstr "கோப்பை அனுப்ப முடியாது: ஏற்கனவே %s கேட்பவர் இருக்கிறார்."
 
 #: modules/irc-ctcp/dcc.c:2041
 msgid "DCC GET of %* from %N completed."
-msgstr ""
+msgstr "%N ஐ முடித்ததில் இருந்து டி.சி.சி பெறுதல்."
 
 #: modules/irc-ctcp/dcc.c:2043
 msgid "DCC SEND of %* to %N completed."
-msgstr ""
+msgstr "டி.சி.சி %* முதல் %n வரை முடிந்தது."
 
 #: modules/irc-ctcp/dcc.c:2045
 msgid "DCC GET of %* from %N established."
-msgstr ""
+msgstr "டி.சி.சி %n ஐ நிறுவியது."
 
 #: modules/irc-ctcp/dcc.c:2047
 msgid "DCC connection request for \"%*\" from %N(%@) to %I:%P"
-msgstr ""
+msgstr "\"%*\" க்கான டி.சி.சி இணைப்பு கோரிக்கை%n (%@) முதல்%i வரை:%ப"
 
 #: modules/irc/irc.c:407
-#, c-format
+#, c-format, fuzzy
 msgid "Connection with network %s lost%s%s%s."
-msgstr ""
+msgstr "நெட்வொர்க்%s இழந்த%s%s உடன் இணைப்பு."
 
 #: modules/irc/irc.c:408
 msgid ": denied"
-msgstr ""
+msgstr ": மறுக்கப்பட்டது"
 
 #: modules/irc/irc.c:409
 msgid ", retrying.."
-msgstr ""
+msgstr ", மறுபரிசீலனை செய்தல் .."
 
 #: modules/irc/irc.c:447
 #, c-format
 msgid "Connecting to %s, port %ld..."
-msgstr ""
+msgstr "%s உடன் இணைக்கிறது, துறைமுகம் %ld ..."
 
 #: modules/irc/irc.c:469
 #, c-format
 msgid "Could not find a server for network %s"
-msgstr ""
+msgstr "பிணையம் %s க்கான சேவையகத்தைக் கண்டுபிடிக்க முடியவில்லை"
 
 #: modules/irc/irc.c:689
 msgid "reconnecting IRC server"
-msgstr ""
+msgstr "ஐ.ஆர்.சி சேவையகத்தை மீண்டும் இணைக்கிறது"
 
 #: modules/irc/irc.c:692
 msgid "connecting IRC server"
-msgstr ""
+msgstr "ஐ.ஆர்.சி சேவையகத்தை இணைக்கிறது"
 
 #: modules/irc/irc.c:695
 msgid "registering at IRC server"
-msgstr ""
+msgstr "ஐ.ஆர்.சி சேவையகத்தில் பதிவு செய்தல்"
 
 #: modules/irc/irc.c:699
 msgid "IRC server connected"
-msgstr ""
+msgstr "ஐ.ஆர்.சி சேவையகம் இணைக்கப்பட்டுள்ளது"
 
 #: modules/irc/irc.c:702
 msgid "disconnecting IRC server"
-msgstr ""
+msgstr "ஐ.ஆர்.சி சேவையகத்தைத் துண்டிக்கிறது"
 
 #: modules/irc/irc.c:791
 #, c-format
 msgid "Connected to %s, registering..."
-msgstr ""
+msgstr "%s உடன் இணைக்கப்பட்டுள்ளது, பதிவு செய்தல் ..."
 
 #: modules/irc/irc.c:799
 #, c-format
 msgid "Disconnected from %s: unknown error."
-msgstr ""
+msgstr "%s இலிருந்து துண்டிக்கப்பட்டது: அறியப்படாத பிழை."
 
 #: modules/irc/irc.c:870
 msgid "connection timeout"
-msgstr ""
+msgstr "இணைப்பு நேரம் முடிந்தது"
 
 #: modules/irc/irc.c:906
 #, c-format
 msgid "Disconnected from %s."
-msgstr ""
+msgstr "%s இலிருந்து துண்டிக்கப்பட்டது."
 
 #: modules/irc/irc.c:968
 #, c-format
 msgid "Timeout for IRC server %s (%d seconds)..."
-msgstr ""
+msgstr "ஐ.ஆர்.சி சர்வர் %s ( %d விநாடிகள்) க்கான நேரம் முடிந்தது ..."
 
 #: modules/irc/irc.c:1171
 msgid "bounced"
-msgstr ""
+msgstr "பவுன்ச்"
 
 #: modules/irc/irc.c:1202
 #, c-format
 msgid "Registered on %s."
-msgstr ""
+msgstr "%s இல் பதிவு செய்யப்பட்டுள்ளது."
 
 #: modules/irc/irc.c:1218
 #, c-format
 msgid "Got version from %s: %s"
-msgstr ""
+msgstr "%s: %s இலிருந்து பதிப்பு கிடைத்தது"
 
 #: modules/irc/irc.c:1296
 #, c-format
 msgid "%s quits: %s"
-msgstr ""
+msgstr "%s வெளியேறுகின்றன: %s"
 
 #: modules/irc/irc.c:1345
 msgid "killed"
-msgstr ""
+msgstr "கொல்லப்பட்டார்"
 
 #: modules/irc/irc.c:1388
 #, c-format
 msgid "*** no such nick %s"
-msgstr ""
+msgstr "*** அத்தகைய நிக் %s இல்லை"
 
 #: modules/irc/irc.c:1868
 msgid "Waiting for IRC servers for terminating connection..."
-msgstr ""
+msgstr "இணைப்பை நிறுத்த ஐ.ஆர்.சி சேவையகங்களுக்காக காத்திருக்கிறது ..."
 
 #: modules/ircd-rusnet/rusnet.c:906
 msgid "You must be identified"
-msgstr ""
+msgstr "நீங்கள் அடையாளம் காணப்பட வேண்டும்"
 
 #: modules/ircd-rusnet/rusnet.c:914
 msgid "No color codes allowed"
-msgstr ""
+msgstr "வண்ண குறியீடுகள் அனுமதிக்கப்படவில்லை"
 
 #: modules/ircd/numerics.h:1
 msgid ":Welcome to the Internet Relay Network %#!%L@%@"
-msgstr ""
+msgstr ": இன்டர்நெட் ரிலே நெட்வொர்க்%#!%L@%@@"
 
 #: modules/ircd/numerics.h:2
 msgid ":Your host is %#, running version %V"
-msgstr ""
+msgstr ": உங்கள் புரவலன் %#, இயங்கும் பதிப்பு %v"
 
 #: modules/ircd/numerics.h:3
 msgid ":This server was created %*"
-msgstr ""
+msgstr ": இந்த சேவையகம் %* உருவாக்கப்பட்டது*"
 
 #: modules/ircd/numerics.h:5
 msgid "%* :are supported by this server"
-msgstr ""
+msgstr "%*: இந்த சேவையகத்தால் ஆதரிக்கப்படுகிறது"
 
 #: modules/ircd/numerics.h:6
 msgid "%# %P :Please use this Server/Port instead"
-msgstr ""
+msgstr "%# %P: அதற்கு பதிலாக இந்த சேவையகம்/போர்ட்டைப் பயன்படுத்தவும்"
 
 #: modules/ircd/numerics.h:9
 msgid ":Welcome to %#! Please wait until checks are done."
-msgstr ""
+msgstr ": %#க்கு வருக! காசோலைகள் முடியும் வரை காத்திருங்கள்."
 
 #: modules/ircd/numerics.h:11
 msgid "Link %V%?P.d%P?? %# %*"
-msgstr ""
+msgstr "இணைப்பு%v%? P.d%p ?? %# %*"
 
 #: modules/ircd/numerics.h:12
 msgid "Try. %* %#"
-msgstr ""
+msgstr "முயற்சிக்கவும். %* %#"
 
 #: modules/ircd/numerics.h:13
 msgid "H.S. %* %#"
-msgstr ""
+msgstr "எச்.எச். %* %#"
 
 #: modules/ircd/numerics.h:14
 msgid "???? - %*"
-msgstr ""
+msgstr "???? - %*"
 
 #: modules/ircd/numerics.h:15
 msgid "Oper %* %#"
-msgstr ""
+msgstr "OPER %* %#"
 
 #: modules/ircd/numerics.h:16
 msgid "User %* %#"
-msgstr ""
+msgstr "பயனர் %* %#"
 
 #: modules/ircd/numerics.h:17
 msgid "Serv %*"
-msgstr ""
+msgstr "பணி %*"
 
 #: modules/ircd/numerics.h:18
 msgid "Service %*"
-msgstr ""
+msgstr "பணி %*"
 
 #: modules/ircd/numerics.h:19
 msgid "%* 0 %#"
-msgstr ""
+msgstr "%* 0 %#"
 
 #: modules/ircd/numerics.h:20
 msgid "Class %* %P"
-msgstr ""
+msgstr "வகுப்பு %* %ப"
 
 #: modules/ircd/numerics.h:30
 msgid "%* :End of STATS report"
-msgstr ""
+msgstr "%*: புள்ளிவிவரங்களின் முடிவு"
 
 #: modules/ircd/numerics.h:33
 msgid "%* :is your charset now"
-msgstr ""
+msgstr "%*: இப்போது உங்கள் சார்செட்"
 
 #: modules/ircd/numerics.h:37
 msgid "%@ %* :End of service listing"
-msgstr ""
+msgstr "%@ %*: பணி பட்டியலின் முடிவு"
 
 #: modules/ircd/numerics.h:50
 msgid "%?P%P?0? :operator(s) online"
-msgstr ""
+msgstr "%? P%p? 0? : ஆபரேட்டர் (கள்) ஆன்லைனில்"
 
 #: modules/ircd/numerics.h:51
 msgid "%?P%P?0? :unknown connection(s)"
-msgstr ""
+msgstr "%? P%p? 0? : அறியப்படாத இணைப்பு (கள்)"
 
 #: modules/ircd/numerics.h:52
 msgid "%?P%P?0? :channels formed"
-msgstr ""
+msgstr "%? P%p? 0? : சேனல்கள் உருவாக்கப்பட்டன"
 
 #: modules/ircd/numerics.h:54
 msgid "%= :Administrative info"
-msgstr ""
+msgstr "%=: நிர்வாக செய்தி"
 
 #: modules/ircd/numerics.h:59
 msgid "%= %V%?P.d%P?? :End of TRACE"
-msgstr ""
+msgstr "%=%V%? P.d%p ?? : சுவடுகளின் முடிவு"
 
 #: modules/ircd/numerics.h:60
 msgid "%* :Please wait a while and try again."
-msgstr ""
+msgstr "%*: தயவுசெய்து சிறிது நேரம் காத்திருந்து மீண்டும் முயற்சிக்கவும்."
 
 #: modules/ircd/numerics.h:62
 msgid ":Current local users: %P  Max: %*"
-msgstr ""
+msgstr ": தற்போதைய உள்ளக பயனர்கள்: %p அதிகபட்சம்: %*"
 
 #: modules/ircd/numerics.h:63
 msgid ":Current global users: %P  Max: %*"
-msgstr ""
+msgstr ": தற்போதைய உலகளாவிய பயனர்கள்: %p அதிகபட்சம்: %*"
 
 #: modules/ircd/numerics.h:69
 msgid ":You are no longer marked as being away"
-msgstr ""
+msgstr ": நீங்கள் இனி விலகி இருப்பதைக் குறிக்கவில்லை"
 
 #: modules/ircd/numerics.h:70
 msgid ":You have been marked as being away"
-msgstr ""
+msgstr ": நீங்கள் விலகி இருப்பதாகக் குறிக்கப்பட்டுள்ளீர்கள்"
 
 #: modules/ircd/numerics.h:73
 msgid "%# :is an IRC operator"
-msgstr ""
+msgstr "%#: ஒரு ஐ.ஆர்.சி ஆபரேட்டர்"
 
 #: modules/ircd/numerics.h:75
 msgid "%* :End of WHO list"
-msgstr ""
+msgstr "%*: WHO பட்டியலின் முடிவு"
 
 #: modules/ircd/numerics.h:77
 msgid "%# %* :seconds idle"
-msgstr ""
+msgstr "%# %*: வினாடிகள் செயலற்றவை"
 
 #: modules/ircd/numerics.h:78
 msgid "%* :End of WHOIS list"
-msgstr ""
+msgstr "%*: WHOIS பட்டியலின் முடிவு"
 
 #: modules/ircd/numerics.h:81
 msgid "%# :charset is %*"
-msgstr ""
+msgstr "%#: சர்செட் %*"
 
 #: modules/ircd/numerics.h:83
 msgid "Channel :Users  Name"
-msgstr ""
+msgstr "சேனல்: பயனர்களின் பெயர்"
 
 #: modules/ircd/numerics.h:85
 msgid ":End of LIST"
-msgstr ""
+msgstr ": பட்டியலின் முடிவு"
 
 #: modules/ircd/numerics.h:89
 msgid "%# :No topic is set"
-msgstr ""
+msgstr "%#: எந்த தலைப்பும் அமைக்கப்படவில்லை"
 
 #: modules/ircd/numerics.h:94
 msgid "%# :is using encrypted connection"
-msgstr ""
+msgstr "%#: மறைகுறியாக்கப்பட்ட இணைப்பைப் பயன்படுத்துகிறது"
 
 #: modules/ircd/numerics.h:96
 msgid "%# :Summoning user to IRC"
-msgstr ""
+msgstr "%#: பயனரை ஐ.ஆர்.சி.க்கு வரவழைத்தல்"
 
 #: modules/ircd/numerics.h:99
 msgid "%# :End of channel invite list"
-msgstr ""
+msgstr "%#: சேனல் அழைப்பிதழ் பட்டியலின் முடிவு"
 
 #: modules/ircd/numerics.h:101
 msgid "%# :End of channel exception list"
-msgstr ""
+msgstr "%#: சேனல் விதிவிலக்கு பட்டியலின் முடிவு"
 
 #: modules/ircd/numerics.h:105
 msgid "%* :End of NAMES list"
-msgstr ""
+msgstr "%*: பெயர்கள் பட்டியலின் முடிவு"
 
 #: modules/ircd/numerics.h:108
 msgid "%* :End of LINKS list"
-msgstr ""
+msgstr "%*: இணைப்புகள் பட்டியலின் முடிவு"
 
 #: modules/ircd/numerics.h:110
 msgid "%# :End of channel ban list"
-msgstr ""
+msgstr "%#: சேனல் தடை பட்டியலின் முடிவு"
 
 #: modules/ircd/numerics.h:111
 msgid "%* :End of WHOWAS"
-msgstr ""
+msgstr "%*: WHOWAS இன் முடிவு"
 
 #: modules/ircd/numerics.h:115
 msgid ":End of INFO list"
-msgstr ""
+msgstr ": செய்தி பட்டியலின் முடிவு"
 
 #: modules/ircd/numerics.h:116
 msgid ":- %= Message of the day - "
-msgstr ""
+msgstr ": - %= அன்றைய செய்தி - "
 
 #: modules/ircd/numerics.h:117
 msgid ":End of MOTD command"
-msgstr ""
+msgstr ": MOTD கட்டளையின் முடிவு"
 
 #: modules/ircd/numerics.h:118
 msgid ":You are now an IRC operator"
-msgstr ""
+msgstr ": நீங்கள் இப்போது ஒரு ஐ.ஆர்.சி ஆபரேட்டர்"
 
 #: modules/ircd/numerics.h:119
 msgid "%* :Rehashing"
-msgstr ""
+msgstr "%*: மறுபரிசீலனை செய்தல்"
 
 #: modules/ircd/numerics.h:120
 msgid "You are service %#"
-msgstr ""
+msgstr "நீங்கள் பணி %#"
 
 #: modules/ircd/numerics.h:123
 msgid ":UserID   Terminal  Host"
-msgstr ""
+msgstr ": USERID டெர்மினல் புரவலன்"
 
 #: modules/ircd/numerics.h:124
 msgid ":%L %P %@"
-msgstr ""
+msgstr ": %L %p %@"
 
 #: modules/ircd/numerics.h:125
 msgid ":End of users"
-msgstr ""
+msgstr ": பயனர்களின் முடிவு"
 
 #: modules/ircd/numerics.h:126
 msgid ":Nobody logged in"
-msgstr ""
+msgstr ": யாரும் உள்நுழையவில்லை"
 
 #: modules/ircd/numerics.h:127
 msgid "%* :No such nick/channel"
-msgstr ""
+msgstr "%*: அத்தகைய நிக்/சேனல் இல்லை"
 
 #: modules/ircd/numerics.h:128
 msgid "%* :No such server"
-msgstr ""
+msgstr "%*: அத்தகைய சேவையகம் இல்லை"
 
 #: modules/ircd/numerics.h:129
 msgid "%* :No such channel"
-msgstr ""
+msgstr "%*: அத்தகைய சேனல் இல்லை"
 
 #: modules/ircd/numerics.h:130
 msgid "%# :Cannot send to channel"
-msgstr ""
+msgstr "%#: சேனலுக்கு அனுப்ப முடியாது"
 
 #: modules/ircd/numerics.h:131
 msgid "%# :You have joined too many channels"
-msgstr ""
+msgstr "%#: நீங்கள் பல சேனல்களில் சேர்ந்துள்ளீர்கள்"
 
 #: modules/ircd/numerics.h:132
 msgid "%* :There was no such nickname"
-msgstr ""
+msgstr "%*: அத்தகைய புனைப்பெயர் இல்லை"
 
 #: modules/ircd/numerics.h:133
 msgid "%# :Too many recipients. %*"
-msgstr ""
+msgstr "%#: அதிகமான பெறுநர்கள். %*"
 
 #: modules/ircd/numerics.h:134
 msgid "%* :No such service"
-msgstr ""
+msgstr "%*: அத்தகைய பணி இல்லை"
 
 #: modules/ircd/numerics.h:135
 msgid ":No origin specified"
-msgstr ""
+msgstr ": எந்த தோற்றம் குறிப்பிடப்படவில்லை"
 
 #: modules/ircd/numerics.h:136
 msgid ":No recipient given (%*)"
-msgstr ""
+msgstr ": பெறுநர் எதுவும் கொடுக்கப்படவில்லை (%*)"
 
 #: modules/ircd/numerics.h:137
 msgid ":No text to send"
-msgstr ""
+msgstr ": அனுப்ப உரை இல்லை"
 
 #: modules/ircd/numerics.h:138
 msgid "%* :No toplevel domain specified"
-msgstr ""
+msgstr "%*: டோப்ல்வெல் டொமைன் எதுவும் குறிப்பிடப்படவில்லை"
 
 #: modules/ircd/numerics.h:139
 msgid "%* :Wildcard in toplevel domain"
-msgstr ""
+msgstr "%*: டோப்ல்வெல் டொமைனில் வைல்டு அட்டை"
 
 #: modules/ircd/numerics.h:140
 msgid "%* :Bad Server/host mask"
-msgstr ""
+msgstr "%*: மோசமான சேவையகம்/ஓச்ட் முகமூடி"
 
 #: modules/ircd/numerics.h:141
 msgid "%* :Output too long (try locally)"
-msgstr ""
+msgstr "%*: வெளியீடு மிக நீளமானது (உள்நாட்டில் முயற்சிக்கவும்)"
 
 #: modules/ircd/numerics.h:142
 msgid "%* :Unknown command"
-msgstr ""
+msgstr "%*: தெரியாத கட்டளை"
 
 #: modules/ircd/numerics.h:143
 msgid ":MOTD File is missing"
-msgstr ""
+msgstr ": MOTD கோப்பு இல்லை"
 
 #: modules/ircd/numerics.h:144
 msgid "%= :No administrative info available"
-msgstr ""
+msgstr "%=: நிர்வாக செய்தி எதுவும் கிடைக்கவில்லை"
 
 #: modules/ircd/numerics.h:145
 msgid ":File error doing %*"
-msgstr ""
+msgstr ": கோப்பு பிழை %*"
 
 #: modules/ircd/numerics.h:146
 msgid ":No nickname given"
-msgstr ""
+msgstr ": புனைப்பெயர் எதுவும் கொடுக்கப்படவில்லை"
 
 #: modules/ircd/numerics.h:147
 msgid "%* :Erroneous nickname"
-msgstr ""
+msgstr "%*: தவறான புனைப்பெயர்"
 
 #: modules/ircd/numerics.h:148
 msgid "%# :Nickname is already in use"
-msgstr ""
+msgstr "%#: புனைப்பெயர் ஏற்கனவே பயன்பாட்டில் உள்ளது"
 
 #: modules/ircd/numerics.h:150
 msgid "%N :Nickname collision KILL from %L@%@"
-msgstr ""
+msgstr "%N: புனைப்பெயர் மோதல் %l@ %from இலிருந்து கொலை"
 
 #: modules/ircd/numerics.h:151
 msgid "%* :Nick/channel is temporarily unavailable"
-msgstr ""
+msgstr "%*: நிக்/சேனல் தற்காலிகமாக கிடைக்கவில்லை"
 
 #: modules/ircd/numerics.h:153
 msgid "%* %# :They aren't on that channel"
-msgstr ""
+msgstr "%* %#: அவை அந்த சேனலில் இல்லை"
 
 #: modules/ircd/numerics.h:154
 msgid "%* :You're not on that channel"
-msgstr ""
+msgstr "%*: நீங்கள் அந்த சேனலில் இல்லை"
 
 #: modules/ircd/numerics.h:155
 msgid "%* %# :is already on channel"
-msgstr ""
+msgstr "%* %#: ஏற்கனவே சேனலில் உள்ளது"
 
 #: modules/ircd/numerics.h:156
 msgid "%* :User not logged in"
-msgstr ""
+msgstr "%*: பயனர் உள்நுழையவில்லை"
 
 #: modules/ircd/numerics.h:157
 msgid ":SUMMON has been disabled"
-msgstr ""
+msgstr ": சம்மன் முடக்கப்பட்டுள்ளது"
 
 #: modules/ircd/numerics.h:158
 msgid ":USERS has been disabled"
-msgstr ""
+msgstr ": பயனர்கள் முடக்கப்பட்டுள்ளனர்"
 
 #: modules/ircd/numerics.h:159
 msgid ":You have not registered"
-msgstr ""
+msgstr ": நீங்கள் பதிவு செய்யவில்லை"
 
 #: modules/ircd/numerics.h:160
 msgid "%* :Not enough parameters"
-msgstr ""
+msgstr "%*: போதுமான அளவுருக்கள் இல்லை"
 
 #: modules/ircd/numerics.h:161
 msgid ":Unauthorized command (already registered)"
-msgstr ""
+msgstr ": அங்கீகரிக்கப்படாத கட்டளை (ஏற்கனவே பதிவுசெய்யப்பட்டுள்ளது)"
 
 #: modules/ircd/numerics.h:162
 msgid ":Your host isn't among the privileged"
-msgstr ""
+msgstr ": உங்கள் புரவலன் சலுகை பெற்றவர்களில் இல்லை"
 
 #: modules/ircd/numerics.h:163
 msgid ":Password incorrect"
-msgstr ""
+msgstr ": கடவுச்சொல் தவறானது"
 
 #: modules/ircd/numerics.h:164
 msgid ":You are banned from this server%?*: %*??"
-msgstr ""
+msgstr ": இந்த சேவையகத்திலிருந்து நீங்கள் தடை செய்யப்பட்டுள்ளீர்களா?*: %*??"
 
 #: modules/ircd/numerics.h:166
 msgid "%# :Channel key already set"
-msgstr ""
+msgstr "%#: சேனல் விசை ஏற்கனவே அமைக்கப்பட்டுள்ளது"
 
 #: modules/ircd/numerics.h:168
 msgid "%* :Invalid charset"
-msgstr ""
+msgstr "%*: தவறான சார்ச்செட்"
 
 #: modules/ircd/numerics.h:171
 msgid "%# :Cannot join channel (+l)"
-msgstr ""
+msgstr "%#: சேனலில் சேர முடியாது (+எல்)"
 
 #: modules/ircd/numerics.h:172
 msgid "%* :is unknown mode char to me for %#"
-msgstr ""
+msgstr "%*: %# க்கு எனக்குத் தெரியவில்லை"
 
 #: modules/ircd/numerics.h:173
 msgid "%# :Cannot join channel (+i)"
-msgstr ""
+msgstr "%#: சேனலில் சேர முடியாது (+i)"
 
 #: modules/ircd/numerics.h:174
 msgid "%# :Cannot join channel (+b)"
-msgstr ""
+msgstr "%#: சேனலில் சேர முடியாது (+பி)"
 
 #: modules/ircd/numerics.h:175
 msgid "%# :Cannot join channel (+k)"
-msgstr ""
+msgstr "%#: சேனலில் சேர முடியாது (+கே)"
 
 #: modules/ircd/numerics.h:176
 msgid "%# :Bad Channel Mask"
-msgstr ""
+msgstr "%#: மோசமான சேனல் முகமூடி"
 
 #: modules/ircd/numerics.h:177
 msgid "%# :Channel doesn't support modes"
-msgstr ""
+msgstr "%#: சேனல் முறைகளை ஆதரிக்கவில்லை"
 
 #: modules/ircd/numerics.h:178
 msgid "%# %* :Channel list is full"
-msgstr ""
+msgstr "%# %*: சேனல் பட்டியல் நிரம்பியுள்ளது"
 
 #: modules/ircd/numerics.h:180
 msgid ":Permission Denied - You're not an IRC operator"
-msgstr ""
+msgstr ": இசைவு மறுக்கப்பட்டது - நீங்கள் ஐ.ஆர்.சி ஆபரேட்டர் அல்ல"
 
 #: modules/ircd/numerics.h:181
 msgid "%# :You're not channel operator"
-msgstr ""
+msgstr "%#: நீங்கள் சேனல் ஆபரேட்டர் அல்ல"
 
 #: modules/ircd/numerics.h:182
 msgid ":You can't kill a server!"
-msgstr ""
+msgstr ": நீங்கள் ஒரு சேவையகத்தை கொல்ல முடியாது!"
 
 #: modules/ircd/numerics.h:183
 msgid ":Your connection is restricted!"
-msgstr ""
+msgstr ": உங்கள் இணைப்பு தடைசெய்யப்பட்டுள்ளது!"
 
 #: modules/ircd/numerics.h:184
 msgid ":You're not the original channel operator"
-msgstr ""
+msgstr ": நீங்கள் அசல் சேனல் ஆபரேட்டர் அல்ல"
 
 #: modules/ircd/numerics.h:186
 msgid ":No O-lines for your host"
-msgstr ""
+msgstr ": உங்கள் ஓச்டுக்கு ஓ-கோடுகள் இல்லை"
 
 #: modules/ircd/numerics.h:189
 msgid ":Unknown MODE flag"
-msgstr ""
+msgstr ": அறியப்படாத பயன்முறை கொடி"
 
 #: modules/ircd/numerics.h:190
 msgid ":Cannot change mode for other users"
-msgstr ""
+msgstr ": பிற பயனர்களுக்கு பயன்முறையை மாற்ற முடியாது"
 
 #: modules/ircd/numerics.h:191
 msgid "%# :User does not accept private messages%?* (%*)??"
-msgstr ""
+msgstr "%#: பயனர் தனிப்பட்ட செய்திகளை ஏற்கவில்லையா?* (%*) ??"
 
 #: modules/ircd/numerics.h:193
 msgid "%* :End of /HELP."
-msgstr ""
+msgstr "%*: முடிவு /உதவி."
 
 #: modules/modes/modes.c:556
-#, c-format
+#, c-format, fuzzy
 msgid "No such active service: %s"
-msgstr ""
+msgstr "அத்தகைய செயலில் சேவைகள் இல்லை"
 
 #: modules/modes/modes.c:573
 #, c-format
 msgid "No such client name: %s"
-msgstr ""
+msgstr "அத்தகைய கிளையன்ட் பெயர் இல்லை: %s"
 
 #: modules/modes/modes.c:608
 #, c-format
 msgid "No greeting is set on %s for %s."
-msgstr ""
+msgstr "%s க்கு %s இல் வாழ்த்து அமைக்கப்படவில்லை."
 
 #: modules/modes/modes.c:611
 #, c-format
 msgid "Greeting on %s for %s is: %s"
-msgstr ""
+msgstr "%s க்கு %s இல் வாழ்த்து: %s"
 
 #: modules/modes/modes.c:623
 #, c-format
 msgid "Greeting on %s for %s reset."
-msgstr ""
+msgstr "%s மீட்டமைப்பிற்கு %s இல் வாழ்த்து."
 
 #: modules/modes/modes.c:638
 #, c-format
 msgid "Greeting on %s for %s set to: %s"
-msgstr ""
+msgstr "%s க்கு %s இல் வாழ்த்து: %s"
 
 #: modules/ssl/openssl.c:465
 #, c-format
 msgid "SSL link: used on peer %s as %s."
-msgstr ""
+msgstr "SSL இணைப்பு: ஒப்பி %s இல் %s எனப் பயன்படுத்தப்படுகிறது."
 
 #: modules/ssl/openssl.c:468
-#, c-format
+#, c-format, fuzzy
 msgid "SSL link: used on nonamed peer (%hd) as %s."
 msgstr ""
+"எச்எச்எல் இணைப்பு: nonamed ஒப்பி ( %HD) இல் %s ஆகப் பயன்படுத்தப்படுகிறது."
 
 #: modules/ssl/openssl.c:473
 msgid "Module ssl: not used."
-msgstr ""
+msgstr "தொகுதி SSL: பயன்படுத்தப்படவில்லை."
 
 #: modules/syslog/syslog.c:123
 msgid "Module syslog: active."
-msgstr ""
+msgstr "தொகுதி சிச்லாக்: செயலில்."
 
 #: modules/tcl/modtcl.c:956
 #, c-format
 msgid "TCL: result was: %s"
-msgstr ""
+msgstr "டி.சி.எல்: முடிவு: %s"
 
 #: modules/tcl/modtcl.c:959
 #, c-format
 msgid "TCL: execution failed: %s"
-msgstr ""
+msgstr "டி.சி.எல்: சாவுஒறுப்பு தோல்வியுற்றது: %s"
 
 #: modules/tcl/modtcl.c:1057
 #, c-format
 msgid "TCL: executing %s returned error: %s"
-msgstr ""
+msgstr "டி.சி.எல்: %s திரும்பிய பிழை: %s"
