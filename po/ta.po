@@ -7,7 +7,7 @@ msgstr ""
 "Project-Id-Version: foxeye 0.12.1\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2020-05-12 00:18+0300\n"
-"PO-Revision-Date: 2024-12-28 07:00+0000\n"
+"PO-Revision-Date: 2025-04-27 13:01+0000\n"
 "Last-Translator: தமிழ்நேரம் <anishprabu.t@gmail.com>\n"
 "Language-Team: Tamil <https://hosted.weblate.org/projects/foxeye/pot/ta/>\n"
 "Language: ta\n"
@@ -15,7 +15,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Generator: Weblate 5.10-dev\n"
+"X-Generator: Weblate 5.12-dev\n"
 
 #: core/direct.c:128
 msgid "joined this botnet channel."
@@ -54,14 +54,14 @@ msgid "session lost"
 msgstr "அமர்வு இழந்தது"
 
 #: core/direct.c:1326
-#, c-format, fuzzy
+#, c-format
 msgid "listening on port %hu"
-msgstr "துறைமுகம் %HU இல் கேட்பது"
+msgstr "துறைமுகம் %hu இல் கேட்பது"
 
 #: core/direct.c:1362
-#, c-format, fuzzy
+#, c-format
 msgid "Listening socket on port %hu terminated."
-msgstr "துறைமுகம் %HU இல் சாக்கெட் கேட்பது நிறுத்தப்பட்டது."
+msgstr "துறைமுகம் %hu இல் சாக்கெட் கேட்பது நிறுத்தப்பட்டது."
 
 #: core/direct.c:1526
 msgid "((unknown))"
@@ -196,34 +196,34 @@ msgid "Connection from %s terminated: %s"
 msgstr "%s இலிருந்து இணைப்பு நிறுத்தப்பட்டது: %s"
 
 #: core/direct.c:2999
-#, c-format, fuzzy
+#, c-format
 msgid "Could not open listening port %hu%s, retrying in 10 seconds."
 msgstr ""
-"கேட்கும் துறைமுகம் %உ %s திறக்க முடியவில்லை, 10 வினாடிகளில் மீண்டும் முயற்சிக்கிறது."
+"கேட்கும் துறைமுகம் %hu %s திறக்க முடியவில்லை, 10 வினாடிகளில் மீண்டும் முயற்சிக்கிறது."
 
 #: core/direct.c:3000 core/direct.c:3009 core/direct.c:3019 core/direct.c:3094
 msgid " for bots"
 msgstr " போட்ச்"
 
 #: core/direct.c:3008
-#, c-format, fuzzy
+#, c-format
 msgid "Cannot open listening port on %hu%s!"
-msgstr "%HU %s இல் கேட்கும் துறைமுகத்தைத் திறக்க முடியாது!"
+msgstr "%hu %s இல் கேட்கும் துறைமுகத்தைத் திறக்க முடியாது!"
 
 #: core/direct.c:3018
-#, c-format, fuzzy
+#, c-format
 msgid "Listening on port %hu%s."
-msgstr "துறைமுகம் %Hu %s இல் கேட்பது."
+msgstr "துறைமுகம் %hu %s இல் கேட்பது."
 
 #: core/direct.c:3066
-#, c-format, fuzzy
+#, c-format
 msgid "Already listening on port %hu!"
-msgstr "ஏற்கனவே துறைமுகம் %HU இல் கேட்கிறது!"
+msgstr "ஏற்கனவே துறைமுகம் %hu இல் கேட்கிறது!"
 
 #: core/direct.c:3093
-#, c-format, fuzzy
+#, c-format
 msgid "Could not create listening thread for port on %hu%s!"
-msgstr "%HU %s இல் துறைமுகத்திற்கு கேட்கும் நூலை உருவாக்க முடியவில்லை!"
+msgstr "%hu %s இல் துறைமுகத்திற்கு கேட்கும் நூலை உருவாக்க முடியவில்லை!"
 
 #: core/dispatcher.c:1435
 msgid "kill PID file"
@@ -417,7 +417,7 @@ msgstr ""
 " <கோப்பு> கட்டமைப்பு கோப்பு பெயர்\n"
 
 #: core/main.c:412
-#, c-format, fuzzy
+#, c-format
 msgid ""
 "Copyright (C) 1999-2017 Andriy Gritsenko.\n"
 "\n"
@@ -425,7 +425,7 @@ msgid ""
 msgstr ""
 "கோபிரைட் (சி) 1999-2017 ஆண்ட்ரி கிரிட்சென்கோ.\n"
 "\n"
-" OS: %c it %p.\n"
+" OS: %s %s இதன்மீது %s.\n"
 
 #: core/main.c:512
 #, c-format
@@ -570,14 +570,14 @@ msgid "Module autolog: no opened logs."
 msgstr "தொகுதி ஆட்டோலாக்: திறந்த பதிவுகள் இல்லை."
 
 #: modules/autolog/autolog.c:799
-#, c-format, fuzzy
+#, c-format
 msgid "IRC log started %c"
-msgstr "ஐ.ஆர்.சி பதிவு %சி"
+msgstr "ஐஆர்சி பதிவு தெடங்கியது %c"
 
 #: modules/autolog/autolog.c:800
-#, c-format, fuzzy
+#, c-format
 msgid "IRC log ended %c"
-msgstr "ஐ.ஆர்.சி பதிவு %சி"
+msgstr "ஐஆர்சி பதிவு முடிந்தது %c"
 
 #: modules/autolog/autolog.c:801
 #, c-format
@@ -591,7 +591,7 @@ msgstr "நெட்ச்பிளிட்டில் உள்ளது"
 #: modules/irc-channel/irc-channel.c:1712
 #, c-format
 msgid "%s invited you to %s. Would you like to join"
-msgstr "%s உங்களை %s அழைத்தன. நீங்கள் சேர விரும்புகிறீர்களா?"
+msgstr "%s உங்களை %s அழைத்தன. நீங்கள் சேர விரும்புகிறீர்களா"
 
 #: modules/irc-channel/irc-channel.c:2798
 #, c-format
@@ -632,7 +632,7 @@ msgstr "%y%n%n (%@)%# இல் சேர்ந்துள்ளது"
 
 #: modules/irc-channel/irc-channel.c:3840
 msgid "%^%N%^(%@) has left %# (%*)"
-msgstr "%^%N%^(%@)%# (%*)"
+msgstr "%^%N%^(%@) அவர் வலகினார் %# (%*)"
 
 #: modules/irc-channel/irc-channel.c:3842
 msgid "%^%N%^ is now known as %y%*%n"
@@ -640,7 +640,7 @@ msgstr "%^%N%இப்போது%y%*%n என அழைக்கப்பட�
 
 #: modules/irc-channel/irc-channel.c:3844
 msgid "%^%N%^(%@) has quit %# (%*)"
-msgstr "%^%N%^(%@)%# (%*)"
+msgstr "%^%N%^(%@) அவர் வெளியேறினார் %# (%*)"
 
 #: modules/irc-channel/irc-channel.c:3846
 msgid "%^%N%^ has lost in netsplit (%*)"
@@ -712,9 +712,9 @@ msgstr "%s மீது ஆபரேட்டர் சலுகைகள் இ
 #: modules/irc-channel/chmanagement.c:1528
 #: modules/irc-channel/chmanagement.c:1595
 #: modules/irc-channel/chmanagement.c:1663
-#, c-format, fuzzy
+#, c-format
 msgid "%s isn't on IRC channel %s for me!"
-msgstr "%s எனக்கு ஐ.ஆர்.சி சேனலில் இல்லை!"
+msgstr "%s எனக்கு ஐ.ஆர்.சி சேனலில் %s இல்லை!"
 
 #: modules/irc-ctcp/dcc.c:240
 #, c-format
@@ -743,9 +743,9 @@ msgid "DCC CHAT connection to %s failed: %s."
 msgstr "டி.சி.சி அரட்டை இணைப்பு %s தோல்வியுற்றது: %s."
 
 #: modules/irc-ctcp/dcc.c:877
-#, c-format, fuzzy
+#, c-format
 msgid "Got file \"%s\" from %s: %lu bytes instead of %lu."
-msgstr "%s: %lu பைட்டுகளிலிருந்து %lu க்கு பதிலாக \" %s\" கோப்பு கிடைத்தது."
+msgstr "%s: %s பைட்டுகளிலிருந்து %lu க்கு பதிலாக %lu கோப்பு கிடைத்தது."
 
 #: modules/irc-ctcp/dcc.c:881
 #, c-format
@@ -773,9 +773,9 @@ msgid "Accept chat request from %s"
 msgstr "%s இலிருந்து அரட்டை கோரிக்கையை ஏற்றுக்கொள்ளுங்கள்"
 
 #: modules/irc-ctcp/dcc.c:1152
-#, c-format, fuzzy
+#, c-format
 msgid "Overvrite existing file \"%s\""
-msgstr "இருக்கும் கோப்புகளை மேலெழுதவும் \""
+msgstr "%s இருக்கும் கோப்புகளை மேலெழுதவும்"
 
 #: modules/irc-ctcp/dcc.c:1268
 #, c-format
@@ -844,9 +844,9 @@ msgid "DCC connection request for \"%*\" from %N(%@) to %I:%P"
 msgstr "\"%*\" க்கான டி.சி.சி இணைப்பு கோரிக்கை%n (%@) முதல்%i வரை:%ப"
 
 #: modules/irc/irc.c:407
-#, c-format, fuzzy
+#, c-format
 msgid "Connection with network %s lost%s%s%s."
-msgstr "நெட்வொர்க்%s இழந்த%s%s உடன் இணைப்பு."
+msgstr "நெட்வொர்க்%s இழந்த%s%s%s உடன் இணைப்பு."
 
 #: modules/irc/irc.c:408
 msgid ": denied"
@@ -1004,7 +1004,7 @@ msgstr "பணி %*"
 
 #: modules/ircd/numerics.h:18
 msgid "Service %*"
-msgstr "பணி %*"
+msgstr "சேவை %*"
 
 #: modules/ircd/numerics.h:19
 msgid "%* 0 %#"
@@ -1395,9 +1395,9 @@ msgid "%* :End of /HELP."
 msgstr "%*: முடிவு /உதவி."
 
 #: modules/modes/modes.c:556
-#, c-format, fuzzy
+#, c-format
 msgid "No such active service: %s"
-msgstr "அத்தகைய செயலில் சேவைகள் இல்லை"
+msgstr "%s அத்தகைய செயலில் சேவைகள் இல்லை"
 
 #: modules/modes/modes.c:573
 #, c-format
@@ -1412,7 +1412,7 @@ msgstr "%s க்கு %s இல் வாழ்த்து அமைக்க
 #: modules/modes/modes.c:611
 #, c-format
 msgid "Greeting on %s for %s is: %s"
-msgstr "%s க்கு %s இல் வாழ்த்து: %s"
+msgstr "%s க்கு %s இல் இதற்கு வாழ்த்து: %s"
 
 #: modules/modes/modes.c:623
 #, c-format
@@ -1430,10 +1430,10 @@ msgid "SSL link: used on peer %s as %s."
 msgstr "SSL இணைப்பு: ஒப்பி %s இல் %s எனப் பயன்படுத்தப்படுகிறது."
 
 #: modules/ssl/openssl.c:468
-#, c-format, fuzzy
+#, c-format
 msgid "SSL link: used on nonamed peer (%hd) as %s."
 msgstr ""
-"எச்எச்எல் இணைப்பு: nonamed ஒப்பி ( %HD) இல் %s ஆகப் பயன்படுத்தப்படுகிறது."
+"எச்எச்எல் இணைப்பு: nonamed ஒப்பி ( %hd) இல் %s ஆகப் பயன்படுத்தப்படுகிறது."
 
 #: modules/ssl/openssl.c:473
 msgid "Module ssl: not used."
