@@ -7,16 +7,16 @@ msgstr ""
 "Project-Id-Version: foxeye 0.10\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2020-05-12 00:18+0300\n"
-"PO-Revision-Date: 2022-03-29 21:07+0000\n"
-"Last-Translator: ANIGO R. (AR) <franigoyt@gmail.com>\n"
+"PO-Revision-Date: 2025-07-04 20:01+0000\n"
+"Last-Translator: Илья Рябов <ilyarya131@gmail.com>\n"
 "Language-Team: Russian <https://hosted.weblate.org/projects/foxeye/pot/ru/>\n"
 "Language: ru\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=KOI8-R\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=3; plural=n%10==1 && n%100!=11 ? 0 : n%10>=2 && n"
-"%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\n"
-"X-Generator: Weblate 4.12-dev\n"
+"Plural-Forms: nplurals=3; plural=n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\n"
+"X-Generator: Weblate 5.13-dev\n"
 
 #: core/direct.c:128
 msgid "joined this botnet channel."
@@ -33,7 +33,7 @@ msgstr "вышел с этого канала."
 
 #: core/direct.c:338
 msgid "no reason."
-msgstr ""
+msgstr "Нет причины."
 
 #: core/direct.c:390 core/direct.c:415 core/direct.c:2358 core/direct.c:2361
 #: core/init.c:1938
@@ -71,7 +71,7 @@ msgstr "((неизвестно))"
 #: core/direct.c:1819
 #, c-format
 msgid "Now: %s"
-msgstr ""
+msgstr "Сейчас: %s"
 
 #: core/direct.c:1839
 #, c-format
@@ -80,11 +80,11 @@ msgstr ""
 
 #: core/direct.c:1841
 msgid "returned to life."
-msgstr ""
+msgstr "возвращено к жизни."
 
 #: core/direct.c:1891
 msgid "No such person at the botnet!"
-msgstr ""
+msgstr "Такого человека в ботнете нет!"
 
 #: core/direct.c:1893
 msgid "Cannot boot the bot owner!"
@@ -96,12 +96,12 @@ msgstr ""
 
 #: core/direct.c:1897
 msgid "I don't know how to boot it!"
-msgstr ""
+msgstr "Я не знаю, как это загрузить!"
 
 #: core/direct.c:1905
 #, c-format
 msgid "%s booted by %s."
-msgstr ""
+msgstr "%s загружен с помощью %s"
 
 #: core/direct.c:2172
 #, c-format
