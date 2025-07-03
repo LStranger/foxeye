@@ -235,7 +235,7 @@ msgstr "Бот уже запущен!\n"
 
 #: core/dispatcher.c:1456
 msgid "fork dispatcher"
-msgstr "диспетче рвилок"
+msgstr "диспетчер вилок"
 
 #: core/dispatcher.c:1465
 msgid "write PID file"
@@ -276,36 +276,36 @@ msgstr ""
 
 #: core/init.c:684 core/init.c:731
 msgid "y"
-msgstr ""
+msgstr "да"
 
 #: core/init.c:730
 #, c-format
 msgid "%s (y/n)?[%s] "
-msgstr ""
+msgstr "%s (да/нет)?[%s] "
 
 #: core/init.c:731
 msgid "n"
-msgstr ""
+msgstr "нет"
 
 #: core/init.c:1585
 #, c-format
 msgid "Current value of %s: %ld"
-msgstr ""
+msgstr "Текущее значение %s: %ld"
 
 #: core/init.c:1588
 #, c-format
 msgid "Current value of %s: %s%s"
-msgstr ""
+msgstr "Текущее значение %s:%s%s"
 
 #: core/init.c:1592
 #, c-format
 msgid "Current value of %s: %s"
-msgstr ""
+msgstr "Текущее значение %s:%s"
 
 #: core/init.c:1601
 #, c-format
 msgid "List of variables%s%s:"
-msgstr ""
+msgstr "Список переменных %s%s:"
 
 #: core/init.c:1602 core/init.c:1665
 msgid " by mask "
@@ -314,12 +314,12 @@ msgstr ""
 #: core/init.c:1656
 #, c-format
 msgid "Current format %s: %s"
-msgstr ""
+msgstr "Текущий формат %s:%s"
 
 #: core/init.c:1664
 #, c-format
 msgid "List of formats%s%s:"
-msgstr ""
+msgstr "Список форматов %s%s:"
 
 #: core/init.c:1699
 msgid "Universal network client "
