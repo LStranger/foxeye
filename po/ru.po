@@ -101,7 +101,7 @@ msgstr "Я не знаю, как это загрузить!"
 #: core/direct.c:1905
 #, c-format
 msgid "%s booted by %s."
-msgstr "%s загружен с помощью %s"
+msgstr "%s загружен с помощью %s."
 
 #: core/direct.c:2172
 #, c-format
@@ -122,7 +122,7 @@ msgstr ""
 
 #: core/direct.c:2231
 msgid "server messages"
-msgstr ""
+msgstr "сообщения сервера"
 
 #: core/direct.c:2234
 msgid "wallops"
@@ -183,22 +183,22 @@ msgstr ""
 #: core/direct.c:2532
 #, c-format
 msgid "I don't know how to connect to %s."
-msgstr ""
+msgstr "Я не знаю, как подключиться к %s."
 
 #: core/direct.c:2557
 #, c-format
 msgid "I don't know how disconnect %s."
-msgstr ""
+msgstr "Я не знаю как отключить %s."
 
 #: core/direct.c:2935
 #, c-format
 msgid "Connection from %s terminated: %s"
-msgstr ""
+msgstr "Соединение от %s разорвано: %s"
 
 #: core/direct.c:2999
 #, c-format
 msgid "Could not open listening port %hu%s, retrying in 10 seconds."
-msgstr ""
+msgstr "Невозможно открыть порт прослушивания %hu%s, повторите через 10 секунд."
 
 #: core/direct.c:3000 core/direct.c:3009 core/direct.c:3019 core/direct.c:3094
 msgid " for bots"
@@ -207,12 +207,12 @@ msgstr ""
 #: core/direct.c:3008
 #, c-format
 msgid "Cannot open listening port on %hu%s!"
-msgstr ""
+msgstr "Невозможно открыть порт прослушивания на %hu%s!"
 
 #: core/direct.c:3018
 #, c-format
 msgid "Listening on port %hu%s."
-msgstr ""
+msgstr "Прослушивание на порту %hu%s."
 
 #: core/direct.c:3066
 #, c-format
@@ -231,11 +231,11 @@ msgstr ""
 #: core/dispatcher.c:1445
 #, c-format
 msgid "The bot already running!\n"
-msgstr ""
+msgstr "Бот уже запущен!\n"
 
 #: core/dispatcher.c:1456
 msgid "fork dispatcher"
-msgstr ""
+msgstr "диспетче рвилок"
 
 #: core/dispatcher.c:1465
 msgid "write PID file"
