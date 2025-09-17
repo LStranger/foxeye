@@ -307,6 +307,7 @@ AC_CHECK_HEADERS(sys/ioctl.h)
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_PID_T
 AC_TYPE_UID_T
+AC_CHECK_TYPE(bool, [AC_DEFINE(HAVE_BOOL, 1, [Define to 1 if compiler has `bool' type as built-in.])])
 # AC_CHECK_MEMBERS([struct sigaction.sa_handler],,,[#include <signal.h>])
 
 if test "$fe_cv_static" = yes; then
@@ -389,7 +390,6 @@ AC_CONFIG_FILES(Makefile \
 	modules/Makefile.mods \
         core/Makefile \
 	core/init.h \
-	intl/Makefile \
 	ui/Makefile \
 	po/Makefile.in \
 	doc/foxeye.1 \

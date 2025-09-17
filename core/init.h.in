@@ -23,7 +23,9 @@
 WHERE const char *_VERSION	INITVAL("@VERSION@");
 
 	/* public part */
+#ifndef HAVE_BOOL
 typedef char bool;
+#endif
 #define ASK		(1<<1)			/* ask-yes, ask-no */
 #define CAN_ASK		(1<<2)			/* allow above two */
 
