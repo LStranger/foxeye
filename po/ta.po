@@ -7,15 +7,15 @@ msgstr ""
 "Project-Id-Version: foxeye 0.12.1\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2020-05-12 00:18+0300\n"
-"PO-Revision-Date: 2025-04-27 13:01+0000\n"
-"Last-Translator: தமிழ்நேரம் <anishprabu.t@gmail.com>\n"
+"PO-Revision-Date: 2026-08-03 17:13+0000\n"
+"Last-Translator: தமிழ்நேரம் <tamilneram247@gmail.com>\n"
 "Language-Team: Tamil <https://hosted.weblate.org/projects/foxeye/pot/ta/>\n"
 "Language: ta\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Generator: Weblate 5.12-dev\n"
+"X-Generator: Weblate 2026.8.dev0\n"
 
 #: core/direct.c:128
 msgid "joined this botnet channel."
@@ -401,7 +401,7 @@ msgid ""
 msgstr ""
 "பயன்பாடு: ஃபாக்சே [-n நிக்] [-cqdmt] <file>-இயல்பான ரன்\n"
 " foxeye -cr [-n nick] [-dm] [-g <file>]-இயல்புநிலைகளுடன் இயக்கவும்\n"
-" FOXEYE - [H | v] - செய்தி அச்சிட்டு திரும்பவும்\n"
+" foxeye - [h|v] - செய்தி அச்சிட்டு திரும்பவும்\n"
 "\n"
 " விருப்பங்கள்:\n"
 " -c கன்சோலைப் பிரிக்க வேண்டாம் (அரட்டை உருவகப்படுத்துதல் முறை)\n"
@@ -992,7 +992,7 @@ msgstr "???? - %*"
 
 #: modules/ircd/numerics.h:15
 msgid "Oper %* %#"
-msgstr "OPER %* %#"
+msgstr "செயல் %* %#"
 
 #: modules/ircd/numerics.h:16
 msgid "User %* %#"
@@ -1437,7 +1437,7 @@ msgstr ""
 
 #: modules/ssl/openssl.c:473
 msgid "Module ssl: not used."
-msgstr "தொகுதி SSL: பயன்படுத்தப்படவில்லை."
+msgstr "தொகுதி பாஓடு: பயன்படுத்தப்படவில்லை."
 
 #: modules/syslog/syslog.c:123
 msgid "Module syslog: active."
