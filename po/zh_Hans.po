@@ -7,13 +7,17 @@ msgstr ""
 "Project-Id-Version: foxeye 0.12.1\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2020-05-12 00:18+0300\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"PO-Revision-Date: 2026-08-21 11:51+0000\n"
+"Last-Translator: reducedradius "
+"<137701630+flytothehighest@users.noreply.github.com>\n"
+"Language-Team: Chinese (Simplified Han script) <https://hosted.weblate.org/"
+"projects/foxeye/pot/zh_Hans/>\n"
 "Language: zh_Hans\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Weblate 2026.9.dev0\n"
 
 #: core/direct.c:128
 msgid "joined this botnet channel."
@@ -30,12 +34,12 @@ msgstr ""
 
 #: core/direct.c:338
 msgid "no reason."
-msgstr ""
+msgstr "无理由。"
 
 #: core/direct.c:390 core/direct.c:415 core/direct.c:2358 core/direct.c:2361
 #: core/init.c:1938
 msgid "Usage: "
-msgstr ""
+msgstr "用法： "
 
 #: core/direct.c:400
 #, c-format
