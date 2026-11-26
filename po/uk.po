@@ -7,17 +7,17 @@ msgstr ""
 "Project-Id-Version: foxeye 0.12.1\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2020-05-12 00:18+0300\n"
-"PO-Revision-Date: 2021-02-02 23:37+0000\n"
-"Last-Translator: Andriy Grytsenko <andrej@rep.kiev.ua>\n"
+"PO-Revision-Date: 2025-03-09 20:02+0000\n"
+"Last-Translator: Максим Горпиніч <maksimgorpinic2005a@gmail.com>\n"
 "Language-Team: Ukrainian <https://hosted.weblate.org/projects/foxeye/pot/uk/>"
 "\n"
 "Language: uk\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=3; plural=n%10==1 && n%100!=11 ? 0 : n%10>=2 && n"
-"%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\n"
-"X-Generator: Weblate 4.5-dev\n"
+"Plural-Forms: nplurals=3; plural=n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\n"
+"X-Generator: Weblate 5.10.3-dev\n"
 
 #: core/direct.c:128
 msgid "joined this botnet channel."
@@ -115,270 +115,272 @@ msgstr "повідомлень"
 
 #: core/direct.c:2225
 msgid "commands"
-msgstr ""
+msgstr "команди"
 
 #: core/direct.c:2228
 msgid "connections/shares"
-msgstr ""
+msgstr "підключення/акції"
 
 #: core/direct.c:2231
 msgid "server messages"
-msgstr ""
+msgstr "повідомлення сервера"
 
 #: core/direct.c:2234
 msgid "wallops"
-msgstr ""
+msgstr "битися"
 
 #: core/direct.c:2237
 msgid "userfile changes"
-msgstr ""
+msgstr "зміни файлу користувача"
 
 #: core/direct.c:2240
 msgid "debug"
-msgstr ""
+msgstr "налагоджувати"
 
 #: core/direct.c:2243
 msgid "boot diagnostics"
-msgstr ""
+msgstr "діагностика завантаження"
 
 #: core/direct.c:2246
 msgid "errors"
-msgstr ""
+msgstr "помилки"
 
 #: core/direct.c:2249
 msgid "warnings"
-msgstr ""
+msgstr "попередження"
 
 #: core/direct.c:2252
 msgid "public"
-msgstr ""
+msgstr "громадськість"
 
 #: core/direct.c:2255
 msgid "joins/parts"
-msgstr ""
+msgstr "з'єднання/частини"
 
 #: core/direct.c:2258
 msgid "mode changes"
-msgstr ""
+msgstr "зміни режиму"
 
 #: core/direct.c:2275 core/direct.c:2279
 msgid "Your console logs"
-msgstr ""
+msgstr "Ваші журнали консолі"
 
 #: core/direct.c:2276
 msgid ", and "
-msgstr ""
+msgstr ", і "
 
 #: core/direct.c:2277
 msgid "on the channel"
-msgstr ""
+msgstr "на каналі"
 
 #: core/direct.c:2422
 msgid "No such client on DCC now"
-msgstr ""
+msgstr "Такого клієнта на DCC зараз немає"
 
 #: core/direct.c:2435
 msgid "You can simulate only local DCC clients, sorry"
-msgstr ""
+msgstr "На жаль, ви можете симулювати лише локальних клієнтів DCC"
 
 #: core/direct.c:2532
 #, c-format
 msgid "I don't know how to connect to %s."
-msgstr ""
+msgstr "Я не знаю, як підключитися до %s."
 
 #: core/direct.c:2557
 #, c-format
 msgid "I don't know how disconnect %s."
-msgstr ""
+msgstr "Я не знаю, як відключити %s."
 
 #: core/direct.c:2935
 #, c-format
 msgid "Connection from %s terminated: %s"
-msgstr ""
+msgstr "Підключення від %s перервано: %s"
 
 #: core/direct.c:2999
 #, c-format
 msgid "Could not open listening port %hu%s, retrying in 10 seconds."
 msgstr ""
+"Не вдалося відкрити порт прослуховування %hu%s. Повторна спроба через 10 "
+"секунд."
 
 #: core/direct.c:3000 core/direct.c:3009 core/direct.c:3019 core/direct.c:3094
 msgid " for bots"
-msgstr ""
+msgstr " для ботів"
 
 #: core/direct.c:3008
 #, c-format
 msgid "Cannot open listening port on %hu%s!"
-msgstr ""
+msgstr "Неможливо відкрити порт прослуховування на %hu%s!"
 
 #: core/direct.c:3018
 #, c-format
 msgid "Listening on port %hu%s."
-msgstr ""
+msgstr "Прослуховування на порту %hu%s."
 
 #: core/direct.c:3066
 #, c-format
 msgid "Already listening on port %hu!"
-msgstr ""
+msgstr "Вже слухає порт %hu!"
 
 #: core/direct.c:3093
 #, c-format
 msgid "Could not create listening thread for port on %hu%s!"
-msgstr ""
+msgstr "Не вдалося створити потік прослуховування для порту на %hu%s!"
 
 #: core/dispatcher.c:1435
 msgid "kill PID file"
-msgstr ""
+msgstr "видалити файл PID"
 
 #: core/dispatcher.c:1445
 #, c-format
 msgid "The bot already running!\n"
-msgstr ""
+msgstr "Бот вже запущений!\n"
 
 #: core/dispatcher.c:1456
 msgid "fork dispatcher"
-msgstr ""
+msgstr "вилка диспетчер"
 
 #: core/dispatcher.c:1465
 msgid "write PID file"
-msgstr ""
+msgstr "записати файл PID"
 
 #: core/dispatcher.c:1480
 msgid "Failed to create signals thread."
-msgstr ""
+msgstr "Не вдалося створити потік сигналів."
 
 #: core/dispatcher.c:1537
 msgid "Cannot run without a nick!"
-msgstr ""
+msgstr "Не можу працювати без ніка!"
 
 #: core/dispatcher.c:1547
 msgid "Cannot write a PID file!"
-msgstr ""
+msgstr "Неможливо записати файл PID!"
 
 #: core/formats.default:21
 msgid "DCC connection to %L lost."
-msgstr ""
+msgstr "З’єднання DCC з %L утрачено."
 
 #: core/formats.default:22
 msgid "DCC chat to %L closed: %*."
-msgstr ""
+msgstr "Чат DCC для %L закрито: %*."
 
 #: core/formats.default:23
 msgid "Input connection from %@:%P, ident %*."
-msgstr ""
+msgstr "Вхідне з'єднання з %@:%P, ідентифікатор %*."
 
 #: core/help.c:434 core/help.c:436
 msgid "No help on this."
-msgstr ""
+msgstr "Немає допомоги з цього приводу."
 
 #: core/help.c:521
 #, c-format
 msgid "Available topics for \"help%s%s\":"
-msgstr ""
+msgstr "Доступні теми для \"help%s%s\":"
 
 #: core/init.c:684 core/init.c:731
 msgid "y"
-msgstr ""
+msgstr "y"
 
 #: core/init.c:730
 #, c-format
 msgid "%s (y/n)?[%s] "
-msgstr ""
+msgstr "%s (y/n)?[%s] "
 
 #: core/init.c:731
 msgid "n"
-msgstr ""
+msgstr "n"
 
 #: core/init.c:1585
 #, c-format
 msgid "Current value of %s: %ld"
-msgstr ""
+msgstr "Поточне значення %s: %ld"
 
 #: core/init.c:1588
 #, c-format
 msgid "Current value of %s: %s%s"
-msgstr ""
+msgstr "Поточне значення %s: %s%s"
 
 #: core/init.c:1592
 #, c-format
 msgid "Current value of %s: %s"
-msgstr ""
+msgstr "Поточне значення %s: %s"
 
 #: core/init.c:1601
 #, c-format
 msgid "List of variables%s%s:"
-msgstr ""
+msgstr "Список змінних%s%s:"
 
 #: core/init.c:1602 core/init.c:1665
 msgid " by mask "
-msgstr ""
+msgstr " по масці "
 
 #: core/init.c:1656
 #, c-format
 msgid "Current format %s: %s"
-msgstr ""
+msgstr "Поточний формат %s: %s"
 
 #: core/init.c:1664
 #, c-format
 msgid "List of formats%s%s:"
-msgstr ""
+msgstr "Список форматів%s%s:"
 
 #: core/init.c:1699
 msgid "Universal network client "
-msgstr ""
+msgstr "Універсальний мережевий клієнт "
 
 #: core/init.c:1751
 msgid "case-sensitive "
-msgstr ""
+msgstr "чутливий до регістру "
 
 #: core/init.c:1754
 msgid "full match     "
-msgstr ""
+msgstr "повний збіг     "
 
 #: core/init.c:1757
 msgid "mask match     "
-msgstr ""
+msgstr "матч маски     "
 
 #: core/init.c:1760
 msgid "first key only "
-msgstr ""
+msgstr "тільки перший ключ "
 
 #: core/init.c:1763
 msgid "try completion "
-msgstr ""
+msgstr "спробуйте завершення "
 
 #: core/init.c:1766
 msgid "first mask only"
-msgstr ""
+msgstr "тільки перша маска"
 
 #: core/init.c:1837
 #, c-format
 msgid "  Bindtable %s:"
-msgstr ""
+msgstr "  Bindtable %s:"
 
 #: core/init.c:1888
 msgid "Success"
-msgstr ""
+msgstr "Успіх"
 
 #: core/init.c:1890
 msgid "Fail"
-msgstr ""
+msgstr "Невдача"
 
 #: core/init.c:1923
 #, c-format
 msgid "Terminated by %s%c %s"
-msgstr ""
+msgstr "Припинено %s%c %s"
 
 #: core/init.c:2161
 msgid "Invalid configuration file!"
-msgstr ""
+msgstr "Недійсний файл конфігурації!"
 
 #: core/init.c:2201
 msgid "Cannot create configuration file."
-msgstr ""
+msgstr "Неможливо створити файл конфігурації."
 
 #: core/lib.c:40
 msgid "Out of memory!"
-msgstr ""
+msgstr "Брак пам'яті!"
 
 #: core/main.c:387
 msgid ""
@@ -399,6 +401,24 @@ msgid ""
 "  -v\t\tversion information\n"
 "   <file>\tconfig file name\n"
 msgstr ""
+"Використання: foxeye [-n псевдонім] [-cqdmt] <файл> - нормальний запуск \n"
+"\tfoxeye -cr [-n псевдонім] [-dm] [-g <файл>] - запустити із значеннями за "
+"замовчуванням \n"
+"\tfoxeye -[h|v] - вивести інформацію та повернути \n"
+"\n"
+"параметри:\n"
+"  -c не від’єднувати консоль (режим імітації чату) \n"
+"  -d збільшити рівень налагодження на одиницю \n"
+"  -g <файл> створити файл конфігурації \n"
+"  -h це довідкове повідомлення \n"
+"  -m створити порожні файли користувача та каналу \n"
+"  -n <нік> встановити псевдонім за умовчанням \n"
+"  -q друкує лише фатальні помилки (перериває параметри -c, -h та -v) \n"
+"  -r скинути параметри (не використовувати оператори конфігураційного файлу) "
+"\n"
+"  -t перевірити конфігурацію та вийти \n"
+"  -v відомості про версію \n"
+"   <file> ім'я конфігураційного файлу\n"
 
 #: core/main.c:412
 #, c-format
@@ -407,279 +427,282 @@ msgid ""
 "\n"
 "OS: %s %s on %s.\n"
 msgstr ""
+"Авторське право (C) 1999-2017 Андрій Гриценко.\n"
+"\n"
+"ОС: %s %s на %s.\n"
 
 #: core/main.c:512
 #, c-format
 msgid "Incorrect options. Type 'foxeye -h' for more help.\n"
-msgstr ""
+msgstr "Неправильні варіанти. Введіть 'foxeye -h' для додаткової допомоги.\n"
 
 #: core/list.c:403
 #, c-format
 msgid "Added hostmask %s for name %s."
-msgstr ""
+msgstr "Додано маску хоста %s для імені %s."
 
 #: core/list.c:437
 #, c-format
 msgid "Deleted hostmask %s from name %s."
-msgstr ""
+msgstr "Видалено маску хоста %s з імені %s."
 
 #: core/list.c:808
 #, c-format
 msgid "Added name %s with flag(s) %s."
-msgstr ""
+msgstr "Додано назву %s з прапором(ами) %s."
 
 #: core/list.c:812
 #, c-format
 msgid "Added name %s."
-msgstr ""
+msgstr "Додано ім'я %s."
 
 #: core/list.c:834
 #, c-format
 msgid "Added alias %s for %s."
-msgstr ""
+msgstr "Додано псевдонім %s для %s."
 
 #: core/list.c:853 core/list.c:3021
 #, c-format
 msgid "Deleted name %s."
-msgstr ""
+msgstr "Видалено ім'я %s."
 
 #: core/list.c:2658
 #, c-format
 msgid "No user with login name %s found."
-msgstr ""
+msgstr "Користувача з логіном %s не знайдено."
 
 #: core/list.c:2684
 #, c-format
 msgid "No such service '%s'."
-msgstr ""
+msgstr "Такої служби '%s' немає."
 
 #: core/list.c:2721 core/list.c:3143 modules/irc-channel/chmanagement.c:1264
 #: modules/irc-channel/chmanagement.c:1335
 #: modules/irc-channel/chmanagement.c:1545
 #: modules/irc-channel/chmanagement.c:1612 modules/modes/modes.c:582
 msgid "Permission denied."
-msgstr ""
+msgstr "У дозволі відмовлено."
 
 #: core/list.c:2727
 msgid "You set no default service yet."
-msgstr ""
+msgstr "Ви ще не встановили службу за умовчанням."
 
 #: core/list.c:2750 core/list.c:2763 core/list.c:2836 core/list.c:2849
 msgid "owner"
-msgstr ""
+msgstr "власник"
 
 #: core/list.c:2752 core/list.c:2765 core/list.c:2838 core/list.c:2851
 msgid "master"
-msgstr ""
+msgstr "майстер"
 
 #: core/list.c:2754 core/list.c:2767 core/list.c:2840 core/list.c:2853
 msgid "operator"
-msgstr ""
+msgstr "оператор"
 
 #: core/list.c:2756 core/list.c:2769 core/list.c:2842 core/list.c:2855
 msgid "half op"
-msgstr ""
+msgstr "наполовину вгору"
 
 #: core/list.c:2761
 #, c-format
 msgid "OOPS, you are not %s anymore..."
-msgstr ""
+msgstr "УПС, ви більше не %s..."
 
 #: core/list.c:2774
 #, c-format
 msgid "WOW, you are %s now..."
-msgstr ""
+msgstr "ВАУ, ти зараз %s..."
 
 #: core/list.c:2779
 #, c-format
 msgid "Global attributes for %s are now: %s."
-msgstr ""
+msgstr "Глобальні атрибути для %s тепер: %s."
 
 #: core/list.c:2847
 #, c-format
 msgid "OOPS, you are not %s on %s anymore..."
-msgstr ""
+msgstr "На жаль, ви більше не %s на %s..."
 
 #: core/list.c:2860
 #, c-format
 msgid "WOW, you are %s on %s now..."
-msgstr ""
+msgstr "ВАУ! Зараз ви %s на %s..."
 
 #: core/list.c:2878
 #, c-format
 msgid "Channel attributes for %s on %s are now: %s."
-msgstr ""
+msgstr "Атрибути каналу для %s на %s тепер: %s."
 
 #: core/list.c:2972
 msgid "Cannot add name: network does not exist."
-msgstr ""
+msgstr "Неможливо додати назву: мережі не існує."
 
 #: core/list.c:2999
 msgid "Cannot add user: invalid or already exist."
-msgstr ""
+msgstr "Неможливо додати користувача: недійсний або вже існує."
 
 #: core/list.c:3016
 #, c-format
 msgid "Name %s does not exist."
-msgstr ""
+msgstr "Ім'я %s не існує."
 
 #: core/list.c:3114
 #, c-format
 msgid "Password for %s erased."
-msgstr ""
+msgstr "Пароль для %s стерто."
 
 #: core/list.c:3162 core/list.c:3222
 msgid "Cannot load userfile!"
-msgstr ""
+msgstr "Неможливо завантажити файл користувача!"
 
 #: core/list.c:3171
 msgid "Cannot save userfile!"
-msgstr ""
+msgstr "Неможливо зберегти файл користувача!"
 
 #: core/sheduler.c:590
 #, c-format
 msgid "Timers: flood %u, once %u, periodic %u."
-msgstr ""
+msgstr "Таймери: флуд %u, одноразовий %u, періодичний %u."
 
 #: modules/autolog/autolog.c:779
 #, c-format
 msgid "Auto log #%d: file \"%s\" for client %s."
-msgstr ""
+msgstr "Автоматичний журнал #%d: файл \"%s\" для клієнта %s."
 
 #: modules/autolog/autolog.c:782
 msgid "Module autolog: no opened logs."
-msgstr ""
+msgstr "Автожурнал модуля: немає відкритих журналів."
 
 #: modules/autolog/autolog.c:799
 #, c-format
 msgid "IRC log started %c"
-msgstr ""
+msgstr "Журнал IRC розпочато %c"
 
 #: modules/autolog/autolog.c:800
 #, c-format
 msgid "IRC log ended %c"
-msgstr ""
+msgstr "Журнал IRC закінчився %c"
 
 #: modules/autolog/autolog.c:801
 #, c-format
 msgid "Day changed: %a %x"
-msgstr ""
+msgstr "День змінено: %a %x"
 
 #: modules/irc-channel/irc-channel.c:1523
 msgid "is in netsplit"
-msgstr ""
+msgstr "знаходиться в Netsplit"
 
 #: modules/irc-channel/irc-channel.c:1712
 #, c-format
 msgid "%s invited you to %s. Would you like to join"
-msgstr ""
+msgstr "%s запросив вас на %s. Хочете приєднатися"
 
 #: modules/irc-channel/irc-channel.c:2798
 #, c-format
 msgid "%s: %d nicks [%d ops, %d halfops, %d voices, %d normal]"
-msgstr ""
+msgstr "%s: %d нік [%d опс, %d хафоп, %d голоси, %d звичайний]"
 
 #: modules/irc-channel/irc-channel.c:2917
 #, c-format
 msgid "*** cannot send to channel %s"
-msgstr ""
+msgstr "*** неможливо надіслати на канал %s"
 
 #: modules/irc-channel/irc-channel.c:2935
 #, c-format
 msgid "cannot join to channel %s: %s"
-msgstr ""
+msgstr "не можу приєднатися до каналу %s: %s"
 
 #: modules/irc-channel/irc-channel.c:3563
 #, c-format
 msgid "I don't know anyone with name %s."
-msgstr ""
+msgstr "Я не знаю нікого з іменем %s."
 
 #: modules/irc-channel/irc-channel.c:3572
 msgid "Sorry, you aren't on any channel I'm on too."
-msgstr ""
+msgstr "Вибачте, вас немає на жодному каналі, на якому я теж."
 
 #: modules/irc-channel/irc-channel.c:3582
 msgid "Password incorrect."
-msgstr ""
+msgstr "Пароль неправильний."
 
 #: modules/irc-channel/irc-channel.c:3585
 #, c-format
 msgid "You're recognized as %s."
-msgstr ""
+msgstr "Вас розпізнають як %s."
 
 #: modules/irc-channel/irc-channel.c:3838
 msgid "%y%N%n(%@) has joined %#"
-msgstr ""
+msgstr "%y%N%n(%@) приєднався до %#"
 
 #: modules/irc-channel/irc-channel.c:3840
 msgid "%^%N%^(%@) has left %# (%*)"
-msgstr ""
+msgstr "%^%N%^(%@) покинув %# (%*)"
 
 #: modules/irc-channel/irc-channel.c:3842
 msgid "%^%N%^ is now known as %y%*%n"
-msgstr ""
+msgstr "%^%N%^ тепер відомий як %y%*%n"
 
 #: modules/irc-channel/irc-channel.c:3844
 msgid "%^%N%^(%@) has quit %# (%*)"
-msgstr ""
+msgstr "%^%N%^(%@) вийшов з %# (%*)"
 
 #: modules/irc-channel/irc-channel.c:3846
 msgid "%^%N%^ has lost in netsplit (%*)"
-msgstr ""
+msgstr "%^%N%^ програв у netsplit (%*)"
 
 #: modules/irc-channel/irc-channel.c:3848
 msgid "%^%N%^ has kicked %L from %# (%*)"
-msgstr ""
+msgstr "%^%N%^ вигнав %L з %# (%*)"
 
 #: modules/irc-channel/irc-channel.c:3850
 msgid "mode/%# (%*) by %^%N%^"
-msgstr ""
+msgstr "mode/%# (%*) від %^%N%^"
 
 #: modules/irc-channel/irc-channel.c:3852
 msgid "netsplit (%*), quits: %N"
-msgstr ""
+msgstr "netsplit (%*), виходить: %N"
 
 #: modules/irc-channel/irc-channel.c:3854
 msgid "netsplit of %* is over, joins: %N"
-msgstr ""
+msgstr "netsplit %* завершено, приєднується: %N"
 
 #: modules/irc-channel/irc-channel.c:3856
 msgid "%N %?*changed?unset? the topic of %#%?* to: %*??"
-msgstr ""
+msgstr "%N %?*змінено?відмінено? тема %#%?* до: %*??"
 
 #: modules/irc-channel/irc-channel.c:3858
 msgid "Topic on %# is: %*"
-msgstr ""
+msgstr "Тема на %#: %*"
 
 #: modules/irc-channel/irc-channel.c:3860
 msgid "Topic for %# is set %@ by %N"
-msgstr ""
+msgstr "Тема для %# встановлена %@ користувачем %N"
 
 #: modules/irc-channel/chmanagement.c:1232
 #, c-format
 msgid "adduser: %s is already known as %s."
-msgstr ""
+msgstr "adduser: %s уже відомий як %s."
 
 #: modules/irc-channel/chmanagement.c:1240
 #: modules/irc-channel/chmanagement.c:1318
 #, c-format
 msgid "Could not find host of %s."
-msgstr ""
+msgstr "Не вдалося знайти хост %s."
 
 #: modules/irc-channel/chmanagement.c:1308
 #, c-format
 msgid "Could not find nick %s."
-msgstr ""
+msgstr "Не вдалося знайти псевдонім %s."
 
 #: modules/irc-channel/chmanagement.c:1313
 #, c-format
 msgid "deluser: %s isn't registered."
-msgstr ""
+msgstr "deluser: %s не зареєстровано."
 
 #: modules/irc-channel/chmanagement.c:1487
 #, c-format
 msgid "%s isn't IRC channel!"
-msgstr ""
+msgstr "%s не є каналом IRC!"
 
 #: modules/irc-channel/chmanagement.c:1513
 #: modules/irc-channel/chmanagement.c:1577
@@ -688,751 +711,751 @@ msgstr ""
 #: modules/irc-channel/chmanagement.c:1784
 #, c-format
 msgid "No operator privileges on %s."
-msgstr ""
+msgstr "Немає привілеїв оператора на %s."
 
 #: modules/irc-channel/chmanagement.c:1528
 #: modules/irc-channel/chmanagement.c:1595
 #: modules/irc-channel/chmanagement.c:1663
 #, c-format
 msgid "%s isn't on IRC channel %s for me!"
-msgstr ""
+msgstr "Для мене %s не на каналі IRC %s!"
 
 #: modules/irc-ctcp/dcc.c:240
 #, c-format
 msgid "DCC GET: got late ACCEPT for %s, ignoring it."
-msgstr ""
+msgstr "DCC GET: отримав пізній ACCEPT для %s, ігноруючи його."
 
 #: modules/irc-ctcp/dcc.c:247
 #, c-format
 msgid "DCC: got ACCEPT on %s, transfer resumed at %u."
-msgstr ""
+msgstr "DCC: отримав ACCEPT %s, передачу відновлено о %u."
 
 #: modules/irc-ctcp/dcc.c:254
 #, c-format
 msgid "DCC connection to %s terminated."
-msgstr ""
+msgstr "Підключення DCC до %s розірвано."
 
 #: modules/irc-ctcp/dcc.c:624
 #, c-format
 msgid "DCC SEND connection to %s failed: %s."
-msgstr ""
+msgstr "Помилка підключення DCC SEND до %s: %s."
 
 #: modules/irc-ctcp/dcc.c:661
 #, c-format
 msgid "DCC CHAT connection to %s failed: %s."
-msgstr ""
+msgstr "Помилка підключення DCC CHAT до %s: %s."
 
 #: modules/irc-ctcp/dcc.c:877
 #, c-format
 msgid "Got file \"%s\" from %s: %lu bytes instead of %lu."
-msgstr ""
+msgstr "Отримано файл \"%s\" від %s: %lu байт замість %lu."
 
 #: modules/irc-ctcp/dcc.c:881
 #, c-format
 msgid "Got incomplete file \"%s\" from %s: %lu/%lu bytes."
-msgstr ""
+msgstr "Отримано неповний файл \"%s\" від %s: %lu/%lu байт."
 
 #: modules/irc-ctcp/dcc.c:1102 modules/irc-ctcp/dcc.c:1444
 #, c-format
 msgid "DCC: Cannot create connection thread to %s."
-msgstr ""
+msgstr "DCC: не вдається створити потік підключення до %s."
 
 #: modules/irc-ctcp/dcc.c:1133
 #, c-format
 msgid "Resume file \"%s\" from %s"
-msgstr ""
+msgstr "Відновити файл \"%s\" з %s"
 
 #: modules/irc-ctcp/dcc.c:1136
 #, c-format
 msgid "Get file \"%s\" from %s"
-msgstr ""
+msgstr "Отримати файл \"%s\" від %s"
 
 #: modules/irc-ctcp/dcc.c:1138
 #, c-format
 msgid "Accept chat request from %s"
-msgstr ""
+msgstr "Прийняти запит на чат від %s"
 
 #: modules/irc-ctcp/dcc.c:1152
 #, c-format
 msgid "Overvrite existing file \"%s\""
-msgstr ""
+msgstr "Перезаписати існуючий файл \"%s\""
 
 #: modules/irc-ctcp/dcc.c:1268
 #, c-format
 msgid "DCC: got ACCEPT, transfer resumed at %u."
-msgstr ""
+msgstr "DCC: отримано ACCEPT, передачу відновлено о %u."
 
 #: modules/irc-ctcp/dcc.c:1340
 msgid "DCC: Cannot create thread!"
-msgstr ""
+msgstr "DCC: Неможливо створити потік!"
 
 #: modules/irc-ctcp/dcc.c:1367 modules/irc-ctcp/dcc.c:1660
 msgid "DCC ERRMSG No duplicate connections allowed."
-msgstr ""
+msgstr "DCC ERRMSG Заборонені повторювані підключення."
 
 #: modules/irc-ctcp/dcc.c:1368
 msgid "DCC CHAT: Duplicate connection attempt, refused."
-msgstr ""
+msgstr "DCC CHAT: повторна спроба підключення, відмовлено."
 
 #: modules/irc-ctcp/dcc.c:1637
 msgid "DCC ERRMSG Unknown command."
-msgstr ""
+msgstr "DCC ERRMSG Невідома команда."
 
 #: modules/irc-ctcp/dcc.c:1768
 #, c-format
 msgid "Connection timeout on sending %s."
-msgstr ""
+msgstr "Час очікування підключення під час надсилання %s."
 
 #: modules/irc-ctcp/dcc.c:1809
 #, c-format
 msgid "Unknown modifier -%s ignored!"
-msgstr ""
+msgstr "Невідомий модифікатор -%s ігнорується!"
 
 #: modules/irc-ctcp/dcc.c:1817
 #, c-format
 msgid "File %s does not exist."
-msgstr ""
+msgstr "Файл %s не існує."
 
 #: modules/irc-ctcp/dcc.c:1819
 msgid "File access error."
-msgstr ""
+msgstr "Помилка доступу до файлу."
 
 #: modules/irc-ctcp/dcc.c:1825
 #, c-format
 msgid "File %s is too big."
-msgstr ""
+msgstr "Файл %s завеликий."
 
 #: modules/irc-ctcp/dcc.c:1871
 #, c-format
 msgid "Cannot send file: there is a listener to %s already."
-msgstr ""
+msgstr "Неможливо надіслати файл: уже є слухач %s."
 
 #: modules/irc-ctcp/dcc.c:2041
 msgid "DCC GET of %* from %N completed."
-msgstr ""
+msgstr "DCC GET %* від %N завершено."
 
 #: modules/irc-ctcp/dcc.c:2043
 msgid "DCC SEND of %* to %N completed."
-msgstr ""
+msgstr "DCC SEND %* до %N завершено."
 
 #: modules/irc-ctcp/dcc.c:2045
 msgid "DCC GET of %* from %N established."
-msgstr ""
+msgstr "Установлено DCC GET %* від %N."
 
 #: modules/irc-ctcp/dcc.c:2047
 msgid "DCC connection request for \"%*\" from %N(%@) to %I:%P"
-msgstr ""
+msgstr "Запит на підключення DCC для \"%*\" від %N(%@) до %I:%P"
 
 #: modules/irc/irc.c:407
 #, c-format
 msgid "Connection with network %s lost%s%s%s."
-msgstr ""
+msgstr "З’єднання з мережею %s утрачено%s%s%s."
 
 #: modules/irc/irc.c:408
 msgid ": denied"
-msgstr ""
+msgstr ": відмовлено"
 
 #: modules/irc/irc.c:409
 msgid ", retrying.."
-msgstr ""
+msgstr ", повторна спроба.."
 
 #: modules/irc/irc.c:447
 #, c-format
 msgid "Connecting to %s, port %ld..."
-msgstr ""
+msgstr "Підключення до %s, порт %ld..."
 
 #: modules/irc/irc.c:469
 #, c-format
 msgid "Could not find a server for network %s"
-msgstr ""
+msgstr "Не вдалося знайти сервер для мережі %s"
 
 #: modules/irc/irc.c:689
 msgid "reconnecting IRC server"
-msgstr ""
+msgstr "повторне підключення IRC-сервера"
 
 #: modules/irc/irc.c:692
 msgid "connecting IRC server"
-msgstr ""
+msgstr "підключення сервера IRC"
 
 #: modules/irc/irc.c:695
 msgid "registering at IRC server"
-msgstr ""
+msgstr "реєстрація на сервері IRC"
 
 #: modules/irc/irc.c:699
 msgid "IRC server connected"
-msgstr ""
+msgstr "Сервер IRC підключено"
 
 #: modules/irc/irc.c:702
 msgid "disconnecting IRC server"
-msgstr ""
+msgstr "відключення сервера IRC"
 
 #: modules/irc/irc.c:791
 #, c-format
 msgid "Connected to %s, registering..."
-msgstr ""
+msgstr "Підключено до %s, реєстрація..."
 
 #: modules/irc/irc.c:799
 #, c-format
 msgid "Disconnected from %s: unknown error."
-msgstr ""
+msgstr "Відключено від %s: невідома помилка."
 
 #: modules/irc/irc.c:870
 msgid "connection timeout"
-msgstr ""
+msgstr "тайм-аут підключення"
 
 #: modules/irc/irc.c:906
 #, c-format
 msgid "Disconnected from %s."
-msgstr ""
+msgstr "Відключено від %s."
 
 #: modules/irc/irc.c:968
 #, c-format
 msgid "Timeout for IRC server %s (%d seconds)..."
-msgstr ""
+msgstr "Тайм-аут для сервера IRC %s (%d секунд)..."
 
 #: modules/irc/irc.c:1171
 msgid "bounced"
-msgstr ""
+msgstr "відскочив"
 
 #: modules/irc/irc.c:1202
 #, c-format
 msgid "Registered on %s."
-msgstr ""
+msgstr "Зареєстровано %s."
 
 #: modules/irc/irc.c:1218
 #, c-format
 msgid "Got version from %s: %s"
-msgstr ""
+msgstr "Отримано версію від %s: %s"
 
 #: modules/irc/irc.c:1296
 #, c-format
 msgid "%s quits: %s"
-msgstr ""
+msgstr "%s завершує роботу: %s"
 
 #: modules/irc/irc.c:1345
 msgid "killed"
-msgstr ""
+msgstr "убитий"
 
 #: modules/irc/irc.c:1388
 #, c-format
 msgid "*** no such nick %s"
-msgstr ""
+msgstr "*** немає такого ніка %s"
 
 #: modules/irc/irc.c:1868
 msgid "Waiting for IRC servers for terminating connection..."
-msgstr ""
+msgstr "Очікування серверів IRC для завершення з'єднання..."
 
 #: modules/ircd-rusnet/rusnet.c:906
 msgid "You must be identified"
-msgstr ""
+msgstr "Ви повинні бути ідентифіковані"
 
 #: modules/ircd-rusnet/rusnet.c:914
 msgid "No color codes allowed"
-msgstr ""
+msgstr "Кольорові коди заборонені"
 
 #: modules/ircd/numerics.h:1
 msgid ":Welcome to the Internet Relay Network %#!%L@%@"
-msgstr ""
+msgstr ":Ласкаво просимо до мережі ретрансляції Інтернету %#!%L@%@"
 
 #: modules/ircd/numerics.h:2
 msgid ":Your host is %#, running version %V"
-msgstr ""
+msgstr ":Ваш хост — %#, працює версія %V"
 
 #: modules/ircd/numerics.h:3
 msgid ":This server was created %*"
-msgstr ""
+msgstr ":Цей сервер створено %*"
 
 #: modules/ircd/numerics.h:5
 msgid "%* :are supported by this server"
-msgstr ""
+msgstr "%* : підтримуються цим сервером"
 
 #: modules/ircd/numerics.h:6
 msgid "%# %P :Please use this Server/Port instead"
-msgstr ""
+msgstr "%# %P : Будь ласка, використовуйте замість цього сервер/порт"
 
 #: modules/ircd/numerics.h:9
 msgid ":Welcome to %#! Please wait until checks are done."
-msgstr ""
+msgstr ":Ласкаво просимо до %#! Зачекайте, доки завершаться перевірки."
 
 #: modules/ircd/numerics.h:11
 msgid "Link %V%?P.d%P?? %# %*"
-msgstr ""
+msgstr "Посилання %V%?P.d%P?? %# %*"
 
 #: modules/ircd/numerics.h:12
 msgid "Try. %* %#"
-msgstr ""
+msgstr "Спробуй. %* %#"
 
 #: modules/ircd/numerics.h:13
 msgid "H.S. %* %#"
-msgstr ""
+msgstr "Х.С. %* %#"
 
 #: modules/ircd/numerics.h:14
 msgid "???? - %*"
-msgstr ""
+msgstr "???? - %*"
 
 #: modules/ircd/numerics.h:15
 msgid "Oper %* %#"
-msgstr ""
+msgstr "Опер %* %#"
 
 #: modules/ircd/numerics.h:16
 msgid "User %* %#"
-msgstr ""
+msgstr "Користувач %* %#"
 
 #: modules/ircd/numerics.h:17
 msgid "Serv %*"
-msgstr ""
+msgstr "Серв %*"
 
 #: modules/ircd/numerics.h:18
 msgid "Service %*"
-msgstr ""
+msgstr "Сервіс %*"
 
 #: modules/ircd/numerics.h:19
 msgid "%* 0 %#"
-msgstr ""
+msgstr "%* 0 %#"
 
 #: modules/ircd/numerics.h:20
 msgid "Class %* %P"
-msgstr ""
+msgstr "Клас %* %P"
 
 #: modules/ircd/numerics.h:30
 msgid "%* :End of STATS report"
-msgstr ""
+msgstr "%* : Кінець звіту STATS"
 
 #: modules/ircd/numerics.h:33
 msgid "%* :is your charset now"
-msgstr ""
+msgstr "%* : зараз ваш набір символів"
 
 #: modules/ircd/numerics.h:37
 msgid "%@ %* :End of service listing"
-msgstr ""
+msgstr "%@ %* :Кінець списку послуг"
 
 #: modules/ircd/numerics.h:50
 msgid "%?P%P?0? :operator(s) online"
-msgstr ""
+msgstr "%?P%P?0? :оператор(и) онлайн"
 
 #: modules/ircd/numerics.h:51
 msgid "%?P%P?0? :unknown connection(s)"
-msgstr ""
+msgstr "%?P%P?0? :невідомі з'єднання"
 
 #: modules/ircd/numerics.h:52
 msgid "%?P%P?0? :channels formed"
-msgstr ""
+msgstr "%?P%P?0? : сформовані канали"
 
 #: modules/ircd/numerics.h:54
 msgid "%= :Administrative info"
-msgstr ""
+msgstr "%= : Адміністративна інформація"
 
 #: modules/ircd/numerics.h:59
 msgid "%= %V%?P.d%P?? :End of TRACE"
-msgstr ""
+msgstr "%= %V%?P.d%P?? :Кінець TRACE"
 
 #: modules/ircd/numerics.h:60
 msgid "%* :Please wait a while and try again."
-msgstr ""
+msgstr "%* : Будь ласка, зачекайте трохи та повторіть спробу."
 
 #: modules/ircd/numerics.h:62
 msgid ":Current local users: %P  Max: %*"
-msgstr ""
+msgstr ":Поточні локальні користувачі: %P Макс.: %*"
 
 #: modules/ircd/numerics.h:63
 msgid ":Current global users: %P  Max: %*"
-msgstr ""
+msgstr ":Поточні глобальні користувачі: %P Макс.: %*"
 
 #: modules/ircd/numerics.h:69
 msgid ":You are no longer marked as being away"
-msgstr ""
+msgstr ":Вас більше не позначено як відсутнього"
 
 #: modules/ircd/numerics.h:70
 msgid ":You have been marked as being away"
-msgstr ""
+msgstr ":Вас позначено як від'їзд"
 
 #: modules/ircd/numerics.h:73
 msgid "%# :is an IRC operator"
-msgstr ""
+msgstr "%# : є оператором IRC"
 
 #: modules/ircd/numerics.h:75
 msgid "%* :End of WHO list"
-msgstr ""
+msgstr "%* :Кінець списку ВООЗ"
 
 #: modules/ircd/numerics.h:77
 msgid "%# %* :seconds idle"
-msgstr ""
+msgstr "%# %* : секунди простою"
 
 #: modules/ircd/numerics.h:78
 msgid "%* :End of WHOIS list"
-msgstr ""
+msgstr "%* :Кінець списку WHOIS"
 
 #: modules/ircd/numerics.h:81
 msgid "%# :charset is %*"
-msgstr ""
+msgstr "%# :набір символів %*"
 
 #: modules/ircd/numerics.h:83
 msgid "Channel :Users  Name"
-msgstr ""
+msgstr "Канал: ім'я користувача"
 
 #: modules/ircd/numerics.h:85
 msgid ":End of LIST"
-msgstr ""
+msgstr ":Кінець СПИСКУ"
 
 #: modules/ircd/numerics.h:89
 msgid "%# :No topic is set"
-msgstr ""
+msgstr "%# :Тема не встановлена"
 
 #: modules/ircd/numerics.h:94
 msgid "%# :is using encrypted connection"
-msgstr ""
+msgstr "%# : використовує зашифроване з'єднання"
 
 #: modules/ircd/numerics.h:96
 msgid "%# :Summoning user to IRC"
-msgstr ""
+msgstr "%# :Виклик користувача до IRC"
 
 #: modules/ircd/numerics.h:99
 msgid "%# :End of channel invite list"
-msgstr ""
+msgstr "%# :Кінець списку запрошень каналу"
 
 #: modules/ircd/numerics.h:101
 msgid "%# :End of channel exception list"
-msgstr ""
+msgstr "%# :Кінець списку винятків каналу"
 
 #: modules/ircd/numerics.h:105
 msgid "%* :End of NAMES list"
-msgstr ""
+msgstr "%* :Кінець списку NAMES"
 
 #: modules/ircd/numerics.h:108
 msgid "%* :End of LINKS list"
-msgstr ""
+msgstr "%* :Кінець списку ПОСИЛАНЬ"
 
 #: modules/ircd/numerics.h:110
 msgid "%# :End of channel ban list"
-msgstr ""
+msgstr "%# :Кінець списку заборон каналів"
 
 #: modules/ircd/numerics.h:111
 msgid "%* :End of WHOWAS"
-msgstr ""
+msgstr "%* :Кінець WHOWAS"
 
 #: modules/ircd/numerics.h:115
 msgid ":End of INFO list"
-msgstr ""
+msgstr ":Кінець списку INFO"
 
 #: modules/ircd/numerics.h:116
 msgid ":- %= Message of the day - "
-msgstr ""
+msgstr ":- %= Повідомлення дня - "
 
 #: modules/ircd/numerics.h:117
 msgid ":End of MOTD command"
-msgstr ""
+msgstr ": Кінець команди MOTD"
 
 #: modules/ircd/numerics.h:118
 msgid ":You are now an IRC operator"
-msgstr ""
+msgstr ":Тепер ви оператор IRC"
 
 #: modules/ircd/numerics.h:119
 msgid "%* :Rehashing"
-msgstr ""
+msgstr "%* :Переробка"
 
 #: modules/ircd/numerics.h:120
 msgid "You are service %#"
-msgstr ""
+msgstr "Ви сервіс %#"
 
 #: modules/ircd/numerics.h:123
 msgid ":UserID   Terminal  Host"
-msgstr ""
+msgstr ":Host терміналу UserID"
 
 #: modules/ircd/numerics.h:124
 msgid ":%L %P %@"
-msgstr ""
+msgstr ":%L %P %@"
 
 #: modules/ircd/numerics.h:125
 msgid ":End of users"
-msgstr ""
+msgstr ":Кінець користувачів"
 
 #: modules/ircd/numerics.h:126
 msgid ":Nobody logged in"
-msgstr ""
+msgstr ": Ніхто не авторизувався"
 
 #: modules/ircd/numerics.h:127
 msgid "%* :No such nick/channel"
-msgstr ""
+msgstr "%* :Немає такого ніка/каналу"
 
 #: modules/ircd/numerics.h:128
 msgid "%* :No such server"
-msgstr ""
+msgstr "%* :Немає такого сервера"
 
 #: modules/ircd/numerics.h:129
 msgid "%* :No such channel"
-msgstr ""
+msgstr "%* :Такого каналу немає"
 
 #: modules/ircd/numerics.h:130
 msgid "%# :Cannot send to channel"
-msgstr ""
+msgstr "%# :Неможливо надіслати на канал"
 
 #: modules/ircd/numerics.h:131
 msgid "%# :You have joined too many channels"
-msgstr ""
+msgstr "%# :Ви приєдналися до забагато каналів"
 
 #: modules/ircd/numerics.h:132
 msgid "%* :There was no such nickname"
-msgstr ""
+msgstr "%* :Такого псевдоніма не було"
 
 #: modules/ircd/numerics.h:133
 msgid "%# :Too many recipients. %*"
-msgstr ""
+msgstr "%# :Забагато одержувачів. %*"
 
 #: modules/ircd/numerics.h:134
 msgid "%* :No such service"
-msgstr ""
+msgstr "%* : Такої послуги немає"
 
 #: modules/ircd/numerics.h:135
 msgid ":No origin specified"
-msgstr ""
+msgstr ":Походження не вказано"
 
 #: modules/ircd/numerics.h:136
 msgid ":No recipient given (%*)"
-msgstr ""
+msgstr ":Не вказано одержувача (%*)"
 
 #: modules/ircd/numerics.h:137
 msgid ":No text to send"
-msgstr ""
+msgstr ":Немає тексту для надсилання"
 
 #: modules/ircd/numerics.h:138
 msgid "%* :No toplevel domain specified"
-msgstr ""
+msgstr "%* : домен верхнього рівня не вказано"
 
 #: modules/ircd/numerics.h:139
 msgid "%* :Wildcard in toplevel domain"
-msgstr ""
+msgstr "%* : символ підстановки в домені верхнього рівня"
 
 #: modules/ircd/numerics.h:140
 msgid "%* :Bad Server/host mask"
-msgstr ""
+msgstr "%* :Погана маска сервера/хоста"
 
 #: modules/ircd/numerics.h:141
 msgid "%* :Output too long (try locally)"
-msgstr ""
+msgstr "%* :Вивід надто довгий (спробуйте локально)"
 
 #: modules/ircd/numerics.h:142
 msgid "%* :Unknown command"
-msgstr ""
+msgstr "%* : Невідома команда"
 
 #: modules/ircd/numerics.h:143
 msgid ":MOTD File is missing"
-msgstr ""
+msgstr ":MOTD Файл відсутній"
 
 #: modules/ircd/numerics.h:144
 msgid "%= :No administrative info available"
-msgstr ""
+msgstr "%= :Немає доступної адміністративної інформації"
 
 #: modules/ircd/numerics.h:145
 msgid ":File error doing %*"
-msgstr ""
+msgstr ":Помилка файлу %*"
 
 #: modules/ircd/numerics.h:146
 msgid ":No nickname given"
-msgstr ""
+msgstr ": Псевдонім не вказано"
 
 #: modules/ircd/numerics.h:147
 msgid "%* :Erroneous nickname"
-msgstr ""
+msgstr "%* :помилковий псевдонім"
 
 #: modules/ircd/numerics.h:148
 msgid "%# :Nickname is already in use"
-msgstr ""
+msgstr "%# :Псевдонім уже використовується"
 
 #: modules/ircd/numerics.h:150
 msgid "%N :Nickname collision KILL from %L@%@"
-msgstr ""
+msgstr "%N :Колізія псевдонімів KILL від %L@%@"
 
 #: modules/ircd/numerics.h:151
 msgid "%* :Nick/channel is temporarily unavailable"
-msgstr ""
+msgstr "%* :Нік/канал тимчасово недоступний"
 
 #: modules/ircd/numerics.h:153
 msgid "%* %# :They aren't on that channel"
-msgstr ""
+msgstr "%* %# :Їх немає на цьому каналі"
 
 #: modules/ircd/numerics.h:154
 msgid "%* :You're not on that channel"
-msgstr ""
+msgstr "%* :Ви не на цьому каналі"
 
 #: modules/ircd/numerics.h:155
 msgid "%* %# :is already on channel"
-msgstr ""
+msgstr "%* %# :вже на каналі"
 
 #: modules/ircd/numerics.h:156
 msgid "%* :User not logged in"
-msgstr ""
+msgstr "%* : Користувач не ввійшов у систему"
 
 #: modules/ircd/numerics.h:157
 msgid ":SUMMON has been disabled"
-msgstr ""
+msgstr ":SUMMON вимкнено"
 
 #: modules/ircd/numerics.h:158
 msgid ":USERS has been disabled"
-msgstr ""
+msgstr ":USERS вимкнено"
 
 #: modules/ircd/numerics.h:159
 msgid ":You have not registered"
-msgstr ""
+msgstr ": Ви не зареєстровані"
 
 #: modules/ircd/numerics.h:160
 msgid "%* :Not enough parameters"
-msgstr ""
+msgstr "%* :Недостатньо параметрів"
 
 #: modules/ircd/numerics.h:161
 msgid ":Unauthorized command (already registered)"
-msgstr ""
+msgstr ":Неавторизована команда (вже зареєстрована)"
 
 #: modules/ircd/numerics.h:162
 msgid ":Your host isn't among the privileged"
-msgstr ""
+msgstr ":Ваш хост не належить до привілейованих"
 
 #: modules/ircd/numerics.h:163
 msgid ":Password incorrect"
-msgstr ""
+msgstr ":Неправильний пароль"
 
 #: modules/ircd/numerics.h:164
 msgid ":You are banned from this server%?*: %*??"
-msgstr ""
+msgstr ":Ви забанені на цьому сервері%?*: %*??"
 
 #: modules/ircd/numerics.h:166
 msgid "%# :Channel key already set"
-msgstr ""
+msgstr "%# : Ключ каналу вже встановлено"
 
 #: modules/ircd/numerics.h:168
 msgid "%* :Invalid charset"
-msgstr ""
+msgstr "%* : Недійсний набір символів"
 
 #: modules/ircd/numerics.h:171
 msgid "%# :Cannot join channel (+l)"
-msgstr ""
+msgstr "%# :Неможливо приєднатися до каналу (+l)"
 
 #: modules/ircd/numerics.h:172
 msgid "%* :is unknown mode char to me for %#"
-msgstr ""
+msgstr "%* : Мені невідомий режим char для % #"
 
 #: modules/ircd/numerics.h:173
 msgid "%# :Cannot join channel (+i)"
-msgstr ""
+msgstr "%# :Неможливо приєднатися до каналу (+i)"
 
 #: modules/ircd/numerics.h:174
 msgid "%# :Cannot join channel (+b)"
-msgstr ""
+msgstr "%# :Неможливо приєднатися до каналу (+b)"
 
 #: modules/ircd/numerics.h:175
 msgid "%# :Cannot join channel (+k)"
-msgstr ""
+msgstr "%# :Неможливо приєднатися до каналу (+k)"
 
 #: modules/ircd/numerics.h:176
 msgid "%# :Bad Channel Mask"
-msgstr ""
+msgstr "%# :Погана маска каналу"
 
 #: modules/ircd/numerics.h:177
 msgid "%# :Channel doesn't support modes"
-msgstr ""
+msgstr "%# :Канал не підтримує режими"
 
 #: modules/ircd/numerics.h:178
 msgid "%# %* :Channel list is full"
-msgstr ""
+msgstr "%# %* :Список каналів заповнений"
 
 #: modules/ircd/numerics.h:180
 msgid ":Permission Denied - You're not an IRC operator"
-msgstr ""
+msgstr ":Permission Denied - Ви не оператор IRC"
 
 #: modules/ircd/numerics.h:181
 msgid "%# :You're not channel operator"
-msgstr ""
+msgstr "%# :Ви не оператор каналу"
 
 #: modules/ircd/numerics.h:182
 msgid ":You can't kill a server!"
-msgstr ""
+msgstr ":Ви не можете вбити сервер!"
 
 #: modules/ircd/numerics.h:183
 msgid ":Your connection is restricted!"
-msgstr ""
+msgstr ":Ваше з'єднання обмежено!"
 
 #: modules/ircd/numerics.h:184
 msgid ":You're not the original channel operator"
-msgstr ""
+msgstr ": Ви не оригінальний оператор каналу"
 
 #: modules/ircd/numerics.h:186
 msgid ":No O-lines for your host"
-msgstr ""
+msgstr ": Немає O-ліній для вашого хоста"
 
 #: modules/ircd/numerics.h:189
 msgid ":Unknown MODE flag"
-msgstr ""
+msgstr ":Невідомий прапор MODE"
 
 #: modules/ircd/numerics.h:190
 msgid ":Cannot change mode for other users"
-msgstr ""
+msgstr ": Неможливо змінити режим для інших користувачів"
 
 #: modules/ircd/numerics.h:191
 msgid "%# :User does not accept private messages%?* (%*)??"
-msgstr ""
+msgstr "%# :Користувач не приймає приватні повідомлення%?* (%*)??"
 
 #: modules/ircd/numerics.h:193
 msgid "%* :End of /HELP."
-msgstr ""
+msgstr "%* :Кінець /HELP."
 
 #: modules/modes/modes.c:556
 #, c-format
 msgid "No such active service: %s"
-msgstr ""
+msgstr "Немає такої активної служби: %s"
 
 #: modules/modes/modes.c:573
 #, c-format
 msgid "No such client name: %s"
-msgstr ""
+msgstr "Немає такого імені клієнта: %s"
 
 #: modules/modes/modes.c:608
 #, c-format
 msgid "No greeting is set on %s for %s."
-msgstr ""
+msgstr "Для %s не встановлено привітання на %s."
 
 #: modules/modes/modes.c:611
 #, c-format
 msgid "Greeting on %s for %s is: %s"
-msgstr ""
+msgstr "Привітання %s для %s: %s"
 
 #: modules/modes/modes.c:623
 #, c-format
 msgid "Greeting on %s for %s reset."
-msgstr ""
+msgstr "Привітання на %s для скидання %s."
 
 #: modules/modes/modes.c:638
 #, c-format
 msgid "Greeting on %s for %s set to: %s"
-msgstr ""
+msgstr "Привітання на %s для %s встановлено на: %s"
 
 #: modules/ssl/openssl.c:465
 #, c-format
 msgid "SSL link: used on peer %s as %s."
-msgstr ""
+msgstr "SSL-посилання: використовується на вузлі %s як %s."
 
 #: modules/ssl/openssl.c:468
 #, c-format
 msgid "SSL link: used on nonamed peer (%hd) as %s."
-msgstr ""
+msgstr "Посилання SSL: використовується на номенклатурі (%hd) як %s."
 
 #: modules/ssl/openssl.c:473
 msgid "Module ssl: not used."
-msgstr ""
+msgstr "Модуль ssl: не використовується."
 
 #: modules/syslog/syslog.c:123
 msgid "Module syslog: active."
-msgstr ""
+msgstr "Системний журнал модуля: активний."
 
 #: modules/tcl/modtcl.c:956
 #, c-format
 msgid "TCL: result was: %s"
-msgstr ""
+msgstr "TCL: результат: %s"
 
 #: modules/tcl/modtcl.c:959
 #, c-format
 msgid "TCL: execution failed: %s"
-msgstr ""
+msgstr "TCL: не вдалося виконати: %s"
 
 #: modules/tcl/modtcl.c:1057
 #, c-format
 msgid "TCL: executing %s returned error: %s"
-msgstr ""
+msgstr "TCL: виконання %s повернуло помилку: %s"
